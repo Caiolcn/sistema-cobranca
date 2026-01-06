@@ -813,8 +813,9 @@ export default function WhatsAppConexao() {
               {/* Simulação visual do WhatsApp */}
               <div style={{
                 backgroundColor: '#e5ddd5',
-                backgroundImage: 'url("/whatsapp-bg.png")',
-                backgroundSize: 'cover',
+                backgroundImage: 'url(/whatsapp-bg.png)',
+                backgroundSize: 'contain',
+                backgroundRepeat: 'repeat',
                 backgroundPosition: 'center',
                 borderRadius: '8px',
                 padding: '20px',
