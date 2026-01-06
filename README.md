@@ -1,6 +1,50 @@
-# Getting Started with Create React App
+# Sistema de Cobrança
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Sistema completo de gestão de cobranças com integração WhatsApp, desenvolvido em React e Supabase.
+
+## 🚀 Funcionalidades
+
+- **Dashboard Completo**: Visualize métricas em tempo real de clientes, cobranças e recebimentos
+- **Gestão de Clientes**: Cadastro e gerenciamento de clientes/devedores
+- **Controle Financeiro**: Acompanhamento de parcelas, pagamentos e inadimplência
+- **WhatsApp Integrado**: Envio automático de mensagens de cobrança via Evolution API
+- **Templates de Mensagens**: Editor de templates personalizáveis com preview em tempo real
+- **Relatórios e Gráficos**: Visualização de dados com filtros por período
+
+## 📋 Pré-requisitos
+
+- Node.js (versão 14 ou superior)
+- NPM ou Yarn
+- Conta no Supabase
+- Evolution API (opcional, para envio de WhatsApp)
+
+## 🔧 Instalação e Configuração
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/SEU-USUARIO/sistema-cobranca.git
+cd sistema-cobranca
+```
+
+2. Instale as dependências:
+```bash
+npm install
+```
+
+3. Configure o Supabase:
+   - Acesse o arquivo `src/supabaseClient.js`
+   - Substitua as credenciais pelas suas (URL e Anon Key)
+
+4. Configure o banco de dados:
+   - Execute os scripts SQL na pasta raiz do projeto no seu Supabase:
+     - `setup-supabase.sql` - Estrutura principal
+     - `criar-tabela-usuarios.sql`
+     - `criar-tabela-config.sql`
+     - `criar-tabela-logs-mensagens.sql`
+
+---
+
+## Create React App
 
 ## Available Scripts
 

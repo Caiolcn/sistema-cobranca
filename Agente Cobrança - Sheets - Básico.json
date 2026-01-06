@@ -1,0 +1,469 @@
+{
+  "name": "Agente Cobrança - Sheets - Básico",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 9.14
+            }
+          ]
+        }
+      },
+      "id": "d19f5ba5-132c-43b4-b235-277658ccf6b6",
+      "name": "⏰ Schedule Google Sheets",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        16
+      ],
+      "notes": "CENÁRIO 2: Lê Google Sheets a cada hora\nDesative se não usar Sheets"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Validar Regras').item.json.pode_enviar }}",
+              "value2": true
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $('Buscar Uso').item.json.usage_count || 0 }}",
+              "value2": 100
+            }
+          ]
+        }
+      },
+      "id": "1ca4ba58-b575-4f22-8ade-17b49a3af82b",
+      "name": "Pode Enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Validar Regras').first().json;\n\n// Seu código Pix (pode ser chave aleatória, CPF, CNPJ, etc)\nconst chavePix = \"05373488160\"; // ALTERE AQUI\n// Ou gere um código Pix dinâmico por cliente se quiser\n\nconst mensagem = `*🔔 Lembrete de Pagamento*\n\nOlá, *${item.nome_cliente}*! 👋\n\nIdentificamos que você possui um pagamento pendente:\n\n💰 *Valor:* R$ ${item.valor_em_aberto.toFixed(2)}\n📅 *Vencimento:* ${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}\n\n✅ *Formas de Pagamento:*\n\n*PIX (Instantâneo):*\nChave Pix: \\`${chavePix}\\`\n\n✔️ Já pagou? Por favor, desconsidere esta mensagem e nos envie o comprovante.\n\n❓ Dúvidas? Estamos à disposição!\n\n_Equipe de Cobrança_`;\n\nreturn {\n  json: {\n    ...$('Validar Regras').first().json,\n    mensagem: mensagem\n  }\n};"
+      },
+      "id": "eb7bec83-3a6f-4897-947d-db83fd8ed730",
+      "name": "Mensagem Básico",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://service-evolution-api.tnvro1.easypanel.host/message/sendText/helloworld",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.telefone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.mensagem }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fdbb1335-335d-448a-988f-1350a314ee5e",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1648,
+        -160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TQHFAr8xeaBpJPNC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "user_usage",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $workflow.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        912,
+        32
+      ],
+      "id": "7133312b-397a-40a1-b02f-65a1acd2e0ea",
+      "name": "Buscar Uso",
+      "retryOnFail": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar dados vindos do node anterior\nconst items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const cliente = item.json;\n  \n  // Pular se não tiver dados básicos\n  if (!cliente.nome_cliente || !cliente.telefone) {\n    console.log('⚠️ Cliente sem dados básicos, pulando...');\n    continue;\n  }\n  \n  // ===== VALIDAÇÃO DE HORÁRIO (TIMEZONE BRASIL) =====\n  const agora = new Date();\n  \n  // Converter para horário de Brasília/Goiânia\n  const horaBrasil = parseInt(\n    agora.toLocaleString('en-US', { \n      timeZone: 'America/Sao_Paulo',\n      hour: 'numeric',\n      hour12: false\n    })\n  );\n  \n  console.log('🕐 Horário Brasil: ' + horaBrasil + 'h');\n  \n  const horario_comercial = horaBrasil >= 9 && horaBrasil < 18;\n  \n  // ===== VALIDAÇÃO DE DUPLICAÇÃO (JÁ ENVIOU HOJE?) =====\n  const dataAtual = agora.toISOString().slice(0, 10); // \"2024-12-16\"\n  const ultimoEnvio = cliente.ultimo_envio || '';\n  const ja_enviado_hoje = ultimoEnvio.includes(dataAtual);\n  \n  // ===== CALCULAR DIAS DE ATRASO =====\n  let diasAtraso = 0;\n  if (cliente.data_vencimento) {\n    const vencimento = new Date(cliente.data_vencimento + 'T00:00:00');\n    const diffTime = agora - vencimento;\n    diasAtraso = Math.floor(diffTime / (1000 * 60 * 60 * 24));\n  }\n  \n  // ===== VALIDAÇÃO FINAL =====\n  const podeEnviar = \n    horario_comercial && \n    !ja_enviado_hoje && \n    cliente.status_pagamento === 'em_aberto' &&\n    diasAtraso > 0;\n  \n  // Log de debug\n  console.log('📋 Cliente: ' + cliente.nome_cliente);\n  console.log('  ✅ Horário comercial: ' + horario_comercial + ' (hora: ' + horaBrasil + 'h)');\n  console.log('  ✅ Já enviou hoje: ' + ja_enviado_hoje);\n  console.log('  ✅ Dias atraso: ' + diasAtraso);\n  console.log('  ✅ Status: ' + cliente.status_pagamento);\n  console.log('  🎯 Pode enviar: ' + podeEnviar);\n  \n  // Adicionar campos de validação ao objeto\n  output.push({\n    json: {\n      ...cliente,\n      horario_comercial: horario_comercial,\n      ja_enviado_hoje: ja_enviado_hoje,\n      dias_atraso: diasAtraso,\n      pode_enviar: podeEnviar,\n      data_atual: dataAtual\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "e7840455-d039-464f-b58c-d355767828dd",
+      "name": "Validar Regras",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        32
+      ],
+      "notes": "Valida horário, duplicidade e dias de atraso"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_usage",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $workflow.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "usage_count",
+              "fieldValue": "={{ $('Buscar Uso').first().json.usage_count + 1 }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        -160
+      ],
+      "id": "8851823f-fc7f-4c6c-93af-96ae85492168",
+      "name": "Atualizar Contagem",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5669fd6e-95b4-4d83-b624-8a912b8c1ef6",
+              "leftValue": "={{ new Date().getDate() }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -816,
+        16
+      ],
+      "id": "8c69f59b-9253-4f60-9841-a6e1e43b29c9",
+      "name": "É dia 1 do mês?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "devedores",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $workflow.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "0"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -160
+      ],
+      "id": "bd872e89-e2f5-4de7-9cc1-8b54928dd28e",
+      "name": "Zerar Contagem",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "parcelas",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "data_vencimento",
+              "condition": "eq",
+              "keyValue": "={{$now.format('yyyy-MM-dd')}}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "pendente"
+            },
+            {
+              "keyName": "enviado_whatsapp",
+              "condition": "eq",
+              "keyValue": "false"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -160
+      ],
+      "id": "7910e8f5-6639-4a25-924b-78b8dd5372da",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ⚠️ IMPORTANTE: Altere o nome do nó abaixo para o nome do seu nó que processa dados do Supabase\n// Pode ser: \"Processar Dados\", \"Code\", \"Get many rows\", etc.\nconst NOME_DO_NO_ANTERIOR = 'Processar Dados'; // 👈 AJUSTE AQUI!\n\n// Pegar dados dos clientes (do nó anterior que processou o Supabase)\nconst clientes = $(NOME_DO_NO_ANTERIOR).all();\n\n// Pegar dados de controle (do nó \"Ler Controle de Uso\")\nconst controleRaw = $input.first().json;\n\n// Extrair valores (Google Sheets pode retornar como objeto ou array)\nconst controle = {\n  cliente_id: controleRaw.cliente_id || controleRaw[0],\n  plano: controleRaw.plano || controleRaw[1] || 'basico',\n  limite: parseInt(controleRaw.limite || controleRaw[2] || 100),\n  usado: parseInt(controleRaw.usado || controleRaw[3] || 0),\n  mes_ref: controleRaw.mes_ref || controleRaw[4],\n  status: controleRaw.status || controleRaw[5] || 'ativo'\n};\n\n// Verificar se precisa resetar (mudou o mês)\nconst hoje = new Date();\nconst mesAtual = hoje.toISOString().slice(0, 7); // \"2025-12\"\n\nlet usadoAtual = controle.usado;\nlet statusAtual = controle.status;\n\nif (controle.mes_ref !== mesAtual) {\n  // Novo mês - resetar contador\n  usadoAtual = 0;\n  statusAtual = 'ativo';\n  console.log('🔄 Novo mês detectado! Resetando contador de ' + controle.usado + ' para 0');\n}\n\n// Calcular quantos envios ainda pode fazer\nconst disponivel = controle.limite - usadoAtual;\n\nconsole.log('📊 Controle de Uso:');\nconsole.log('  Plano: ' + controle.plano);\nconsole.log('  Limite: ' + controle.limite);\nconsole.log('  Usado: ' + usadoAtual);\nconsole.log('  Disponível: ' + disponivel);\nconsole.log('  Status: ' + statusAtual);\nconsole.log('  Mês: ' + mesAtual);\n\n// Se já atingiu o limite, bloquear\nif (disponivel <= 0) {\n  console.log('🔴 LIMITE ATINGIDO - Bloqueando envios');\n  \n  return [{\n    json: {\n      bloqueado: true,\n      mensagem: 'Limite de ' + controle.limite + ' envios atingido neste mês (' + mesAtual + ')',\n      usado: usadoAtual,\n      limite: controle.limite,\n      plano: controle.plano,\n      mes_ref: mesAtual,\n      precisa_atualizar: controle.mes_ref !== mesAtual\n    }\n  }];\n}\n\n// Tem limite disponível - processar apenas até o limite\nconst clientesPermitidos = clientes.slice(0, disponivel);\n\nconsole.log('✅ Processando ' + clientesPermitidos.length + ' clientes (limite: ' + disponivel + ')');\n\n// Retornar clientes com informações de controle\nreturn clientesPermitidos.map(cliente => ({\n  json: {\n    ...cliente.json,\n    _controle: {\n      usado_antes: usadoAtual,\n      limite: controle.limite,\n      disponivel: disponivel,\n      mes_ref: mesAtual,\n      resetou: controle.mes_ref !== mesAtual\n    }\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        32
+      ],
+      "id": "55912105-dfa1-4caa-b573-6b2d45d09e7d",
+      "name": "Recebe"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ⚠️ IMPORTANTE: Altere o nome do nó abaixo para o nome do seu nó que processa dados do Supabase\n// Pode ser: \"Processar Dados\", \"Code\", \"Get many rows\", etc.\nconst NOME_DO_NO_ANTERIOR = 'Processar Dados'; // 👈 AJUSTE AQUI!\n\n// Pegar dados dos clientes (do nó anterior que processou o Supabase)\nconst clientes = $(NOME_DO_NO_ANTERIOR).all();\n\n// Pegar dados de controle (do nó \"Ler Controle de Uso\")\nconst controleRaw = $input.first().json;\n\n// Extrair valores (Google Sheets pode retornar como objeto ou array)\nconst controle = {\n  cliente_id: controleRaw.cliente_id || controleRaw[0],\n  plano: controleRaw.plano || controleRaw[1] || 'basico',\n  limite: parseInt(controleRaw.limite || controleRaw[2] || 100),\n  usado: parseInt(controleRaw.usado || controleRaw[3] || 0),\n  mes_ref: controleRaw.mes_ref || controleRaw[4],\n  status: controleRaw.status || controleRaw[5] || 'ativo'\n};\n\n// Verificar se precisa resetar (mudou o mês)\nconst hoje = new Date();\nconst mesAtual = hoje.toISOString().slice(0, 7); // \"2025-12\"\n\nlet usadoAtual = controle.usado;\nlet statusAtual = controle.status;\n\nif (controle.mes_ref !== mesAtual) {\n  // Novo mês - resetar contador\n  usadoAtual = 0;\n  statusAtual = 'ativo';\n  console.log('🔄 Novo mês detectado! Resetando contador de ' + controle.usado + ' para 0');\n}\n\n// Calcular quantos envios ainda pode fazer\nconst disponivel = controle.limite - usadoAtual;\n\nconsole.log('📊 Controle de Uso:');\nconsole.log('  Plano: ' + controle.plano);\nconsole.log('  Limite: ' + controle.limite);\nconsole.log('  Usado: ' + usadoAtual);\nconsole.log('  Disponível: ' + disponivel);\nconsole.log('  Status: ' + statusAtual);\nconsole.log('  Mês: ' + mesAtual);\n\n// Se já atingiu o limite, bloquear\nif (disponivel <= 0) {\n  console.log('🔴 LIMITE ATINGIDO - Bloqueando envios');\n  \n  return [{\n    json: {\n      bloqueado: true,\n      mensagem: 'Limite de ' + controle.limite + ' envios atingido neste mês (' + mesAtual + ')',\n      usado: usadoAtual,\n      limite: controle.limite,\n      plano: controle.plano,\n      mes_ref: mesAtual,\n      precisa_atualizar: controle.mes_ref !== mesAtual\n    }\n  }];\n}\n\n// Tem limite disponível - processar apenas até o limite\nconst clientesPermitidos = clientes.slice(0, disponivel);\n\nconsole.log('✅ Processando ' + clientesPermitidos.length + ' clientes (limite: ' + disponivel + ')');\n\n// Retornar clientes com informações de controle\nreturn clientesPermitidos.map(cliente => ({\n  json: {\n    ...cliente.json,\n    _controle: {\n      usado_antes: usadoAtual,\n      limite: controle.limite,\n      disponivel: disponivel,\n      mes_ref: mesAtual,\n      resetou: controle.mes_ref !== mesAtual\n    }\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        32
+      ],
+      "id": "238bd8ee-bd7a-4463-bae4-e856ad434ca3",
+      "name": "Processar Dados"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "⏰ Schedule Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "É dia 1 do mês?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pode Enviar?": {
+      "main": [
+        [
+          {
+            "node": "Mensagem Básico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensagem Básico": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Contagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Uso": {
+      "main": [
+        [
+          {
+            "node": "Pode Enviar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Regras": {
+      "main": [
+        [
+          {
+            "node": "Buscar Uso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar Contagem": {
+      "main": [
+        []
+      ]
+    },
+    "É dia 1 do mês?": {
+      "main": [
+        [
+          {
+            "node": "Zerar Contagem",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recebe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zerar Contagem": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Recebe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recebe": {
+      "main": [
+        [
+          {
+            "node": "Processar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Dados": {
+      "main": [
+        [
+          {
+            "node": "Validar Regras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b874faba-b68e-4d23-b7b0-1b0aa4143027",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "28995d812f3b917ab8d4142680d07c35b77e0f4bb3edf6733a77c6cb3886e743"
+  },
+  "id": "BW5T2hYLtVwv4IBU",
+  "tags": []
+}

@@ -1,0 +1,479 @@
+{
+  "name": "Agente Cobrança - Supabase - Otimizado",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "d19f5ba5-132c-43b4-b235-277658ccf6b6",
+      "name": "⏰ Schedule (2x por dia)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1024, 16]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5669fd6e-95b4-4d83-b624-8a912b8c1ef6",
+              "leftValue": "={{ new Date().getDate() }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-816, 16],
+      "id": "8c69f59b-9253-4f60-9841-a6e1e43b29c9",
+      "name": "É dia 1 do mês?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT resetar_contador_mensal();",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-608, -160],
+      "id": "bd872e89-e2f5-4de7-9cc1-8b54928dd28e",
+      "name": "Resetar Contador Mensal",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "parcelas",
+        "matchType": "allRows",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "enviado_hoje",
+              "fieldValue": "false"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-400, -160],
+      "id": "resetar-enviado-hoje",
+      "name": "Resetar Enviado Hoje",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "vw_parcelas_para_enviar",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "data_vencimento",
+              "condition": "lte",
+              "keyValue": "={{ $now.toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "keyName": "enviado_hoje",
+              "condition": "eq",
+              "keyValue": "false"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-192, 16],
+      "id": "7910e8f5-6639-4a25-924b-78b8dd5372da",
+      "name": "Buscar Parcelas Vencidas",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar dados vindos do Supabase\nconst parcelas = $input.all();\n\nif (!parcelas || parcelas.length === 0) {\n  console.log('⚠️ Nenhuma parcela para processar');\n  return [];\n}\n\nconst output = [];\nconst agora = new Date();\nconst horaBrasil = parseInt(\n  agora.toLocaleString('en-US', { \n    timeZone: 'America/Sao_Paulo',\n    hour: 'numeric',\n    hour12: false\n  })\n);\n\nconsole.log('🕐 Horário Brasil: ' + horaBrasil + 'h');\nconst horario_comercial = horaBrasil >= 9 && horaBrasil < 18;\n\nfor (const item of parcelas) {\n  const parcela = item.json;\n  \n  // Pular se não tiver dados básicos\n  if (!parcela.nome_cliente || !parcela.telefone) {\n    console.log('⚠️ Parcela sem dados básicos, pulando...');\n    continue;\n  }\n  \n  // Calcular dias de atraso\n  let diasAtraso = 0;\n  if (parcela.data_vencimento) {\n    const vencimento = new Date(parcela.data_vencimento + 'T00:00:00');\n    const diffTime = agora - vencimento;\n    diasAtraso = Math.floor(diffTime / (1000 * 60 * 60 * 24));\n  }\n  \n  // Verificar limite mensal\n  const atingiuLimite = (parcela.usage_count || 0) >= (parcela.limite_mensal || 100);\n  \n  const podeEnviar = \n    horario_comercial && \n    !atingiuLimite &&\n    diasAtraso >= 0;\n  \n  console.log('📋 Cliente: ' + parcela.nome_cliente);\n  console.log('  Horário comercial: ' + horario_comercial);\n  console.log('  Dias atraso: ' + diasAtraso);\n  console.log('  Limite atingido: ' + atingiuLimite + ' (' + (parcela.usage_count || 0) + '/' + (parcela.limite_mensal || 100) + ')');\n  console.log('  Pode enviar: ' + podeEnviar);\n  \n  output.push({\n    json: {\n      ...parcela,\n      horario_comercial: horario_comercial,\n      dias_atraso: diasAtraso,\n      pode_enviar: podeEnviar,\n      limite_atingido: atingiuLimite\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "e7840455-d039-464f-b58c-d355767828dd",
+      "name": "Processar e Validar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [32, 16]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.pode_enviar }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "1ca4ba58-b575-4f22-8ade-17b49a3af82b",
+      "name": "Pode Enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [256, 16]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst chavePix = \"05373488160\";\n\nconst mensagem = `*🔔 Lembrete de Pagamento*\n\nOlá, *${item.nome_cliente}*! 👋\n\nIdentificamos que você possui um pagamento pendente:\n\n💰 *Valor:* R$ ${parseFloat(item.valor_em_aberto).toFixed(2)}\n📅 *Vencimento:* ${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}\n${item.dias_atraso > 0 ? `⚠️ *${item.dias_atraso} dia(s) em atraso*\n` : ''}\n✅ *Formas de Pagamento:*\n\n*PIX (Instantâneo):*\nChave Pix: \\`${chavePix}\\`\n\n${item.descricao ? `📝 ${item.descricao}\n\n` : ''}✔️ Já pagou? Por favor, desconsidere esta mensagem e nos envie o comprovante.\n\n❓ Dúvidas? Estamos à disposição!\n\n_Equipe de Cobrança_`;\n\n// Formatar telefone\nlet telefone = String(item.telefone || '').replace(/\\D/g, '');\nif (!telefone.startsWith('55')) {\n  telefone = '55' + telefone;\n}\n\nreturn {\n  json: {\n    ...item,\n    mensagem: mensagem,\n    telefone: telefone\n  }\n};"
+      },
+      "id": "eb7bec83-3a6f-4897-947d-db83fd8ed730",
+      "name": "Criar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, -16]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://service-evolution-api.tnvro1.easypanel.host/message/sendText/helloworld",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.telefone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.mensagem }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fdbb1335-335d-448a-988f-1350a314ee5e",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [704, -16],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TQHFAr8xeaBpJPNC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "logs_mensagens",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "parcela_id",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.parcela_id }}"
+            },
+            {
+              "fieldId": "devedor_id",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.devedor_id }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.user_id }}"
+            },
+            {
+              "fieldId": "telefone",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.telefone }}"
+            },
+            {
+              "fieldId": "mensagem",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.mensagem }}"
+            },
+            {
+              "fieldId": "valor_parcela",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.valor_em_aberto }}"
+            },
+            {
+              "fieldId": "data_vencimento",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.data_vencimento }}"
+            },
+            {
+              "fieldId": "dias_atraso",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.dias_atraso }}"
+            },
+            {
+              "fieldId": "numero_parcela",
+              "fieldValue": "={{ $('Criar Mensagem').item.json.numero_parcela }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "enviado"
+            },
+            {
+              "fieldId": "response_api",
+              "fieldValue": "={{ JSON.stringify($('Enviar WhatsApp').item.json) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [816, -16],
+      "id": "registrar-log-mensagem",
+      "name": "Registrar Log",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "parcelas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Criar Mensagem').item.json.parcela_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "enviado_hoje",
+              "fieldValue": "true"
+            },
+            {
+              "fieldId": "data_ultimo_envio",
+              "fieldValue": "={{ $now.toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "fieldId": "total_envios",
+              "fieldValue": "={{ ($('Criar Mensagem').item.json.total_envios || 0) + 1 }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [928, -16],
+      "id": "atualizar-parcela",
+      "name": "Atualizar Parcela",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "controle_planos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Criar Mensagem').item.json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "usage_count",
+              "fieldValue": "={{ ($('Criar Mensagem').item.json.usage_count || 0) + 1 }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1152, -16],
+      "id": "8851823f-fc7f-4c6c-93af-96ae85492168",
+      "name": "Incrementar Contador",
+      "credentials": {
+        "supabaseApi": {
+          "id": "eQpWPbtacYHzFpn2",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Schedule (2x por dia)": {
+      "main": [
+        [
+          {
+            "node": "É dia 1 do mês?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É dia 1 do mês?": {
+      "main": [
+        [
+          {
+            "node": "Resetar Contador Mensal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar Parcelas Vencidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resetar Contador Mensal": {
+      "main": [
+        [
+          {
+            "node": "Resetar Enviado Hoje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resetar Enviado Hoje": {
+      "main": [
+        [
+          {
+            "node": "Buscar Parcelas Vencidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Parcelas Vencidas": {
+      "main": [
+        [
+          {
+            "node": "Processar e Validar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar e Validar": {
+      "main": [
+        [
+          {
+            "node": "Pode Enviar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pode Enviar?": {
+      "main": [
+        [
+          {
+            "node": "Criar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Registrar Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Log": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Parcela",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar Parcela": {
+      "main": [
+        [
+          {
+            "node": "Incrementar Contador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
