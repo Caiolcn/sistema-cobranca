@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
 import DateRangePicker from './DateRangePicker';
+import whatsappService from './services/whatsappService';
 import './Home.css';
 
 function Home({ onNavigate }) {
@@ -274,29 +275,36 @@ function Home({ onNavigate }) {
 
   const handleEnviarWhatsApp = async (item) => {
     try {
-      // Aqui você pode implementar a lógica de envio de WhatsApp
-      // Por exemplo, chamar a API do n8n ou Evolution API
-      console.log('Enviando WhatsApp para:', item);
+      const confirmar = window.confirm(
+        `Enviar cobrança via WhatsApp para ${item.devedores?.nome}?\n\n` +
+        `Valor: ${formatarMoeda(item.valor)}\n` +
+        `Telefone: ${item.devedores?.telefone}`
+      );
 
-      // Exemplo de como poderia ser:
-      // const response = await fetch('URL_DA_SUA_API_DE_ENVIO', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     telefone: item.devedores?.telefone,
-      //     nome: item.devedores?.nome,
-      //     valor: item.valor,
-      //     vencimento: item.data_vencimento
-      //   })
-      // });
+      if (!confirmar) return;
 
-      alert(`WhatsApp será enviado para ${item.devedores?.nome}`);
+      // Mostrar loading
+      const loadingMsg = document.createElement('div');
+      loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;text-align:center;';
+      loadingMsg.innerHTML = '<div style="margin-bottom:10px;">Enviando mensagem...</div><div style="color:#666;font-size:14px;">Aguarde</div>';
+      document.body.appendChild(loadingMsg);
 
-      // Recarregar dados após envio
-      await carregarDados();
+      // Enviar via whatsappService
+      const resultado = await whatsappService.enviarCobranca(item.id);
+
+      // Remover loading
+      document.body.removeChild(loadingMsg);
+
+      if (resultado.sucesso) {
+        alert(`✅ Mensagem enviada com sucesso para ${item.devedores?.nome}!`);
+        // Recarregar dados após envio
+        await carregarDados();
+      } else {
+        alert(`❌ Erro ao enviar mensagem:\n${resultado.erro}`);
+      }
     } catch (error) {
       console.error('Erro ao enviar WhatsApp:', error);
-      alert('Erro ao enviar WhatsApp. Tente novamente.');
+      alert('❌ Erro ao enviar WhatsApp: ' + error.message);
     }
   };
 

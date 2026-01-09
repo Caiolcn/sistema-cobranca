@@ -42,6 +42,8 @@ export default function WhatsAppConexao() {
   const [showInstructions, setShowInstructions] = useState(true)
   const [evolutionApiKey, setEvolutionApiKey] = useState('')
   const [evolutionApiUrl, setEvolutionApiUrl] = useState('')
+  const [instanceExists, setInstanceExists] = useState(false)
+  const [verificandoInstancia, setVerificandoInstancia] = useState(true)
 
   // Estados para templates
   const [templates, setTemplates] = useState([])
@@ -100,7 +102,93 @@ export default function WhatsAppConexao() {
     }
 
     carregarConfig()
+    carregarTemplates()
   }, [])
+
+  // Carregar templates do banco
+  const carregarTemplates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const { data, error } = await supabase
+        .from('templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .order('is_padrao', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      setTemplates(data || [])
+
+      // Se existe template padrão, carregar no editor
+      const templatePadrao = data?.find(t => t.is_padrao)
+      if (templatePadrao) {
+        setTemplateAtual({
+          id: templatePadrao.id,
+          titulo: templatePadrao.titulo,
+          mensagem: templatePadrao.mensagem
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar templates:', error)
+    }
+  }
+
+  // Salvar template
+  const salvarTemplate = async () => {
+    if (!templateAtual.titulo.trim() || !templateAtual.mensagem.trim()) {
+      alert('Preencha o título e a mensagem do template')
+      return
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const templateData = {
+        user_id: user.id,
+        titulo: templateAtual.titulo.trim(),
+        mensagem: templateAtual.mensagem.trim(),
+        ativo: true
+      }
+
+      let error
+
+      if (templateAtual.id) {
+        // Atualizar template existente
+        const result = await supabase
+          .from('templates')
+          .update({
+            titulo: templateData.titulo,
+            mensagem: templateData.mensagem,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', templateAtual.id)
+
+        error = result.error
+      } else {
+        // Criar novo template
+        // Se é o primeiro template, marcar como padrão
+        const temTemplatePadrao = templates.some(t => t.is_padrao)
+        templateData.is_padrao = !temTemplatePadrao
+
+        const result = await supabase
+          .from('templates')
+          .insert(templateData)
+
+        error = result.error
+      }
+
+      if (error) throw error
+
+      alert('Template salvo com sucesso!')
+      await carregarTemplates()
+    } catch (error) {
+      console.error('Erro ao salvar template:', error)
+      alert('Erro ao salvar template: ' + error.message)
+    }
+  }
 
   useEffect(() => {
     // Gerar nome da instância baseado no usuário
@@ -114,11 +202,53 @@ export default function WhatsAppConexao() {
   }, [])
 
   useEffect(() => {
-    // Verificar status da conexão ao carregar
-    if (instanceName) {
-      verificarStatus()
+    // Verificar status da conexão e se a instância existe ao carregar
+    if (instanceName && evolutionApiKey && evolutionApiUrl) {
+      verificarInstanciaExiste()
     }
-  }, [instanceName])
+  }, [instanceName, evolutionApiKey, evolutionApiUrl])
+
+  const verificarInstanciaExiste = async () => {
+    setVerificandoInstancia(true)
+    try {
+      // Tentar buscar informações da instância
+      const response = await fetch(`${evolutionApiUrl}/instance/fetchInstances`, {
+        method: 'GET',
+        headers: {
+          'apikey': evolutionApiKey
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+
+        // Verificar se nossa instância existe na lista
+        const minhaInstancia = data.find(inst => inst.instance?.instanceName === instanceName)
+
+        if (minhaInstancia) {
+          setInstanceExists(true)
+
+          // Verificar o status da instância
+          const state = minhaInstancia.instance?.state || 'close'
+          if (state === 'open') {
+            setStatus('connected')
+          } else if (state === 'connecting') {
+            setStatus('connecting')
+          } else {
+            setStatus('disconnected')
+          }
+        } else {
+          setInstanceExists(false)
+          setStatus('disconnected')
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar instância:', error)
+      setInstanceExists(false)
+    } finally {
+      setVerificandoInstancia(false)
+    }
+  }
 
   const verificarStatus = async () => {
     if (!evolutionApiKey || !evolutionApiUrl) return
@@ -155,10 +285,21 @@ export default function WhatsAppConexao() {
       return
     }
 
+    // Proteção: Verificar se já existe antes de criar
+    if (instanceExists) {
+      console.log('⚠️ Instância já existe! Conectando sem criar nova...')
+      conectarWhatsApp()
+      return
+    }
+
     setLoading(true)
     setErro('')
 
     try {
+      console.log('🔄 Criando instância:', instanceName)
+      console.log('📡 URL:', `${evolutionApiUrl}/instance/create`)
+      console.log('🔑 API Key:', evolutionApiKey ? '***' + evolutionApiKey.slice(-4) : 'não definida')
+
       const response = await fetch(`${evolutionApiUrl}/instance/create`, {
         method: 'POST',
         headers: {
@@ -172,15 +313,37 @@ export default function WhatsAppConexao() {
         })
       })
 
+      console.log('📊 Status da resposta:', response.status)
+
+      const responseData = await response.json().catch(() => ({}))
+      console.log('📦 Resposta completa:', responseData)
+
       if (!response.ok) {
-        throw new Error('Erro ao criar instância')
+        // Se for 403 Forbidden, pode ser que a instância já existe
+        if (response.status === 403) {
+          console.log('⚠️ Erro 403 - Tentando conectar diretamente sem criar...')
+          setErro('') // Limpar erro anterior
+
+          // Tentar conectar diretamente
+          setTimeout(() => {
+            conectarWhatsApp()
+          }, 500)
+          return
+        }
+
+        const errorMsg = responseData.message || responseData.error || `HTTP ${response.status}`
+        throw new Error(errorMsg)
       }
+
+      // Marcar que a instância existe agora
+      setInstanceExists(true)
 
       // Aguardar um pouco e então conectar
       setTimeout(() => {
         conectarWhatsApp()
       }, 2000)
     } catch (error) {
+      console.error('❌ Erro completo:', error)
       setErro('Erro ao criar instância: ' + error.message)
       setLoading(false)
     }
@@ -464,41 +627,122 @@ export default function WhatsAppConexao() {
               ))}
             </div>
 
-            <button
-              onClick={criarInstancia}
-              disabled={loading}
-              style={{
-                width: '100%',
+            {verificandoInstancia ? (
+              // Carregando verificação
+              <div style={{
                 padding: '14px',
-                backgroundColor: '#25D366',
-                color: 'white',
-                border: 'none',
+                backgroundColor: '#f5f5f5',
                 borderRadius: '8px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '10px',
-                opacity: loading ? 0.7 : 1,
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#20BA5A')}
-              onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#25D366')}
-            >
-              {loading ? (
-                <>
-                  <Icon icon="eos-icons:loading" width="24" height="24" />
-                  Gerando QR Code...
-                </>
-              ) : (
-                <>
-                  <Icon icon="mdi:qrcode" width="24" height="24" />
-                  Gerar QR Code
-                </>
-              )}
-            </button>
+                color: '#666'
+              }}>
+                <Icon icon="eos-icons:loading" width="20" height="20" />
+                Verificando conexão...
+              </div>
+            ) : instanceExists ? (
+              // Instância existe - apenas botão de conectar
+              <button
+                onClick={conectarWhatsApp}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: '#25D366',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  opacity: loading ? 0.7 : 1,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#20BA5A')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#25D366')}
+              >
+                {loading ? (
+                  <>
+                    <Icon icon="eos-icons:loading" width="24" height="24" />
+                    Gerando QR Code...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:qrcode" width="24" height="24" />
+                    Gerar QR Code
+                  </>
+                )}
+              </button>
+            ) : (
+              // Instância não existe - botão de criar
+              <button
+                onClick={criarInstancia}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: '#25D366',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  opacity: loading ? 0.7 : 1,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#20BA5A')}
+                onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#25D366')}
+              >
+                {loading ? (
+                  <>
+                    <Icon icon="eos-icons:loading" width="24" height="24" />
+                    Criando e conectando...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:plus-circle" width="24" height="24" />
+                    Criar e Conectar WhatsApp
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Mensagem de ajuda */}
+            {!verificandoInstancia && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: '#1976d2',
+                lineHeight: '1.5'
+              }}>
+                <Icon icon="mdi:information" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                {instanceExists ? (
+                  <span>
+                    <strong>Sua instância já existe!</strong> Clique em "Gerar QR Code" apenas quando o WhatsApp desconectar.
+                    Depois de conectado uma vez, você não precisa escanear o QR Code novamente.
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Primeira vez?</strong> Esta é uma configuração única. Após criar e conectar, você não precisará fazer isso novamente.
+                    Seus clientes também farão isso apenas uma vez.
+                  </span>
+                )}
+              </div>
+            )}
 
             {erro && (
               <div style={{
@@ -508,13 +752,56 @@ export default function WhatsAppConexao() {
                 border: '1px solid #f44336',
                 borderRadius: '6px',
                 color: '#f44336',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
+                fontSize: '14px'
               }}>
-                <Icon icon="mdi:alert-circle" width="20" height="20" />
-                {erro}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <Icon icon="mdi:alert-circle" width="20" height="20" />
+                  <strong>{erro}</strong>
+                </div>
+
+                {erro.includes('Forbidden') && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '12px',
+                    backgroundColor: '#fff3e0',
+                    border: '1px solid #ff9800',
+                    borderRadius: '6px',
+                    color: '#e65100',
+                    fontSize: '13px',
+                    lineHeight: '1.6'
+                  }}>
+                    <strong>💡 Como resolver:</strong><br/>
+                    1. Verifique se está usando a <strong>Global API Key</strong> (não a Instance Key)<br/>
+                    2. A chave deve ter permissão para criar instâncias<br/>
+                    3. Ou tente clicar no botão abaixo para conectar sem criar
+                  </div>
+                )}
+
+                {erro.includes('Forbidden') && (
+                  <button
+                    onClick={conectarWhatsApp}
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      marginTop: '12px',
+                      padding: '10px',
+                      backgroundColor: '#ff9800',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Icon icon="mdi:link-variant" width="18" />
+                    Tentar Conectar Sem Criar
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -782,7 +1069,7 @@ export default function WhatsAppConexao() {
 
               {/* Botão Salvar */}
               <button
-                onClick={() => alert('Template salvo! (Funcionalidade em desenvolvimento)')}
+                onClick={salvarTemplate}
                 style={{
                   width: '100%',
                   padding: '12px',
