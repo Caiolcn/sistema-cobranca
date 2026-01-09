@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
 import DateRangePicker from './DateRangePicker';
 import whatsappService from './services/whatsappService';
 import './Home.css';
 
-function Home({ onNavigate }) {
+function Home() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [periodo, setPeriodo] = useState('hoje');
@@ -367,7 +369,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{totalClientes}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('clientes')}>
+            <button className="btn-ver" onClick={() => navigate('clientes')}>
               Ver
             </button>
           </div>
@@ -384,7 +386,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{cobrancasAtivas}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('financeiro')}>
+            <button className="btn-ver" onClick={() => navigate('financeiro')}>
               Ver
             </button>
           </div>
@@ -401,7 +403,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{formatarMoeda(totalReceber)}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('financeiro')}>
+            <button className="btn-ver" onClick={() => navigate('financeiro')}>
               Ver
             </button>
           </div>
@@ -418,7 +420,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{formatarMoeda(totalRecebido)}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('financeiro')}>
+            <button className="btn-ver" onClick={() => navigate('financeiro')}>
               Ver
             </button>
           </div>
@@ -435,7 +437,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{mensagensEnviadas}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('whatsapp')}>
+            <button className="btn-ver" onClick={() => navigate('whatsapp')}>
               Ver
             </button>
           </div>
@@ -455,7 +457,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{clientesInadimplentes}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('clientes')}>
+            <button className="btn-ver" onClick={() => navigate('clientes')}>
               Ver
             </button>
           </div>
@@ -472,7 +474,7 @@ function Home({ onNavigate }) {
             <span className="card-value">{formatarMoeda(maiorDebito)}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => onNavigate('financeiro')}>
+            <button className="btn-ver" onClick={() => navigate('financeiro')}>
               Ver
             </button>
           </div>

@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { supabase } from './supabaseClient'
-import Home from './Home'
-import Financeiro from './Financeiro'
-import Clientes from './Clientes'
-import WhatsAppConexao, { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
+import { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
 import PerfilUsuario from './PerfilUsuario'
 import { Icon } from '@iconify/react'
 
 export default function Dashboard() {
-  const [telaAtiva, setTelaAtiva] = useState('home') // 'home', 'financeiro', 'clientes' ou 'whatsapp'
+  const navigate = useNavigate()
+  const location = useLocation()
   const [mostrarPerfil, setMostrarPerfil] = useState(false)
   const [whatsappStatus, setWhatsappStatus] = useState(getWhatsAppStatus())
+
+  // Determinar tela ativa pela rota atual
+  const telaAtiva = location.pathname.replace('/', '') || 'home'
 
   useEffect(() => {
     // Inscrever-se para atualizações do status do WhatsApp
@@ -50,7 +52,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
           {/* Home */}
           <div
-            onClick={() => setTelaAtiva('home')}
+            onClick={() => navigate('/home')}
             style={{
               width: '40px',
               height: '40px',
@@ -76,7 +78,7 @@ export default function Dashboard() {
 
           {/* Financeiro */}
           <div
-            onClick={() => setTelaAtiva('financeiro')}
+            onClick={() => navigate('/financeiro')}
             style={{
               width: '40px',
               height: '40px',
@@ -102,7 +104,7 @@ export default function Dashboard() {
 
           {/* Clientes */}
           <div
-            onClick={() => setTelaAtiva('clientes')}
+            onClick={() => navigate('/clientes')}
             style={{
               width: '40px',
               height: '40px',
@@ -128,7 +130,7 @@ export default function Dashboard() {
 
           {/* WhatsApp */}
           <div
-            onClick={() => setTelaAtiva('whatsapp')}
+            onClick={() => navigate('/whatsapp')}
             style={{
               width: '40px',
               height: '40px',
@@ -164,6 +166,32 @@ export default function Dashboard() {
                              '#f44336',
               boxShadow: '0 0 4px rgba(0,0,0,0.3)'
             }} />
+          </div>
+
+          {/* Teste WhatsApp */}
+          <div
+            onClick={() => navigate('/teste-whatsapp')}
+            style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'teste-whatsapp' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: telaAtiva === 'teste-whatsapp' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'teste-whatsapp') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'teste-whatsapp') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="mdi:test-tube" width="22" height="22" />
           </div>
         </div>
 
@@ -226,10 +254,7 @@ export default function Dashboard() {
         overflow: 'auto',
         display: 'flex'
       }}>
-        {telaAtiva === 'home' ? <Home onNavigate={setTelaAtiva} /> :
-         telaAtiva === 'financeiro' ? <Financeiro /> :
-         telaAtiva === 'clientes' ? <Clientes /> :
-         <WhatsAppConexao />}
+        <Outlet />
       </div>
 
       {/* Modal de Perfil */}

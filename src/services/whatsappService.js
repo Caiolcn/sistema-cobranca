@@ -96,6 +96,21 @@ class WhatsAppService {
       numero = '55' + numero
     }
 
+    // Validação e correção de números brasileiros
+    if (numero.startsWith('55')) {
+      const somenteNumero = numero.substring(2) // Remove o 55
+      const ddd = somenteNumero.substring(0, 2)
+      const restante = somenteNumero.substring(2)
+
+      // Se tem 10 dígitos (celular sem o 9), adiciona o 9
+      if (restante.length === 10 && !restante.startsWith('9')) {
+        console.log('⚠️ Número parece estar faltando o 9º dígito. Corrigindo...')
+        numero = '55' + ddd + '9' + restante
+      }
+    }
+
+    console.log('📱 Número formatado final:', numero)
+
     // Garante que tem o formato correto para WhatsApp
     return numero + '@s.whatsapp.net'
   }
@@ -109,24 +124,55 @@ class WhatsAppService {
     try {
       const numeroFormatado = this.formatarTelefone(telefone)
 
+      console.log('📡 Enviando para Evolution API...')
+      console.log('🔗 URL:', `${this.apiUrl}/message/sendText/${this.instanceName}`)
+      console.log('📞 Número formatado:', numeroFormatado)
+      console.log('💬 Mensagem:', mensagem)
+
+      const payload = {
+        number: numeroFormatado,
+        text: mensagem
+      }
+
+      console.log('📦 Payload completo:', JSON.stringify(payload, null, 2))
+
       const response = await fetch(`${this.apiUrl}/message/sendText/${this.instanceName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': this.apiKey
         },
-        body: JSON.stringify({
-          number: numeroFormatado,
-          text: mensagem
-        })
+        body: JSON.stringify(payload)
       })
 
+      console.log('📊 Status da resposta:', response.status)
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Erro HTTP: ${response.status}`)
+        const errorText = await response.text()
+        console.error('❌ Resposta de erro (texto):', errorText)
+
+        let errorData = {}
+        try {
+          errorData = JSON.parse(errorText)
+          console.error('❌ Resposta de erro (JSON):', errorData)
+        } catch (e) {
+          // Não é JSON válido
+        }
+
+        // Verificar se é erro de número não existe
+        if (errorData.response?.message && Array.isArray(errorData.response.message)) {
+          const numeroNaoExiste = errorData.response.message.some(msg => msg.exists === false)
+          if (numeroNaoExiste) {
+            const numeroProblema = errorData.response.message[0].number.replace('@s.whatsapp.net', '')
+            throw new Error(`❌ O número ${numeroProblema} não existe no WhatsApp ou não está ativo. Verifique se:\n• O número está correto\n• A pessoa tem WhatsApp instalado\n• O número está ativo`)
+          }
+        }
+
+        throw new Error(errorData.message || errorText || `Erro HTTP: ${response.status}`)
       }
 
       const result = await response.json()
+      console.log('✅ Resposta de sucesso:', result)
 
       return {
         sucesso: true,
@@ -134,7 +180,7 @@ class WhatsAppService {
         dados: result
       }
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error)
+      console.error('❌ Erro ao enviar mensagem:', error)
       return {
         sucesso: false,
         erro: error.message
@@ -209,7 +255,16 @@ class WhatsAppService {
       const resultado = await this.enviarMensagem(parcela.devedor.telefone, mensagemFinal)
 
       // Registrar log no banco
-      const { error: logError } = await supabase
+      console.log('💾 Salvando log no Supabase...')
+      console.log('📝 Dados do log:', {
+        user_id: user.id,
+        devedor_id: parcela.devedor_id,
+        parcela_id: parcela.id,
+        telefone: parcela.devedor.telefone,
+        status: resultado.sucesso ? 'enviado' : 'erro'
+      })
+
+      const { data: logData, error: logError } = await supabase
         .from('logs_mensagens')
         .insert({
           user_id: user.id,
@@ -219,13 +274,15 @@ class WhatsAppService {
           mensagem: mensagemFinal,
           valor_parcela: parcela.valor,
           status: resultado.sucesso ? 'enviado' : 'erro',
-          erro: resultado.erro || null,
-          message_id: resultado.messageId || null,
-          instance_name: this.instanceName
+          erro: resultado.erro || null
         })
+        .select()
 
       if (logError) {
-        console.error('Erro ao registrar log:', logError)
+        console.error('❌ Erro ao registrar log:', logError)
+        console.error('❌ Detalhes completos do erro:', JSON.stringify(logError, null, 2))
+      } else {
+        console.log('✅ Log salvo com sucesso!', logData)
       }
 
       // Atualizar parcela
