@@ -24,6 +24,11 @@ export default function Clientes() {
   const [dataInicioAssinatura, setDataInicioAssinatura] = useState('')
   const [planoSelecionado, setPlanoSelecionado] = useState('')
   const [planos, setPlanos] = useState([])
+  const [mostrarModalCriarPlano, setMostrarModalCriarPlano] = useState(false)
+  const [novoPlanoNome, setNovoPlanoNome] = useState('')
+  const [novoPlanoValor, setNovoPlanoValor] = useState('')
+  const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
+  const [novoPlanoDescricao, setNovoPlanoDescricao] = useState('')
 
   useEffect(() => {
     carregarClientes()
@@ -303,6 +308,44 @@ export default function Clientes() {
     return value
   }
 
+  const handleCriarPlanoRapido = async () => {
+    if (!novoPlanoNome.trim() || !novoPlanoValor || parseFloat(novoPlanoValor) <= 0) {
+      showToast('Preencha o nome e valor do plano', 'warning')
+      return
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const { data, error } = await supabase.from('planos').insert({
+        user_id: user.id,
+        nome: novoPlanoNome.trim(),
+        valor: parseFloat(novoPlanoValor),
+        ciclo_cobranca: novoPlanoCiclo,
+        descricao: novoPlanoDescricao.trim() || null,
+        ativo: true
+      }).select()
+
+      if (error) throw error
+
+      showToast('Plano criado com sucesso!', 'success')
+      setMostrarModalCriarPlano(false)
+      setNovoPlanoNome('')
+      setNovoPlanoValor('')
+      setNovoPlanoCiclo('mensal')
+      setNovoPlanoDescricao('')
+
+      // Recarregar planos e selecionar o recém-criado
+      await carregarPlanos()
+      if (data && data.length > 0) {
+        setPlanoSelecionado(data[0].id)
+      }
+    } catch (error) {
+      console.error('Erro ao criar plano:', error)
+      showToast('Erro ao criar plano: ' + error.message, 'error')
+    }
+  }
+
   const handleCriarCliente = async () => {
     if (!novoClienteNome.trim() || !novoClienteTelefone.trim()) {
       showToast('Preencha nome e telefone', 'warning')
@@ -356,7 +399,8 @@ export default function Clientes() {
             valor: plano.valor,
             data_vencimento: dataVencimento.toISOString().split('T')[0],
             status: 'pendente',
-            is_mensalidade: true
+            is_mensalidade: true,
+            numero_parcela: 1
           })
 
         if (parcelaError) throw parcelaError
@@ -563,22 +607,22 @@ export default function Clientes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '25%' }}>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '22%' }}>
                     Cliente
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '18%' }}>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '16%' }}>
                     Telefone
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '12%' }}>
+                  <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '13%' }}>
                     Status
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '18%' }}>
+                  <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '17%' }}>
                     Plano
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '17%' }}>
+                  <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '20%' }}>
                     Próximo Vencimento
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '10%' }}>
+                  <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '12%' }}>
                     Assinatura
                   </th>
                 </tr>
@@ -615,10 +659,10 @@ export default function Clientes() {
                         {cliente.nome}
                       </div>
                     </td>
-                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666' }}>
+                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#666' }}>
                       {cliente.telefone}
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                       <span style={{
                         backgroundColor: cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
                         color: cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
@@ -631,10 +675,10 @@ export default function Clientes() {
                         {cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#333' }}>
+                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#333', textAlign: 'center' }}>
                       {cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
                     </td>
-                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
                       {cliente.proxima_mensalidade ? (
                         <span style={{ color: new Date(cliente.proxima_mensalidade) < new Date() ? '#f44336' : '#333' }}>
                           {new Date(cliente.proxima_mensalidade + 'T00:00:00').toLocaleDateString('pt-BR')}
@@ -643,7 +687,7 @@ export default function Clientes() {
                         <span style={{ color: '#999', fontStyle: 'italic' }}>-</span>
                       )}
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '16px 24px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                       <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
                         <input
                           type="checkbox"
@@ -1364,6 +1408,9 @@ export default function Clientes() {
                     type="date"
                     value={dataInicioAssinatura}
                     onChange={(e) => setDataInicioAssinatura(e.target.value)}
+                    onClick={(e) => {
+                      e.target.showPicker?.()
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -1371,7 +1418,8 @@ export default function Clientes() {
                       borderRadius: '6px',
                       fontSize: '14px',
                       outline: 'none',
-                      transition: 'border-color 0.2s'
+                      transition: 'border-color 0.2s',
+                      cursor: 'pointer'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -1413,6 +1461,36 @@ export default function Clientes() {
                       </option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModalCriarPlano(true)}
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 16px',
+                      backgroundColor: 'transparent',
+                      color: '#2196F3',
+                      border: '2px dashed #2196F3',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      width: '100%',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e3f2fd'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    <Icon icon="material-symbols:add" width="18" />
+                    Criar Novo Plano
+                  </button>
                   {planos.length === 0 && (
                     <p style={{
                       margin: '8px 0 0 0',
@@ -1494,6 +1572,236 @@ export default function Clientes() {
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
               >
                 Criar Cliente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mini-modal para criar plano rápido */}
+      {mostrarModalCriarPlano && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 15000,
+            padding: '20px'
+          }}
+          onClick={() => {
+            setMostrarModalCriarPlano(false)
+            setNovoPlanoNome('')
+            setNovoPlanoValor('')
+            setNovoPlanoCiclo('mensal')
+            setNovoPlanoDescricao('')
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+            }}
+          >
+            <h3 style={{
+              margin: '0 0 20px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Icon icon="material-symbols:add-circle-outline" width="24" style={{ color: '#2196F3' }} />
+              Criar Novo Plano
+            </h3>
+
+            {/* Nome do plano */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Nome do Plano *
+              </label>
+              <input
+                type="text"
+                value={novoPlanoNome}
+                onChange={(e) => setNovoPlanoNome(e.target.value)}
+                placeholder="Ex: Plano Mensal"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* Valor do plano */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Valor (R$) *
+              </label>
+              <input
+                type="number"
+                value={novoPlanoValor}
+                onChange={(e) => setNovoPlanoValor(e.target.value)}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* Ciclo de cobrança */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Ciclo de Cobrança *
+              </label>
+              <select
+                value={novoPlanoCiclo}
+                onChange={(e) => setNovoPlanoCiclo(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              >
+                <option value="mensal">Mensal</option>
+                <option value="trimestral">Trimestral</option>
+                <option value="anual">Anual</option>
+              </select>
+            </div>
+
+            {/* Descrição/Observação */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Observação
+              </label>
+              <textarea
+                value={novoPlanoDescricao}
+                onChange={(e) => setNovoPlanoDescricao(e.target.value)}
+                placeholder="Descrição ou observação sobre o plano (opcional)"
+                rows="3"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setMostrarModalCriarPlano(false)
+                  setNovoPlanoNome('')
+                  setNovoPlanoValor('')
+                  setNovoPlanoCiclo('mensal')
+                  setNovoPlanoDescricao('')
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  color: '#666',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCriarPlanoRapido}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1976D2'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2196F3'}
+              >
+                Criar Plano
               </button>
             </div>
           </div>

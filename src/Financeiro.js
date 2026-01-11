@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import AddInstallmentsModal from './AddInstallmentsModal'
 import { showToast } from './Toast'
+import whatsappService from './services/whatsappService'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [parcelas, setParcelas] = useState([])
@@ -11,22 +12,38 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState([])
   const [filtroVencimento, setFiltroVencimento] = useState(null)
+  const [filtroDataInicio, setFiltroDataInicio] = useState('')
+  const [filtroDataFim, setFiltroDataFim] = useState('')
   const [mostrarModalAdicionar, setMostrarModalAdicionar] = useState(false)
   const [clientes, setClientes] = useState([])
+  const [mostrarModalConfirmacao, setMostrarModalConfirmacao] = useState(false)
+  const [parcelaParaAtualizar, setParcelaParaAtualizar] = useState(null)
+  const [novoStatusPagamento, setNovoStatusPagamento] = useState(false)
+  const [formaPagamento, setFormaPagamento] = useState('')
 
   // Cards de resumo
   const [totalEmAtraso, setTotalEmAtraso] = useState(0)
   const [totalEmAberto, setTotalEmAberto] = useState(0)
   const [totalRecebido, setTotalRecebido] = useState(0)
+  const [quantidadeEmAtraso, setQuantidadeEmAtraso] = useState(0)
+  const [quantidadeRecebido, setQuantidadeRecebido] = useState(0)
+  const [percentualAtrasado, setPercentualAtrasado] = useState(0)
+  const [percentualRecebido, setPercentualRecebido] = useState(0)
+  const [vencemHoje, setVencemHoje] = useState(0)
+  const [vencemProximos7, setVencemProximos7] = useState(0)
+  const [totalProximosVencimentos, setTotalProximosVencimentos] = useState(0)
+  const [mrr, setMrr] = useState(0)
+  const [assinaturasAtivas, setAssinaturasAtivas] = useState(0)
 
   useEffect(() => {
     carregarParcelas()
     carregarClientes()
+    calcularMRR()
   }, [])
 
   useEffect(() => {
     aplicarFiltros()
-  }, [parcelas, filtroStatus, filtroVencimento])
+  }, [parcelas, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim])
 
   const carregarParcelas = async () => {
     setLoading(true)
@@ -37,7 +54,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         .from('parcelas')
         .select(`
           *,
-          devedor:devedores(nome)
+          devedor:devedores(
+            nome,
+            plano:planos(nome)
+          )
         `)
         .eq('user_id', user.id)
         .order('data_vencimento', { ascending: true })
@@ -134,19 +154,83 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     let emAtraso = 0
     let emAberto = 0
     let recebido = 0
+    let qtdAtraso = 0
+    let qtdRecebido = 0
+    let qtdHoje = 0
+    let qtd7Dias = 0
+    let totalProx = 0
+
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
 
     lista.forEach(p => {
       const status = p.statusCalculado || calcularStatus(p)
       const valor = parseFloat(p.valor) || 0
+      const venc = new Date(p.data_vencimento)
+      venc.setHours(0, 0, 0, 0)
+      const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
 
-      if (status === 'atrasado') emAtraso += valor
-      else if (status === 'aberto') emAberto += valor
-      else if (status === 'pago') recebido += valor
+      if (status === 'atrasado') {
+        emAtraso += valor
+        qtdAtraso++
+      } else if (status === 'aberto') {
+        emAberto += valor
+
+        // Contar vencimentos próximos
+        if (diffDias === 0) {
+          qtdHoje++
+          totalProx += valor
+        }
+        if (diffDias >= 0 && diffDias <= 7) {
+          qtd7Dias++
+        }
+      } else if (status === 'pago') {
+        recebido += valor
+        qtdRecebido++
+      }
     })
 
+    const total = lista.length || 1
     setTotalEmAtraso(emAtraso)
     setTotalEmAberto(emAberto)
     setTotalRecebido(recebido)
+    setQuantidadeEmAtraso(qtdAtraso)
+    setQuantidadeRecebido(qtdRecebido)
+    setPercentualAtrasado(Math.round((qtdAtraso / total) * 100))
+    setPercentualRecebido(Math.round((qtdRecebido / total) * 100))
+    setVencemHoje(qtdHoje)
+    setVencemProximos7(qtd7Dias)
+    setTotalProximosVencimentos(totalProx)
+  }
+
+  const calcularMRR = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Buscar assinaturas ativas com seus planos
+      const { data: assinaturas, error } = await supabase
+        .from('devedores')
+        .select(`
+          id,
+          assinatura_ativa,
+          plano:planos(valor)
+        `)
+        .eq('user_id', user.id)
+        .eq('assinatura_ativa', true)
+        .not('plano_id', 'is', null)
+
+      if (error) throw error
+
+      const ativas = assinaturas?.length || 0
+      const mrrCalculado = assinaturas?.reduce((sum, assin) => {
+        return sum + (parseFloat(assin.plano?.valor) || 0)
+      }, 0) || 0
+
+      setAssinaturasAtivas(ativas)
+      setMrr(mrrCalculado)
+    } catch (error) {
+      console.error('Erro ao calcular MRR:', error)
+    }
   }
 
   const aplicarFiltros = () => {
@@ -174,6 +258,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       })
     }
 
+    // Filtro por período personalizado
+    if (filtroDataInicio || filtroDataFim) {
+      resultado = resultado.filter(p => {
+        const venc = new Date(p.data_vencimento)
+        venc.setHours(0, 0, 0, 0)
+
+        if (filtroDataInicio && filtroDataFim) {
+          const inicio = new Date(filtroDataInicio + 'T00:00:00')
+          const fim = new Date(filtroDataFim + 'T00:00:00')
+          return venc >= inicio && venc <= fim
+        } else if (filtroDataInicio) {
+          const inicio = new Date(filtroDataInicio + 'T00:00:00')
+          return venc >= inicio
+        } else if (filtroDataFim) {
+          const fim = new Date(filtroDataFim + 'T00:00:00')
+          return venc <= fim
+        }
+        return true
+      })
+    }
+
     // Ordenar: atrasado > aberto > pago
     resultado.sort((a, b) => {
       const prioridade = { atrasado: 1, aberto: 2, pago: 3 }
@@ -186,27 +291,49 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setParcelasFiltradas(resultado)
   }
 
-  const alterarStatusPagamento = async (parcela, novoPago) => {
-    const confirmar = window.confirm(
-      novoPago
-        ? `Confirmar pagamento de R$ ${parseFloat(parcela.valor).toFixed(2)}?`
-        : 'Desfazer o pagamento desta parcela?'
-    )
+  const alterarStatusPagamento = (parcela, novoPago) => {
+    setParcelaParaAtualizar(parcela)
+    setNovoStatusPagamento(novoPago)
+    setMostrarModalConfirmacao(true)
+  }
 
-    if (!confirmar) return
+  const confirmarAlteracaoStatus = async () => {
+    if (!parcelaParaAtualizar) return
+
+    // Validar forma de pagamento se estiver marcando como pago
+    if (novoStatusPagamento && !formaPagamento) {
+      showToast('Por favor, selecione a forma de pagamento', 'warning')
+      return
+    }
 
     try {
+      const updateData = {
+        status: novoStatusPagamento ? 'pago' : 'pendente'
+      }
+
+      // Adicionar forma de pagamento se estiver marcando como pago
+      if (novoStatusPagamento) {
+        updateData.forma_pagamento = formaPagamento
+      } else {
+        // Limpar forma de pagamento se estiver desfazendo
+        updateData.forma_pagamento = null
+      }
+
       const { error } = await supabase
         .from('parcelas')
-        .update({ status: novoPago ? 'pago' : 'pendente' })
-        .eq('id', parcela.id)
+        .update(updateData)
+        .eq('id', parcelaParaAtualizar.id)
 
       if (error) throw error
 
       // Atualizar localmente
       const novasParcelas = parcelas.map(p => {
-        if (p.id === parcela.id) {
-          const atualizada = { ...p, status: novoPago ? 'pago' : 'pendente' }
+        if (p.id === parcelaParaAtualizar.id) {
+          const atualizada = {
+            ...p,
+            status: novoStatusPagamento ? 'pago' : 'pendente',
+            forma_pagamento: novoStatusPagamento ? formaPagamento : null
+          }
           atualizada.statusCalculado = calcularStatus(atualizada)
           return atualizada
         }
@@ -215,9 +342,52 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       setParcelas(novasParcelas)
       calcularTotais(novasParcelas)
-      showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
+      showToast(novoStatusPagamento ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
+      setMostrarModalConfirmacao(false)
+      setParcelaParaAtualizar(null)
+      setFormaPagamento('')
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
+      setMostrarModalConfirmacao(false)
+      setParcelaParaAtualizar(null)
+      setFormaPagamento('')
+    }
+  }
+
+  const handleEnviarCobranca = async (parcela) => {
+    if (parcela.status === 'pago' || parcela.statusCalculado === 'pago') {
+      showToast('Esta mensalidade já foi paga', 'info')
+      return
+    }
+
+    // Verificar conexão WhatsApp primeiro
+    const status = await whatsappService.verificarStatus()
+    if (!status.conectado) {
+      showToast('WhatsApp não está conectado. Conecte primeiro na aba WhatsApp.', 'error')
+      return
+    }
+
+    // Confirmação
+    const confirmar = window.confirm(
+      `Enviar cobrança de R$ ${parseFloat(parcela.valor).toFixed(2)} para ${parcela.devedor.nome}?`
+    )
+    if (!confirmar) return
+
+    try {
+      setLoading(true)
+      const resultado = await whatsappService.enviarCobranca(parcela.id)
+
+      if (resultado.sucesso) {
+        showToast('Cobrança enviada com sucesso!', 'success')
+        carregarParcelas() // Reload to update sent status
+      } else {
+        showToast('Erro ao enviar: ' + resultado.erro, 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao enviar cobrança:', error)
+      showToast('Erro ao enviar cobrança: ' + error.message, 'error')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -247,6 +417,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const limparFiltros = () => {
     setFiltroStatus([])
     setFiltroVencimento(null)
+    setFiltroDataInicio('')
+    setFiltroDataFim('')
     setMostrarFiltros(false)
   }
 
@@ -258,7 +430,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
   }
 
-  const temFiltrosAtivos = filtroStatus.length > 0 || filtroVencimento !== null
+  const temFiltrosAtivos = filtroStatus.length > 0 || filtroVencimento !== null || filtroDataInicio !== '' || filtroDataFim !== ''
 
   // Fechar popover ao clicar fora
   useEffect(() => {
@@ -304,109 +476,179 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           {/* Indicadores */}
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '0',
+            alignItems: 'stretch',
+            gap: '16px',
             flex: 1,
             marginLeft: '40px'
           }}>
-            {/* Card Em Atraso */}
+            {/* Card 1: Em Atraso */}
             <div style={{
-              padding: '8px 25px 8px 0',
-              borderRight: '1px solid #e8e8e8',
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #f44336',
+              backgroundColor: '#fff5f5',
+              borderRadius: '8px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '5px'
+              gap: '8px'
             }}>
-              <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Em Atraso</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="solar:danger-triangle-linear" width="16" height="16" style={{ color: '#f44336' }} />
-                  <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
-                    R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Em Atraso</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon icon="solar:danger-triangle-linear" width="18" height="18" style={{ color: '#f44336' }} />
+                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                      R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
+                    {quantidadeEmAtraso} mensalidade{quantidadeEmAtraso !== 1 ? 's' : ''}
+                  </p>
                 </div>
-                <button
-                  onClick={() => toggleFiltroStatus('atrasado')}
-                  style={{
-                    background: 'none',
-                    color: '#8867A1',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    textDecoration: 'none',
-                    padding: 0,
-                    fontWeight: '700'
-                  }}
-                >
-                  Ver
-                </button>
+                <span style={{
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {percentualAtrasado}%
+                </span>
+              </div>
+              <button
+                onClick={() => toggleFiltroStatus('atrasado')}
+                style={{
+                  background: 'none',
+                  color: '#f44336',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontWeight: '600',
+                  textAlign: 'left'
+                }}
+              >
+                Ver detalhes →
+              </button>
+            </div>
+
+            {/* Card 2: Próximos Vencimentos */}
+            <div style={{
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #ff9800',
+              backgroundColor: '#fff8f0',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Próximos Vencimentos</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <Icon icon="tabler:clock" width="18" height="18" style={{ color: '#ff9800' }} />
+                    <span style={{ fontSize: '16px', fontWeight: '600', color: '#344848' }}>
+                      {vencemHoje} vencem hoje
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '0' }}>
+                    {vencemProximos7} nos próximos 7 dias
+                  </p>
+                </div>
+                <span style={{
+                  backgroundColor: '#ff9800',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  R$ {totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
             </div>
 
-            {/* Card Em Aberto */}
+            {/* Card 3: Recebido */}
             <div style={{
-              padding: '8px 25px',
-              borderRight: '1px solid #e8e8e8',
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #4CAF50',
+              backgroundColor: '#f1f8f4',
+              borderRadius: '8px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '5px'
+              gap: '8px'
             }}>
-              <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Em Aberto</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="tabler:clock" width="16" height="16" style={{ color: '#2196F3' }} />
-                  <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
-                    R$ {totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Recebido</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon icon="fluent-emoji-high-contrast:money-bag" width="18" height="18" style={{ color: '#4CAF50' }} />
+                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                      R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
+                    {quantidadeRecebido} mensalidade{quantidadeRecebido !== 1 ? 's' : ''}
+                  </p>
                 </div>
-                <button
-                  onClick={() => toggleFiltroStatus('aberto')}
-                  style={{
-                    background: 'none',
-                    color: '#8867A1',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    textDecoration: 'none',
-                    padding: 0,
-                    fontWeight: '700'
-                  }}
-                >
-                  Ver
-                </button>
+                <span style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {percentualRecebido}%
+                </span>
               </div>
+              <button
+                onClick={() => toggleFiltroStatus('pago')}
+                style={{
+                  background: 'none',
+                  color: '#4CAF50',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontWeight: '600',
+                  textAlign: 'left'
+                }}
+              >
+                Ver detalhes →
+              </button>
             </div>
 
-            {/* Card Recebido */}
+            {/* Card 4: MRR */}
             <div style={{
-              padding: '8px 25px',
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #2196F3',
+              backgroundColor: '#f0f7ff',
+              borderRadius: '8px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '5px'
+              gap: '8px'
             }}>
-              <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Recebido</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div>
+                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>MRR</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="fluent-emoji-high-contrast:money-bag" width="16" height="16" style={{ color: '#4CAF50' }} />
-                  <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
-                    R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <Icon icon="mdi:chart-line" width="18" height="18" style={{ color: '#2196F3' }} />
+                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                    R$ {mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
-                <button
-                  onClick={() => toggleFiltroStatus('pago')}
-                  style={{
-                    background: 'none',
-                    color: '#8867A1',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    textDecoration: 'none',
-                    padding: 0,
-                    fontWeight: '700'
-                  }}
-                >
-                  Ver
-                </button>
+                <p style={{ fontSize: '11px', color: '#888', margin: '4px 0 0 0' }}>
+                  Receita mensal esperada
+                </p>
+                <p style={{ fontSize: '12px', color: '#2196F3', margin: '8px 0 0 0', fontWeight: '600' }}>
+                  {assinaturasAtivas} assinatura{assinaturasAtivas !== 1 ? 's' : ''} ativa{assinaturasAtivas !== 1 ? 's' : ''}
+                </p>
               </div>
             </div>
           </div>
@@ -563,6 +805,50 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       <option value="30dias">Próximos 30 dias</option>
                     </select>
                   </div>
+
+                  {/* Período Personalizado */}
+                  <div style={{ marginTop: '16px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#344848'
+                    }}>
+                      Período Personalizado
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="date"
+                        value={filtroDataInicio}
+                        onChange={(e) => setFiltroDataInicio(e.target.value)}
+                        placeholder="Data início"
+                        style={{
+                          flex: 1,
+                          padding: '10px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #ddd',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      />
+                      <span style={{ color: '#999', fontSize: '14px' }}>até</span>
+                      <input
+                        type="date"
+                        value={filtroDataFim}
+                        onChange={(e) => setFiltroDataFim(e.target.value)}
+                        placeholder="Data fim"
+                        style={{
+                          flex: 1,
+                          padding: '10px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #ddd',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Rodapé com botão Limpar filtros */}
@@ -628,13 +914,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     Valor
                   </th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Tipo
+                    Plano
                   </th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Status
                   </th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Pagou
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -656,22 +942,50 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       R$ {parseFloat(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td style={{ padding: '16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {parcela.is_mensalidade ? 'Mensalidade' : `${parcela.numero_parcela}/${parcela.total_parcelas}`}
+                      {parcela.devedor?.plano?.nome || '-'}
                     </td>
                     <td style={{ padding: '16px', textAlign: 'center' }}>
                       {getStatusBadge(parcela.statusCalculado)}
                     </td>
                     <td style={{ padding: '16px', textAlign: 'center' }}>
-                      <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-                        <input
-                          type="checkbox"
-                          checked={parcela.status === 'pago'}
-                          onChange={(e) => alterarStatusPagamento(parcela, e.target.checked)}
-                          style={{ opacity: 0, width: 0, height: 0 }}
-                        />
-                        <span style={{
-                          position: 'absolute',
-                          cursor: 'pointer',
+                      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handleEnviarCobranca(parcela)}
+                          disabled={parcela.status === 'pago' || parcela.statusCalculado === 'pago'}
+                          style={{
+                            padding: '8px',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: (parcela.status === 'pago' || parcela.statusCalculado === 'pago') ? 'not-allowed' : 'pointer',
+                            color: (parcela.status === 'pago' || parcela.statusCalculado === 'pago') ? '#ccc' : '#25D366',
+                            display: 'flex',
+                            alignItems: 'center',
+                            transition: 'all 0.2s'
+                          }}
+                          title={(parcela.status === 'pago' || parcela.statusCalculado === 'pago') ? 'Já pago' : 'Enviar cobrança por WhatsApp'}
+                          onMouseEnter={(e) => {
+                            if (parcela.status !== 'pago' && parcela.statusCalculado !== 'pago') {
+                              e.currentTarget.style.backgroundColor = '#e8f5e9'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                        >
+                          <Icon icon="mdi:whatsapp" width="20" />
+                        </button>
+
+                        <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
+                          <input
+                            type="checkbox"
+                            checked={parcela.status === 'pago'}
+                            onChange={(e) => alterarStatusPagamento(parcela, e.target.checked)}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span style={{
+                            position: 'absolute',
+                            cursor: 'pointer',
                           top: 0,
                           left: 0,
                           right: 0,
@@ -693,6 +1007,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                           }} />
                         </span>
                       </label>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -710,6 +1025,152 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         onSave={salvarParcelas}
         onClienteAdicionado={carregarClientes}
       />
+
+      {/* Modal de Confirmação de Pagamento */}
+      {mostrarModalConfirmacao && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            width: '90%',
+            maxWidth: '450px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e8e8e8',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
+                {novoStatusPagamento ? 'Confirmar Pagamento' : 'Desfazer Pagamento'}
+              </h3>
+              <button
+                onClick={() => {
+                  setMostrarModalConfirmacao(false)
+                  setParcelaParaAtualizar(null)
+                  setFormaPagamento('')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px' }}>
+              <p style={{ fontSize: '14px', color: '#666', margin: '0 0 16px 0', lineHeight: '1.5' }}>
+                {novoStatusPagamento ? (
+                  <>
+                    Confirmar pagamento de <strong style={{ color: '#344848' }}>
+                      R$ {parcelaParaAtualizar ? parseFloat(parcelaParaAtualizar.valor).toFixed(2) : '0.00'}
+                    </strong>?
+                  </>
+                ) : (
+                  'Tem certeza que deseja desfazer o pagamento desta parcela?'
+                )}
+              </p>
+
+              {/* Campo de forma de pagamento - só aparece ao confirmar pagamento */}
+              {novoStatusPagamento && (
+                <div style={{ marginTop: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
+                    Forma de Pagamento *
+                  </label>
+                  <select
+                    value={formaPagamento}
+                    onChange={(e) => setFormaPagamento(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      fontSize: '14px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      color: '#344848',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="">Selecione a forma de pagamento</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="PIX">PIX</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Transferência Bancária">Transferência Bancária</option>
+                    <option value="Boleto">Boleto</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #e8e8e8',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}>
+              <button
+                onClick={() => {
+                  setMostrarModalConfirmacao(false)
+                  setParcelaParaAtualizar(null)
+                  setFormaPagamento('')
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'white',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarAlteracaoStatus}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: novoStatusPagamento ? '#4CAF50' : '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                {novoStatusPagamento ? 'Confirmar' : 'Desfazer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

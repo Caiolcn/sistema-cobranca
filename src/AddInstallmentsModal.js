@@ -45,27 +45,19 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
     }
 
     const newPreview = []
-    const [year, month, day] = firstDueDate.split('-').map(Number)
+    const dataInicio = new Date(firstDueDate + 'T00:00:00')
 
     // Sempre gera preview de mensalidade (próximos 3 meses)
+    // Primeira cobrança: +30 dias, Segunda: +60 dias, Terceira: +90 dias
     const valuePerMonth = total
     for (let i = 0; i < 3; i++) {
-      let newYear = year
-      let newMonth = month + i
-
-      // Ajustar ano se mês ultrapassar 12
-      while (newMonth > 12) {
-        newMonth -= 12
-        newYear += 1
-      }
-
-      const formattedMonth = String(newMonth).padStart(2, '0')
-      const formattedDay = String(day).padStart(2, '0')
+      const dataVencimento = new Date(dataInicio)
+      dataVencimento.setDate(dataVencimento.getDate() + ((i + 1) * 30))
 
       newPreview.push({
         numero: i + 1,
         valor: valuePerMonth,
-        vencimento: `${newYear}-${formattedMonth}-${formattedDay}`
+        vencimento: dataVencimento.toISOString().split('T')[0]
       })
     }
 
@@ -100,16 +92,21 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
     }
 
     // Prepare data to save - sempre mensalidade recorrente
-    const firstDueDateObj = new Date(firstDueDate + 'T00:00:00')
+    // Calcular primeira data de vencimento como data de início + 30 dias
+    const dataInicio = new Date(firstDueDate + 'T00:00:00')
+    const primeiraMensalidade = new Date(dataInicio)
+    primeiraMensalidade.setDate(primeiraMensalidade.getDate() + 30)
+    const primeiroVencimento = primeiraMensalidade.toISOString().split('T')[0]
+
     const parcelasParaSalvar = [{
       numero: 1,
       valor: parseFloat(totalValue.replace(',', '.')),
-      vencimento: firstDueDate,
+      vencimento: primeiroVencimento,
       recorrencia: {
         isRecurring: true,
         recurrenceType: 'monthly',
         startDate: firstDueDate,
-        dayOfMonth: firstDueDateObj.getDate()
+        dayOfMonth: dataInicio.getDate()
       }
     }]
 
@@ -117,7 +114,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
       devedor_id: selectedClient,
       valor_total: parseFloat(totalValue.replace(',', '.')),
       numero_parcelas: null,
-      primeira_data_vencimento: firstDueDate,
+      primeira_data_vencimento: primeiroVencimento,
       is_mensalidade: true,
       parcelas: parcelasParaSalvar
     }
@@ -340,7 +337,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
           {/* First Due Date */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-              Data de Início *
+              Data de Início da Assinatura *
             </label>
             <input
               type="date"
@@ -356,6 +353,9 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
                 cursor: 'pointer'
               }}
             />
+            <span style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+              A primeira cobrança será gerada 30 dias após esta data
+            </span>
           </div>
 
           {/* Preview */}
