@@ -10,20 +10,19 @@ function Home() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [nomeEmpresa, setNomeEmpresa] = useState('');
-  const [periodo, setPeriodo] = useState('hoje');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [periodo, setPeriodo] = useState('mes_atual');
 
-  // Dados dos cards principais
-  const [totalClientes, setTotalClientes] = useState(0);
-  const [cobrancasAtivas, setCobrancasAtivas] = useState(0);
-  const [totalReceber, setTotalReceber] = useState(0);
-  const [totalRecebido, setTotalRecebido] = useState(0);
-  const [mensagensEnviadas, setMensagensEnviadas] = useState(0);
-
-  // Dados adicionais
+  // Dashboard focado em Mensalidades
+  const [mensalidadesAtivas, setMensalidadesAtivas] = useState(0);
+  const [recebimentosMes, setRecebimentosMes] = useState(0);
+  const [valorEmAtraso, setValorEmAtraso] = useState(0);
   const [clientesInadimplentes, setClientesInadimplentes] = useState(0);
-  const [maiorDebito, setMaiorDebito] = useState(0);
+  const [receitaProjetadaMes, setReceitaProjetadaMes] = useState(0);
+  const [taxaCancelamento, setTaxaCancelamento] = useState(0);
+  const [recebimentosUltimos7Dias, setRecebimentosUltimos7Dias] = useState(0);
+
+  // Recebimento vs Vencimento (últimos 3 meses)
+  const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
 
   // Fila de WhatsApp
   const [filaWhatsapp, setFilaWhatsapp] = useState([]);
@@ -31,49 +30,35 @@ function Home() {
   // Mensagens recentes
   const [mensagensRecentes, setMensagensRecentes] = useState([]);
 
-  // Gráfico de últimos 7 dias
-  const [graficoSemana, setGraficoSemana] = useState([]);
-
   useEffect(() => {
     carregarDados();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (periodo === 'personalizado' && dataInicio && dataFim) {
-      carregarDados();
-    } else if (periodo !== 'personalizado') {
-      carregarDados();
-    }
-  }, [periodo, dataInicio, dataFim]);
+    carregarDados();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo]);
 
   const obterDatasPeriodo = () => {
     const hoje = new Date();
     let inicio, fim;
 
-    if (typeof periodo === 'object' && periodo.inicio && periodo.fim) {
-      inicio = periodo.inicio;
-      fim = periodo.fim;
-    } else if (periodo === 'hoje') {
-      inicio = hoje.toISOString().split('T')[0];
-      fim = hoje.toISOString().split('T')[0];
-    } else if (periodo === 'mes_atual') {
+    if (periodo === 'mes_atual') {
       inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
       fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
     } else if (periodo === 'mes_anterior') {
       inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().split('T')[0];
       fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().split('T')[0];
-    } else if (periodo === 'ultimos_7_dias') {
-      fim = hoje.toISOString().split('T')[0];
-      inicio = new Date(hoje.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    } else if (periodo === 'ultimos_30_dias') {
-      fim = hoje.toISOString().split('T')[0];
-      inicio = new Date(hoje.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    } else if (periodo === 'ultimos_60_dias') {
-      fim = hoje.toISOString().split('T')[0];
-      inicio = new Date(hoje.getTime() - 59 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    } else if (periodo === 'ultimos_90_dias') {
-      fim = hoje.toISOString().split('T')[0];
-      inicio = new Date(hoje.getTime() - 89 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    } else if (periodo === 'ultimos_3_meses') {
+      inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1).toISOString().split('T')[0];
+      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    } else if (periodo === 'ultimos_6_meses') {
+      inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1).toISOString().split('T')[0];
+      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    } else if (periodo === 'este_ano') {
+      inicio = new Date(hoje.getFullYear(), 0, 1).toISOString().split('T')[0];
+      fim = new Date(hoje.getFullYear(), 11, 31).toISOString().split('T')[0];
     } else {
       // Default: mês atual
       inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
@@ -90,6 +75,7 @@ function Home() {
       if (!user) return;
 
       const { inicio, fim } = obterDatasPeriodo();
+      const hoje = new Date().toISOString().split('T')[0];
 
       // Carregar nome da empresa
       const { data: usuario } = await supabase
@@ -102,23 +88,46 @@ function Home() {
         setNomeEmpresa(usuario.nome_fantasia || usuario.razao_social || usuario.nome_completo || 'Empresa');
       }
 
-      // Total de clientes
-      const { count: countClientes } = await supabase
-        .from('devedores')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-      setTotalClientes(countClientes || 0);
-
-      // Cobranças ativas (parcelas pendentes ou atrasadas)
-      const { count: countCobrancas } = await supabase
+      // 1. MENSALIDADES ATIVAS (assinantes com mensalidades ativas)
+      const { data: mensalidadesAtivasList } = await supabase
         .from('parcelas')
-        .select('*', { count: 'exact', head: true })
+        .select('devedor_id')
         .eq('user_id', user.id)
-        .in('status', ['pendente', 'atrasado']);
-      setCobrancasAtivas(countCobrancas || 0);
+        .eq('is_mensalidade', true)
+        .in('status', ['pendente', 'atrasado', 'pago']);
 
-      // Total a receber no período (parcelas pendentes/atrasadas)
-      const { data: parcelasReceber } = await supabase
+      const mensalidadesAtivasCount = new Set(mensalidadesAtivasList?.map(p => p.devedor_id)).size;
+      setMensalidadesAtivas(mensalidadesAtivasCount);
+
+      // 2. RECEBIMENTOS DO MÊS (valor recebido no período selecionado)
+      const { data: parcelasPagasMes } = await supabase
+        .from('parcelas')
+        .select('valor')
+        .eq('user_id', user.id)
+        .eq('status', 'pago')
+        .gte('updated_at', `${inicio}T00:00:00`)
+        .lte('updated_at', `${fim}T23:59:59`);
+
+      const recebidoMes = parcelasPagasMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      setRecebimentosMes(recebidoMes);
+
+      // 3. VALOR EM ATRASO (parcelas vencidas e não pagas)
+      const { data: parcelasAtrasadas } = await supabase
+        .from('parcelas')
+        .select('valor')
+        .eq('user_id', user.id)
+        .eq('status', 'pendente')
+        .lt('data_vencimento', hoje);
+
+      const valorAtraso = parcelasAtrasadas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      setValorEmAtraso(valorAtraso);
+
+      // 4. CLIENTES INADIMPLENTES (clientes com parcelas atrasadas)
+      const clientesInad = new Set(parcelasAtrasadas?.map(p => p.devedor_id)).size;
+      setClientesInadimplentes(clientesInad);
+
+      // 5. RECEITA PROJETADA PARA O MÊS (Recebido + A Receber no período)
+      const { data: parcelasPendenteMes } = await supabase
         .from('parcelas')
         .select('valor')
         .eq('user_id', user.id)
@@ -126,63 +135,78 @@ function Home() {
         .gte('data_vencimento', inicio)
         .lte('data_vencimento', fim);
 
-      const totalRec = parcelasReceber?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-      setTotalReceber(totalRec);
+      const aReceberMes = parcelasPendenteMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      setReceitaProjetadaMes(recebidoMes + aReceberMes);
 
-      // Total recebido no período (parcelas pagas)
-      const { data: parcelasPagas } = await supabase
-        .from('parcelas')
-        .select('valor, updated_at')
-        .eq('user_id', user.id)
-        .eq('status', 'pago')
-        .gte('updated_at', `${inicio}T00:00:00`)
-        .lte('updated_at', `${fim}T23:59:59`);
-
-      const totalPago = parcelasPagas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-      setTotalRecebido(totalPago);
-
-      // Mensagens enviadas no período
-      const { count: countMensagens } = await supabase
-        .from('logs_mensagens')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('enviado_em', `${inicio}T00:00:00`)
-        .lte('enviado_em', `${fim}T23:59:59`);
-      setMensagensEnviadas(countMensagens || 0);
-
-      // Clientes inadimplentes
-      const { data: parcelasAtrasadas } = await supabase
-        .from('parcelas')
-        .select('devedor_id')
-        .eq('user_id', user.id)
-        .eq('status', 'pendente')
-        .lt('data_vencimento', new Date().toISOString().split('T')[0]);
-
-      const clientesInad = new Set(parcelasAtrasadas?.map(p => p.devedor_id)).size;
-      setClientesInadimplentes(clientesInad);
-
-      // Maior débito em aberto
-      const { data: devedores } = await supabase
+      // 6. TAXA DE CANCELAMENTO (clientes que cancelaram nos últimos 30 dias)
+      // Simulação: clientes que não têm mensalidades futuras agendadas
+      const { data: todosClientes } = await supabase
         .from('devedores')
         .select('id')
         .eq('user_id', user.id);
 
-      let maiorValor = 0;
-      if (devedores) {
-        for (const dev of devedores) {
-          const { data: parcelas } = await supabase
-            .from('parcelas')
-            .select('valor')
-            .eq('devedor_id', dev.id)
-            .in('status', ['pendente', 'atrasado']);
+      const totalClientesGeral = todosClientes?.length || 0;
 
-          const soma = parcelas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-          if (soma > maiorValor) maiorValor = soma;
-        }
+      // Clientes que NÃO têm mensalidades futuras (podem ter cancelado)
+      const clientesComMensalidade = new Set(mensalidadesAtivasList?.map(p => p.devedor_id));
+      const clientesCancelados = totalClientesGeral - clientesComMensalidade.size;
+      const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
+      setTaxaCancelamento(taxaCancel);
+
+      // 7. RECEBIMENTOS ÚLTIMOS 7 DIAS
+      const seteDiasAtras = new Date();
+      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+      const seteDiasAtrasStr = seteDiasAtras.toISOString().split('T')[0];
+
+      const { data: pagamentos7Dias } = await supabase
+        .from('parcelas')
+        .select('valor')
+        .eq('user_id', user.id)
+        .eq('status', 'pago')
+        .gte('updated_at', `${seteDiasAtrasStr}T00:00:00`)
+        .lte('updated_at', `${hoje}T23:59:59`);
+
+      const recebido7Dias = pagamentos7Dias?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      setRecebimentosUltimos7Dias(recebido7Dias);
+
+      // 8. GRÁFICO: RECEBIMENTO vs VENCIMENTO (últimos 3 meses)
+      const graficoMeses = [];
+      for (let i = 2; i >= 0; i--) {
+        const mesData = new Date();
+        mesData.setMonth(mesData.getMonth() - i);
+        const mesInicio = new Date(mesData.getFullYear(), mesData.getMonth(), 1).toISOString().split('T')[0];
+        const mesFim = new Date(mesData.getFullYear(), mesData.getMonth() + 1, 0).toISOString().split('T')[0];
+
+        // Valor recebido no mês
+        const { data: recebidosMes } = await supabase
+          .from('parcelas')
+          .select('valor')
+          .eq('user_id', user.id)
+          .eq('status', 'pago')
+          .gte('updated_at', `${mesInicio}T00:00:00`)
+          .lte('updated_at', `${mesFim}T23:59:59`);
+
+        const valorRecebido = recebidosMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+
+        // Valor que venceu no mês (esperado)
+        const { data: vencidosMes } = await supabase
+          .from('parcelas')
+          .select('valor')
+          .eq('user_id', user.id)
+          .gte('data_vencimento', mesInicio)
+          .lte('data_vencimento', mesFim);
+
+        const valorVencido = vencidosMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+
+        graficoMeses.push({
+          mes: mesData.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          recebido: valorRecebido,
+          vencido: valorVencido
+        });
       }
-      setMaiorDebito(maiorValor);
+      setGraficoRecebimentoVsVencimento(graficoMeses);
 
-      // Fila de WhatsApp (próximas mensagens a serem enviadas)
+      // 9. FILA DE WHATSAPP
       const { data: fila } = await supabase
         .from('parcelas')
         .select(`
@@ -196,13 +220,13 @@ function Home() {
         .eq('user_id', user.id)
         .eq('status', 'pendente')
         .eq('enviado_hoje', false)
-        .lte('data_vencimento', new Date().toISOString().split('T')[0])
+        .lte('data_vencimento', hoje)
         .order('data_vencimento', { ascending: true })
         .limit(10);
 
       setFilaWhatsapp(fila || []);
 
-      // Mensagens recentes
+      // 10. MENSAGENS RECENTES
       const { data: mensagens } = await supabase
         .from('logs_mensagens')
         .select(`
@@ -219,30 +243,6 @@ function Home() {
 
       setMensagensRecentes(mensagens || []);
 
-      // Gráfico últimos 7 dias (recebimentos)
-      const ultimos7Dias = [];
-      for (let i = 6; i >= 0; i--) {
-        const data = new Date();
-        data.setDate(data.getDate() - i);
-        const dataStr = data.toISOString().split('T')[0];
-
-        const { data: pagamentos } = await supabase
-          .from('parcelas')
-          .select('valor')
-          .eq('user_id', user.id)
-          .eq('status', 'pago')
-          .gte('updated_at', `${dataStr}T00:00:00`)
-          .lte('updated_at', `${dataStr}T23:59:59`);
-
-        const total = pagamentos?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-
-        ultimos7Dias.push({
-          dia: data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          valor: total
-        });
-      }
-      setGraficoSemana(ultimos7Dias);
-
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -255,10 +255,6 @@ function Home() {
       style: 'currency',
       currency: 'BRL'
     }).format(valor);
-  };
-
-  const formatarData = (data) => {
-    return new Date(data).toLocaleDateString('pt-BR');
   };
 
   const calcularDiasAtraso = (dataVencimento) => {
@@ -338,8 +334,6 @@ function Home() {
     );
   }
 
-  const maxGrafico = Math.max(...graficoSemana.map(d => d.valor), 1);
-
   return (
     <div className="home-container">
       {/* Header de Boas-vindas */}
@@ -356,17 +350,18 @@ function Home() {
         />
       </div>
 
-      {/* Cards Principais */}
+      {/* Cards Principais - Linha 1 */}
       <div className="home-cards-grid">
-        <div className="home-card card-clientes">
+        <div className="home-card card-mensalidades-ativas">
           <div className="card-header">
-            <span className="card-label">Total de Clientes</span>
+            <span className="card-label">Mensalidades Ativas</span>
             <div className="card-icon">
-              <Icon icon="material-symbols:group-outline" width="20" />
+              <Icon icon="material-symbols:check-circle-outline" width="20" />
             </div>
           </div>
           <div className="card-body">
-            <span className="card-value">{totalClientes}</span>
+            <span className="card-value">{mensalidadesAtivas}</span>
+            <span className="card-subtitle">Assinantes ativos</span>
           </div>
           <div className="card-footer">
             <button className="btn-ver" onClick={() => navigate('clientes')}>
@@ -375,15 +370,15 @@ function Home() {
           </div>
         </div>
 
-        <div className="home-card card-cobrancas">
+        <div className="home-card card-recebimentos">
           <div className="card-header">
-            <span className="card-label">Cobranças Ativas</span>
+            <span className="card-label">Recebimentos do Mês</span>
             <div className="card-icon">
-              <Icon icon="material-symbols:receipt-long-outline" width="20" />
+              <Icon icon="material-symbols:attach-money" width="20" />
             </div>
           </div>
           <div className="card-body">
-            <span className="card-value">{cobrancasAtivas}</span>
+            <span className="card-value">{formatarMoeda(recebimentosMes)}</span>
           </div>
           <div className="card-footer">
             <button className="btn-ver" onClick={() => navigate('financeiro')}>
@@ -392,15 +387,17 @@ function Home() {
           </div>
         </div>
 
-        <div className="home-card card-receber">
+        <div className="home-card card-atraso">
           <div className="card-header">
-            <span className="card-label">Total a Receber</span>
+            <span className="card-label">Valor em Atraso</span>
             <div className="card-icon">
-              <Icon icon="material-symbols:payments-outline" width="20" />
+              <Icon icon="material-symbols:warning-outline" width="20" />
             </div>
           </div>
           <div className="card-body">
-            <span className="card-value">{formatarMoeda(totalReceber)}</span>
+            <span className="card-value" style={{ color: valorEmAtraso > 0 ? '#f44336' : '#4CAF50' }}>
+              {formatarMoeda(valorEmAtraso)}
+            </span>
           </div>
           <div className="card-footer">
             <button className="btn-ver" onClick={() => navigate('financeiro')}>
@@ -409,43 +406,6 @@ function Home() {
           </div>
         </div>
 
-        <div className="home-card card-recebido">
-          <div className="card-header">
-            <span className="card-label">Total Recebido</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:check-circle-outline" width="20" />
-            </div>
-          </div>
-          <div className="card-body">
-            <span className="card-value">{formatarMoeda(totalRecebido)}</span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('financeiro')}>
-              Ver
-            </button>
-          </div>
-        </div>
-
-        <div className="home-card card-mensagens">
-          <div className="card-header">
-            <span className="card-label">Mensagens Enviadas</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:mail-outline" width="20" />
-            </div>
-          </div>
-          <div className="card-body">
-            <span className="card-value">{mensagensEnviadas}</span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('whatsapp')}>
-              Ver
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Cards Secundários */}
-      <div className="home-cards-secondary">
         <div className="home-card card-inadimplentes">
           <div className="card-header">
             <span className="card-label">Clientes Inadimplentes</span>
@@ -462,48 +422,101 @@ function Home() {
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="home-card card-maior-debito">
+      {/* Cards Secundários - Linha 2 */}
+      <div className="home-cards-secondary">
+        <div className="home-card card-receita-projetada">
           <div className="card-header">
-            <span className="card-label">Maior Débito em Aberto</span>
+            <span className="card-label">Receita Projetada do Mês</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:analytics-outline" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
+            <span className="card-subtitle">Recebido + A receber</span>
+          </div>
+        </div>
+
+        <div className="home-card card-taxa-cancelamento">
+          <div className="card-header">
+            <span className="card-label">Taxa de Cancelamento</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:cancel-outline" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value" style={{ color: taxaCancelamento > 10 ? '#f44336' : '#4CAF50' }}>
+              {taxaCancelamento.toFixed(1)}%
+            </span>
+            <span className={`card-status ${taxaCancelamento < 5 ? 'success' : taxaCancelamento < 10 ? 'warning' : 'danger'}`}>
+              {taxaCancelamento < 5 ? 'Excelente' : taxaCancelamento < 10 ? 'Atenção' : 'Crítico'}
+            </span>
+          </div>
+        </div>
+
+        <div className="home-card card-ultimos-7-dias">
+          <div className="card-header">
+            <span className="card-label">Recebimentos Últimos 7 Dias</span>
             <div className="card-icon">
               <Icon icon="material-symbols:trending-up" width="20" />
             </div>
           </div>
           <div className="card-body">
-            <span className="card-value">{formatarMoeda(maiorDebito)}</span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('financeiro')}>
-              Ver
-            </button>
+            <span className="card-value">{formatarMoeda(recebimentosUltimos7Dias)}</span>
           </div>
         </div>
       </div>
 
-      {/* Gráfico de Recebimentos (Últimos 7 dias) */}
+      {/* Gráfico: Recebimento vs Vencimento (Últimos 3 meses) */}
       <div className="home-section">
         <div className="section-header">
           <Icon icon="material-symbols:bar-chart" width="24" />
-          <h2>Recebimentos - Últimos 7 Dias</h2>
+          <h2>Recebimento vs Vencimento - Últimos 3 Meses</h2>
         </div>
-        <div className="home-grafico">
-          {graficoSemana.map((item, index) => (
-            <div key={index} className="grafico-coluna">
-              <div className="grafico-barra-container">
-                <div
-                  className="grafico-barra"
-                  style={{ height: `${(item.valor / maxGrafico) * 100}%` }}
-                  title={formatarMoeda(item.valor)}
-                >
-                  {item.valor > 0 && (
-                    <span className="grafico-valor">{formatarMoeda(item.valor)}</span>
-                  )}
+        <div className="home-grafico-comparativo">
+          {graficoRecebimentoVsVencimento.map((item, index) => {
+            const maxValor = Math.max(item.recebido, item.vencido, 1);
+            const alturaRecebido = (item.recebido / maxValor) * 100;
+            const alturaVencido = (item.vencido / maxValor) * 100;
+
+            return (
+              <div key={index} className="grafico-mes-comparativo">
+                <div className="grafico-barras-duplas">
+                  <div className="grafico-coluna-dupla">
+                    <div className="grafico-barra-container">
+                      <div
+                        className="grafico-barra grafico-barra-recebido"
+                        style={{ height: `${alturaRecebido}%` }}
+                        title={`Recebido: ${formatarMoeda(item.recebido)}`}
+                      >
+                        {item.recebido > 0 && (
+                          <span className="grafico-valor-pequeno">{formatarMoeda(item.recebido)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="grafico-sublabel">Recebido</span>
+                  </div>
+                  <div className="grafico-coluna-dupla">
+                    <div className="grafico-barra-container">
+                      <div
+                        className="grafico-barra grafico-barra-vencido"
+                        style={{ height: `${alturaVencido}%` }}
+                        title={`Vencido: ${formatarMoeda(item.vencido)}`}
+                      >
+                        {item.vencido > 0 && (
+                          <span className="grafico-valor-pequeno">{formatarMoeda(item.vencido)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="grafico-sublabel">Vencido</span>
+                  </div>
                 </div>
+                <span className="grafico-label">{item.mes}</span>
               </div>
-              <span className="grafico-label">{item.dia}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

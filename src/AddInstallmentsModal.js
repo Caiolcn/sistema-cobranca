@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
+import { showToast } from './Toast'
 
 function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdicionado }) {
   const [selectedClient, setSelectedClient] = useState('')
   const [totalValue, setTotalValue] = useState('')
-  const [installmentsCount, setInstallmentsCount] = useState(1)
-  const [isRecurring, setIsRecurring] = useState(false)
   const [firstDueDate, setFirstDueDate] = useState('')
   const [preview, setPreview] = useState([])
+  // Mensalidade é sempre recorrente agora
+  const isRecurring = true
+  const installmentsCount = 1
   const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(false)
   const [novoClienteNome, setNovoClienteNome] = useState('')
   const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
@@ -20,8 +22,6 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
       // Reset form when modal closes
       setSelectedClient('')
       setTotalValue('')
-      setInstallmentsCount(1)
-      setIsRecurring(false)
       setFirstDueDate('')
       setPreview([])
     }
@@ -29,7 +29,8 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
 
   useEffect(() => {
     generatePreview()
-  }, [totalValue, installmentsCount, firstDueDate, isRecurring])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalValue, firstDueDate])
 
   const generatePreview = () => {
     if (!totalValue || !firstDueDate) {
@@ -44,55 +45,28 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
     }
 
     const newPreview = []
-    // Corrigir timezone: adicionar T00:00:00 para interpretar como horário local
     const [year, month, day] = firstDueDate.split('-').map(Number)
 
-    if (isRecurring) {
-      // Mensalidade mode - show next 3 months as preview
-      const valuePerMonth = total
-      for (let i = 0; i < 3; i++) {
-        // Criar nova data adicionando meses corretamente
-        let newYear = year
-        let newMonth = month + i
+    // Sempre gera preview de mensalidade (próximos 3 meses)
+    const valuePerMonth = total
+    for (let i = 0; i < 3; i++) {
+      let newYear = year
+      let newMonth = month + i
 
-        // Ajustar ano se mês ultrapassar 12
-        while (newMonth > 12) {
-          newMonth -= 12
-          newYear += 1
-        }
-
-        const formattedMonth = String(newMonth).padStart(2, '0')
-        const formattedDay = String(day).padStart(2, '0')
-
-        newPreview.push({
-          numero: i + 1,
-          valor: valuePerMonth,
-          vencimento: `${newYear}-${formattedMonth}-${formattedDay}`
-        })
+      // Ajustar ano se mês ultrapassar 12
+      while (newMonth > 12) {
+        newMonth -= 12
+        newYear += 1
       }
-    } else {
-      // Parcelas mode - divide total by number of installments
-      const valuePerInstallment = total / installmentsCount
-      for (let i = 0; i < installmentsCount; i++) {
-        // Criar nova data adicionando meses corretamente
-        let newYear = year
-        let newMonth = month + i
 
-        // Ajustar ano se mês ultrapassar 12
-        while (newMonth > 12) {
-          newMonth -= 12
-          newYear += 1
-        }
+      const formattedMonth = String(newMonth).padStart(2, '0')
+      const formattedDay = String(day).padStart(2, '0')
 
-        const formattedMonth = String(newMonth).padStart(2, '0')
-        const formattedDay = String(day).padStart(2, '0')
-
-        newPreview.push({
-          numero: i + 1,
-          valor: valuePerInstallment,
-          vencimento: `${newYear}-${formattedMonth}-${formattedDay}`
-        })
-      }
+      newPreview.push({
+        numero: i + 1,
+        valor: valuePerMonth,
+        vencimento: `${newYear}-${formattedMonth}-${formattedDay}`
+      })
     }
 
     setPreview(newPreview)
@@ -101,17 +75,17 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
   const handleCreate = () => {
     // Validation
     if (!selectedClient) {
-      alert('Por favor, selecione um cliente')
+      showToast('Por favor, selecione um cliente', 'warning')
       return
     }
 
     if (!totalValue || parseFloat(totalValue.replace(',', '.')) <= 0) {
-      alert('Por favor, insira um valor válido')
+      showToast('Por favor, insira um valor válido', 'warning')
       return
     }
 
     if (!firstDueDate) {
-      alert('Por favor, selecione a data de vencimento')
+      showToast('Por favor, selecione a data de vencimento', 'warning')
       return
     }
 
@@ -121,43 +95,30 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
     const dataSelecionada = new Date(firstDueDate + 'T00:00:00')
 
     if (dataSelecionada < hoje) {
-      alert('A data de vencimento deve ser igual ou posterior à data atual')
+      showToast('A data de vencimento deve ser igual ou posterior à data atual', 'warning')
       return
     }
 
-    if (!isRecurring && installmentsCount < 1) {
-      alert('O número de parcelas deve ser no mínimo 1')
-      return
-    }
-
-    // Prepare data to save
-    let parcelasParaSalvar
-
-    if (isRecurring) {
-      // Para mensalidade: criar APENAS a primeira parcela com dados de recorrência
-      const firstDueDateObj = new Date(firstDueDate + 'T00:00:00')
-      parcelasParaSalvar = [{
-        numero: 1,
-        valor: parseFloat(totalValue.replace(',', '.')),
-        vencimento: firstDueDate,
-        recorrencia: {
-          isRecurring: true,
-          recurrenceType: 'monthly',
-          startDate: firstDueDate,
-          dayOfMonth: firstDueDateObj.getDate()
-        }
-      }]
-    } else {
-      // Para parcelas: criar todas as parcelas normalmente
-      parcelasParaSalvar = preview
-    }
+    // Prepare data to save - sempre mensalidade recorrente
+    const firstDueDateObj = new Date(firstDueDate + 'T00:00:00')
+    const parcelasParaSalvar = [{
+      numero: 1,
+      valor: parseFloat(totalValue.replace(',', '.')),
+      vencimento: firstDueDate,
+      recorrencia: {
+        isRecurring: true,
+        recurrenceType: 'monthly',
+        startDate: firstDueDate,
+        dayOfMonth: firstDueDateObj.getDate()
+      }
+    }]
 
     const dataToSave = {
       devedor_id: selectedClient,
       valor_total: parseFloat(totalValue.replace(',', '.')),
-      numero_parcelas: isRecurring ? null : installmentsCount,
+      numero_parcelas: null,
       primeira_data_vencimento: firstDueDate,
-      is_mensalidade: isRecurring,
+      is_mensalidade: true,
       parcelas: parcelasParaSalvar
     }
 
@@ -249,10 +210,10 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
         onClienteAdicionado()
       }
 
-      alert('Cliente adicionado com sucesso!')
+      showToast('Cliente adicionado com sucesso!', 'success')
     } catch (error) {
       console.error('Erro ao adicionar cliente:', error)
-      setErroTelefone('Erro ao adicionar cliente: ' + error.message)
+      showToast('Erro ao adicionar cliente: ' + error.message, 'error')
     }
   }
 
@@ -298,7 +259,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
           alignItems: 'center'
         }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
-            Adicionar {isRecurring ? 'Mensalidade' : 'Parcelas'}
+            Adicionar Mensalidade
           </h2>
           <button
             onClick={onClose}
@@ -317,49 +278,6 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
 
         {/* Body */}
         <div style={{ padding: '20px' }}>
-          {/* Toggle Parcelas/Mensalidade */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{
-              display: 'inline-flex',
-              backgroundColor: '#f5f5f5',
-              borderRadius: '6px',
-              padding: '4px'
-            }}>
-              <button
-                onClick={() => setIsRecurring(false)}
-                style={{
-                  padding: '8px 20px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  backgroundColor: !isRecurring ? '#344848' : 'transparent',
-                  color: !isRecurring ? 'white' : '#666',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Parcelas
-              </button>
-              <button
-                onClick={() => setIsRecurring(true)}
-                style={{
-                  padding: '8px 20px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  backgroundColor: isRecurring ? '#344848' : 'transparent',
-                  color: isRecurring ? 'white' : '#666',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Mensalidade
-              </button>
-            </div>
-          </div>
-
           {/* Client Selection */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
@@ -399,7 +317,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
           {/* Value Input */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-              {isRecurring ? 'Valor Mensal *' : 'Valor Total *'}
+              Valor Mensal *
             </label>
             <input
               type="text"
@@ -419,32 +337,10 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
             />
           </div>
 
-          {/* Installments Count (only for Parcelas mode) */}
-          {!isRecurring && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-                Número de Parcelas *
-              </label>
-              <input
-                type="number"
-                value={installmentsCount}
-                onChange={(e) => setInstallmentsCount(Math.max(1, parseInt(e.target.value) || 1))}
-                min="1"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  fontSize: '14px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px'
-                }}
-              />
-            </div>
-          )}
-
           {/* First Due Date */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-              {isRecurring ? 'Data de Início *' : 'Primeira Data de Vencimento *'}
+              Data de Início *
             </label>
             <input
               type="date"
@@ -471,7 +367,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
               marginBottom: '20px'
             }}>
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#344848', marginBottom: '12px' }}>
-                {isRecurring ? 'Prévia (próximos 3 meses)' : 'Prévia das Parcelas'}
+                Prévia (próximos 3 meses)
               </h3>
               <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                 {preview.map((item) => (

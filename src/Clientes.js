@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
+import { showToast } from './Toast'
+import ConfirmModal from './ConfirmModal'
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
@@ -13,9 +15,19 @@ export default function Clientes() {
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
   const [busca, setBusca] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, cliente: null })
+  const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(false)
+  const [novoClienteNome, setNovoClienteNome] = useState('')
+  const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
+  const [novoClienteCpf, setNovoClienteCpf] = useState('')
+  const [criarAssinatura, setCriarAssinatura] = useState(false)
+  const [dataInicioAssinatura, setDataInicioAssinatura] = useState('')
+  const [planoSelecionado, setPlanoSelecionado] = useState('')
+  const [planos, setPlanos] = useState([])
 
   useEffect(() => {
     carregarClientes()
+    carregarPlanos()
   }, [])
 
   useEffect(() => {
@@ -32,6 +44,25 @@ export default function Clientes() {
     }
   }, [busca, clientes])
 
+  const carregarPlanos = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const { data, error } = await supabase
+        .from('planos')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ativo', true)
+        .order('nome', { ascending: true })
+
+      if (error) throw error
+
+      setPlanos(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar planos:', error)
+    }
+  }
+
   const carregarClientes = async () => {
     setLoading(true)
     try {
@@ -40,7 +71,7 @@ export default function Clientes() {
       // Buscar clientes
       const { data: clientesData, error: clientesError } = await supabase
         .from('devedores')
-        .select('id, nome, telefone, created_at')
+        .select('id, nome, telefone, cpf, assinatura_ativa, plano_id, created_at')
         .eq('user_id', user.id)
         .order('nome', { ascending: true })
 
@@ -140,7 +171,7 @@ export default function Clientes() {
 
   const handleSalvarEdicao = async () => {
     if (!nomeEdit.trim() || !telefoneEdit.trim()) {
-      alert('Preencha nome e telefone')
+      showToast('Preencha nome e telefone', 'warning')
       return
     }
 
@@ -155,12 +186,12 @@ export default function Clientes() {
 
       if (error) throw error
 
-      alert('Cliente atualizado com sucesso!')
+      showToast('Cliente atualizado com sucesso!', 'success')
       setEditando(false)
       setMostrarModal(false)
       carregarClientes()
     } catch (error) {
-      alert('Erro ao atualizar cliente: ' + error.message)
+      showToast('Erro ao atualizar cliente: ' + error.message, 'error')
     }
   }
 
@@ -181,25 +212,26 @@ export default function Clientes() {
 
       if (error) throw error
 
+      showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
+
       // Atualizar parcelas do cliente no modal
       await carregarParcelasCliente(clienteSelecionado.id)
 
       // Recarregar lista de clientes para atualizar valores
       carregarClientes()
     } catch (error) {
-      alert('Erro ao atualizar: ' + error.message)
+      showToast('Erro ao atualizar: ' + error.message, 'error')
     }
   }
 
-  const handleExcluirCliente = async (cliente, event) => {
+  const handleExcluirCliente = (cliente, event) => {
     event.stopPropagation()
+    setConfirmDelete({ show: true, cliente })
+  }
 
-    const confirmar = window.confirm(
-      `Tem certeza que deseja excluir o cliente "${cliente.nome}"?\n\n` +
-      `ATENÇÃO: Todas as ${cliente.totalParcelas} parcela(s) associadas também serão excluídas!`
-    )
-
-    if (!confirmar) return
+  const confirmarExclusao = async () => {
+    const cliente = confirmDelete.cliente
+    if (!cliente) return
 
     try {
       // Primeiro excluir parcelas
@@ -218,10 +250,115 @@ export default function Clientes() {
 
       if (clienteError) throw clienteError
 
-      alert('Cliente excluído com sucesso!')
+      showToast('Cliente excluído com sucesso!', 'success')
       carregarClientes()
     } catch (error) {
-      alert('Erro ao excluir cliente: ' + error.message)
+      showToast('Erro ao excluir cliente: ' + error.message, 'error')
+    }
+  }
+
+  const handleAlterarAssinatura = async (clienteId, novoStatus) => {
+    const confirmar = window.confirm(
+      novoStatus
+        ? 'Deseja reativar a assinatura deste cliente?'
+        : 'Deseja cancelar/pausar a assinatura deste cliente?'
+    )
+
+    if (!confirmar) return
+
+    try {
+      const { error } = await supabase
+        .from('devedores')
+        .update({ assinatura_ativa: novoStatus })
+        .eq('id', clienteId)
+
+      if (error) throw error
+
+      showToast(
+        novoStatus ? 'Assinatura reativada!' : 'Assinatura cancelada!',
+        'success'
+      )
+
+      // Atualizar cliente selecionado
+      setClienteSelecionado(prev => ({ ...prev, assinatura_ativa: novoStatus }))
+
+      // Recarregar lista de clientes
+      carregarClientes()
+    } catch (error) {
+      showToast('Erro ao alterar assinatura: ' + error.message, 'error')
+    }
+  }
+
+  const handleCriarCliente = async () => {
+    if (!novoClienteNome.trim() || !novoClienteTelefone.trim()) {
+      showToast('Preencha nome e telefone', 'warning')
+      return
+    }
+
+    if (criarAssinatura && (!dataInicioAssinatura || !planoSelecionado)) {
+      showToast('Preencha a data de início e selecione um plano', 'warning')
+      return
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Criar cliente
+      const { data: clienteData, error: clienteError } = await supabase
+        .from('devedores')
+        .insert({
+          user_id: user.id,
+          nome: novoClienteNome.trim(),
+          telefone: novoClienteTelefone.trim(),
+          cpf: novoClienteCpf.trim() || null,
+          valor_devido: 0,
+          data_vencimento: new Date().toISOString().split('T')[0],
+          status: 'pendente',
+          assinatura_ativa: criarAssinatura,
+          plano_id: criarAssinatura ? planoSelecionado : null
+        })
+        .select()
+
+      if (clienteError) throw clienteError
+
+      // Se criar assinatura, criar primeira mensalidade
+      if (criarAssinatura && clienteData && clienteData.length > 0) {
+        const plano = planos.find(p => p.id === planoSelecionado)
+        if (!plano) {
+          showToast('Plano não encontrado', 'error')
+          return
+        }
+
+        // Calcular data de vencimento (data_inicio + 30 dias)
+        const dataInicio = new Date(dataInicioAssinatura + 'T00:00:00')
+        const dataVencimento = new Date(dataInicio)
+        dataVencimento.setDate(dataVencimento.getDate() + 30)
+
+        const { error: parcelaError } = await supabase
+          .from('parcelas')
+          .insert({
+            user_id: user.id,
+            devedor_id: clienteData[0].id,
+            valor: plano.valor,
+            data_vencimento: dataVencimento.toISOString().split('T')[0],
+            status: 'pendente',
+            is_mensalidade: true
+          })
+
+        if (parcelaError) throw parcelaError
+      }
+
+      showToast('Cliente criado com sucesso!', 'success')
+      setMostrarModalNovoCliente(false)
+      setNovoClienteNome('')
+      setNovoClienteTelefone('')
+      setNovoClienteCpf('')
+      setCriarAssinatura(false)
+      setDataInicioAssinatura('')
+      setPlanoSelecionado('')
+      carregarClientes()
+    } catch (error) {
+      showToast('Erro ao criar cliente: ' + error.message, 'error')
     }
   }
 
@@ -301,12 +438,28 @@ export default function Clientes() {
               {clientesFiltrados.length} de {clientes.length} cliente(s)
             </p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ margin: 0, fontSize: '12px', color: '#999' }}>Total em aberto</p>
-            <p style={{ margin: '3px 0 0 0', fontSize: '18px', fontWeight: '700', color: '#f44336' }}>
-              R$ {formatCurrency(clientes.reduce((sum, c) => sum + c.valorDevido, 0))}
-            </p>
-          </div>
+          <button
+            onClick={() => setMostrarModalNovoCliente(true)}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#333',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+          >
+            <Icon icon="mdi:plus" width="18" height="18" />
+            Adicionar
+          </button>
         </div>
 
         {/* Campo de busca */}
@@ -650,6 +803,26 @@ export default function Clientes() {
                       }}
                     />
                   </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
+                      CPF
+                    </label>
+                    <input
+                      type="text"
+                      value={clienteSelecionado.cpf || 'Não informado'}
+                      disabled
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: '#f5f5f5',
+                        color: '#333',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {editando && (
@@ -691,6 +864,66 @@ export default function Clientes() {
                   </div>
                 )}
               </div>
+
+              {/* Seção de Assinatura */}
+              {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
+                <div style={{
+                  backgroundColor: '#e8f4f8',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  marginBottom: '24px',
+                  border: '2px solid #2196F3'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icon icon="mdi:card-account-details" width="20" height="20" style={{ color: '#2196F3' }} />
+                      Assinatura
+                    </h3>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: clienteSelecionado.assinatura_ativa ? '#4CAF50' : '#f44336',
+                      color: 'white'
+                    }}>
+                      {clienteSelecionado.assinatura_ativa ? 'ATIVA' : 'CANCELADA'}
+                    </span>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#666', fontWeight: '500' }}>
+                      Plano Atual
+                    </p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                      {planos.find(p => p.id === clienteSelecionado.plano_id)?.nome || 'Não identificado'}
+                    </p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#2196F3', fontWeight: '600' }}>
+                      R$ {formatCurrency(parseFloat(planos.find(p => p.id === clienteSelecionado.plano_id)?.valor || 0))}/mês
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: clienteSelecionado.assinatura_ativa ? '#f44336' : '#4CAF50',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Icon icon={clienteSelecionado.assinatura_ativa ? "mdi:pause-circle" : "mdi:play-circle"} width="18" height="18" />
+                    {clienteSelecionado.assinatura_ativa ? 'Cancelar Assinatura' : 'Reativar Assinatura'}
+                  </button>
+                </div>
+              )}
 
               {/* Resumo Financeiro */}
               <div style={{
@@ -817,6 +1050,349 @@ export default function Clientes() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmModal
+        isOpen={confirmDelete.show}
+        onClose={() => setConfirmDelete({ show: false, cliente: null })}
+        onConfirm={confirmarExclusao}
+        title={`Tem certeza que deseja excluir o cliente "${confirmDelete.cliente?.nome}"?`}
+        message={`ATENÇÃO: Todas as ${confirmDelete.cliente?.totalParcelas || 0} parcela(s) associadas também serão excluídas!`}
+        confirmText="OK"
+        cancelText="Cancelar"
+        type="danger"
+      />
+
+      {/* Modal de novo cliente */}
+      {mostrarModalNovoCliente && (
+        <div
+          onClick={() => setMostrarModalNovoCliente(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '28px',
+              maxWidth: '500px',
+              width: '90%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+            }}
+          >
+            <h3 style={{
+              margin: '0 0 24px 0',
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#1a1a1a'
+            }}>
+              Adicionar Novo Cliente
+            </h3>
+
+            {/* Nome */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Nome *
+              </label>
+              <input
+                type="text"
+                value={novoClienteNome}
+                onChange={(e) => setNovoClienteNome(e.target.value)}
+                placeholder="Digite o nome do cliente"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#333'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* Telefone */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Telefone *
+              </label>
+              <input
+                type="text"
+                value={novoClienteTelefone}
+                onChange={(e) => setNovoClienteTelefone(e.target.value)}
+                placeholder="(00) 00000-0000"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#333'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* CPF */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                CPF (opcional)
+              </label>
+              <input
+                type="text"
+                value={novoClienteCpf}
+                onChange={(e) => setNovoClienteCpf(e.target.value)}
+                placeholder="000.000.000-00"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#333'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* Toggle para criar assinatura */}
+            <div style={{
+              marginBottom: criarAssinatura ? '20px' : '28px',
+              padding: '16px',
+              backgroundColor: '#f9f9f9',
+              borderRadius: '8px',
+              border: '1px solid #e0e0e0'
+            }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={criarAssinatura}
+                  onChange={(e) => setCriarAssinatura(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    marginRight: '10px',
+                    cursor: 'pointer'
+                  }}
+                />
+                Criar assinatura para este cliente
+              </label>
+            </div>
+
+            {/* Campos de assinatura (mostrar apenas se toggle ativo) */}
+            {criarAssinatura && (
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#e8f4f8',
+                borderRadius: '8px',
+                marginBottom: '28px',
+                border: '2px solid #2196F3'
+              }}>
+                <h4 style={{
+                  margin: '0 0 16px 0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#2196F3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <Icon icon="mdi:card-account-details" width="18" height="18" />
+                  Detalhes da Assinatura
+                </h4>
+
+                {/* Data de início */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#333'
+                  }}>
+                    Data de Início *
+                  </label>
+                  <input
+                    type="date"
+                    value={dataInicioAssinatura}
+                    onChange={(e) => setDataInicioAssinatura(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                    onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                  />
+                </div>
+
+                {/* Seleção de plano */}
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#333'
+                  }}>
+                    Selecione o Plano *
+                  </label>
+                  <select
+                    value={planoSelecionado}
+                    onChange={(e) => setPlanoSelecionado(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      cursor: 'pointer',
+                      backgroundColor: 'white'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                    onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                  >
+                    <option value="">Selecione um plano</option>
+                    {planos.map(plano => (
+                      <option key={plano.id} value={plano.id}>
+                        {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}/mês
+                      </option>
+                    ))}
+                  </select>
+                  {planos.length === 0 && (
+                    <p style={{
+                      margin: '8px 0 0 0',
+                      fontSize: '12px',
+                      color: '#f44336'
+                    }}>
+                      Nenhum plano ativo encontrado. Crie um plano primeiro.
+                    </p>
+                  )}
+                </div>
+
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#666'
+                }}>
+                  <Icon icon="mdi:information" width="16" height="16" style={{ verticalAlign: 'middle', marginRight: '6px', color: '#2196F3' }} />
+                  A primeira mensalidade será criada com vencimento em 30 dias após a data de início.
+                </div>
+              </div>
+            )}
+
+            {/* Botões */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setMostrarModalNovoCliente(false)
+                  setNovoClienteNome('')
+                  setNovoClienteTelefone('')
+                  setNovoClienteCpf('')
+                  setCriarAssinatura(false)
+                  setDataInicioAssinatura('')
+                  setPlanoSelecionado('')
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  color: '#666',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5'
+                  e.currentTarget.style.borderColor = '#ccc'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.borderColor = '#e0e0e0'
+                }}
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleCriarCliente}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#333',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+              >
+                Criar Cliente
+              </button>
             </div>
           </div>
         </div>

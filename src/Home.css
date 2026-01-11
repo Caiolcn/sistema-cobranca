@@ -134,14 +134,14 @@
 /* Cards Principais Grid */
 .home-cards-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 24px;
 }
 
 @media (max-width: 1400px) {
   .home-cards-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -210,9 +210,56 @@
   line-height: 1;
 }
 
+.card-value.positive {
+  color: #4CAF50;
+}
+
+.card-value.negative {
+  color: #f44336;
+}
+
+.card-subtitle {
+  display: block;
+  font-size: 13px;
+  color: #999;
+  margin-top: 8px;
+  font-weight: 400;
+}
+
 .card-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.card-info {
+  font-size: 12px;
+  color: #999;
+  font-weight: 400;
+}
+
+.card-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-status.success {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.card-status.warning {
+  background: #FFF3E0;
+  color: #F57C00;
+}
+
+.card-status.danger {
+  background: #FFEBEE;
+  color: #f44336;
 }
 
 .btn-ver {
@@ -274,16 +321,62 @@
   color: #0288D1;
 }
 
+.card-ticket-medio .card-icon {
+  background: #FFF3E0;
+  color: #F57C00;
+}
+
+.card-taxa-recebimento .card-icon {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.card-comparativo .card-icon {
+  background: #E3F2FD;
+  color: #2196F3;
+}
+
+.card-receita-projetada .card-icon {
+  background: #F3E5F5;
+  color: #7B1FA2;
+}
+
 /* Cards Secundários */
 .home-cards-secondary {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .home-cards-secondary {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
   .home-cards-secondary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cards Terciários - 3 colunas para métricas avançadas */
+.home-cards-tertiary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1024px) {
+  .home-cards-tertiary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .home-cards-tertiary {
     grid-template-columns: 1fr;
   }
 }
@@ -384,6 +477,100 @@
   font-size: 12px;
   color: #666;
   font-weight: 500;
+}
+
+/* Gráfico Comparativo (Recebimento vs Vencimento) */
+.home-grafico-comparativo {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 24px;
+  height: 250px;
+  padding: 20px 0;
+}
+
+.grafico-mes-comparativo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.grafico-barras-duplas {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 200px;
+}
+
+.grafico-coluna-dupla {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 60px;
+}
+
+.grafico-barra-recebido {
+  background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
+}
+
+.grafico-barra-recebido:hover {
+  background: linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
+}
+
+.grafico-barra-vencido {
+  background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
+}
+
+.grafico-barra-vencido:hover {
+  background: linear-gradient(180deg, #42A5F5 0%, #1E88E5 100%);
+}
+
+.grafico-valor-pequeno {
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.grafico-sublabel {
+  font-size: 10px;
+  color: #999;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Cores específicas dos novos cards */
+.card-mensalidades-ativas .card-icon {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.card-recebimentos .card-icon {
+  background: #E3F2FD;
+  color: #2196F3;
+}
+
+.card-atraso .card-icon {
+  background: #FFF3E0;
+  color: #FF9800;
+}
+
+.card-taxa-cancelamento .card-icon {
+  background: #FFEBEE;
+  color: #f44336;
+}
+
+.card-ultimos-7-dias .card-icon {
+  background: #F3E5F5;
+  color: #9C27B0;
 }
 
 /* Layout de 2 Colunas */

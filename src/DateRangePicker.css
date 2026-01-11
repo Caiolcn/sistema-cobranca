@@ -91,6 +91,31 @@
   color: white;
 }
 
+/* Info Panel (substitui os calendários) */
+.drp-info-panel {
+  padding: 24px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drp-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8867A1;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.drp-info-text {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* Calendars Container */
 .drp-calendars {
   display: flex;

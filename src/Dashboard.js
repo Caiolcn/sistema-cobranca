@@ -193,6 +193,32 @@ export default function Dashboard() {
           >
             <Icon icon="mdi:test-tube" width="22" height="22" />
           </div>
+
+          {/* Configuração */}
+          <div
+            onClick={() => navigate('/configuracao')}
+            style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'configuracao' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: telaAtiva === 'configuracao' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
+          </div>
         </div>
 
         {/* Ícones de perfil e sair (fixos na parte inferior) */}

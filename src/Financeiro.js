@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import AddInstallmentsModal from './AddInstallmentsModal'
+import { showToast } from './Toast'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [parcelas, setParcelas] = useState([])
@@ -52,7 +53,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       calcularTotais(parcelasComStatus)
     } catch (error) {
       console.error('Erro ao carregar parcelas:', error)
-      alert('Erro ao carregar parcelas: ' + error.message)
+      showToast('Erro ao carregar parcelas: ' + error.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -107,13 +108,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       if (error) throw error
 
-      alert(dataToSave.is_mensalidade
+      showToast(dataToSave.is_mensalidade
         ? 'Mensalidade criada com sucesso!'
-        : 'Parcelas criadas com sucesso!')
+        : 'Parcelas criadas com sucesso!', 'success')
       carregarParcelas()
     } catch (error) {
       console.error('Erro ao salvar parcelas:', error)
-      alert('Erro ao salvar parcelas: ' + error.message)
+      showToast('Erro ao salvar parcelas: ' + error.message, 'error')
     }
   }
 
@@ -214,15 +215,16 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       setParcelas(novasParcelas)
       calcularTotais(novasParcelas)
+      showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
     } catch (error) {
-      alert('Erro ao atualizar: ' + error.message)
+      showToast('Erro ao atualizar: ' + error.message, 'error')
     }
   }
 
   const getStatusBadge = (status) => {
     const configs = {
       pago: { bg: '#4CAF50', text: 'Pago' },
-      aberto: { bg: '#ff9800', text: 'Em aberto' },
+      aberto: { bg: '#2196F3', text: 'Em aberto' },
       atrasado: { bg: '#f44336', text: 'Em atraso' }
     }
 
@@ -232,9 +234,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       <span style={{
         backgroundColor: config.bg,
         color: 'white',
-        padding: '4px 12px',
+        padding: '3px 10px',
         borderRadius: '12px',
-        fontSize: '12px',
+        fontSize: '11px',
         fontWeight: 'bold'
       }}>
         {config.text}
@@ -280,150 +282,164 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   return (
     <div style={{ flex: 1, padding: '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        {/* Cards de resumo - Container ocupa tudo, cards agrupados à esquerda */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '12px 20px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          border: '1px solid #f0f0f0',
-          marginBottom: '25px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0'
-        }}>
-          {/* Card Em Atraso */}
+      {/* Header - tudo em uma linha */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '20px',
+        marginBottom: '20px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Título */}
+          <div style={{ minWidth: '150px' }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+              Mensalidades
+            </h2>
+            <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
+              {parcelasFiltradas.length} de {parcelas.length} mensalidade(s)
+            </p>
+          </div>
+
+          {/* Indicadores */}
           <div style={{
-            padding: '8px 25px',
-            borderRight: '1px solid #e8e8e8',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '5px'
+            alignItems: 'center',
+            gap: '0',
+            flex: 1,
+            marginLeft: '40px'
           }}>
-            <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Em Atraso</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Icon icon="solar:danger-triangle-linear" width="16" height="16" style={{ color: '#f44336' }} />
-                <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
-                  R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
+            {/* Card Em Atraso */}
+            <div style={{
+              padding: '8px 25px 8px 0',
+              borderRight: '1px solid #e8e8e8',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '5px'
+            }}>
+              <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Em Atraso</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon icon="solar:danger-triangle-linear" width="16" height="16" style={{ color: '#f44336' }} />
+                  <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
+                    R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => toggleFiltroStatus('atrasado')}
+                  style={{
+                    background: 'none',
+                    color: '#8867A1',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    padding: 0,
+                    fontWeight: '700'
+                  }}
+                >
+                  Ver
+                </button>
               </div>
-              <button
-                onClick={() => toggleFiltroStatus('atrasado')}
-                style={{
-                  background: 'none',
-                  color: '#8867A1',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'none',
-                  padding: 0,
-                  fontWeight: '700'
-                }}
-              >
-                Ver
-              </button>
+            </div>
+
+            {/* Card Em Aberto */}
+            <div style={{
+              padding: '8px 25px',
+              borderRight: '1px solid #e8e8e8',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '5px'
+            }}>
+              <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Em Aberto</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon icon="tabler:clock" width="16" height="16" style={{ color: '#2196F3' }} />
+                  <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
+                    R$ {totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => toggleFiltroStatus('aberto')}
+                  style={{
+                    background: 'none',
+                    color: '#8867A1',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    padding: 0,
+                    fontWeight: '700'
+                  }}
+                >
+                  Ver
+                </button>
+              </div>
+            </div>
+
+            {/* Card Recebido */}
+            <div style={{
+              padding: '8px 25px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '5px'
+            }}>
+              <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Recebido</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon icon="fluent-emoji-high-contrast:money-bag" width="16" height="16" style={{ color: '#4CAF50' }} />
+                  <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
+                    R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => toggleFiltroStatus('pago')}
+                  style={{
+                    background: 'none',
+                    color: '#8867A1',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    padding: 0,
+                    fontWeight: '700'
+                  }}
+                >
+                  Ver
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Card Em Aberto */}
-          <div style={{
-            padding: '8px 25px',
-            borderRight: '1px solid #e8e8e8',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px'
-          }}>
-            <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Em Aberto</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Icon icon="tabler:clock" width="16" height="16" style={{ color: '#2196F3' }} />
-                <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
-                  R$ {totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('aberto')}
-                style={{
-                  background: 'none',
-                  color: '#8867A1',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'none',
-                  padding: 0,
-                  fontWeight: '700'
-                }}
-              >
-                Ver
-              </button>
-            </div>
-          </div>
-
-          {/* Card Recebido */}
-          <div style={{
-            padding: '8px 25px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px'
-          }}>
-            <p style={{ fontSize: '14px', color: '#999', margin: '0' }}>Recebido</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Icon icon="fluent-emoji-high-contrast:money-bag" width="16" height="16" style={{ color: '#4CAF50' }} />
-                <span style={{ fontSize: '16px', fontWeight: '700', color: '#344848' }}>
-                  R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('pago')}
-                style={{
-                  background: 'none',
-                  color: '#8867A1',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'none',
-                  padding: 0,
-                  fontWeight: '700'
-                }}
-              >
-                Ver
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Cabeçalho da tabela */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '6px',
-          padding: '20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-        }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', marginBottom: '10px' }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>Financeiro</h2>
-          <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+          {/* Botões */}
+          <div style={{ display: 'flex', gap: '8px', position: 'relative', marginLeft: '40px' }}>
             <button
               className="btn-filtrar"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
               style={{
-                padding: '7px 14px',
+                padding: '10px 20px',
                 backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
                 color: temFiltrosAtivos ? 'white' : '#333',
                 border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: '14px',
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
+                gap: '8px',
                 position: 'relative',
                 transition: 'all 0.2s'
               }}
+              onMouseEnter={(e) => {
+                if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5'
+              }}
+              onMouseLeave={(e) => {
+                if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = 'white'
+              }}
             >
-              Filtrar ☰
+              <Icon icon="mdi:filter-outline" width="18" height="18" />
+              Filtrar
               {temFiltrosAtivos && (
                 <span style={{
                   position: 'absolute',
@@ -448,21 +464,24 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <button
               onClick={() => setMostrarModalAdicionar(true)}
               style={{
-                padding: '7px 14px',
-                backgroundColor: '#344848',
+                padding: '10px 20px',
+                backgroundColor: '#333',
                 color: 'white',
                 border: 'none',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: '14px',
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '8px',
+                transition: 'background-color 0.2s'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
             >
+              <Icon icon="mdi:plus" width="18" height="18" />
               Adicionar
-              <Icon icon="gg:add" width="18" height="18" />
             </button>
 
             {/* Popover de filtros */}
@@ -471,7 +490,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 className="popover-filtros"
                 style={{
                   position: 'absolute',
-                  top: '45px',
+                  top: '50px',
                   right: '0',
                   width: '300px',
                   backgroundColor: 'white',
@@ -575,56 +594,74 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Tabela */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
-                <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '40px' }}>
-                  <input type="checkbox" style={{ cursor: 'pointer' }} />
-                </th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Nome</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Data de Vencimento</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Valor</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Parcela</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Notificado</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Status</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>Pagou</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parcelasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: '#999', fontSize: '14px' }}>
-                    Nenhuma parcela encontrada
-                  </td>
+      {/* Tabela de Parcelas */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        overflow: 'hidden'
+      }}>
+        {parcelasFiltradas.length === 0 ? (
+          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <Icon icon="mdi:receipt-text-outline" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
+            <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
+              Nenhuma mensalidade encontrada
+            </p>
+            <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0 0 0' }}>
+              Clique em "Adicionar" para criar mensalidades
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Cliente
+                  </th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Vencimento
+                  </th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Valor
+                  </th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Tipo
+                  </th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Status
+                  </th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Pagou
+                  </th>
                 </tr>
-              ) : (
-                parcelasFiltradas.map(parcela => (
-                  <tr key={parcela.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '14px 12px', textAlign: 'center' }}>
-                      <input type="checkbox" style={{ cursor: 'pointer' }} />
-                    </td>
-                    <td style={{ padding: '14px 12px', fontSize: '14px', color: '#333' }}>
+              </thead>
+              <tbody>
+                {parcelasFiltradas.map(parcela => (
+                  <tr
+                    key={parcela.id}
+                    style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    <td style={{ padding: '16px', fontSize: '14px', color: '#333', fontWeight: '500' }}>
                       {parcela.devedor?.nome || 'N/A'}
                     </td>
-                    <td style={{ padding: '14px 12px', fontSize: '14px', color: '#333' }}>
+                    <td style={{ padding: '16px', fontSize: '14px', color: '#666' }}>
                       {new Date(parcela.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </td>
-                    <td style={{ padding: '14px 12px', fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    <td style={{ padding: '16px', fontSize: '16px', fontWeight: '700', color: '#333', textAlign: 'right' }}>
                       R$ {parseFloat(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td style={{ padding: '14px 12px', fontSize: '14px', color: '#333' }}>
-                      {parcela.numero_parcela} de {parcela.numero_parcela}
+                    <td style={{ padding: '16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                      {parcela.is_mensalidade ? 'Mensalidade' : `${parcela.numero_parcela}/${parcela.total_parcelas}`}
                     </td>
-                    <td style={{ padding: '14px 12px', fontSize: '14px', color: '#333' }}>
-                      {parcela.enviado_hoje ? 'Sim' : 'Não'}
-                    </td>
-                    <td style={{ padding: '14px 12px' }}>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
                       {getStatusBadge(parcela.statusCalculado)}
                     </td>
-                    <td style={{ padding: '14px 12px' }}>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
                       <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
                         <input
                           type="checkbox"
@@ -658,11 +695,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       </label>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal de Adicionar Parcelas/Mensalidade */}
