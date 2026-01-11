@@ -734,7 +734,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   position: 'absolute',
                   top: '50px',
                   right: '0',
-                  width: '300px',
+                  width: '340px',
                   backgroundColor: 'white',
                   borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -807,44 +807,48 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   </div>
 
                   {/* Período Personalizado */}
-                  <div style={{ marginTop: '16px' }}>
+                  <div>
                     <label style={{
                       display: 'block',
-                      marginBottom: '8px',
-                      fontSize: '13px',
+                      marginBottom: '10px',
+                      fontSize: '14px',
                       fontWeight: '600',
-                      color: '#344848'
+                      color: '#333'
                     }}>
                       Período Personalizado
                     </label>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <input
                         type="date"
                         value={filtroDataInicio}
                         onChange={(e) => setFiltroDataInicio(e.target.value)}
                         placeholder="Data início"
                         style={{
-                          flex: 1,
+                          width: '100%',
                           padding: '10px 12px',
                           borderRadius: '6px',
                           border: '1px solid #ddd',
                           fontSize: '14px',
-                          outline: 'none'
+                          outline: 'none',
+                          cursor: 'pointer'
                         }}
                       />
-                      <span style={{ color: '#999', fontSize: '14px' }}>até</span>
+                      <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
+                        até
+                      </div>
                       <input
                         type="date"
                         value={filtroDataFim}
                         onChange={(e) => setFiltroDataFim(e.target.value)}
                         placeholder="Data fim"
                         style={{
-                          flex: 1,
+                          width: '100%',
                           padding: '10px 12px',
                           borderRadius: '6px',
                           border: '1px solid #ddd',
                           fontSize: '14px',
-                          outline: 'none'
+                          outline: 'none',
+                          cursor: 'pointer'
                         }}
                       />
                     </div>
@@ -904,22 +908,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', width: '20%' }}>
                     Cliente
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
                     Vencimento
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
                     Valor
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '18%' }}>
                     Plano
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
                     Status
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '17%' }}>
                     Ações
                   </th>
                 </tr>
@@ -932,22 +936,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                   >
-                    <td style={{ padding: '16px', fontSize: '14px', color: '#333', fontWeight: '500' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#333', fontWeight: '500', textAlign: 'left' }}>
                       {parcela.devedor?.nome || 'N/A'}
                     </td>
-                    <td style={{ padding: '16px', fontSize: '14px', color: '#666' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
                       {new Date(parcela.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </td>
-                    <td style={{ padding: '16px', fontSize: '16px', fontWeight: '700', color: '#333', textAlign: 'right' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '16px', fontWeight: '700', color: '#333', textAlign: 'center' }}>
                       R$ {parseFloat(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td style={{ padding: '16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
                       {parcela.devedor?.plano?.nome || '-'}
                     </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       {getStatusBadge(parcela.statusCalculado)}
                     </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
                         <button
                           onClick={() => handleEnviarCobranca(parcela)}

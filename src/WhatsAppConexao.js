@@ -48,6 +48,14 @@ export default function WhatsAppConexao() {
     titulo: 'Lembrete de Cobrança',
     mensagem: MENSAGEM_PADRAO
   })
+  const [tipoTemplateSelecionado, setTipoTemplateSelecionado] = useState('overdue')
+  const [templatesAgrupados, setTemplatesAgrupados] = useState({
+    overdue: null,
+    pre_due_3days: null,
+    pre_due_5days: null
+  })
+  const [tituloTemplate, setTituloTemplate] = useState('Mensagem de Cobrança - Em Atraso')
+  const [mensagemTemplate, setMensagemTemplate] = useState(MENSAGEM_PADRAO)
 
   // Atualizar status global quando mudar
   useEffect(() => {
@@ -288,44 +296,93 @@ export default function WhatsAppConexao() {
       .replace(/\{\{nomeEmpresa\}\}/g, 'Minha Empresa')
   }
 
+  const getTituloDefault = (tipo) => {
+    const titulos = {
+      overdue: 'Mensagem de Cobrança - Em Atraso',
+      pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
+      pre_due_5days: 'Lembrete - 5 Dias Antes do Vencimento'
+    }
+    return titulos[tipo] || ''
+  }
+
+  const getMensagemDefault = (tipo) => {
+    if (tipo === 'overdue') {
+      return `Olá {{nomeCliente}},
+
+Identificamos que a parcela no valor de {{valorParcela}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
+
+Por favor, regularize sua situação o quanto antes.
+
+Atenciosamente,
+{{nomeEmpresa}}`
+    } else if (tipo === 'pre_due_3days') {
+      return `Olá {{nomeCliente}},
+
+Este é um lembrete de que sua mensalidade no valor de {{valorParcela}} vence em 3 dias ({{dataVencimento}}).
+
+Para evitar atrasos, você pode realizar o pagamento antecipadamente.
+
+Atenciosamente,
+{{nomeEmpresa}}`
+    } else if (tipo === 'pre_due_5days') {
+      return `Olá {{nomeCliente}},
+
+Lembramos que sua mensalidade no valor de {{valorParcela}} vence em 5 dias ({{dataVencimento}}).
+
+Fique atento ao prazo para evitar juros e multas.
+
+Atenciosamente,
+{{nomeEmpresa}}`
+    }
+    return ''
+  }
+
   const restaurarMensagemPadrao = () => {
-    setTemplateAtual({
-      ...templateAtual,
-      mensagem: MENSAGEM_PADRAO
-    })
+    setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
+    setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
+    alert('Mensagem padrão restaurada')
   }
 
   const carregarTemplates = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      const { data, error } = await supabase
+      const { data: templates, error } = await supabase
         .from('templates')
         .select('*')
         .eq('user_id', user.id)
         .eq('ativo', true)
-        .order('is_padrao', { ascending: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      setTemplates(data || [])
+      // Group templates by type
+      const agrupados = {
+        overdue: templates?.find(t => t.tipo === 'overdue') || null,
+        pre_due_3days: templates?.find(t => t.tipo === 'pre_due_3days') || null,
+        pre_due_5days: templates?.find(t => t.tipo === 'pre_due_5days') || null
+      }
 
-      const templatePadrao = data?.find(t => t.is_padrao)
-      if (templatePadrao) {
-        setTemplateAtual({
-          id: templatePadrao.id,
-          titulo: templatePadrao.titulo,
-          mensagem: templatePadrao.mensagem
-        })
+      setTemplatesAgrupados(agrupados)
+
+      // Load current selected type template
+      const templateAtual = agrupados[tipoTemplateSelecionado]
+      if (templateAtual) {
+        setTituloTemplate(templateAtual.titulo)
+        setMensagemTemplate(templateAtual.mensagem)
+      } else {
+        // Load default for this type
+        setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
+        setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
       }
     } catch (error) {
       console.error('Erro ao carregar templates:', error)
+      alert('Erro ao carregar templates')
     }
   }
 
   const salvarTemplate = async () => {
-    if (!templateAtual.titulo.trim() || !templateAtual.mensagem.trim()) {
+    if (!tituloTemplate.trim() || !mensagemTemplate.trim()) {
       alert('Preencha o título e a mensagem do template')
       return
     }
@@ -333,38 +390,35 @@ export default function WhatsAppConexao() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      const templateData = {
-        user_id: user.id,
-        titulo: templateAtual.titulo.trim(),
-        mensagem: templateAtual.mensagem.trim(),
-        ativo: true
-      }
+      const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
 
-      let error
-
-      if (templateAtual.id) {
-        const result = await supabase
+      if (templateExistente) {
+        // Update existing
+        const { error } = await supabase
           .from('templates')
           .update({
-            titulo: templateData.titulo,
-            mensagem: templateData.mensagem,
+            titulo: tituloTemplate,
+            mensagem: mensagemTemplate,
             updated_at: new Date().toISOString()
           })
-          .eq('id', templateAtual.id)
+          .eq('id', templateExistente.id)
 
-        error = result.error
+        if (error) throw error
       } else {
-        const temTemplatePadrao = templates.some(t => t.is_padrao)
-        templateData.is_padrao = !temTemplatePadrao
-
-        const result = await supabase
+        // Create new
+        const { error } = await supabase
           .from('templates')
-          .insert(templateData)
+          .insert({
+            user_id: user.id,
+            titulo: tituloTemplate,
+            mensagem: mensagemTemplate,
+            tipo: tipoTemplateSelecionado,
+            ativo: true,
+            is_padrao: false
+          })
 
-        error = result.error
+        if (error) throw error
       }
-
-      if (error) throw error
 
       alert('Template salvo com sucesso!')
       await carregarTemplates()
@@ -733,14 +787,136 @@ export default function WhatsAppConexao() {
                 Editor de Template
               </h4>
 
+              {/* Template Type Selector */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#344848'
+                }}>
+                  Tipo de Mensagem
+                </label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => {
+                      setTipoTemplateSelecionado('overdue')
+                      const template = templatesAgrupados.overdue
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('overdue'))
+                        setMensagemTemplate(getMensagemDefault('overdue'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'overdue' ? '#f44336' : 'white',
+                      color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'overdue' ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Icon icon="mdi:alert-circle" width="20" />
+                    <span>Em Atraso</span>
+                    {templatesAgrupados.overdue && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTipoTemplateSelecionado('pre_due_5days')
+                      const template = templatesAgrupados.pre_due_5days
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('pre_due_5days'))
+                        setMensagemTemplate(getMensagemDefault('pre_due_5days'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'pre_due_5days' ? '#ff9800' : 'white',
+                      color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'pre_due_5days' ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Icon icon="mdi:calendar-alert" width="20" />
+                    <span>5 Dias Antes</span>
+                    {templatesAgrupados.pre_due_5days && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTipoTemplateSelecionado('pre_due_3days')
+                      const template = templatesAgrupados.pre_due_3days
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('pre_due_3days'))
+                        setMensagemTemplate(getMensagemDefault('pre_due_3days'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'pre_due_3days' ? '#2196F3' : 'white',
+                      color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'pre_due_3days' ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Icon icon="mdi:calendar-clock" width="20" />
+                    <span>3 Dias Antes</span>
+                    {templatesAgrupados.pre_due_3days && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
                   Título do Template
                 </label>
                 <input
                   type="text"
-                  value={templateAtual.titulo}
-                  onChange={(e) => setTemplateAtual({ ...templateAtual, titulo: e.target.value })}
+                  value={tituloTemplate}
+                  onChange={(e) => setTituloTemplate(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -788,8 +964,8 @@ export default function WhatsAppConexao() {
                   </button>
                 </div>
                 <textarea
-                  value={templateAtual.mensagem}
-                  onChange={(e) => setTemplateAtual({ ...templateAtual, mensagem: e.target.value })}
+                  value={mensagemTemplate}
+                  onChange={(e) => setMensagemTemplate(e.target.value)}
                   style={{
                     width: '100%',
                     minHeight: '300px',
@@ -816,23 +992,69 @@ export default function WhatsAppConexao() {
                   Variáveis Disponíveis (clique para copiar):
                 </h5>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {[
-                    '{{nomeCliente}}',
-                    '{{telefone}}',
-                    '{{valorParcela}}',
-                    '{{dataVencimento}}',
-                    '{{diasAtraso}}',
-                    '{{nomeEmpresa}}'
-                  ].map((varName, index) => (
+                  <code
+                    onClick={() => {
+                      navigator.clipboard.writeText('{{nomeCliente}}')
+                      alert('{{nomeCliente}} copiado!')
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#e3f2fd',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#8867A1',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {`{{nomeCliente}}`}
+                  </code>
+                  <code
+                    onClick={() => {
+                      navigator.clipboard.writeText('{{valorParcela}}')
+                      alert('{{valorParcela}} copiado!')
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#e3f2fd',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#8867A1',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {`{{valorParcela}}`}
+                  </code>
+                  <code
+                    onClick={() => {
+                      navigator.clipboard.writeText('{{dataVencimento}}')
+                      alert('{{dataVencimento}} copiado!')
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#e3f2fd',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#8867A1',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {`{{dataVencimento}}`}
+                  </code>
+                  {tipoTemplateSelecionado === 'overdue' && (
                     <code
-                      key={index}
                       onClick={() => {
-                        navigator.clipboard.writeText(varName)
-                        alert(`${varName} copiado!`)
+                        navigator.clipboard.writeText('{{diasAtraso}}')
+                        alert('{{diasAtraso}} copiado!')
                       }}
                       style={{
                         padding: '4px 8px',
-                        backgroundColor: 'white',
+                        backgroundColor: '#ffebee',
                         border: '1px solid #e0e0e0',
                         borderRadius: '4px',
                         fontSize: '11px',
@@ -841,10 +1063,33 @@ export default function WhatsAppConexao() {
                         fontWeight: '600'
                       }}
                     >
-                      {varName}
+                      {`{{diasAtraso}}`}
                     </code>
-                  ))}
+                  )}
+                  <code
+                    onClick={() => {
+                      navigator.clipboard.writeText('{{nomeEmpresa}}')
+                      alert('{{nomeEmpresa}} copiado!')
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#e3f2fd',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#8867A1',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {`{{nomeEmpresa}}`}
+                  </code>
                 </div>
+                {tipoTemplateSelecionado !== 'overdue' && (
+                  <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    Nota: {`{{diasAtraso}}`} não está disponível para mensagens pré-vencimento
+                  </p>
+                )}
               </div>
 
               <button
@@ -916,7 +1161,7 @@ export default function WhatsAppConexao() {
                     whiteSpace: 'pre-wrap',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
                   }}>
-                    {gerarPreview(templateAtual.mensagem)}
+                    {gerarPreview(mensagemTemplate)}
                   </div>
 
                   <div style={{

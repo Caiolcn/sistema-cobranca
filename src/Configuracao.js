@@ -25,7 +25,9 @@ function Configuracao() {
   // Billing config
   const [configCobranca, setConfigCobranca] = useState({
     enviarAntes: false,
-    diasAntes: 3
+    diasAntes: 3,
+    enviar3DiasAntes: false,
+    enviar5DiasAntes: false
   })
 
   // Plans
@@ -175,7 +177,9 @@ function Configuracao() {
     if (data) {
       setConfigCobranca({
         enviarAntes: data.enviar_antes_vencimento,
-        diasAntes: data.dias_antes_vencimento
+        diasAntes: data.dias_antes_vencimento,
+        enviar3DiasAntes: data.enviar_3_dias_antes || false,
+        enviar5DiasAntes: data.enviar_5_dias_antes || false
       })
     }
   }
@@ -188,6 +192,8 @@ function Configuracao() {
           user_id: user.id,
           enviar_antes_vencimento: configCobranca.enviarAntes,
           dias_antes_vencimento: configCobranca.diasAntes,
+          enviar_3_dias_antes: configCobranca.enviar3DiasAntes,
+          enviar_5_dias_antes: configCobranca.enviar5DiasAntes,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' })
 
@@ -642,9 +648,12 @@ function Configuracao() {
 
   const renderConfigCobranca = () => (
     <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
+      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
         Configurações de Cobrança
       </h3>
+      <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
+        Configure quando enviar mensagens de lembrete para seus clientes
+      </p>
 
       <div style={{ marginBottom: '20px' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
@@ -686,25 +695,109 @@ function Configuracao() {
       </div>
 
       {configCobranca.enviarAntes && (
-        <div style={{ marginTop: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Quantos dias antes?
+        <div style={{
+          marginTop: '20px',
+          padding: '20px',
+          backgroundColor: '#f9f9f9',
+          borderRadius: '8px',
+          border: '1px solid #e0e0e0'
+        }}>
+          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: '600', color: '#555' }}>
+            Quando enviar mensagens de lembrete?
           </label>
-          <select
-            value={configCobranca.diasAntes}
-            onChange={(e) => setConfigCobranca({ ...configCobranca, diasAntes: parseInt(e.target.value) })}
-            style={{
-              width: '200px',
-              padding: '10px',
-              border: '1px solid #ddd',
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Checkbox 5 dias antes */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: 'white',
               borderRadius: '6px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="3">3 dias</option>
-            <option value="5">5 dias</option>
-          </select>
+              border: configCobranca.enviar5DiasAntes ? '2px solid #ff9800' : '2px solid #e0e0e0',
+              transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={configCobranca.enviar5DiasAntes}
+                onChange={(e) => setConfigCobranca({ ...configCobranca, enviar5DiasAntes: e.target.checked })}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                  accentColor: '#ff9800'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon icon="mdi:calendar-alert" width="20" style={{ color: '#ff9800' }} />
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    5 dias antes do vencimento
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  Envia um lembrete com antecedência para dar mais tempo ao cliente
+                </p>
+              </div>
+            </label>
+
+            {/* Checkbox 3 dias antes */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: 'white',
+              borderRadius: '6px',
+              border: configCobranca.enviar3DiasAntes ? '2px solid #2196F3' : '2px solid #e0e0e0',
+              transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={configCobranca.enviar3DiasAntes}
+                onChange={(e) => setConfigCobranca({ ...configCobranca, enviar3DiasAntes: e.target.checked })}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                  accentColor: '#2196F3'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon icon="mdi:calendar-clock" width="20" style={{ color: '#2196F3' }} />
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    3 dias antes do vencimento
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  Lembrete mais próximo da data de vencimento, reforçando o prazo
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {!configCobranca.enviar3DiasAntes && !configCobranca.enviar5DiasAntes && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: '#fff3cd',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Icon icon="mdi:information" width="20" style={{ color: '#856404' }} />
+              <span style={{ fontSize: '13px', color: '#856404' }}>
+                Selecione pelo menos uma opção para ativar os lembretes
+              </span>
+            </div>
+          )}
         </div>
       )}
 
