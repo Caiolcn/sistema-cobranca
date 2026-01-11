@@ -563,23 +563,23 @@ export default function Clientes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '25%' }}>
                     Cliente
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '18%' }}>
                     Telefone
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '12%' }}>
                     Status
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '18%' }}>
                     Plano
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '17%' }}>
                     Próximo Vencimento
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '120px' }}>
-                    Ações
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '10%' }}>
+                    Assinatura
                   </th>
                 </tr>
               </thead>
@@ -615,10 +615,10 @@ export default function Clientes() {
                         {cliente.nome}
                       </div>
                     </td>
-                    <td style={{ padding: '16px', fontSize: '14px', color: '#666' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666' }}>
                       {cliente.telefone}
                     </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <span style={{
                         backgroundColor: cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
                         color: cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
@@ -631,10 +631,10 @@ export default function Clientes() {
                         {cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px', fontSize: '14px', color: '#333' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#333' }}>
                       {cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
                     </td>
-                    <td style={{ padding: '16px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
                       {cliente.proxima_mensalidade ? (
                         <span style={{ color: new Date(cliente.proxima_mensalidade) < new Date() ? '#f44336' : '#333' }}>
                           {new Date(cliente.proxima_mensalidade + 'T00:00:00').toLocaleDateString('pt-BR')}
@@ -643,63 +643,42 @@ export default function Clientes() {
                         <span style={{ color: '#999', fontStyle: 'italic' }}>-</span>
                       )}
                     </td>
-                    <td style={{ padding: '16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                        <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-                          <input
-                            type="checkbox"
-                            checked={cliente.assinatura_ativa}
-                            onChange={(e) => {
-                              e.stopPropagation()
-                              handleAlterarAssinatura(cliente.id, e.target.checked)
-                            }}
-                            style={{ opacity: 0, width: 0, height: 0 }}
-                            title={cliente.assinatura_ativa ? 'Desativar assinatura' : 'Ativar assinatura'}
-                          />
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
+                        <input
+                          type="checkbox"
+                          checked={cliente.assinatura_ativa}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            handleAlterarAssinatura(cliente.id, e.target.checked)
+                          }}
+                          style={{ opacity: 0, width: 0, height: 0 }}
+                          title={cliente.assinatura_ativa ? 'Desativar assinatura' : 'Ativar assinatura'}
+                        />
+                        <span style={{
+                          position: 'absolute',
+                          cursor: 'pointer',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: cliente.assinatura_ativa ? '#4CAF50' : '#ccc',
+                          transition: '0.3s',
+                          borderRadius: '22px'
+                        }}>
                           <span style={{
                             position: 'absolute',
-                            cursor: 'pointer',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: cliente.assinatura_ativa ? '#4CAF50' : '#ccc',
+                            content: '',
+                            height: '16px',
+                            width: '16px',
+                            left: cliente.assinatura_ativa ? '25px' : '3px',
+                            bottom: '3px',
+                            backgroundColor: 'white',
                             transition: '0.3s',
-                            borderRadius: '22px'
-                          }}>
-                            <span style={{
-                              position: 'absolute',
-                              content: '',
-                              height: '16px',
-                              width: '16px',
-                              left: cliente.assinatura_ativa ? '25px' : '3px',
-                              bottom: '3px',
-                              backgroundColor: 'white',
-                              transition: '0.3s',
-                              borderRadius: '50%'
-                            }} />
-                          </span>
-                        </label>
-                        <button
-                          onClick={(e) => handleExcluirCliente(cliente, e)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '6px',
-                            borderRadius: '4px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                          title="Excluir cliente"
-                        >
-                          <Icon icon="mdi:delete-outline" width="20" height="20" style={{ color: '#f44336' }} />
-                        </button>
-                      </div>
+                            borderRadius: '50%'
+                          }} />
+                        </span>
+                      </label>
                     </td>
                   </tr>
                 ))}
@@ -1114,6 +1093,63 @@ export default function Clientes() {
                     </table>
                   </div>
                 )}
+              </div>
+
+              {/* Botão de excluir no rodapé do modal */}
+              <div style={{
+                marginTop: '24px',
+                paddingTop: '20px',
+                borderTop: '1px solid #e0e0e0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleExcluirCliente(clienteSelecionado, e)
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: 'transparent',
+                    color: '#f44336',
+                    border: '2px solid #f44336',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f44336'
+                    e.currentTarget.style.color = 'white'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#f44336'
+                  }}
+                >
+                  <Icon icon="mdi:delete-outline" width="18" />
+                  Excluir Cliente
+                </button>
+                <button
+                  onClick={() => setMostrarModal(false)}
+                  style={{
+                    padding: '10px 24px',
+                    backgroundColor: '#344848',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Fechar
+                </button>
               </div>
             </div>
           </div>
