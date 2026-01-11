@@ -7,7 +7,6 @@ import Home from './Home'
 import Financeiro from './Financeiro'
 import Clientes from './Clientes'
 import WhatsAppConexao from './WhatsAppConexao'
-import TesteWhatsApp from './TesteWhatsApp'
 import Configuracao from './Configuracao'
 import Toast from './Toast'
 import './App.css'
@@ -48,7 +47,6 @@ function App() {
               <Route path="financeiro" element={<Financeiro />} />
               <Route path="clientes" element={<Clientes />} />
               <Route path="whatsapp" element={<WhatsAppConexao />} />
-              <Route path="teste-whatsapp" element={<TesteWhatsApp />} />
               <Route path="configuracao" element={<Configuracao />} />
             </Route>
             <Route path="*" element={<Navigate to="/home" replace />} />

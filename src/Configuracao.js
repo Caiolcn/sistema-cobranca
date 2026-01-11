@@ -733,7 +733,7 @@ function Configuracao() {
       <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
-            Planos de Assinatura
+            Planos de Mensalidade
           </h3>
           <button
             onClick={abrirModalNovoPlan}

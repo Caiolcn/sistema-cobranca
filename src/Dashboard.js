@@ -168,32 +168,6 @@ export default function Dashboard() {
             }} />
           </div>
 
-          {/* Teste WhatsApp */}
-          <div
-            onClick={() => navigate('/teste-whatsapp')}
-            style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: telaAtiva === 'teste-whatsapp' ? '#333' : 'transparent',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: telaAtiva === 'teste-whatsapp' ? 'white' : '#666',
-              fontSize: '20px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (telaAtiva !== 'teste-whatsapp') e.currentTarget.style.backgroundColor = '#f5f5f5'
-            }}
-            onMouseLeave={(e) => {
-              if (telaAtiva !== 'teste-whatsapp') e.currentTarget.style.backgroundColor = 'transparent'
-            }}
-          >
-            <Icon icon="mdi:test-tube" width="22" height="22" />
-          </div>
-
           {/* Configuração */}
           <div
             onClick={() => navigate('/configuracao')}

@@ -68,44 +68,48 @@ export default function Clientes() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Buscar clientes
+      // Buscar clientes com dados do plano
       const { data: clientesData, error: clientesError } = await supabase
         .from('devedores')
-        .select('id, nome, telefone, cpf, assinatura_ativa, plano_id, created_at')
+        .select(`
+          id,
+          nome,
+          telefone,
+          cpf,
+          assinatura_ativa,
+          plano_id,
+          created_at,
+          planos:plano_id (nome)
+        `)
         .eq('user_id', user.id)
         .order('nome', { ascending: true })
 
       if (clientesError) throw clientesError
 
-      // Buscar parcelas para calcular valor devido
+      // Buscar próximas mensalidades (apenas futuras ou pendentes)
       const { data: parcelasData, error: parcelasError } = await supabase
         .from('parcelas')
-        .select('devedor_id, valor, status')
+        .select('devedor_id, data_vencimento, status, is_mensalidade')
         .eq('user_id', user.id)
+        .eq('is_mensalidade', true)
+        .in('status', ['pendente', 'atrasado'])
+        .order('data_vencimento', { ascending: true })
 
       if (parcelasError) throw parcelasError
 
-      // Calcular valor devido por cliente
-      const clientesComValor = clientesData.map(cliente => {
-        const parcelasDoCliente = parcelasData.filter(p => p.devedor_id === cliente.id)
-        const valorDevido = parcelasDoCliente
-          .filter(p => p.status !== 'pago')
-          .reduce((sum, p) => sum + parseFloat(p.valor || 0), 0)
-
-        const totalParcelas = parcelasDoCliente.length
-        const parcelasPendentes = parcelasDoCliente.filter(p => p.status === 'pendente').length
-        const parcelasPagas = parcelasDoCliente.filter(p => p.status === 'pago').length
+      // Processar dados dos clientes
+      const clientesComDados = clientesData.map(cliente => {
+        // Buscar próxima mensalidade do cliente
+        const proximaMensalidade = parcelasData.find(p => p.devedor_id === cliente.id)
 
         return {
           ...cliente,
-          valorDevido,
-          totalParcelas,
-          parcelasPendentes,
-          parcelasPagas
+          plano_nome: cliente.planos?.nome || null,
+          proxima_mensalidade: proximaMensalidade?.data_vencimento || null
         }
       })
 
-      setClientes(clientesComValor)
+      setClientes(clientesComDados)
     } catch (error) {
       console.error('Erro ao carregar clientes:', error)
       alert('Erro ao carregar clientes: ' + error.message)
@@ -287,6 +291,16 @@ export default function Clientes() {
     } catch (error) {
       showToast('Erro ao alterar assinatura: ' + error.message, 'error')
     }
+  }
+
+  const formatarTelefone = (value) => {
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+    }
+    return value
   }
 
   const handleCriarCliente = async () => {
@@ -549,19 +563,22 @@ export default function Clientes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
                     Cliente
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
                     Telefone
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Parcelas
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                    Status
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Valor em Aberto
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                    Plano
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '80px' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>
+                    Próximo Vencimento
+                  </th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '120px' }}>
                     Ações
                   </th>
                 </tr>
@@ -601,41 +618,88 @@ export default function Clientes() {
                     <td style={{ padding: '16px', fontSize: '14px', color: '#666' }}>
                       {cliente.telefone}
                     </td>
-                    <td style={{ padding: '16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                        <div>
-                          <span style={{ color: '#4CAF50', fontWeight: '600' }}>{cliente.parcelasPagas}</span>
-                          <span style={{ color: '#999', fontSize: '11px' }}> pagas</span>
-                        </div>
-                        <div>
-                          <span style={{ color: '#ff9800', fontWeight: '600' }}>{cliente.parcelasPendentes}</span>
-                          <span style={{ color: '#999', fontSize: '11px' }}> pendentes</span>
-                        </div>
-                      </div>
+                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                      <span style={{
+                        backgroundColor: cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
+                        color: cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        display: 'inline-block'
+                      }}>
+                        {cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
+                      </span>
                     </td>
-                    <td style={{ padding: '16px', fontSize: '16px', fontWeight: '700', color: cliente.valorDevido > 0 ? '#f44336' : '#4CAF50', textAlign: 'right' }}>
-                      R$ {formatCurrency(cliente.valorDevido)}
+                    <td style={{ padding: '16px', fontSize: '14px', color: '#333' }}>
+                      {cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
+                      {cliente.proxima_mensalidade ? (
+                        <span style={{ color: new Date(cliente.proxima_mensalidade) < new Date() ? '#f44336' : '#333' }}>
+                          {new Date(cliente.proxima_mensalidade + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#999', fontStyle: 'italic' }}>-</span>
+                      )}
                     </td>
                     <td style={{ padding: '16px', textAlign: 'center' }}>
-                      <button
-                        onClick={(e) => handleExcluirCliente(cliente, e)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '6px',
-                          borderRadius: '4px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        title="Excluir cliente"
-                      >
-                        <Icon icon="mdi:delete-outline" width="20" height="20" style={{ color: '#f44336' }} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                        <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
+                          <input
+                            type="checkbox"
+                            checked={cliente.assinatura_ativa}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              handleAlterarAssinatura(cliente.id, e.target.checked)
+                            }}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                            title={cliente.assinatura_ativa ? 'Desativar assinatura' : 'Ativar assinatura'}
+                          />
+                          <span style={{
+                            position: 'absolute',
+                            cursor: 'pointer',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: cliente.assinatura_ativa ? '#4CAF50' : '#ccc',
+                            transition: '0.3s',
+                            borderRadius: '22px'
+                          }}>
+                            <span style={{
+                              position: 'absolute',
+                              content: '',
+                              height: '16px',
+                              width: '16px',
+                              left: cliente.assinatura_ativa ? '25px' : '3px',
+                              bottom: '3px',
+                              backgroundColor: 'white',
+                              transition: '0.3s',
+                              borderRadius: '50%'
+                            }} />
+                          </span>
+                        </label>
+                        <button
+                          onClick={(e) => handleExcluirCliente(cliente, e)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            borderRadius: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          title="Excluir cliente"
+                        >
+                          <Icon icon="mdi:delete-outline" width="20" height="20" style={{ color: '#f44336' }} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -789,8 +853,9 @@ export default function Clientes() {
                     <input
                       type="tel"
                       value={telefoneEdit}
-                      onChange={(e) => setTelefoneEdit(e.target.value)}
+                      onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))}
                       disabled={!editando}
+                      maxLength="15"
                       style={{
                         width: '100%',
                         padding: '10px',
@@ -1148,8 +1213,9 @@ export default function Clientes() {
               <input
                 type="text"
                 value={novoClienteTelefone}
-                onChange={(e) => setNovoClienteTelefone(e.target.value)}
+                onChange={(e) => setNovoClienteTelefone(formatarTelefone(e.target.value))}
                 placeholder="(00) 00000-0000"
+                maxLength="15"
                 style={{
                   width: '100%',
                   padding: '12px',
