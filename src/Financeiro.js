@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react'
 import AddInstallmentsModal from './AddInstallmentsModal'
 import { showToast } from './Toast'
 import whatsappService from './services/whatsappService'
+import { exportarMensalidades } from './utils/exportUtils'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mensalidades, setMensalidades] = useState([])
@@ -655,6 +656,35 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
           {/* Botões */}
           <div style={{ display: 'flex', gap: '8px', position: 'relative', marginLeft: '40px' }}>
+            <button
+              onClick={() => exportarMensalidades(mensalidadesFiltradas)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: 'white',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#344848'
+                e.currentTarget.style.color = '#344848'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#ddd'
+                e.currentTarget.style.color = '#333'
+              }}
+            >
+              <Icon icon="mdi:file-export-outline" width="18" height="18" />
+              Exportar
+            </button>
+
             <button
               className="btn-filtrar"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
