@@ -292,6 +292,91 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setMensalidadesFiltradas(resultado)
   }
 
+  /**
+   * Cria automaticamente a próxima mensalidade quando a atual for paga
+   * Apenas para mensalidades recorrentes (is_mensalidade = true)
+   */
+  const criarProximaMensalidade = async (mensalidadeAtual) => {
+    try {
+      // 1. Verificar se é recorrente
+      if (!mensalidadeAtual.is_mensalidade) {
+        console.log('Mensalidade não é recorrente, pulando criação automática')
+        return
+      }
+
+      // 2. Buscar dados completos do cliente e plano
+      const devedor = mensalidadeAtual.devedores
+
+      if (!devedor) {
+        console.error('Erro: devedor não encontrado na mensalidade')
+        return
+      }
+
+      // 3. Verificar se assinatura está ativa
+      if (!devedor.assinatura_ativa) {
+        console.log('Assinatura inativa, não criar próxima mensalidade')
+        return
+      }
+
+      // 4. Calcular próximo vencimento (+30 dias da mensalidade paga)
+      const dataAtual = new Date(mensalidadeAtual.data_vencimento)
+      const proximoVencimento = new Date(dataAtual)
+      proximoVencimento.setDate(proximoVencimento.getDate() + 30)
+      const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
+
+      // 5. Verificar se já existe mensalidade para esta data
+      const { data: jaExiste } = await supabase
+        .from('mensalidades')
+        .select('id')
+        .eq('devedor_id', mensalidadeAtual.devedor_id)
+        .eq('data_vencimento', proximoVencimentoStr)
+        .maybeSingle()
+
+      if (jaExiste) {
+        console.log('Próxima mensalidade já existe, pulando criação')
+        return
+      }
+
+      // 6. Criar nova mensalidade
+      const { data: novaMensalidade, error: errorInsert } = await supabase
+        .from('mensalidades')
+        .insert({
+          user_id: mensalidadeAtual.user_id,
+          devedor_id: mensalidadeAtual.devedor_id,
+          valor: devedor.plano?.valor || mensalidadeAtual.valor,
+          data_vencimento: proximoVencimentoStr,
+          status: 'pendente',
+          is_mensalidade: true,
+          numero_mensalidade: (mensalidadeAtual.numero_mensalidade || 0) + 1,
+          recorrencia: mensalidadeAtual.recorrencia || {
+            isRecurring: true,
+            recurrenceType: 'monthly',
+            startDate: mensalidadeAtual.data_vencimento
+          },
+          enviado_hoje: false,
+          total_mensagens_enviadas: 0
+        })
+        .select()
+        .single()
+
+      if (errorInsert) {
+        console.error('Erro ao criar próxima mensalidade:', errorInsert)
+        return
+      }
+
+      console.log('✅ Próxima mensalidade criada:', novaMensalidade)
+
+      // Mostrar notificação de sucesso
+      const dataFormatada = new Date(proximoVencimentoStr).toLocaleDateString('pt-BR')
+      showToast(`Próxima mensalidade criada automaticamente para ${dataFormatada}`, 'success')
+
+      return novaMensalidade
+
+    } catch (error) {
+      console.error('Erro na criação automática da próxima mensalidade:', error)
+    }
+  }
+
   const alterarStatusPagamento = (mensalidade, novoPago) => {
     setMensalidadeParaAtualizar(mensalidade)
     setNovoStatusPagamento(novoPago)
@@ -312,18 +397,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         status: novoStatusPagamento ? 'pago' : 'pendente'
       }
 
-      // Adicionar forma de pagamento se estiver marcando como pago
+      // Adicionar forma de pagamento e data de pagamento se estiver marcando como pago
       if (novoStatusPagamento) {
         updateData.forma_pagamento = formaPagamento
+        updateData.data_pagamento = new Date().toISOString().split('T')[0] // Data atual em formato ISO
       } else {
-        // Limpar forma de pagamento se estiver desfazendo
+        // Limpar forma de pagamento e data se estiver desfazendo
         updateData.forma_pagamento = null
+        updateData.data_pagamento = null
       }
 
-      const { error } = await supabase
+      const { data: mensalidadeAtualizada, error } = await supabase
         .from('mensalidades')
         .update(updateData)
         .eq('id', mensalidadeParaAtualizar.id)
+        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor))')
+        .single()
 
       if (error) throw error
 
@@ -333,7 +422,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           const atualizada = {
             ...p,
             status: novoStatusPagamento ? 'pago' : 'pendente',
-            forma_pagamento: novoStatusPagamento ? formaPagamento : null
+            forma_pagamento: novoStatusPagamento ? formaPagamento : null,
+            data_pagamento: novoStatusPagamento ? updateData.data_pagamento : null
           }
           atualizada.statusCalculado = calcularStatus(atualizada)
           return atualizada
@@ -347,6 +437,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setMostrarModalConfirmacao(false)
       setMensalidadeParaAtualizar(null)
       setFormaPagamento('')
+
+      // 🆕 CRIAR PRÓXIMA MENSALIDADE AUTOMATICAMENTE (apenas se estiver marcando como pago)
+      if (novoStatusPagamento && mensalidadeAtualizada) {
+        await criarProximaMensalidade(mensalidadeAtualizada)
+        // Recarregar lista para mostrar nova mensalidade
+        carregarMensalidades()
+      }
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
       setMostrarModalConfirmacao(false)
@@ -952,7 +1049,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
                     Status
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '17%' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
+                    Data Pagamento
+                  </th>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
                     Ações
                   </th>
                 </tr>
@@ -979,6 +1079,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       {getStatusBadge(mensalidade.statusCalculado)}
+                    </td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                      {mensalidade.data_pagamento
+                        ? new Date(mensalidade.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR')
+                        : '-'
+                      }
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
