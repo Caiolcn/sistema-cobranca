@@ -917,16 +917,20 @@
   min-width: 60px;
 }
 
-.status-bar-pagas {
+.status-bar-em-dia {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
-.status-bar-pendentes {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+.status-bar-a-vencer {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .status-bar-atrasadas {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.status-bar-canceladas {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
 }
 
 .status-count {
@@ -951,16 +955,20 @@
   border-radius: 50%;
 }
 
-.status-dot-pagas {
+.status-dot-em-dia {
   background: #10b981;
 }
 
-.status-dot-pendentes {
-  background: #f59e0b;
+.status-dot-a-vencer {
+  background: #3b82f6;
 }
 
 .status-dot-atrasadas {
   background: #ef4444;
+}
+
+.status-dot-canceladas {
+  background: #6b7280;
 }
 
 .status-total {

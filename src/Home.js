@@ -25,8 +25,8 @@ function Home() {
   // Recebimento vs Vencimento (últimos 3 meses)
   const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
 
-  // Distribuição de Status
-  const [distribuicaoStatus, setDistribuicaoStatus] = useState({ pagas: 0, pendentes: 0, atrasadas: 0 });
+  // Distribuição de Status - Saúde da Base
+  const [distribuicaoStatus, setDistribuicaoStatus] = useState({ emDia: 0, aVencer: 0, atrasadas: 0, canceladas: 0 });
 
   // Fila de WhatsApp
   const [filaWhatsapp, setFilaWhatsapp] = useState([]);
@@ -309,22 +309,25 @@ function Home() {
       // 10. Mensagens recentes
       setMensagensRecentes(mensagens || []);
 
-      // 11. Distribuição de Status
-      let pagas = 0;
-      let pendentes = 0;
-      let atrasadas = 0;
+      // 11. Distribuição de Status - Saúde da Base
+      let emDia = 0;          // Pagas
+      let aVencer = 0;        // Pendentes com vencimento >= hoje
+      let atrasadas = 0;      // Pendentes com vencimento < hoje
+      let canceladas = 0;     // Canceladas
 
       todasParcelas?.forEach(p => {
         if (p.status === 'pago') {
-          pagas++;
+          emDia++;
+        } else if (p.status === 'cancelado') {
+          canceladas++;
         } else if (p.status === 'pendente' && p.data_vencimento < hoje) {
           atrasadas++;
         } else if (p.status === 'pendente') {
-          pendentes++;
+          aVencer++;
         }
       });
 
-      setDistribuicaoStatus({ pagas, pendentes, atrasadas });
+      setDistribuicaoStatus({ emDia, aVencer, atrasadas, canceladas });
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -628,36 +631,36 @@ function Home() {
             <div className="status-item">
               <div className="status-bar-container">
                 <div
-                  className="status-bar status-bar-pagas"
+                  className="status-bar status-bar-em-dia"
                   style={{
-                    width: `${distribuicaoStatus.pagas > 0 ?
-                      (distribuicaoStatus.pagas / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
+                    width: `${distribuicaoStatus.emDia > 0 ?
+                      (distribuicaoStatus.emDia / (distribuicaoStatus.emDia + distribuicaoStatus.aVencer + distribuicaoStatus.atrasadas + distribuicaoStatus.canceladas) * 100) : 0}%`
                   }}
                 >
-                  <span className="status-count">{distribuicaoStatus.pagas}</span>
+                  <span className="status-count">{distribuicaoStatus.emDia}</span>
                 </div>
               </div>
               <div className="status-label">
-                <span className="status-dot status-dot-pagas"></span>
-                Pagas
+                <span className="status-dot status-dot-em-dia"></span>
+                Em dia
               </div>
             </div>
 
             <div className="status-item">
               <div className="status-bar-container">
                 <div
-                  className="status-bar status-bar-pendentes"
+                  className="status-bar status-bar-a-vencer"
                   style={{
-                    width: `${distribuicaoStatus.pendentes > 0 ?
-                      (distribuicaoStatus.pendentes / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
+                    width: `${distribuicaoStatus.aVencer > 0 ?
+                      (distribuicaoStatus.aVencer / (distribuicaoStatus.emDia + distribuicaoStatus.aVencer + distribuicaoStatus.atrasadas + distribuicaoStatus.canceladas) * 100) : 0}%`
                   }}
                 >
-                  <span className="status-count">{distribuicaoStatus.pendentes}</span>
+                  <span className="status-count">{distribuicaoStatus.aVencer}</span>
                 </div>
               </div>
               <div className="status-label">
-                <span className="status-dot status-dot-pendentes"></span>
-                Pendentes
+                <span className="status-dot status-dot-a-vencer"></span>
+                A vencer
               </div>
             </div>
 
@@ -667,7 +670,7 @@ function Home() {
                   className="status-bar status-bar-atrasadas"
                   style={{
                     width: `${distribuicaoStatus.atrasadas > 0 ?
-                      (distribuicaoStatus.atrasadas / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
+                      (distribuicaoStatus.atrasadas / (distribuicaoStatus.emDia + distribuicaoStatus.aVencer + distribuicaoStatus.atrasadas + distribuicaoStatus.canceladas) * 100) : 0}%`
                   }}
                 >
                   <span className="status-count">{distribuicaoStatus.atrasadas}</span>
@@ -679,8 +682,26 @@ function Home() {
               </div>
             </div>
 
+            <div className="status-item">
+              <div className="status-bar-container">
+                <div
+                  className="status-bar status-bar-canceladas"
+                  style={{
+                    width: `${distribuicaoStatus.canceladas > 0 ?
+                      (distribuicaoStatus.canceladas / (distribuicaoStatus.emDia + distribuicaoStatus.aVencer + distribuicaoStatus.atrasadas + distribuicaoStatus.canceladas) * 100) : 0}%`
+                  }}
+                >
+                  <span className="status-count">{distribuicaoStatus.canceladas}</span>
+                </div>
+              </div>
+              <div className="status-label">
+                <span className="status-dot status-dot-canceladas"></span>
+                Canceladas
+              </div>
+            </div>
+
             <div className="status-total">
-              Total: {distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas} mensalidades
+              Total: {distribuicaoStatus.emDia + distribuicaoStatus.aVencer + distribuicaoStatus.atrasadas + distribuicaoStatus.canceladas} mensalidades
             </div>
           </div>
         </div>
