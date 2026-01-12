@@ -480,6 +480,7 @@ function Home() {
           </div>
           <div className="card-body">
             <span className="card-value">{formatarMoeda(recebimentosMes)}</span>
+            <span className="card-subtitle">&nbsp;</span>
           </div>
           <div className="card-footer">
             <button className="btn-ver" onClick={() => navigate('/financeiro?status=pago')}>
@@ -500,6 +501,7 @@ function Home() {
             <span className="card-value" style={{ color: valorEmAtraso > 0 ? '#f44336' : '#4CAF50' }}>
               {formatarMoeda(valorEmAtraso)}
             </span>
+            <span className="card-subtitle">&nbsp;</span>
           </div>
           <div className="card-footer">
             <button className="btn-ver" onClick={() => navigate('/financeiro?status=atrasado')}>
