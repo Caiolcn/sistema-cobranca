@@ -24,6 +24,9 @@ function Home() {
   // Recebimento vs Vencimento (últimos 3 meses)
   const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
 
+  // Distribuição de Status
+  const [distribuicaoStatus, setDistribuicaoStatus] = useState({ pagas: 0, pendentes: 0, atrasadas: 0 });
+
   // Fila de WhatsApp
   const [filaWhatsapp, setFilaWhatsapp] = useState([]);
 
@@ -99,7 +102,8 @@ function Home() {
         { data: todosRecebidos },
         { data: todosVencidos },
         { data: fila },
-        { data: mensagens }
+        { data: mensagens },
+        { data: todasParcelas }
       ] = await Promise.all([
         // 0. Nome da empresa
         supabase
@@ -205,7 +209,13 @@ function Home() {
           `)
           .eq('user_id', user.id)
           .order('enviado_em', { ascending: false })
-          .limit(8)
+          .limit(8),
+
+        // 11. Todas as parcelas para distribuição de status
+        supabase
+          .from('parcelas')
+          .select('status, data_vencimento')
+          .eq('user_id', user.id)
       ]);
 
       // Processar resultados
@@ -279,6 +289,23 @@ function Home() {
 
       // 10. Mensagens recentes
       setMensagensRecentes(mensagens || []);
+
+      // 11. Distribuição de Status
+      let pagas = 0;
+      let pendentes = 0;
+      let atrasadas = 0;
+
+      todasParcelas?.forEach(p => {
+        if (p.status === 'pago') {
+          pagas++;
+        } else if (p.status === 'pendente' && p.data_vencimento < hoje) {
+          atrasadas++;
+        } else if (p.status === 'pendente') {
+          pendentes++;
+        }
+      });
+
+      setDistribuicaoStatus({ pagas, pendentes, atrasadas });
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -506,54 +533,124 @@ function Home() {
         </div>
       </div>
 
-      {/* Gráfico: Recebimento vs Vencimento (Últimos 3 meses) */}
-      <div className="home-section">
-        <div className="section-header">
-          <Icon icon="material-symbols:bar-chart" width="24" />
-          <h2>Recebimento vs Vencimento - Últimos 3 Meses</h2>
-        </div>
-        <div className="home-grafico-comparativo">
-          {graficoRecebimentoVsVencimento.map((item, index) => {
-            const maxValor = Math.max(item.recebido, item.vencido, 1);
-            const alturaRecebido = (item.recebido / maxValor) * 100;
-            const alturaVencido = (item.vencido / maxValor) * 100;
+      {/* Gráficos em 2 Colunas */}
+      <div className="home-two-columns">
+        {/* Gráfico: Recebimento vs Vencimento (Últimos 3 meses) */}
+        <div className="home-section">
+          <div className="section-header">
+            <Icon icon="material-symbols:bar-chart" width="24" />
+            <h2>Recebimento vs Vencimento</h2>
+          </div>
+          <div className="home-grafico-comparativo">
+            {graficoRecebimentoVsVencimento.map((item, index) => {
+              const maxValor = Math.max(item.recebido, item.vencido, 1);
+              const alturaRecebido = (item.recebido / maxValor) * 100;
+              const alturaVencido = (item.vencido / maxValor) * 100;
 
-            return (
-              <div key={index} className="grafico-mes-comparativo">
-                <div className="grafico-barras-duplas">
-                  <div className="grafico-coluna-dupla">
-                    <div className="grafico-barra-container">
-                      <div
-                        className="grafico-barra grafico-barra-recebido"
-                        style={{ height: `${alturaRecebido}%` }}
-                        title={`Recebido: ${formatarMoeda(item.recebido)}`}
-                      >
-                        {item.recebido > 0 && (
-                          <span className="grafico-valor-pequeno">{formatarMoeda(item.recebido)}</span>
-                        )}
+              return (
+                <div key={index} className="grafico-mes-comparativo">
+                  <div className="grafico-barras-duplas">
+                    <div className="grafico-coluna-dupla">
+                      <div className="grafico-barra-container">
+                        <div
+                          className="grafico-barra grafico-barra-recebido"
+                          style={{ height: `${alturaRecebido}%` }}
+                          title={`Recebido: ${formatarMoeda(item.recebido)}`}
+                        >
+                          {item.recebido > 0 && (
+                            <span className="grafico-valor-pequeno">{formatarMoeda(item.recebido)}</span>
+                          )}
+                        </div>
                       </div>
+                      <span className="grafico-sublabel">Recebido</span>
                     </div>
-                    <span className="grafico-sublabel">Recebido</span>
-                  </div>
-                  <div className="grafico-coluna-dupla">
-                    <div className="grafico-barra-container">
-                      <div
-                        className="grafico-barra grafico-barra-vencido"
-                        style={{ height: `${alturaVencido}%` }}
-                        title={`Vencido: ${formatarMoeda(item.vencido)}`}
-                      >
-                        {item.vencido > 0 && (
-                          <span className="grafico-valor-pequeno">{formatarMoeda(item.vencido)}</span>
-                        )}
+                    <div className="grafico-coluna-dupla">
+                      <div className="grafico-barra-container">
+                        <div
+                          className="grafico-barra grafico-barra-vencido"
+                          style={{ height: `${alturaVencido}%` }}
+                          title={`Vencido: ${formatarMoeda(item.vencido)}`}
+                        >
+                          {item.vencido > 0 && (
+                            <span className="grafico-valor-pequeno">{formatarMoeda(item.vencido)}</span>
+                          )}
+                        </div>
                       </div>
+                      <span className="grafico-sublabel">Vencido</span>
                     </div>
-                    <span className="grafico-sublabel">Vencido</span>
                   </div>
+                  <span className="grafico-label">{item.mes}</span>
                 </div>
-                <span className="grafico-label">{item.mes}</span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Gráfico: Distribuição de Status */}
+        <div className="home-section">
+          <div className="section-header">
+            <Icon icon="material-symbols:pie-chart" width="24" />
+            <h2>Distribuição de Parcelas</h2>
+          </div>
+          <div className="home-grafico-status">
+            <div className="status-item">
+              <div className="status-bar-container">
+                <div
+                  className="status-bar status-bar-pagas"
+                  style={{
+                    width: `${distribuicaoStatus.pagas > 0 ?
+                      (distribuicaoStatus.pagas / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
+                  }}
+                >
+                  <span className="status-count">{distribuicaoStatus.pagas}</span>
+                </div>
               </div>
-            );
-          })}
+              <div className="status-label">
+                <span className="status-dot status-dot-pagas"></span>
+                Pagas
+              </div>
+            </div>
+
+            <div className="status-item">
+              <div className="status-bar-container">
+                <div
+                  className="status-bar status-bar-pendentes"
+                  style={{
+                    width: `${distribuicaoStatus.pendentes > 0 ?
+                      (distribuicaoStatus.pendentes / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
+                  }}
+                >
+                  <span className="status-count">{distribuicaoStatus.pendentes}</span>
+                </div>
+              </div>
+              <div className="status-label">
+                <span className="status-dot status-dot-pendentes"></span>
+                Pendentes
+              </div>
+            </div>
+
+            <div className="status-item">
+              <div className="status-bar-container">
+                <div
+                  className="status-bar status-bar-atrasadas"
+                  style={{
+                    width: `${distribuicaoStatus.atrasadas > 0 ?
+                      (distribuicaoStatus.atrasadas / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
+                  }}
+                >
+                  <span className="status-count">{distribuicaoStatus.atrasadas}</span>
+                </div>
+              </div>
+              <div className="status-label">
+                <span className="status-dot status-dot-atrasadas"></span>
+                Atrasadas
+              </div>
+            </div>
+
+            <div className="status-total">
+              Total: {distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas} parcelas
+            </div>
+          </div>
         </div>
       </div>
 

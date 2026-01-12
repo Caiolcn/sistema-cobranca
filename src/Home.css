@@ -867,3 +867,97 @@
     font-size: 20px;
   }
 }
+
+/* Gráfico de Distribuição de Status */
+.home-grafico-status {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  min-height: 250px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-bar-container {
+  width: 100%;
+  height: 50px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.status-bar {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  transition: width 0.3s ease;
+  min-width: 60px;
+}
+
+.status-bar-pagas {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.status-bar-pendentes {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.status-bar-atrasadas {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.status-count {
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.status-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  padding-left: 4px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.status-dot-pagas {
+  background: #10b981;
+}
+
+.status-dot-pendentes {
+  background: #f59e0b;
+}
+
+.status-dot-atrasadas {
+  background: #ef4444;
+}
+
+.status-total {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
