@@ -20,6 +20,7 @@ function Home() {
   const [receitaProjetadaMes, setReceitaProjetadaMes] = useState(0);
   const [taxaCancelamento, setTaxaCancelamento] = useState(0);
   const [recebimentosUltimos7Dias, setRecebimentosUltimos7Dias] = useState(0);
+  const [mensalidadesVencer7Dias, setMensalidadesVencer7Dias] = useState(0);
 
   // Recebimento vs Vencimento (últimos 3 meses)
   const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
@@ -85,6 +86,10 @@ function Home() {
       seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
       const seteDiasAtrasStr = seteDiasAtras.toISOString().split('T')[0];
 
+      const seteDiasFrente = new Date();
+      seteDiasFrente.setDate(seteDiasFrente.getDate() + 7);
+      const seteDiasFrenteStr = seteDiasFrente.toISOString().split('T')[0];
+
       const tresMesesAtras = new Date();
       tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
       const tresMesesAtrasInicio = new Date(tresMesesAtras.getFullYear(), tresMesesAtras.getMonth(), 1).toISOString().split('T')[0];
@@ -103,7 +108,8 @@ function Home() {
         { data: todosVencidos },
         { data: fila },
         { data: mensagens },
-        { data: todasParcelas }
+        { data: todasParcelas },
+        { data: mensalidadesVencer7DiasList }
       ] = await Promise.all([
         // 0. Nome da empresa
         supabase
@@ -215,7 +221,16 @@ function Home() {
         supabase
           .from('mensalidades')
           .select('status, data_vencimento')
+          .eq('user_id', user.id),
+
+        // 12. Mensalidades a vencer nos próximos 7 dias
+        supabase
+          .from('mensalidades')
+          .select('valor')
           .eq('user_id', user.id)
+          .in('status', ['pendente', 'atrasado'])
+          .gte('data_vencimento', hoje)
+          .lte('data_vencimento', seteDiasFrenteStr)
       ]);
 
       // Processar resultados
@@ -254,7 +269,11 @@ function Home() {
       const recebido7Dias = pagamentos7Dias?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setRecebimentosUltimos7Dias(recebido7Dias);
 
-      // 8. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
+      // 8. Mensalidades a vencer 7 dias
+      const vencer7Dias = mensalidadesVencer7DiasList?.reduce((sum, m) => sum + parseFloat(m.valor || 0), 0) || 0;
+      setMensalidadesVencer7Dias(vencer7Dias);
+
+      // 9. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
       const recebidosPorMes = {};
       const vencidosPorMes = {};
 
@@ -517,6 +536,19 @@ function Home() {
             <span className={`card-status ${taxaCancelamento < 5 ? 'success' : taxaCancelamento < 10 ? 'warning' : 'danger'}`}>
               {taxaCancelamento < 5 ? 'Excelente' : taxaCancelamento < 10 ? 'Atenção' : 'Crítico'}
             </span>
+          </div>
+        </div>
+
+        <div className="home-card card-vencer-7-dias">
+          <div className="card-header">
+            <span className="card-label">Mensalidades a Vencer</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:calendar-clock" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value">{formatarMoeda(mensalidadesVencer7Dias)}</span>
+            <span className="card-subtitle">Próximos 7 dias</span>
           </div>
         </div>
 

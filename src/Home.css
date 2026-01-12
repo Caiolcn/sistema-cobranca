@@ -344,9 +344,15 @@
 /* Cards Secundários */
 .home-cards-secondary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 24px;
+}
+
+@media (max-width: 1400px) {
+  .home-cards-secondary {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 1024px) {
@@ -566,6 +572,11 @@
 .card-taxa-cancelamento .card-icon {
   background: #FFEBEE;
   color: #f44336;
+}
+
+.card-vencer-7-dias .card-icon {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #f59e0b;
 }
 
 .card-ultimos-7-dias .card-icon {
