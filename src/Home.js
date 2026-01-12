@@ -595,11 +595,6 @@ function Home() {
             <span className="card-value">{mensagensEnviadasAuto}</span>
             <span className="card-subtitle">Automáticas pelo sistema</span>
           </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('whatsapp')}>
-              Ver
-            </button>
-          </div>
         </div>
       </div>
 
