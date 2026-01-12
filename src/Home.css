@@ -961,3 +961,172 @@
   font-weight: 600;
   color: #333;
 }
+
+/* MRR Card */
+.home-mrr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px;
+  background: white;
+  border-radius: 12px;
+  min-height: 250px;
+}
+
+.mrr-value {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mrr-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mrr-amount {
+  font-size: 48px;
+  font-weight: 700;
+  color: #8867A1;
+  line-height: 1;
+}
+
+.mrr-comparison {
+  display: flex;
+  flex-direction: column;
+}
+
+.mrr-trend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mrr-trend-up {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.mrr-trend-down {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.mrr-trend-neutral {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.mrr-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.mrr-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mrr-detail-label {
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mrr-detail-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Taxa de Adimplência */
+.home-taxa-adimplencia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px;
+  background: white;
+  border-radius: 12px;
+  min-height: 250px;
+}
+
+.taxa-donut-container {
+  width: 200px;
+  height: 200px;
+}
+
+.taxa-donut {
+  width: 100%;
+  height: 100%;
+}
+
+.taxa-legenda {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.taxa-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f9fafb;
+}
+
+.taxa-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.taxa-dot-pagas {
+  background: #10b981;
+}
+
+.taxa-dot-pendentes {
+  background: #f59e0b;
+}
+
+.taxa-dot-atrasadas {
+  background: #ef4444;
+}
+
+.taxa-legenda-label {
+  flex: 1;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.taxa-legenda-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+}
+
+.taxa-legenda-total {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}

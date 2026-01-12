@@ -21,11 +21,12 @@ function Home() {
   const [taxaCancelamento, setTaxaCancelamento] = useState(0);
   const [recebimentosUltimos7Dias, setRecebimentosUltimos7Dias] = useState(0);
 
-  // Recebimento vs Vencimento (últimos 3 meses)
-  const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
+  // MRR - Monthly Recurring Revenue
+  const [mrr, setMrr] = useState(0);
+  const [mrrAnterior, setMrrAnterior] = useState(0);
 
-  // Distribuição de Status
-  const [distribuicaoStatus, setDistribuicaoStatus] = useState({ pagas: 0, pendentes: 0, atrasadas: 0 });
+  // Taxa de Adimplência (para gráfico de rosca)
+  const [taxaAdimplencia, setTaxaAdimplencia] = useState({ pagas: 0, pendentes: 0, atrasadas: 0 });
 
   // Fila de WhatsApp
   const [filaWhatsapp, setFilaWhatsapp] = useState([]);
@@ -85,11 +86,6 @@ function Home() {
       seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
       const seteDiasAtrasStr = seteDiasAtras.toISOString().split('T')[0];
 
-      const tresMesesAtras = new Date();
-      tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
-      const tresMesesAtrasInicio = new Date(tresMesesAtras.getFullYear(), tresMesesAtras.getMonth(), 1).toISOString().split('T')[0];
-      const mesAtualFim = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
-
       // OTIMIZAÇÃO: Executar TODAS as queries em paralelo com Promise.all
       const [
         { data: usuario },
@@ -99,11 +95,11 @@ function Home() {
         { data: mensalidadesPendenteMes },
         { data: todosClientes },
         { data: pagamentos7Dias },
-        { data: todosRecebidos },
-        { data: todosVencidos },
+        { data: mensalidadesAtivasMRR },
+        { data: mensalidadesAtivasMRRMesAnterior },
         { data: fila },
         { data: mensagens },
-        { data: todasParcelas }
+        { data: todasMensalidades }
       ] = await Promise.all([
         // 0. Nome da empresa
         supabase
@@ -161,22 +157,25 @@ function Home() {
           .gte('updated_at', `${seteDiasAtrasStr}T00:00:00`)
           .lte('updated_at', `${hoje}T23:59:59`),
 
-        // 7. Recebimentos últimos 3 meses
+        // 7. MRR - Mensalidades ativas do mês atual (is_mensalidade = true)
         supabase
           .from('mensalidades')
-          .select('valor, updated_at')
+          .select('valor')
           .eq('user_id', user.id)
-          .eq('status', 'pago')
-          .gte('updated_at', `${tresMesesAtrasInicio}T00:00:00`)
-          .lte('updated_at', `${mesAtualFim}T23:59:59`),
+          .eq('is_mensalidade', true)
+          .in('status', ['pendente', 'atrasado', 'pago'])
+          .gte('data_vencimento', inicio)
+          .lte('data_vencimento', fim),
 
-        // 8. Vencimentos últimos 3 meses
+        // 8. MRR mês anterior (para comparação de tendência)
         supabase
           .from('mensalidades')
-          .select('valor, data_vencimento')
+          .select('valor')
           .eq('user_id', user.id)
-          .gte('data_vencimento', tresMesesAtrasInicio)
-          .lte('data_vencimento', mesAtualFim),
+          .eq('is_mensalidade', true)
+          .in('status', ['pendente', 'atrasado', 'pago'])
+          .gte('data_vencimento', new Date(new Date(inicio).setMonth(new Date(inicio).getMonth() - 1)).toISOString().split('T')[0])
+          .lte('data_vencimento', new Date(new Date(inicio).setDate(0)).toISOString().split('T')[0]),
 
         // 9. Fila de WhatsApp
         supabase
@@ -254,35 +253,11 @@ function Home() {
       const recebido7Dias = pagamentos7Dias?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setRecebimentosUltimos7Dias(recebido7Dias);
 
-      // 8. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
-      const recebidosPorMes = {};
-      const vencidosPorMes = {};
-
-      todosRecebidos?.forEach(p => {
-        const mesAno = p.updated_at.substring(0, 7);
-        if (!recebidosPorMes[mesAno]) recebidosPorMes[mesAno] = 0;
-        recebidosPorMes[mesAno] += parseFloat(p.valor || 0);
-      });
-
-      todosVencidos?.forEach(p => {
-        const mesAno = p.data_vencimento.substring(0, 7);
-        if (!vencidosPorMes[mesAno]) vencidosPorMes[mesAno] = 0;
-        vencidosPorMes[mesAno] += parseFloat(p.valor || 0);
-      });
-
-      const graficoMeses = [];
-      for (let i = 2; i >= 0; i--) {
-        const mesData = new Date();
-        mesData.setMonth(mesData.getMonth() - i);
-        const mesAno = `${mesData.getFullYear()}-${String(mesData.getMonth() + 1).padStart(2, '0')}`;
-
-        graficoMeses.push({
-          mes: mesData.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-          recebido: recebidosPorMes[mesAno] || 0,
-          vencido: vencidosPorMes[mesAno] || 0
-        });
-      }
-      setGraficoRecebimentoVsVencimento(graficoMeses);
+      // 8. MRR - Monthly Recurring Revenue
+      const mrrAtual = mensalidadesAtivasMRR?.reduce((sum, m) => sum + parseFloat(m.valor || 0), 0) || 0;
+      const mrrMesPassado = mensalidadesAtivasMRRMesAnterior?.reduce((sum, m) => sum + parseFloat(m.valor || 0), 0) || 0;
+      setMrr(mrrAtual);
+      setMrrAnterior(mrrMesPassado);
 
       // 9. Fila de WhatsApp
       setFilaWhatsapp(fila || []);
@@ -290,22 +265,22 @@ function Home() {
       // 10. Mensagens recentes
       setMensagensRecentes(mensagens || []);
 
-      // 11. Distribuição de Status
+      // 11. Taxa de Adimplência (para gráfico de rosca)
       let pagas = 0;
       let pendentes = 0;
       let atrasadas = 0;
 
-      todasParcelas?.forEach(p => {
-        if (p.status === 'pago') {
+      todasMensalidades?.forEach(m => {
+        if (m.status === 'pago') {
           pagas++;
-        } else if (p.status === 'pendente' && p.data_vencimento < hoje) {
+        } else if (m.status === 'pendente' && m.data_vencimento < hoje) {
           atrasadas++;
-        } else if (p.status === 'pendente') {
+        } else if (m.status === 'pendente') {
           pendentes++;
         }
       });
 
-      setDistribuicaoStatus({ pagas, pendentes, atrasadas });
+      setTaxaAdimplencia({ pagas, pendentes, atrasadas });
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -535,120 +510,154 @@ function Home() {
 
       {/* Gráficos em 2 Colunas */}
       <div className="home-two-columns">
-        {/* Gráfico: Recebimento vs Vencimento (Últimos 3 meses) */}
+        {/* MRR - Monthly Recurring Revenue */}
         <div className="home-section">
           <div className="section-header">
-            <Icon icon="material-symbols:bar-chart" width="24" />
-            <h2>Recebimento vs Vencimento</h2>
+            <Icon icon="material-symbols:payments-outline" width="24" />
+            <h2>MRR - Receita Recorrente Mensal</h2>
           </div>
-          <div className="home-grafico-comparativo">
-            {graficoRecebimentoVsVencimento.map((item, index) => {
-              const maxValor = Math.max(item.recebido, item.vencido, 1);
-              const alturaRecebido = (item.recebido / maxValor) * 100;
-              const alturaVencido = (item.vencido / maxValor) * 100;
-
-              return (
-                <div key={index} className="grafico-mes-comparativo">
-                  <div className="grafico-barras-duplas">
-                    <div className="grafico-coluna-dupla">
-                      <div className="grafico-barra-container">
-                        <div
-                          className="grafico-barra grafico-barra-recebido"
-                          style={{ height: `${alturaRecebido}%` }}
-                          title={`Recebido: ${formatarMoeda(item.recebido)}`}
-                        >
-                          {item.recebido > 0 && (
-                            <span className="grafico-valor-pequeno">{formatarMoeda(item.recebido)}</span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="grafico-sublabel">Recebido</span>
+          <div className="home-mrr-card">
+            <div className="mrr-value">
+              <span className="mrr-label">Receita Mensal</span>
+              <span className="mrr-amount">{formatarMoeda(mrr)}</span>
+            </div>
+            <div className="mrr-comparison">
+              {mrrAnterior > 0 && (
+                <>
+                  {mrr > mrrAnterior && (
+                    <div className="mrr-trend mrr-trend-up">
+                      <Icon icon="material-symbols:trending-up" width="24" />
+                      <span>+{((mrr - mrrAnterior) / mrrAnterior * 100).toFixed(1)}% vs mês anterior</span>
                     </div>
-                    <div className="grafico-coluna-dupla">
-                      <div className="grafico-barra-container">
-                        <div
-                          className="grafico-barra grafico-barra-vencido"
-                          style={{ height: `${alturaVencido}%` }}
-                          title={`Vencido: ${formatarMoeda(item.vencido)}`}
-                        >
-                          {item.vencido > 0 && (
-                            <span className="grafico-valor-pequeno">{formatarMoeda(item.vencido)}</span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="grafico-sublabel">Vencido</span>
+                  )}
+                  {mrr < mrrAnterior && (
+                    <div className="mrr-trend mrr-trend-down">
+                      <Icon icon="material-symbols:trending-down" width="24" />
+                      <span>{((mrr - mrrAnterior) / mrrAnterior * 100).toFixed(1)}% vs mês anterior</span>
                     </div>
-                  </div>
-                  <span className="grafico-label">{item.mes}</span>
-                </div>
-              );
-            })}
+                  )}
+                  {mrr === mrrAnterior && (
+                    <div className="mrr-trend mrr-trend-neutral">
+                      <Icon icon="material-symbols:trending-flat" width="24" />
+                      <span>Mantido vs mês anterior</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="mrr-details">
+              <div className="mrr-detail-item">
+                <span className="mrr-detail-label">Mês Anterior</span>
+                <span className="mrr-detail-value">{formatarMoeda(mrrAnterior)}</span>
+              </div>
+              <div className="mrr-detail-item">
+                <span className="mrr-detail-label">Diferença</span>
+                <span className="mrr-detail-value">{formatarMoeda(Math.abs(mrr - mrrAnterior))}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Gráfico: Distribuição de Status */}
+        {/* Taxa de Adimplência */}
         <div className="home-section">
           <div className="section-header">
             <Icon icon="material-symbols:pie-chart" width="24" />
-            <h2>Distribuição de Parcelas</h2>
+            <h2>Taxa de Adimplência</h2>
           </div>
-          <div className="home-grafico-status">
-            <div className="status-item">
-              <div className="status-bar-container">
-                <div
-                  className="status-bar status-bar-pagas"
-                  style={{
-                    width: `${distribuicaoStatus.pagas > 0 ?
-                      (distribuicaoStatus.pagas / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
-                  }}
-                >
-                  <span className="status-count">{distribuicaoStatus.pagas}</span>
-                </div>
-              </div>
-              <div className="status-label">
-                <span className="status-dot status-dot-pagas"></span>
-                Pagas
-              </div>
+          <div className="home-taxa-adimplencia">
+            {/* Gráfico de Rosca */}
+            <div className="taxa-donut-container">
+              <svg viewBox="0 0 200 200" className="taxa-donut">
+                {(() => {
+                  const total = taxaAdimplencia.pagas + taxaAdimplencia.pendentes + taxaAdimplencia.atrasadas;
+                  if (total === 0) return null;
+
+                  const circumference = 2 * Math.PI * 70;
+                  const pagasPercent = (taxaAdimplencia.pagas / total) * 100;
+                  const pendentesPercent = (taxaAdimplencia.pendentes / total) * 100;
+                  const atrasadasPercent = (taxaAdimplencia.atrasadas / total) * 100;
+
+                  const pagasOffset = 0;
+                  const pendentesOffset = (pagasPercent / 100) * circumference;
+                  const atrasadasOffset = pendentesOffset + (pendentesPercent / 100) * circumference;
+
+                  return (
+                    <>
+                      {/* Círculo Pagas */}
+                      {taxaAdimplencia.pagas > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r="70"
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="40"
+                          strokeDasharray={`${(pagasPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-pagasOffset}
+                          transform="rotate(-90 100 100)"
+                        />
+                      )}
+                      {/* Círculo Pendentes */}
+                      {taxaAdimplencia.pendentes > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r="70"
+                          fill="none"
+                          stroke="#f59e0b"
+                          strokeWidth="40"
+                          strokeDasharray={`${(pendentesPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-pendentesOffset}
+                          transform="rotate(-90 100 100)"
+                        />
+                      )}
+                      {/* Círculo Atrasadas */}
+                      {taxaAdimplencia.atrasadas > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r="70"
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth="40"
+                          strokeDasharray={`${(atrasadasPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-atrasadasOffset}
+                          transform="rotate(-90 100 100)"
+                        />
+                      )}
+                      {/* Texto central */}
+                      <text x="100" y="95" textAnchor="middle" fontSize="32" fontWeight="bold" fill="#333">
+                        {pagasPercent.toFixed(0)}%
+                      </text>
+                      <text x="100" y="115" textAnchor="middle" fontSize="14" fill="#666">
+                        Adimplência
+                      </text>
+                    </>
+                  );
+                })()}
+              </svg>
             </div>
 
-            <div className="status-item">
-              <div className="status-bar-container">
-                <div
-                  className="status-bar status-bar-pendentes"
-                  style={{
-                    width: `${distribuicaoStatus.pendentes > 0 ?
-                      (distribuicaoStatus.pendentes / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
-                  }}
-                >
-                  <span className="status-count">{distribuicaoStatus.pendentes}</span>
-                </div>
+            {/* Legenda */}
+            <div className="taxa-legenda">
+              <div className="taxa-legenda-item">
+                <span className="taxa-dot taxa-dot-pagas"></span>
+                <span className="taxa-legenda-label">Pagas</span>
+                <span className="taxa-legenda-value">{taxaAdimplencia.pagas}</span>
               </div>
-              <div className="status-label">
-                <span className="status-dot status-dot-pendentes"></span>
-                Pendentes
+              <div className="taxa-legenda-item">
+                <span className="taxa-dot taxa-dot-pendentes"></span>
+                <span className="taxa-legenda-label">Pendentes</span>
+                <span className="taxa-legenda-value">{taxaAdimplencia.pendentes}</span>
               </div>
-            </div>
-
-            <div className="status-item">
-              <div className="status-bar-container">
-                <div
-                  className="status-bar status-bar-atrasadas"
-                  style={{
-                    width: `${distribuicaoStatus.atrasadas > 0 ?
-                      (distribuicaoStatus.atrasadas / (distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas) * 100) : 0}%`
-                  }}
-                >
-                  <span className="status-count">{distribuicaoStatus.atrasadas}</span>
-                </div>
+              <div className="taxa-legenda-item">
+                <span className="taxa-dot taxa-dot-atrasadas"></span>
+                <span className="taxa-legenda-label">Atrasadas</span>
+                <span className="taxa-legenda-value">{taxaAdimplencia.atrasadas}</span>
               </div>
-              <div className="status-label">
-                <span className="status-dot status-dot-atrasadas"></span>
-                Atrasadas
+              <div className="taxa-legenda-total">
+                <span>Total: {taxaAdimplencia.pagas + taxaAdimplencia.pendentes + taxaAdimplencia.atrasadas} mensalidades</span>
               </div>
-            </div>
-
-            <div className="status-total">
-              Total: {distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas} mensalidades
             </div>
           </div>
         </div>
