@@ -64,13 +64,13 @@ export const formatarMoedaExport = (valor) => {
  */
 export const exportarClientes = (clientes) => {
   const dados = clientes.map(cliente => ({
-    'Nome': cliente.nome,
-    'Telefone': cliente.telefone,
-    'Email': cliente.email || '',
+    'Nome': cliente.nome || '',
+    'Telefone': cliente.telefone || '',
+    'CPF': cliente.cpf || '',
     'Plano': cliente.plano_nome || 'Sem plano',
-    'Valor Plano': formatarMoedaExport(cliente.plano_valor),
-    'Status': cliente.status,
+    'Status': cliente.status || '',
     'Assinatura Ativa': cliente.assinatura_ativa ? 'Sim' : 'Não',
+    'Próxima Mensalidade': cliente.proxima_mensalidade ? formatarDataExport(cliente.proxima_mensalidade) : '',
     'Data Cadastro': formatarDataExport(cliente.created_at)
   }));
 
