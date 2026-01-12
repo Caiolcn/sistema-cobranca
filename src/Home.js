@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
 import DateRangePicker from './DateRangePicker';
 import whatsappService from './services/whatsappService';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './Home.css';
 
 function Home() {
@@ -576,137 +577,58 @@ function Home() {
             <Icon icon="material-symbols:show-chart" width="24" />
             <h2>Recebimento vs Vencimento</h2>
           </div>
-          <div className="home-grafico-linhas">
-            {(() => {
-              if (graficoRecebimentoVsVencimento.length === 0) {
-                return <div className="empty-state">Sem dados para exibir</div>;
-              }
-
-              const maxValor = Math.max(
-                ...graficoRecebimentoVsVencimento.map(m => Math.max(m.recebido, m.vencido)),
-                1
-              );
-              const width = 600;
-              const height = 250;
-              const padding = { top: 20, right: 20, bottom: 40, left: 60 };
-              const chartWidth = width - padding.left - padding.right;
-              const chartHeight = height - padding.top - padding.bottom;
-
-              const getX = (index) => padding.left + (index / (graficoRecebimentoVsVencimento.length - 1)) * chartWidth;
-              const getY = (valor) => padding.top + chartHeight - (valor / maxValor) * chartHeight;
-
-              const pontosRecebido = graficoRecebimentoVsVencimento.map((item, i) =>
-                `${getX(i)},${getY(item.recebido)}`
-              ).join(' ');
-
-              const pontosVencido = graficoRecebimentoVsVencimento.map((item, i) =>
-                `${getX(i)},${getY(item.vencido)}`
-              ).join(' ');
-
-              return (
-                <svg viewBox={`0 0 ${width} ${height}`} className="line-chart">
-                  {/* Grid horizontal */}
-                  {[0, 0.25, 0.5, 0.75, 1].map((percent, i) => (
-                    <g key={i}>
-                      <line
-                        x1={padding.left}
-                        y1={padding.top + chartHeight * (1 - percent)}
-                        x2={width - padding.right}
-                        y2={padding.top + chartHeight * (1 - percent)}
-                        stroke="#e5e7eb"
-                        strokeWidth="1"
-                      />
-                      <text
-                        x={padding.left - 10}
-                        y={padding.top + chartHeight * (1 - percent) + 4}
-                        textAnchor="end"
-                        fontSize="11"
-                        fill="#666"
-                      >
-                        {formatarMoeda(maxValor * percent)}
-                      </text>
-                    </g>
-                  ))}
-
-                  {/* Linha Recebido */}
-                  <polyline
-                    points={pontosRecebido}
-                    fill="none"
+          <div className="home-grafico-recharts">
+            {graficoRecebimentoVsVencimento.length === 0 ? (
+              <div className="empty-state">Sem dados para exibir</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={graficoRecebimentoVsVencimento} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="mes"
+                    tick={{ fill: '#666', fontSize: 12 }}
+                    stroke="#d1d5db"
+                  />
+                  <YAxis
+                    tick={{ fill: '#666', fontSize: 12 }}
+                    stroke="#d1d5db"
+                    tickFormatter={(value) => formatarMoeda(value)}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}
+                    formatter={(value) => formatarMoeda(value)}
+                    labelStyle={{ color: '#333', fontWeight: 600 }}
+                  />
+                  <Legend
+                    wrapperStyle={{ paddingTop: '10px' }}
+                    iconType="circle"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="recebido"
                     stroke="#10b981"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    dot={{ fill: '#10b981', r: 5 }}
+                    activeDot={{ r: 7 }}
+                    name="Recebido"
                   />
-
-                  {/* Linha Vencido */}
-                  <polyline
-                    points={pontosVencido}
-                    fill="none"
+                  <Line
+                    type="monotone"
+                    dataKey="vencido"
                     stroke="#f59e0b"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    dot={{ fill: '#f59e0b', r: 5 }}
+                    activeDot={{ r: 7 }}
+                    name="Vencido"
                   />
-
-                  {/* Pontos Recebido */}
-                  {graficoRecebimentoVsVencimento.map((item, i) => (
-                    <circle
-                      key={`rec-${i}`}
-                      cx={getX(i)}
-                      cy={getY(item.recebido)}
-                      r="5"
-                      fill="#10b981"
-                      stroke="white"
-                      strokeWidth="2"
-                    >
-                      <title>Recebido: {formatarMoeda(item.recebido)}</title>
-                    </circle>
-                  ))}
-
-                  {/* Pontos Vencido */}
-                  {graficoRecebimentoVsVencimento.map((item, i) => (
-                    <circle
-                      key={`ven-${i}`}
-                      cx={getX(i)}
-                      cy={getY(item.vencido)}
-                      r="5"
-                      fill="#f59e0b"
-                      stroke="white"
-                      strokeWidth="2"
-                    >
-                      <title>Vencido: {formatarMoeda(item.vencido)}</title>
-                    </circle>
-                  ))}
-
-                  {/* Labels dos meses */}
-                  {graficoRecebimentoVsVencimento.map((item, i) => (
-                    <text
-                      key={`label-${i}`}
-                      x={getX(i)}
-                      y={height - 10}
-                      textAnchor="middle"
-                      fontSize="12"
-                      fill="#666"
-                      fontWeight="500"
-                    >
-                      {item.mes}
-                    </text>
-                  ))}
-                </svg>
-              );
-            })()}
-
-            {/* Legenda */}
-            <div className="chart-legend">
-              <div className="legend-item">
-                <span className="legend-dot" style={{ background: '#10b981' }}></span>
-                <span>Recebido</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-dot" style={{ background: '#f59e0b' }}></span>
-                <span>Vencido</span>
-              </div>
-            </div>
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -716,7 +638,7 @@ function Home() {
             <Icon icon="material-symbols:pie-chart" width="24" />
             <h2>Status das Mensalidades</h2>
           </div>
-          <div className="home-grafico-donut">
+          <div className="home-grafico-recharts">
             {(() => {
               const total = (distribuicaoStatus.emDia || 0) + (distribuicaoStatus.aVencer || 0) +
                            (distribuicaoStatus.atrasadas || 0) + (distribuicaoStatus.canceladas || 0);
@@ -730,100 +652,71 @@ function Home() {
               }
 
               const dados = [
-                { label: 'Em dia', valor: distribuicaoStatus.emDia || 0, cor: '#10b981' },
-                { label: 'A vencer', valor: distribuicaoStatus.aVencer || 0, cor: '#3b82f6' },
-                { label: 'Atrasadas', valor: distribuicaoStatus.atrasadas || 0, cor: '#ef4444' },
-                { label: 'Canceladas', valor: distribuicaoStatus.canceladas || 0, cor: '#6b7280' }
-              ].filter(d => d.valor > 0);
+                { name: 'Em dia', value: distribuicaoStatus.emDia || 0, color: '#10b981' },
+                { name: 'A vencer', value: distribuicaoStatus.aVencer || 0, color: '#3b82f6' },
+                { name: 'Atrasadas', value: distribuicaoStatus.atrasadas || 0, color: '#ef4444' },
+                { name: 'Canceladas', value: distribuicaoStatus.canceladas || 0, color: '#6b7280' }
+              ].filter(d => d.value > 0);
 
-              const size = 200;
-              const centerX = size / 2;
-              const centerY = size / 2;
-              const radius = 80;
-              const innerRadius = 50;
+              const COLORS = dados.map(d => d.color);
 
-              let currentAngle = -90;
-              const segmentos = dados.map(item => {
-                const percent = item.valor / total;
-                const angle = percent * 360;
-                const startAngle = currentAngle;
-                const endAngle = currentAngle + angle;
-                currentAngle = endAngle;
+              const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
 
-                const startRad = (startAngle * Math.PI) / 180;
-                const endRad = (endAngle * Math.PI) / 180;
+                if (percent < 0.05) return null; // Não mostrar label para segmentos muito pequenos
 
-                const x1 = centerX + radius * Math.cos(startRad);
-                const y1 = centerY + radius * Math.sin(startRad);
-                const x2 = centerX + radius * Math.cos(endRad);
-                const y2 = centerY + radius * Math.sin(endRad);
-                const x3 = centerX + innerRadius * Math.cos(endRad);
-                const y3 = centerY + innerRadius * Math.sin(endRad);
-                const x4 = centerX + innerRadius * Math.cos(startRad);
-                const y4 = centerY + innerRadius * Math.sin(startRad);
-
-                const largeArc = angle > 180 ? 1 : 0;
-
-                const path = [
-                  `M ${x1} ${y1}`,
-                  `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
-                  `L ${x3} ${y3}`,
-                  `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
-                  'Z'
-                ].join(' ');
-
-                return { ...item, path, percent: (percent * 100).toFixed(1) };
-              });
+                return (
+                  <text
+                    x={x}
+                    y={y}
+                    fill="white"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize="12"
+                    fontWeight="600"
+                  >
+                    {`${(percent * 100).toFixed(0)}%`}
+                  </text>
+                );
+              };
 
               return (
-                <>
-                  <svg viewBox={`0 0 ${size} ${size}`} className="donut-chart">
-                    {segmentos.map((seg, i) => (
-                      <path
-                        key={i}
-                        d={seg.path}
-                        fill={seg.cor}
-                        stroke="white"
-                        strokeWidth="2"
-                      >
-                        <title>{seg.label}: {seg.valor} ({seg.percent}%)</title>
-                      </path>
-                    ))}
-
-                    {/* Centro com total */}
-                    <text
-                      x={centerX}
-                      y={centerY - 5}
-                      textAnchor="middle"
-                      fontSize="28"
-                      fontWeight="700"
-                      fill="#333"
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={dados}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={renderCustomLabel}
+                      outerRadius={100}
+                      innerRadius={60}
+                      fill="#8884d8"
+                      dataKey="value"
+                      paddingAngle={2}
                     >
-                      {total}
-                    </text>
-                    <text
-                      x={centerX}
-                      y={centerY + 15}
-                      textAnchor="middle"
-                      fontSize="12"
-                      fill="#666"
-                    >
-                      Total
-                    </text>
-                  </svg>
-
-                  {/* Legenda */}
-                  <div className="donut-legend">
-                    {dados.map((item, i) => (
-                      <div key={i} className="legend-item-donut">
-                        <span className="legend-dot" style={{ background: item.cor }}></span>
-                        <span className="legend-text">
-                          {item.label}: <strong>{item.valor}</strong>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                      {dados.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}
+                      formatter={(value, name) => [`${value} mensalidades`, name]}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="circle"
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               );
             })()}
           </div>
