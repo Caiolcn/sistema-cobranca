@@ -14,14 +14,15 @@ function Home() {
   const [periodo, setPeriodo] = useState('mes_atual');
 
   // Dashboard focado em Mensalidades
-  const [mensalidadesAtivas, setMensalidadesAtivas] = useState(0);
+  const [mrr, setMrr] = useState(0);
+  const [assinaturasAtivas, setAssinaturasAtivas] = useState(0);
   const [recebimentosMes, setRecebimentosMes] = useState(0);
   const [valorEmAtraso, setValorEmAtraso] = useState(0);
   const [clientesInadimplentes, setClientesInadimplentes] = useState(0);
   const [receitaProjetadaMes, setReceitaProjetadaMes] = useState(0);
   const [taxaCancelamento, setTaxaCancelamento] = useState(0);
-  const [recebimentosUltimos7Dias, setRecebimentosUltimos7Dias] = useState(0);
   const [mensalidadesVencer7Dias, setMensalidadesVencer7Dias] = useState(0);
+  const [mensagensEnviadasAuto, setMensagensEnviadasAuto] = useState(0);
 
   // Recebimento vs Vencimento (últimos 3 meses)
   const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
@@ -83,10 +84,6 @@ function Home() {
       const hoje = new Date().toISOString().split('T')[0];
 
       // Calcular datas para queries
-      const seteDiasAtras = new Date();
-      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-      const seteDiasAtrasStr = seteDiasAtras.toISOString().split('T')[0];
-
       const seteDiasFrente = new Date();
       seteDiasFrente.setDate(seteDiasFrente.getDate() + 7);
       const seteDiasFrenteStr = seteDiasFrente.toISOString().split('T')[0];
@@ -104,13 +101,14 @@ function Home() {
         { data: mensalidadesAtrasadas },
         { data: mensalidadesPendenteMes },
         { data: todosClientes },
-        { data: pagamentos7Dias },
         { data: todosRecebidos },
         { data: todosVencidos },
         { data: fila },
         { data: mensagens },
         { data: todasParcelas },
-        { data: mensalidadesVencer7DiasList }
+        { data: mensalidadesVencer7DiasList },
+        { data: mensagensAutomaticas },
+        { data: assinaturasAtivasList }
       ] = await Promise.all([
         // 0. Nome da empresa
         supabase
@@ -159,16 +157,7 @@ function Home() {
           .select('id')
           .eq('user_id', user.id),
 
-        // 6. Pagamentos últimos 7 dias
-        supabase
-          .from('mensalidades')
-          .select('valor')
-          .eq('user_id', user.id)
-          .eq('status', 'pago')
-          .gte('updated_at', `${seteDiasAtrasStr}T00:00:00`)
-          .lte('updated_at', `${hoje}T23:59:59`),
-
-        // 7. Recebimentos últimos 3 meses
+        // 6. Recebimentos últimos 3 meses
         supabase
           .from('mensalidades')
           .select('valor, updated_at')
@@ -231,7 +220,26 @@ function Home() {
           .eq('user_id', user.id)
           .in('status', ['pendente', 'atrasado'])
           .gte('data_vencimento', hoje)
-          .lte('data_vencimento', seteDiasFrenteStr)
+          .lte('data_vencimento', seteDiasFrenteStr),
+
+        // 13. Mensagens enviadas automaticamente
+        supabase
+          .from('logs_mensagens')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'enviado'),
+
+        // 14. Assinaturas ativas com planos para calcular MRR
+        supabase
+          .from('devedores')
+          .select(`
+            id,
+            assinatura_ativa,
+            plano:planos(valor)
+          `)
+          .eq('user_id', user.id)
+          .eq('assinatura_ativa', true)
+          .not('plano_id', 'is', null)
       ]);
 
       // Processar resultados
@@ -239,42 +247,46 @@ function Home() {
         setNomeEmpresa(usuario.nome_fantasia || usuario.razao_social || usuario.nome_completo || 'Empresa');
       }
 
-      // 1. Mensalidades ativas
-      const mensalidadesAtivasCount = new Set(mensalidadesAtivasList?.map(p => p.devedor_id)).size;
-      setMensalidadesAtivas(mensalidadesAtivasCount);
-
-      // 2. Recebimentos do mês
+      // 1. Recebimentos do mês
       const recebidoMes = mensalidadesPagasMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setRecebimentosMes(recebidoMes);
 
-      // 3. Valor em atraso
+      // 2. Valor em atraso
       const valorAtraso = mensalidadesAtrasadas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setValorEmAtraso(valorAtraso);
 
-      // 4. Clientes inadimplentes
+      // 3. Clientes inadimplentes
       const clientesInad = new Set(mensalidadesAtrasadas?.map(p => p.devedor_id)).size;
       setClientesInadimplentes(clientesInad);
 
-      // 5. Receita projetada
+      // 4. Receita projetada
       const aReceberMes = mensalidadesPendenteMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setReceitaProjetadaMes(recebidoMes + aReceberMes);
 
-      // 6. Taxa de cancelamento
+      // 5. Taxa de cancelamento
       const totalClientesGeral = todosClientes?.length || 0;
       const clientesComMensalidade = new Set(mensalidadesAtivasList?.map(p => p.devedor_id));
       const clientesCancelados = totalClientesGeral - clientesComMensalidade.size;
       const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
       setTaxaCancelamento(taxaCancel);
 
-      // 7. Recebimentos últimos 7 dias
-      const recebido7Dias = pagamentos7Dias?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-      setRecebimentosUltimos7Dias(recebido7Dias);
-
-      // 8. Mensalidades a vencer 7 dias
+      // 6. Mensalidades a vencer 7 dias
       const vencer7Dias = mensalidadesVencer7DiasList?.reduce((sum, m) => sum + parseFloat(m.valor || 0), 0) || 0;
       setMensalidadesVencer7Dias(vencer7Dias);
 
-      // 9. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
+      // 8. Mensagens enviadas automaticamente
+      const totalMensagensAuto = mensagensAutomaticas?.count || 0;
+      setMensagensEnviadasAuto(totalMensagensAuto);
+
+      // 9. Calcular MRR (Receita Mensal Recorrente)
+      const ativas = assinaturasAtivasList?.length || 0;
+      const mrrCalculado = assinaturasAtivasList?.reduce((sum, assin) => {
+        return sum + (parseFloat(assin.plano?.valor) || 0);
+      }, 0) || 0;
+      setAssinaturasAtivas(ativas);
+      setMrr(mrrCalculado);
+
+      // 10. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
       const recebidosPorMes = {};
       const vencidosPorMes = {};
 
@@ -439,24 +451,26 @@ function Home() {
 
       {/* Cards Principais - Linha 1 */}
       <div className="home-cards-grid">
-        <div className="home-card card-mensalidades-ativas">
+        {/* 1. MRR (Receita Mensal Recorrente) */}
+        <div className="home-card card-mrr">
           <div className="card-header">
-            <span className="card-label">Mensalidades Ativas</span>
+            <span className="card-label">Receita Mensal Recorrente</span>
             <div className="card-icon">
-              <Icon icon="material-symbols:check-circle-outline" width="20" />
+              <Icon icon="material-symbols:trending-up" width="20" />
             </div>
           </div>
           <div className="card-body">
-            <span className="card-value">{mensalidadesAtivas}</span>
-            <span className="card-subtitle">Assinantes ativos</span>
+            <span className="card-value">{formatarMoeda(mrr)}</span>
+            <span className="card-subtitle">{assinaturasAtivas} assinaturas ativas</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('clientes')}>
+            <button className="btn-ver" onClick={() => navigate('/clientes?status=ativo')}>
               Ver
             </button>
           </div>
         </div>
 
+        {/* 2. Recebimentos do Mês */}
         <div className="home-card card-recebimentos">
           <div className="card-header">
             <span className="card-label">Recebimentos do Mês</span>
@@ -468,12 +482,13 @@ function Home() {
             <span className="card-value">{formatarMoeda(recebimentosMes)}</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('financeiro')}>
+            <button className="btn-ver" onClick={() => navigate('/financeiro?status=pago')}>
               Ver
             </button>
           </div>
         </div>
 
+        {/* 3. Valor em Atraso */}
         <div className="home-card card-atraso">
           <div className="card-header">
             <span className="card-label">Valor em Atraso</span>
@@ -487,45 +502,13 @@ function Home() {
             </span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('financeiro')}>
+            <button className="btn-ver" onClick={() => navigate('/financeiro?status=atrasado')}>
               Ver
             </button>
           </div>
         </div>
 
-        <div className="home-card card-inadimplentes">
-          <div className="card-header">
-            <span className="card-label">Clientes Inadimplentes</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:person-alert-outline" width="20" />
-            </div>
-          </div>
-          <div className="card-body">
-            <span className="card-value">{clientesInadimplentes}</span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('clientes')}>
-              Ver
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Cards Secundários - Linha 2 */}
-      <div className="home-cards-secondary">
-        <div className="home-card card-receita-projetada">
-          <div className="card-header">
-            <span className="card-label">Receita Projetada do Mês</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:analytics-outline" width="20" />
-            </div>
-          </div>
-          <div className="card-body">
-            <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
-            <span className="card-subtitle">Recebido + A receber</span>
-          </div>
-        </div>
-
+        {/* 4. Taxa de Cancelamento */}
         <div className="home-card card-taxa-cancelamento">
           <div className="card-header">
             <span className="card-label">Taxa de Cancelamento</span>
@@ -541,8 +524,31 @@ function Home() {
               {taxaCancelamento < 5 ? 'Excelente' : taxaCancelamento < 10 ? 'Atenção' : 'Crítico'}
             </span>
           </div>
+          <div className="card-footer">
+            <button className="btn-ver" onClick={() => navigate('/clientes?assinatura=desativada')}>
+              Ver
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Cards Secundários - Linha 2 */}
+      <div className="home-cards-secondary">
+        {/* 1. Receita Projetada do Mês */}
+        <div className="home-card card-receita-projetada">
+          <div className="card-header">
+            <span className="card-label">Receita Projetada do Mês</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:analytics-outline" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
+            <span className="card-subtitle">Recebido + A receber</span>
+          </div>
         </div>
 
+        {/* 2. Mensalidades a Vencer */}
         <div className="home-card card-vencer-7-dias">
           <div className="card-header">
             <span className="card-label">Mensalidades a Vencer</span>
@@ -556,15 +562,41 @@ function Home() {
           </div>
         </div>
 
-        <div className="home-card card-ultimos-7-dias">
+        {/* 3. Clientes Inadimplentes */}
+        <div className="home-card card-inadimplentes">
           <div className="card-header">
-            <span className="card-label">Recebimentos Últimos 7 Dias</span>
+            <span className="card-label">Clientes Inadimplentes</span>
             <div className="card-icon">
-              <Icon icon="material-symbols:trending-up" width="20" />
+              <Icon icon="material-symbols:person-alert-outline" width="20" />
             </div>
           </div>
           <div className="card-body">
-            <span className="card-value">{formatarMoeda(recebimentosUltimos7Dias)}</span>
+            <span className="card-value">{clientesInadimplentes}</span>
+            <span className="card-subtitle">Com mensalidades atrasadas</span>
+          </div>
+          <div className="card-footer">
+            <button className="btn-ver" onClick={() => navigate('/clientes?inadimplente=true')}>
+              Ver
+            </button>
+          </div>
+        </div>
+
+        {/* 4. Mensagens Enviadas Automaticamente */}
+        <div className="home-card card-mensagens-auto">
+          <div className="card-header">
+            <span className="card-label">Mensagens Enviadas</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:send-outline" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value">{mensagensEnviadasAuto}</span>
+            <span className="card-subtitle">Automáticas pelo sistema</span>
+          </div>
+          <div className="card-footer">
+            <button className="btn-ver" onClick={() => navigate('whatsapp')}>
+              Ver
+            </button>
           </div>
         </div>
       </div>

@@ -341,6 +341,11 @@
   color: #7B1FA2;
 }
 
+.card-mensagens-auto .card-icon {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0284c7;
+}
+
 /* Cards Secundários */
 .home-cards-secondary {
   display: grid;
@@ -554,9 +559,9 @@
 }
 
 /* Cores específicas dos novos cards */
-.card-mensalidades-ativas .card-icon {
-  background: #E8F5E9;
-  color: #4CAF50;
+.card-mrr .card-icon {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #16a34a;
 }
 
 .card-recebimentos .card-icon {

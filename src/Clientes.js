@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 
 export default function Clientes() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
   const [loading, setLoading] = useState(true)
@@ -15,6 +17,12 @@ export default function Clientes() {
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
   const [busca, setBusca] = useState('')
+
+  // Filtros
+  const [filtroStatus, setFiltroStatus] = useState(searchParams.get('status') || 'todos')
+  const [filtroPlano, setFiltroPlano] = useState(searchParams.get('plano') || 'todos')
+  const [filtroAssinatura, setFiltroAssinatura] = useState(searchParams.get('assinatura') || 'todos')
+  const [filtroInadimplente, setFiltroInadimplente] = useState(searchParams.get('inadimplente') === 'true')
   const [confirmDelete, setConfirmDelete] = useState({ show: false, cliente: null })
   const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(false)
   const [novoClienteNome, setNovoClienteNome] = useState('')
@@ -36,18 +44,51 @@ export default function Clientes() {
   }, [])
 
   useEffect(() => {
-    // Filtrar clientes quando a busca mudar
-    if (busca.trim() === '') {
-      setClientesFiltrados(clientes)
-    } else {
+    // Filtrar clientes quando busca ou filtros mudarem
+    let filtrados = [...clientes]
+
+    // Filtro de busca por nome ou telefone
+    if (busca.trim() !== '') {
       const termo = busca.toLowerCase()
-      const filtrados = clientes.filter(cliente =>
+      filtrados = filtrados.filter(cliente =>
         cliente.nome.toLowerCase().includes(termo) ||
         cliente.telefone.toLowerCase().includes(termo)
       )
-      setClientesFiltrados(filtrados)
     }
-  }, [busca, clientes])
+
+    // Filtro de Status (baseado em mensalidades)
+    if (filtroStatus !== 'todos') {
+      filtrados = filtrados.filter(cliente => {
+        if (filtroStatus === 'ativo') {
+          return cliente.status === 'Em dia' || cliente.status === 'A vencer'
+        } else if (filtroStatus === 'inadimplente') {
+          return cliente.status === 'Atrasado'
+        } else if (filtroStatus === 'cancelado') {
+          return !cliente.assinatura_ativa
+        }
+        return true
+      })
+    }
+
+    // Filtro de Plano
+    if (filtroPlano !== 'todos') {
+      filtrados = filtrados.filter(cliente => cliente.plano_id === filtroPlano)
+    }
+
+    // Filtro de Assinatura Ativa/Desativada
+    if (filtroAssinatura === 'ativada') {
+      filtrados = filtrados.filter(cliente => cliente.assinatura_ativa === true)
+    } else if (filtroAssinatura === 'desativada') {
+      filtrados = filtrados.filter(cliente => cliente.assinatura_ativa === false)
+    }
+
+    // Filtro de Inadimplente (query parameter da Home)
+    if (filtroInadimplente) {
+      filtrados = filtrados.filter(cliente => cliente.status === 'Atrasado')
+    }
+
+    setClientesFiltrados(filtrados)
+  }, [busca, clientes, filtroStatus, filtroPlano, filtroAssinatura, filtroInadimplente])
 
   const carregarPlanos = async () => {
     try {
@@ -170,12 +211,24 @@ export default function Clientes() {
   }
 
   const handleClienteClick = async (cliente) => {
-    setClienteSelecionado(cliente)
-    setNomeEdit(cliente.nome)
-    setTelefoneEdit(cliente.telefone)
-    setEditando(false)
-    setMostrarModal(true)
-    await carregarMensalidadesCliente(cliente.id)
+    try {
+      if (!cliente || !cliente.id) {
+        console.error('Cliente inválido:', cliente)
+        showToast('Erro ao abrir ficha do cliente', 'error')
+        return
+      }
+
+      setClienteSelecionado(cliente)
+      setNomeEdit(cliente.nome || '')
+      setTelefoneEdit(cliente.telefone || '')
+      setEditando(false)
+      setMostrarModal(true)
+      await carregarMensalidadesCliente(cliente.id)
+    } catch (error) {
+      console.error('Erro ao abrir ficha do cliente:', error)
+      showToast('Erro ao carregar dados do cliente', 'error')
+      setMostrarModal(false)
+    }
   }
 
   const handleSalvarEdicao = async () => {
@@ -572,6 +625,127 @@ export default function Clientes() {
               <Icon icon="mdi:close-circle" width="18" height="18" />
             </button>
           )}
+        </div>
+
+        {/* Filtros */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '12px',
+          marginTop: '16px'
+        }}>
+          {/* Filtro Status */}
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px', fontWeight: '500' }}>
+              Status
+            </label>
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="todos">Todos</option>
+              <option value="ativo">Ativo</option>
+              <option value="inadimplente">Inadimplente</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+
+          {/* Filtro Plano */}
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px', fontWeight: '500' }}>
+              Plano
+            </label>
+            <select
+              value={filtroPlano}
+              onChange={(e) => setFiltroPlano(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="todos">Todos os planos</option>
+              {planos.map(plano => (
+                <option key={plano.id} value={plano.id}>{plano.nome}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro Assinatura */}
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px', fontWeight: '500' }}>
+              Assinatura
+            </label>
+            <select
+              value={filtroAssinatura}
+              onChange={(e) => setFiltroAssinatura(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="todos">Todas</option>
+              <option value="ativada">Ativada</option>
+              <option value="desativada">Desativada</option>
+            </select>
+          </div>
+
+          {/* Botão Limpar Filtros */}
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              onClick={() => {
+                setFiltroStatus('todos')
+                setFiltroPlano('todos')
+                setFiltroAssinatura('todos')
+                setFiltroInadimplente(false)
+                setBusca('')
+                setSearchParams({})
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: '#f5f5f5',
+                color: '#666',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ebebeb'
+                e.currentTarget.style.borderColor = '#999'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f5f5f5'
+                e.currentTarget.style.borderColor = '#ddd'
+              }}
+            >
+              Limpar Filtros
+            </button>
+          </div>
         </div>
       </div>
 
