@@ -701,7 +701,10 @@ function Home() {
             </div>
 
             <div className="status-total">
-              Total: {distribuicaoStatus.emDia + distribuicaoStatus.aVencer + distribuicaoStatus.atrasadas + distribuicaoStatus.canceladas} mensalidades
+              {(() => {
+                const total = (distribuicaoStatus.emDia || 0) + (distribuicaoStatus.aVencer || 0) + (distribuicaoStatus.atrasadas || 0) + (distribuicaoStatus.canceladas || 0);
+                return total === 0 ? 'Nenhuma mensalidade no período' : `Total: ${total} mensalidades`;
+              })()}
             </div>
           </div>
         </div>
