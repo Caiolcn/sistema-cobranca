@@ -618,11 +618,11 @@ function Home() {
           </div>
         </div>
 
-        {/* Gráfico: Distribuição de Status */}
+        {/* Gráfico: Status das Mensalidades */}
         <div className="home-section">
           <div className="section-header">
             <Icon icon="material-symbols:pie-chart" width="24" />
-            <h2>Distribuição de Parcelas</h2>
+            <h2>Status das Mensalidades</h2>
           </div>
           <div className="home-grafico-status">
             <div className="status-item">
