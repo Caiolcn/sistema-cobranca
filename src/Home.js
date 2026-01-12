@@ -77,170 +77,207 @@ function Home() {
       const { inicio, fim } = obterDatasPeriodo();
       const hoje = new Date().toISOString().split('T')[0];
 
-      // Carregar nome da empresa
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('nome_completo, nome_fantasia, razao_social')
-        .eq('id', user.id)
-        .single();
+      // Calcular datas para queries
+      const seteDiasAtras = new Date();
+      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+      const seteDiasAtrasStr = seteDiasAtras.toISOString().split('T')[0];
 
+      const tresMesesAtras = new Date();
+      tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
+      const tresMesesAtrasInicio = new Date(tresMesesAtras.getFullYear(), tresMesesAtras.getMonth(), 1).toISOString().split('T')[0];
+      const mesAtualFim = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+
+      // OTIMIZAÇÃO: Executar TODAS as queries em paralelo com Promise.all
+      const [
+        { data: usuario },
+        { data: mensalidadesAtivasList },
+        { data: parcelasPagasMes },
+        { data: parcelasAtrasadas },
+        { data: parcelasPendenteMes },
+        { data: todosClientes },
+        { data: pagamentos7Dias },
+        { data: todosRecebidos },
+        { data: todosVencidos },
+        { data: fila },
+        { data: mensagens }
+      ] = await Promise.all([
+        // 0. Nome da empresa
+        supabase
+          .from('usuarios')
+          .select('nome_completo, nome_fantasia, razao_social')
+          .eq('id', user.id)
+          .single(),
+
+        // 1. Mensalidades ativas
+        supabase
+          .from('parcelas')
+          .select('devedor_id')
+          .eq('user_id', user.id)
+          .eq('is_mensalidade', true)
+          .in('status', ['pendente', 'atrasado', 'pago']),
+
+        // 2. Parcelas pagas no mês
+        supabase
+          .from('parcelas')
+          .select('valor')
+          .eq('user_id', user.id)
+          .eq('status', 'pago')
+          .gte('updated_at', `${inicio}T00:00:00`)
+          .lte('updated_at', `${fim}T23:59:59`),
+
+        // 3. Parcelas atrasadas
+        supabase
+          .from('parcelas')
+          .select('valor, devedor_id')
+          .eq('user_id', user.id)
+          .eq('status', 'pendente')
+          .lt('data_vencimento', hoje),
+
+        // 4. Parcelas pendentes no mês
+        supabase
+          .from('parcelas')
+          .select('valor')
+          .eq('user_id', user.id)
+          .in('status', ['pendente', 'atrasado'])
+          .gte('data_vencimento', inicio)
+          .lte('data_vencimento', fim),
+
+        // 5. Total de clientes
+        supabase
+          .from('devedores')
+          .select('id')
+          .eq('user_id', user.id),
+
+        // 6. Pagamentos últimos 7 dias
+        supabase
+          .from('parcelas')
+          .select('valor')
+          .eq('user_id', user.id)
+          .eq('status', 'pago')
+          .gte('updated_at', `${seteDiasAtrasStr}T00:00:00`)
+          .lte('updated_at', `${hoje}T23:59:59`),
+
+        // 7. Recebimentos últimos 3 meses
+        supabase
+          .from('parcelas')
+          .select('valor, updated_at')
+          .eq('user_id', user.id)
+          .eq('status', 'pago')
+          .gte('updated_at', `${tresMesesAtrasInicio}T00:00:00`)
+          .lte('updated_at', `${mesAtualFim}T23:59:59`),
+
+        // 8. Vencimentos últimos 3 meses
+        supabase
+          .from('parcelas')
+          .select('valor, data_vencimento')
+          .eq('user_id', user.id)
+          .gte('data_vencimento', tresMesesAtrasInicio)
+          .lte('data_vencimento', mesAtualFim),
+
+        // 9. Fila de WhatsApp
+        supabase
+          .from('parcelas')
+          .select(`
+            id,
+            valor,
+            data_vencimento,
+            numero_parcela,
+            enviado_hoje,
+            devedores (nome, telefone)
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'pendente')
+          .eq('enviado_hoje', false)
+          .lte('data_vencimento', hoje)
+          .order('data_vencimento', { ascending: true })
+          .limit(10),
+
+        // 10. Mensagens recentes
+        supabase
+          .from('logs_mensagens')
+          .select(`
+            id,
+            telefone,
+            valor_parcela,
+            status,
+            enviado_em,
+            devedores (nome)
+          `)
+          .eq('user_id', user.id)
+          .order('enviado_em', { ascending: false })
+          .limit(8)
+      ]);
+
+      // Processar resultados
       if (usuario) {
         setNomeEmpresa(usuario.nome_fantasia || usuario.razao_social || usuario.nome_completo || 'Empresa');
       }
 
-      // 1. MENSALIDADES ATIVAS (assinantes com mensalidades ativas)
-      const { data: mensalidadesAtivasList } = await supabase
-        .from('parcelas')
-        .select('devedor_id')
-        .eq('user_id', user.id)
-        .eq('is_mensalidade', true)
-        .in('status', ['pendente', 'atrasado', 'pago']);
-
+      // 1. Mensalidades ativas
       const mensalidadesAtivasCount = new Set(mensalidadesAtivasList?.map(p => p.devedor_id)).size;
       setMensalidadesAtivas(mensalidadesAtivasCount);
 
-      // 2. RECEBIMENTOS DO MÊS (valor recebido no período selecionado)
-      const { data: parcelasPagasMes } = await supabase
-        .from('parcelas')
-        .select('valor')
-        .eq('user_id', user.id)
-        .eq('status', 'pago')
-        .gte('updated_at', `${inicio}T00:00:00`)
-        .lte('updated_at', `${fim}T23:59:59`);
-
+      // 2. Recebimentos do mês
       const recebidoMes = parcelasPagasMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setRecebimentosMes(recebidoMes);
 
-      // 3. VALOR EM ATRASO (parcelas vencidas e não pagas)
-      const { data: parcelasAtrasadas } = await supabase
-        .from('parcelas')
-        .select('valor')
-        .eq('user_id', user.id)
-        .eq('status', 'pendente')
-        .lt('data_vencimento', hoje);
-
+      // 3. Valor em atraso
       const valorAtraso = parcelasAtrasadas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setValorEmAtraso(valorAtraso);
 
-      // 4. CLIENTES INADIMPLENTES (clientes com parcelas atrasadas)
+      // 4. Clientes inadimplentes
       const clientesInad = new Set(parcelasAtrasadas?.map(p => p.devedor_id)).size;
       setClientesInadimplentes(clientesInad);
 
-      // 5. RECEITA PROJETADA PARA O MÊS (Recebido + A Receber no período)
-      const { data: parcelasPendenteMes } = await supabase
-        .from('parcelas')
-        .select('valor')
-        .eq('user_id', user.id)
-        .in('status', ['pendente', 'atrasado'])
-        .gte('data_vencimento', inicio)
-        .lte('data_vencimento', fim);
-
+      // 5. Receita projetada
       const aReceberMes = parcelasPendenteMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setReceitaProjetadaMes(recebidoMes + aReceberMes);
 
-      // 6. TAXA DE CANCELAMENTO (clientes que cancelaram nos últimos 30 dias)
-      // Simulação: clientes que não têm mensalidades futuras agendadas
-      const { data: todosClientes } = await supabase
-        .from('devedores')
-        .select('id')
-        .eq('user_id', user.id);
-
+      // 6. Taxa de cancelamento
       const totalClientesGeral = todosClientes?.length || 0;
-
-      // Clientes que NÃO têm mensalidades futuras (podem ter cancelado)
       const clientesComMensalidade = new Set(mensalidadesAtivasList?.map(p => p.devedor_id));
       const clientesCancelados = totalClientesGeral - clientesComMensalidade.size;
       const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
       setTaxaCancelamento(taxaCancel);
 
-      // 7. RECEBIMENTOS ÚLTIMOS 7 DIAS
-      const seteDiasAtras = new Date();
-      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-      const seteDiasAtrasStr = seteDiasAtras.toISOString().split('T')[0];
-
-      const { data: pagamentos7Dias } = await supabase
-        .from('parcelas')
-        .select('valor')
-        .eq('user_id', user.id)
-        .eq('status', 'pago')
-        .gte('updated_at', `${seteDiasAtrasStr}T00:00:00`)
-        .lte('updated_at', `${hoje}T23:59:59`);
-
+      // 7. Recebimentos últimos 7 dias
       const recebido7Dias = pagamentos7Dias?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setRecebimentosUltimos7Dias(recebido7Dias);
 
-      // 8. GRÁFICO: RECEBIMENTO vs VENCIMENTO (últimos 3 meses)
+      // 8. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
+      const recebidosPorMes = {};
+      const vencidosPorMes = {};
+
+      todosRecebidos?.forEach(p => {
+        const mesAno = p.updated_at.substring(0, 7);
+        if (!recebidosPorMes[mesAno]) recebidosPorMes[mesAno] = 0;
+        recebidosPorMes[mesAno] += parseFloat(p.valor || 0);
+      });
+
+      todosVencidos?.forEach(p => {
+        const mesAno = p.data_vencimento.substring(0, 7);
+        if (!vencidosPorMes[mesAno]) vencidosPorMes[mesAno] = 0;
+        vencidosPorMes[mesAno] += parseFloat(p.valor || 0);
+      });
+
       const graficoMeses = [];
       for (let i = 2; i >= 0; i--) {
         const mesData = new Date();
         mesData.setMonth(mesData.getMonth() - i);
-        const mesInicio = new Date(mesData.getFullYear(), mesData.getMonth(), 1).toISOString().split('T')[0];
-        const mesFim = new Date(mesData.getFullYear(), mesData.getMonth() + 1, 0).toISOString().split('T')[0];
-
-        // Valor recebido no mês
-        const { data: recebidosMes } = await supabase
-          .from('parcelas')
-          .select('valor')
-          .eq('user_id', user.id)
-          .eq('status', 'pago')
-          .gte('updated_at', `${mesInicio}T00:00:00`)
-          .lte('updated_at', `${mesFim}T23:59:59`);
-
-        const valorRecebido = recebidosMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-
-        // Valor que venceu no mês (esperado)
-        const { data: vencidosMes } = await supabase
-          .from('parcelas')
-          .select('valor')
-          .eq('user_id', user.id)
-          .gte('data_vencimento', mesInicio)
-          .lte('data_vencimento', mesFim);
-
-        const valorVencido = vencidosMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+        const mesAno = `${mesData.getFullYear()}-${String(mesData.getMonth() + 1).padStart(2, '0')}`;
 
         graficoMeses.push({
           mes: mesData.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-          recebido: valorRecebido,
-          vencido: valorVencido
+          recebido: recebidosPorMes[mesAno] || 0,
+          vencido: vencidosPorMes[mesAno] || 0
         });
       }
       setGraficoRecebimentoVsVencimento(graficoMeses);
 
-      // 9. FILA DE WHATSAPP
-      const { data: fila } = await supabase
-        .from('parcelas')
-        .select(`
-          id,
-          valor,
-          data_vencimento,
-          numero_parcela,
-          enviado_hoje,
-          devedores (nome, telefone)
-        `)
-        .eq('user_id', user.id)
-        .eq('status', 'pendente')
-        .eq('enviado_hoje', false)
-        .lte('data_vencimento', hoje)
-        .order('data_vencimento', { ascending: true })
-        .limit(10);
-
+      // 9. Fila de WhatsApp
       setFilaWhatsapp(fila || []);
 
-      // 10. MENSAGENS RECENTES
-      const { data: mensagens } = await supabase
-        .from('logs_mensagens')
-        .select(`
-          id,
-          telefone,
-          valor_parcela,
-          status,
-          enviado_em,
-          devedores (nome)
-        `)
-        .eq('user_id', user.id)
-        .order('enviado_em', { ascending: false })
-        .limit(8);
-
+      // 10. Mensagens recentes
       setMensagensRecentes(mensagens || []);
 
     } catch (error) {
