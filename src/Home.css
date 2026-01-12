@@ -224,6 +224,7 @@
   color: #999;
   margin-top: 8px;
   font-weight: 400;
+  min-height: 18px;
 }
 
 .card-footer {
@@ -239,12 +240,16 @@
 }
 
 .card-status {
+  display: block;
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-top: 8px;
+  text-align: center;
+  width: fit-content;
 }
 
 .card-status.success {
