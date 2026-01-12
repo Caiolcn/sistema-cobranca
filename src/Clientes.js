@@ -568,28 +568,249 @@ export default function Clientes() {
               {clientesFiltrados.length} de {clientes.length} cliente(s)
             </p>
           </div>
-          <button
-            onClick={() => setMostrarModalNovoCliente(true)}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#333',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
-          >
-            <Icon icon="mdi:plus" width="18" height="18" />
-            Adicionar
-          </button>
+
+          {/* Botões */}
+          <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+            <button
+              className="btn-filtrar"
+              onClick={() => setMostrarFiltros(!mostrarFiltros)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
+                color: temFiltrosAtivos ? 'white' : '#333',
+                border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                position: 'relative',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (!temFiltrosAtivos) {
+                  e.currentTarget.style.borderColor = '#344848'
+                  e.currentTarget.style.color = '#344848'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!temFiltrosAtivos) {
+                  e.currentTarget.style.borderColor = '#ddd'
+                  e.currentTarget.style.color = '#333'
+                }
+              }}
+            >
+              <Icon icon="mdi:filter-outline" width="18" height="18" />
+              Filtrar
+              {temFiltrosAtivos && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-6px',
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '20px',
+                  height: '20px',
+                  fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: '700',
+                  border: '2px solid white'
+                }}>
+                  {(filtroStatus !== 'todos' ? 1 : 0) + (filtroPlano !== 'todos' ? 1 : 0) +
+                   (filtroAssinatura !== 'todos' ? 1 : 0) + (filtroInadimplente ? 1 : 0)}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setMostrarModalNovoCliente(true)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#333',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+            >
+              <Icon icon="mdi:plus" width="18" height="18" />
+              Adicionar
+            </button>
+
+            {/* Popover de filtros */}
+            {mostrarFiltros && (
+              <div
+                className="popover-filtros"
+                style={{
+                  position: 'absolute',
+                  top: '50px',
+                  right: '0',
+                  width: '340px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  border: '1px solid #e0e0e0',
+                  zIndex: 1000,
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Header do popover */}
+                <div style={{
+                  padding: '16px',
+                  borderBottom: '1px solid #f0f0f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#333' }}>
+                    Filtros
+                  </h3>
+                  <button
+                    onClick={() => setMostrarFiltros(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: '#999'
+                    }}
+                  >
+                    <Icon icon="mdi:close" width="20" height="20" />
+                  </button>
+                </div>
+
+                {/* Conteúdo dos filtros */}
+                <div style={{ padding: '16px' }}>
+                  {/* Filtro Status */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                      Status
+                    </label>
+                    <select
+                      value={filtroStatus}
+                      onChange={(e) => setFiltroStatus(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="inadimplente">Inadimplente</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                  </div>
+
+                  {/* Filtro Plano */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                      Plano
+                    </label>
+                    <select
+                      value={filtroPlano}
+                      onChange={(e) => setFiltroPlano(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="todos">Todos os planos</option>
+                      {planos.map(plano => (
+                        <option key={plano.id} value={plano.id}>{plano.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Assinatura */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                      Assinatura
+                    </label>
+                    <select
+                      value={filtroAssinatura}
+                      onChange={(e) => setFiltroAssinatura(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="todos">Todas</option>
+                      <option value="ativada">Ativada</option>
+                      <option value="desativada">Desativada</option>
+                    </select>
+                  </div>
+
+                  {/* Botão Limpar Filtros */}
+                  <button
+                    onClick={() => {
+                      setFiltroStatus('todos')
+                      setFiltroPlano('todos')
+                      setFiltroAssinatura('todos')
+                      setFiltroInadimplente(false)
+                      setBusca('')
+                      setSearchParams({})
+                      setMostrarFiltros(false)
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      backgroundColor: '#f5f5f5',
+                      color: '#666',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ebebeb'
+                      e.currentTarget.style.borderColor = '#999'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f5f5f5'
+                      e.currentTarget.style.borderColor = '#ddd'
+                    }}
+                  >
+                    Limpar Filtros
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Campo de busca */}
@@ -643,226 +864,6 @@ export default function Clientes() {
             >
               <Icon icon="mdi:close-circle" width="18" height="18" />
             </button>
-          )}
-        </div>
-
-        {/* Botão Filtrar */}
-        <div style={{ position: 'relative', marginTop: '16px' }}>
-          <button
-            className="btn-filtrar"
-            onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
-              color: temFiltrosAtivos ? 'white' : '#333',
-              border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              position: 'relative',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (!temFiltrosAtivos) {
-                e.currentTarget.style.borderColor = '#344848'
-                e.currentTarget.style.color = '#344848'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!temFiltrosAtivos) {
-                e.currentTarget.style.borderColor = '#ddd'
-                e.currentTarget.style.color = '#333'
-              }
-            }}
-          >
-            <Icon icon="mdi:filter-outline" width="18" height="18" />
-            Filtrar
-            {temFiltrosAtivos && (
-              <span style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                backgroundColor: '#f44336',
-                color: 'white',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: '700',
-                border: '2px solid white'
-              }}>
-                {(filtroStatus !== 'todos' ? 1 : 0) + (filtroPlano !== 'todos' ? 1 : 0) +
-                 (filtroAssinatura !== 'todos' ? 1 : 0) + (filtroInadimplente ? 1 : 0)}
-              </span>
-            )}
-          </button>
-
-          {/* Popover de filtros */}
-          {mostrarFiltros && (
-            <div
-              className="popover-filtros"
-              style={{
-                position: 'absolute',
-                top: '50px',
-                left: '0',
-                width: '340px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                border: '1px solid #e0e0e0',
-                zIndex: 1000,
-                overflow: 'hidden'
-              }}
-            >
-              {/* Header do popover */}
-              <div style={{
-                padding: '16px',
-                borderBottom: '1px solid #f0f0f0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#333' }}>
-                  Filtros
-                </h3>
-                <button
-                  onClick={() => setMostrarFiltros(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: '#999'
-                  }}
-                >
-                  <Icon icon="mdi:close" width="20" height="20" />
-                </button>
-              </div>
-
-              {/* Conteúdo dos filtros */}
-              <div style={{ padding: '16px' }}>
-                {/* Filtro Status */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                    Status
-                  </label>
-                  <select
-                    value={filtroStatus}
-                    onChange={(e) => setFiltroStatus(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      fontSize: '14px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      backgroundColor: 'white',
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="ativo">Ativo</option>
-                    <option value="inadimplente">Inadimplente</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
-                </div>
-
-                {/* Filtro Plano */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                    Plano
-                  </label>
-                  <select
-                    value={filtroPlano}
-                    onChange={(e) => setFiltroPlano(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      fontSize: '14px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      backgroundColor: 'white',
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="todos">Todos os planos</option>
-                    {planos.map(plano => (
-                      <option key={plano.id} value={plano.id}>{plano.nome}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Filtro Assinatura */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                    Assinatura
-                  </label>
-                  <select
-                    value={filtroAssinatura}
-                    onChange={(e) => setFiltroAssinatura(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      fontSize: '14px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      backgroundColor: 'white',
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="todos">Todas</option>
-                    <option value="ativada">Ativada</option>
-                    <option value="desativada">Desativada</option>
-                  </select>
-                </div>
-
-                {/* Botão Limpar Filtros */}
-                <button
-                  onClick={() => {
-                    setFiltroStatus('todos')
-                    setFiltroPlano('todos')
-                    setFiltroAssinatura('todos')
-                    setFiltroInadimplente(false)
-                    setBusca('')
-                    setSearchParams({})
-                    setMostrarFiltros(false)
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    backgroundColor: '#f5f5f5',
-                    color: '#666',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ebebeb'
-                    e.currentTarget.style.borderColor = '#999'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f5f5f5'
-                    e.currentTarget.style.borderColor = '#ddd'
-                  }}
-                >
-                  Limpar Filtros
-                </button>
-              </div>
-            </div>
           )}
         </div>
       </div>

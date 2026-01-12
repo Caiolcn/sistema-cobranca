@@ -439,7 +439,7 @@ function Home() {
       <div className="home-header">
         <div className="home-welcome">
           <h1>{getHoraSaudacao()}! 👋</h1>
-          <p>Bem-vindo(a) ao <strong>{nomeEmpresa}</strong></p>
+          <p>Bem-vindo(a) <strong>{nomeEmpresa}</strong></p>
         </div>
 
         {/* Filtro de Período */}
