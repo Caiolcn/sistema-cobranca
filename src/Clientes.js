@@ -10,7 +10,7 @@ export default function Clientes() {
   const [loading, setLoading] = useState(true)
   const [clienteSelecionado, setClienteSelecionado] = useState(null)
   const [mostrarModal, setMostrarModal] = useState(false)
-  const [parcelasCliente, setParcelasCliente] = useState([])
+  const [mensalidadesCliente, setMensalidadesCliente] = useState([])
   const [editando, setEditando] = useState(false)
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
@@ -92,20 +92,20 @@ export default function Clientes() {
       if (clientesError) throw clientesError
 
       // Buscar próximas mensalidades (apenas futuras ou pendentes)
-      const { data: parcelasData, error: parcelasError } = await supabase
-        .from('parcelas')
+      const { data: mensalidadesData, error: mensalidadesError } = await supabase
+        .from('mensalidades')
         .select('devedor_id, data_vencimento, status, is_mensalidade')
         .eq('user_id', user.id)
         .eq('is_mensalidade', true)
         .in('status', ['pendente', 'atrasado'])
         .order('data_vencimento', { ascending: true })
 
-      if (parcelasError) throw parcelasError
+      if (mensalidadesError) throw mensalidadesError
 
       // Processar dados dos clientes
       const clientesComDados = clientesData.map(cliente => {
         // Buscar próxima mensalidade do cliente
-        const proximaMensalidade = parcelasData.find(p => p.devedor_id === cliente.id)
+        const proximaMensalidade = mensalidadesData.find(p => p.devedor_id === cliente.id)
 
         return {
           ...cliente,
@@ -123,10 +123,10 @@ export default function Clientes() {
     }
   }
 
-  const carregarParcelasCliente = async (clienteId) => {
+  const carregarMensalidadesCliente = async (clienteId) => {
     try {
       const { data, error } = await supabase
-        .from('parcelas')
+        .from('mensalidades')
         .select('*')
         .eq('devedor_id', clienteId)
         .order('data_vencimento', { ascending: true })
@@ -134,13 +134,13 @@ export default function Clientes() {
       if (error) throw error
 
       // Calcular status e ordenar: atrasado > aberto > pago
-      const parcelasComStatus = (data || []).map(parcela => {
-        let status = parcela.status
+      const mensalidadesComStatus = (data || []).map(mensalidade => {
+        let status = mensalidade.status
 
         if (status === 'pendente') {
           const hoje = new Date()
           hoje.setHours(0, 0, 0, 0)
-          const vencimento = new Date(parcela.data_vencimento)
+          const vencimento = new Date(mensalidade.data_vencimento)
           vencimento.setHours(0, 0, 0, 0)
 
           if (vencimento < hoje) {
@@ -150,11 +150,11 @@ export default function Clientes() {
           }
         }
 
-        return { ...parcela, statusCalculado: status }
+        return { ...mensalidade, statusCalculado: status }
       })
 
       // Ordenar por prioridade: atrasado (1), aberto (2), pago (3)
-      parcelasComStatus.sort((a, b) => {
+      mensalidadesComStatus.sort((a, b) => {
         const prioridade = { atrasado: 1, aberto: 2, pago: 3 }
         if (prioridade[a.statusCalculado] !== prioridade[b.statusCalculado]) {
           return prioridade[a.statusCalculado] - prioridade[b.statusCalculado]
@@ -163,9 +163,9 @@ export default function Clientes() {
         return new Date(a.data_vencimento) - new Date(b.data_vencimento)
       })
 
-      setParcelasCliente(parcelasComStatus)
+      setMensalidadesCliente(mensalidadesComStatus)
     } catch (error) {
-      console.error('Erro ao carregar parcelas:', error)
+      console.error('Erro ao carregar mensalidades:', error)
     }
   }
 
@@ -175,7 +175,7 @@ export default function Clientes() {
     setTelefoneEdit(cliente.telefone)
     setEditando(false)
     setMostrarModal(true)
-    await carregarParcelasCliente(cliente.id)
+    await carregarMensalidadesCliente(cliente.id)
   }
 
   const handleSalvarEdicao = async () => {
@@ -204,27 +204,27 @@ export default function Clientes() {
     }
   }
 
-  const handleAlterarStatusParcela = async (parcela, novoPago) => {
+  const handleAlterarStatusMensalidade = async (mensalidade, novoPago) => {
     const confirmar = window.confirm(
       novoPago
-        ? `Confirmar pagamento de R$ ${parseFloat(parcela.valor).toFixed(2)}?`
-        : 'Desfazer o pagamento desta parcela?'
+        ? `Confirmar pagamento de R$ ${parseFloat(mensalidade.valor).toFixed(2)}?`
+        : 'Desfazer o pagamento desta mensalidade?'
     )
 
     if (!confirmar) return
 
     try {
       const { error } = await supabase
-        .from('parcelas')
+        .from('mensalidades')
         .update({ status: novoPago ? 'pago' : 'pendente' })
-        .eq('id', parcela.id)
+        .eq('id', mensalidade.id)
 
       if (error) throw error
 
       showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
 
-      // Atualizar parcelas do cliente no modal
-      await carregarParcelasCliente(clienteSelecionado.id)
+      // Atualizar mensalidades do cliente no modal
+      await carregarMensalidadesCliente(clienteSelecionado.id)
 
       // Recarregar lista de clientes para atualizar valores
       carregarClientes()
@@ -243,13 +243,13 @@ export default function Clientes() {
     if (!cliente) return
 
     try {
-      // Primeiro excluir parcelas
-      const { error: parcelasError } = await supabase
-        .from('parcelas')
+      // Primeiro excluir mensalidades
+      const { error: mensalidadesError } = await supabase
+        .from('mensalidades')
         .delete()
         .eq('devedor_id', cliente.id)
 
-      if (parcelasError) throw parcelasError
+      if (mensalidadesError) throw mensalidadesError
 
       // Depois excluir cliente
       const { error: clienteError } = await supabase
@@ -391,8 +391,8 @@ export default function Clientes() {
         const dataVencimento = new Date(dataInicio)
         dataVencimento.setDate(dataVencimento.getDate() + 30)
 
-        const { error: parcelaError } = await supabase
-          .from('parcelas')
+        const { error: mensalidadeError } = await supabase
+          .from('mensalidades')
           .insert({
             user_id: user.id,
             devedor_id: clienteData[0].id,
@@ -400,10 +400,10 @@ export default function Clientes() {
             data_vencimento: dataVencimento.toISOString().split('T')[0],
             status: 'pendente',
             is_mensalidade: true,
-            numero_parcela: 1
+            numero_mensalidade: 1
           })
 
-        if (parcelaError) throw parcelaError
+        if (mensalidadeError) throw mensalidadeError
       }
 
       showToast('Cliente criado com sucesso!', 'success')
@@ -429,14 +429,14 @@ export default function Clientes() {
     return date.toLocaleDateString('pt-BR')
   }
 
-  const getStatusBadge = (parcela) => {
+  const getStatusBadge = (mensalidade) => {
     // Usar statusCalculado se disponível, senão calcular
-    let status = parcela.statusCalculado || parcela.status
+    let status = mensalidade.statusCalculado || mensalidade.status
 
-    if (!parcela.statusCalculado && status === 'pendente') {
+    if (!mensalidade.statusCalculado && status === 'pendente') {
       const hoje = new Date()
       hoje.setHours(0, 0, 0, 0)
-      const vencimento = new Date(parcela.data_vencimento)
+      const vencimento = new Date(mensalidade.data_vencimento)
       vencimento.setHours(0, 0, 0, 0)
 
       if (vencimento < hoje) {
@@ -589,7 +589,7 @@ export default function Clientes() {
               Nenhum cliente cadastrado ainda
             </p>
             <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0 0 0' }}>
-              Adicione parcelas pela tela Financeiro para criar clientes automaticamente
+              Adicione mensalidades pela tela Financeiro para criar clientes automaticamente
             </p>
           </div>
         ) : clientesFiltrados.length === 0 ? (
@@ -1027,9 +1027,9 @@ export default function Clientes() {
                   padding: '16px',
                   textAlign: 'center'
                 }}>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Total de Parcelas</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Total de Mensalidades</p>
                   <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '700', color: '#ff9800' }}>
-                    {clienteSelecionado.totalParcelas}
+                    {clienteSelecionado.totalMensalidades}
                   </p>
                 </div>
                 <div style={{
@@ -1041,7 +1041,7 @@ export default function Clientes() {
                 }}>
                   <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Pagas</p>
                   <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '700', color: '#4CAF50' }}>
-                    {clienteSelecionado.parcelasPagas}
+                    {clienteSelecionado.mensalidadesPagas}
                   </p>
                 </div>
                 <div style={{
@@ -1058,14 +1058,14 @@ export default function Clientes() {
                 </div>
               </div>
 
-              {/* Lista de Parcelas */}
+              {/* Lista de Mensalidades */}
               <div>
                 <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-                  Histórico de Parcelas ({parcelasCliente.length})
+                  Histórico de Mensalidades ({mensalidadesCliente.length})
                 </h3>
-                {parcelasCliente.length === 0 ? (
+                {mensalidadesCliente.length === 0 ? (
                   <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>
-                    Nenhuma parcela encontrada
+                    Nenhuma mensalidade encontrada
                   </p>
                 ) : (
                   <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
@@ -1087,23 +1087,23 @@ export default function Clientes() {
                         </tr>
                       </thead>
                       <tbody>
-                        {parcelasCliente.map((parcela) => (
-                          <tr key={parcela.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        {mensalidadesCliente.map((mensalidade) => (
+                          <tr key={mensalidade.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                             <td style={{ padding: '12px', fontSize: '14px', color: '#333' }}>
-                              {formatDate(parcela.data_vencimento)}
+                              {formatDate(mensalidade.data_vencimento)}
                             </td>
                             <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600', color: '#333', textAlign: 'right' }}>
-                              R$ {formatCurrency(parseFloat(parcela.valor))}
+                              R$ {formatCurrency(parseFloat(mensalidade.valor))}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'center' }}>
-                              {getStatusBadge(parcela)}
+                              {getStatusBadge(mensalidade)}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'center' }}>
                               <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
                                 <input
                                   type="checkbox"
-                                  checked={parcela.status === 'pago'}
-                                  onChange={(e) => handleAlterarStatusParcela(parcela, e.target.checked)}
+                                  checked={mensalidade.status === 'pago'}
+                                  onChange={(e) => handleAlterarStatusMensalidade(mensalidade, e.target.checked)}
                                   style={{ opacity: 0, width: 0, height: 0 }}
                                 />
                                 <span style={{
@@ -1113,7 +1113,7 @@ export default function Clientes() {
                                   left: 0,
                                   right: 0,
                                   bottom: 0,
-                                  backgroundColor: parcela.status === 'pago' ? '#4CAF50' : '#ccc',
+                                  backgroundColor: mensalidade.status === 'pago' ? '#4CAF50' : '#ccc',
                                   transition: '0.3s',
                                   borderRadius: '22px'
                                 }}>
@@ -1122,7 +1122,7 @@ export default function Clientes() {
                                     content: '',
                                     height: '16px',
                                     width: '16px',
-                                    left: parcela.status === 'pago' ? '25px' : '3px',
+                                    left: mensalidade.status === 'pago' ? '25px' : '3px',
                                     bottom: '3px',
                                     backgroundColor: 'white',
                                     transition: '0.3s',
@@ -1206,7 +1206,7 @@ export default function Clientes() {
         onClose={() => setConfirmDelete({ show: false, cliente: null })}
         onConfirm={confirmarExclusao}
         title={`Tem certeza que deseja excluir o cliente "${confirmDelete.cliente?.nome}"?`}
-        message={`ATENÇÃO: Todas as ${confirmDelete.cliente?.totalParcelas || 0} parcela(s) associadas também serão excluídas!`}
+        message={`ATENÇÃO: Todas as ${confirmDelete.cliente?.totalMensalidades || 0} mensalidade(s) associadas também serão excluídas!`}
         confirmText="OK"
         cancelText="Cancelar"
         type="danger"

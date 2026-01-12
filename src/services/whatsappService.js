@@ -69,7 +69,7 @@ class WhatsAppService {
     const substituicoes = {
       '{{nomeCliente}}': dados.nomeCliente || '',
       '{{telefone}}': dados.telefone || '',
-      '{{valorParcela}}': dados.valorParcela || '',
+      '{{valorMensalidade}}': dados.valorMensalidade || '',
       '{{dataVencimento}}': dados.dataVencimento || '',
       '{{diasAtraso}}': dados.diasAtraso || '0',
       '{{nomeEmpresa}}': dados.nomeEmpresa || ''
@@ -189,26 +189,26 @@ class WhatsAppService {
   }
 
   /**
-   * Envia cobrança para uma parcela específica
+   * Envia cobrança para uma mensalidade específica
    */
-  async enviarCobranca(parcelaId) {
+  async enviarCobranca(mensalidadeId) {
     await this.ensureInitialized()
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Buscar dados da parcela com informações do devedor
-      const { data: parcela, error: parcelaError } = await supabase
-        .from('parcelas')
+      // Buscar dados da mensalidade com informações do devedor
+      const { data: mensalidade, error: mensalidadeError } = await supabase
+        .from('mensalidades')
         .select(`
           *,
           devedor:devedores(nome, telefone)
         `)
-        .eq('id', parcelaId)
+        .eq('id', mensalidadeId)
         .single()
 
-      if (parcelaError) throw parcelaError
-      if (!parcela) throw new Error('Parcela não encontrada')
+      if (mensalidadeError) throw mensalidadeError
+      if (!mensalidade) throw new Error('Mensalidade não encontrada')
 
       // Buscar dados do usuário/empresa
       const { data: usuario } = await supabase
@@ -235,15 +235,15 @@ class WhatsAppService {
 
       // Calcular dias de atraso
       const hoje = new Date()
-      const vencimento = new Date(parcela.data_vencimento)
+      const vencimento = new Date(mensalidade.data_vencimento)
       const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
 
       // Preparar dados para substituição
       const dadosSubstituicao = {
-        nomeCliente: parcela.devedor?.nome || 'Cliente',
-        telefone: parcela.devedor?.telefone || '',
-        valorParcela: `R$ ${parseFloat(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        dataVencimento: new Date(parcela.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
+        nomeCliente: mensalidade.devedor?.nome || 'Cliente',
+        telefone: mensalidade.devedor?.telefone || '',
+        valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         diasAtraso: diasAtraso.toString(),
         nomeEmpresa: nomeEmpresa
       }
@@ -252,15 +252,15 @@ class WhatsAppService {
       const mensagemFinal = this.substituirVariaveis(template.mensagem, dadosSubstituicao)
 
       // Enviar via Evolution API
-      const resultado = await this.enviarMensagem(parcela.devedor.telefone, mensagemFinal)
+      const resultado = await this.enviarMensagem(mensalidade.devedor.telefone, mensagemFinal)
 
       // Registrar log no banco
       console.log('💾 Salvando log no Supabase...')
       console.log('📝 Dados do log:', {
         user_id: user.id,
-        devedor_id: parcela.devedor_id,
-        parcela_id: parcela.id,
-        telefone: parcela.devedor.telefone,
+        devedor_id: mensalidade.devedor_id,
+        mensalidade_id: mensalidade.id,
+        telefone: mensalidade.devedor.telefone,
         status: resultado.sucesso ? 'enviado' : 'erro'
       })
 
@@ -268,11 +268,11 @@ class WhatsAppService {
         .from('logs_mensagens')
         .insert({
           user_id: user.id,
-          devedor_id: parcela.devedor_id,
-          parcela_id: parcela.id,
-          telefone: parcela.devedor.telefone,
+          devedor_id: mensalidade.devedor_id,
+          mensalidade_id: mensalidade.id,
+          telefone: mensalidade.devedor.telefone,
           mensagem: mensagemFinal,
-          valor_parcela: parcela.valor,
+          valor_mensalidade: mensalidade.valor,
           status: resultado.sucesso ? 'enviado' : 'erro',
           erro: resultado.erro || null
         })
@@ -285,19 +285,19 @@ class WhatsAppService {
         console.log('✅ Log salvo com sucesso!', logData)
       }
 
-      // Atualizar parcela
+      // Atualizar mensalidade
       if (resultado.sucesso) {
         const { error: updateError } = await supabase
-          .from('parcelas')
+          .from('mensalidades')
           .update({
             enviado_hoje: true,
             ultima_mensagem_enviada_em: new Date().toISOString(),
-            total_mensagens_enviadas: (parcela.total_mensagens_enviadas || 0) + 1
+            total_mensagens_enviadas: (mensalidade.total_mensagens_enviadas || 0) + 1
           })
-          .eq('id', parcelaId)
+          .eq('id', mensalidadeId)
 
         if (updateError) {
-          console.error('Erro ao atualizar parcela:', updateError)
+          console.error('Erro ao atualizar mensalidade:', updateError)
         }
       }
 
@@ -314,18 +314,18 @@ class WhatsAppService {
   /**
    * Envia cobranças em lote
    */
-  async enviarCobrancasLote(parcelaIds) {
+  async enviarCobrancasLote(mensalidadeIds) {
     const resultados = []
 
-    for (const parcelaId of parcelaIds) {
-      const resultado = await this.enviarCobranca(parcelaId)
+    for (const mensalidadeId of mensalidadeIds) {
+      const resultado = await this.enviarCobranca(mensalidadeId)
       resultados.push({
-        parcelaId,
+        mensalidadeId,
         ...resultado
       })
 
       // Delay de 2 segundos entre envios para não sobrecarregar a API
-      if (parcelaIds.indexOf(parcelaId) < parcelaIds.length - 1) {
+      if (mensalidadeIds.indexOf(mensalidadeId) < mensalidadeIds.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 2000))
       }
     }

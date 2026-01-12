@@ -98,7 +98,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
     primeiraMensalidade.setDate(primeiraMensalidade.getDate() + 30)
     const primeiroVencimento = primeiraMensalidade.toISOString().split('T')[0]
 
-    const parcelasParaSalvar = [{
+    const mensalidadesParaSalvar = [{
       numero: 1,
       valor: parseFloat(totalValue.replace(',', '.')),
       vencimento: primeiroVencimento,
@@ -113,10 +113,10 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
     const dataToSave = {
       devedor_id: selectedClient,
       valor_total: parseFloat(totalValue.replace(',', '.')),
-      numero_parcelas: null,
+      numero_mensalidades: null,
       primeira_data_vencimento: primeiroVencimento,
       is_mensalidade: true,
-      parcelas: parcelasParaSalvar
+      mensalidades: mensalidadesParaSalvar
     }
 
     onSave(dataToSave)
@@ -382,7 +382,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
                     }}
                   >
                     <span style={{ color: '#666' }}>
-                      {isRecurring ? `Mês ${item.numero}` : `Parcela ${item.numero}/${installmentsCount}`}
+                      {isRecurring ? `Mês ${item.numero}` : `Mensalidade ${item.numero}/${installmentsCount}`}
                     </span>
                     <span style={{ color: '#344848', fontWeight: '500' }}>
                       Venc. {formatDate(item.vencimento)} — R$ {formatCurrency(item.valor)}

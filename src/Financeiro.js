@@ -6,8 +6,8 @@ import { showToast } from './Toast'
 import whatsappService from './services/whatsappService'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
-  const [parcelas, setParcelas] = useState([])
-  const [parcelasFiltradas, setParcelasFiltradas] = useState([])
+  const [mensalidades, setMensalidades] = useState([])
+  const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState([])
@@ -17,7 +17,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mostrarModalAdicionar, setMostrarModalAdicionar] = useState(false)
   const [clientes, setClientes] = useState([])
   const [mostrarModalConfirmacao, setMostrarModalConfirmacao] = useState(false)
-  const [parcelaParaAtualizar, setParcelaParaAtualizar] = useState(null)
+  const [mensalidadeParaAtualizar, setMensalidadeParaAtualizar] = useState(null)
   const [novoStatusPagamento, setNovoStatusPagamento] = useState(false)
   const [formaPagamento, setFormaPagamento] = useState('')
 
@@ -36,22 +36,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [assinaturasAtivas, setAssinaturasAtivas] = useState(0)
 
   useEffect(() => {
-    carregarParcelas()
+    carregarMensalidades()
     carregarClientes()
     calcularMRR()
   }, [])
 
   useEffect(() => {
     aplicarFiltros()
-  }, [parcelas, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim])
+  }, [mensalidades, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim])
 
-  const carregarParcelas = async () => {
+  const carregarMensalidades = async () => {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
       const { data, error } = await supabase
-        .from('parcelas')
+        .from('mensalidades')
         .select(`
           *,
           devedor:devedores(
@@ -64,16 +64,16 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       if (error) throw error
 
-      const parcelasComStatus = data.map(p => ({
+      const mensalidadesComStatus = data.map(p => ({
         ...p,
         statusCalculado: calcularStatus(p)
       }))
 
-      setParcelas(parcelasComStatus)
-      calcularTotais(parcelasComStatus)
+      setMensalidades(mensalidadesComStatus)
+      calcularTotais(mensalidadesComStatus)
     } catch (error) {
-      console.error('Erro ao carregar parcelas:', error)
-      showToast('Erro ao carregar parcelas: ' + error.message, 'error')
+      console.error('Erro ao carregar mensalidades:', error)
+      showToast('Erro ao carregar mensalidades: ' + error.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -97,53 +97,53 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
   }
 
-  const salvarParcelas = async (dataToSave) => {
+  const salvarMensalidades = async (dataToSave) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Criar parcelas no banco de dados
-      const parcelasParaInserir = dataToSave.parcelas.map(parcela => {
-        const parcelaBase = {
+      // Criar mensalidades no banco de dados
+      const mensalidadesParaInserir = dataToSave.mensalidades.map(mensalidade => {
+        const mensalidadeBase = {
           user_id: user.id,
           devedor_id: dataToSave.devedor_id,
-          valor: parcela.valor,
-          data_vencimento: parcela.vencimento,
+          valor: mensalidade.valor,
+          data_vencimento: mensalidade.vencimento,
           status: 'pendente',
-          numero_parcela: parcela.numero,
-          total_parcelas: dataToSave.is_mensalidade ? null : dataToSave.numero_parcelas,
+          numero_mensalidade: mensalidade.numero,
+          total_mensalidades: dataToSave.is_mensalidade ? null : dataToSave.numero_mensalidades,
           is_mensalidade: dataToSave.is_mensalidade
         }
 
         // Adicionar dados de recorrência se for mensalidade
-        if (dataToSave.is_mensalidade && parcela.recorrencia) {
-          parcelaBase.recorrencia = parcela.recorrencia
+        if (dataToSave.is_mensalidade && mensalidade.recorrencia) {
+          mensalidadeBase.recorrencia = mensalidade.recorrencia
         }
 
-        return parcelaBase
+        return mensalidadeBase
       })
 
       const { error } = await supabase
-        .from('parcelas')
-        .insert(parcelasParaInserir)
+        .from('mensalidades')
+        .insert(mensalidadesParaInserir)
 
       if (error) throw error
 
       showToast(dataToSave.is_mensalidade
         ? 'Mensalidade criada com sucesso!'
-        : 'Parcelas criadas com sucesso!', 'success')
-      carregarParcelas()
+        : 'Mensalidades criadas com sucesso!', 'success')
+      carregarMensalidades()
     } catch (error) {
-      console.error('Erro ao salvar parcelas:', error)
-      showToast('Erro ao salvar parcelas: ' + error.message, 'error')
+      console.error('Erro ao salvar mensalidades:', error)
+      showToast('Erro ao salvar mensalidades: ' + error.message, 'error')
     }
   }
 
-  const calcularStatus = (parcela) => {
-    if (parcela.status === 'pago') return 'pago'
+  const calcularStatus = (mensalidade) => {
+    if (mensalidade.status === 'pago') return 'pago'
 
     const hoje = new Date()
     hoje.setHours(0, 0, 0, 0)
-    const vencimento = new Date(parcela.data_vencimento)
+    const vencimento = new Date(mensalidade.data_vencimento)
     vencimento.setHours(0, 0, 0, 0)
 
     if (vencimento < hoje) return 'atrasado'
@@ -234,7 +234,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   }
 
   const aplicarFiltros = () => {
-    let resultado = [...parcelas]
+    let resultado = [...mensalidades]
 
     // Filtro por status (checkboxes ou card clicado)
     if (filtroStatus.length > 0) {
@@ -288,17 +288,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       return new Date(a.data_vencimento) - new Date(b.data_vencimento)
     })
 
-    setParcelasFiltradas(resultado)
+    setMensalidadesFiltradas(resultado)
   }
 
-  const alterarStatusPagamento = (parcela, novoPago) => {
-    setParcelaParaAtualizar(parcela)
+  const alterarStatusPagamento = (mensalidade, novoPago) => {
+    setMensalidadeParaAtualizar(mensalidade)
     setNovoStatusPagamento(novoPago)
     setMostrarModalConfirmacao(true)
   }
 
   const confirmarAlteracaoStatus = async () => {
-    if (!parcelaParaAtualizar) return
+    if (!mensalidadeParaAtualizar) return
 
     // Validar forma de pagamento se estiver marcando como pago
     if (novoStatusPagamento && !formaPagamento) {
@@ -320,15 +320,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }
 
       const { error } = await supabase
-        .from('parcelas')
+        .from('mensalidades')
         .update(updateData)
-        .eq('id', parcelaParaAtualizar.id)
+        .eq('id', mensalidadeParaAtualizar.id)
 
       if (error) throw error
 
       // Atualizar localmente
-      const novasParcelas = parcelas.map(p => {
-        if (p.id === parcelaParaAtualizar.id) {
+      const novasMensalidades = mensalidades.map(p => {
+        if (p.id === mensalidadeParaAtualizar.id) {
           const atualizada = {
             ...p,
             status: novoStatusPagamento ? 'pago' : 'pendente',
@@ -340,22 +340,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         return p
       })
 
-      setParcelas(novasParcelas)
-      calcularTotais(novasParcelas)
+      setMensalidades(novasMensalidades)
+      calcularTotais(novasMensalidades)
       showToast(novoStatusPagamento ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
       setMostrarModalConfirmacao(false)
-      setParcelaParaAtualizar(null)
+      setMensalidadeParaAtualizar(null)
       setFormaPagamento('')
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
       setMostrarModalConfirmacao(false)
-      setParcelaParaAtualizar(null)
+      setMensalidadeParaAtualizar(null)
       setFormaPagamento('')
     }
   }
 
-  const handleEnviarCobranca = async (parcela) => {
-    if (parcela.status === 'pago' || parcela.statusCalculado === 'pago') {
+  const handleEnviarCobranca = async (mensalidade) => {
+    if (mensalidade.status === 'pago' || mensalidade.statusCalculado === 'pago') {
       showToast('Esta mensalidade já foi paga', 'info')
       return
     }
@@ -369,17 +369,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
     // Confirmação
     const confirmar = window.confirm(
-      `Enviar cobrança de R$ ${parseFloat(parcela.valor).toFixed(2)} para ${parcela.devedor.nome}?`
+      `Enviar cobrança de R$ ${parseFloat(mensalidade.valor).toFixed(2)} para ${mensalidade.devedor.nome}?`
     )
     if (!confirmar) return
 
     try {
       setLoading(true)
-      const resultado = await whatsappService.enviarCobranca(parcela.id)
+      const resultado = await whatsappService.enviarCobranca(mensalidade.id)
 
       if (resultado.sucesso) {
         showToast('Cobrança enviada com sucesso!', 'success')
-        carregarParcelas() // Reload to update sent status
+        carregarMensalidades() // Reload to update sent status
       } else {
         showToast('Erro ao enviar: ' + resultado.erro, 'error')
       }
@@ -469,7 +469,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               Mensalidades
             </h2>
             <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
-              {parcelasFiltradas.length} de {parcelas.length} mensalidade(s)
+              {mensalidadesFiltradas.length} de {mensalidades.length} mensalidade(s)
             </p>
           </div>
 
@@ -886,14 +886,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         </div>
       </div>
 
-      {/* Tabela de Parcelas */}
+      {/* Tabela de Mensalidades */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
         overflow: 'hidden'
       }}>
-        {parcelasFiltradas.length === 0 ? (
+        {mensalidadesFiltradas.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center' }}>
             <Icon icon="mdi:receipt-text-outline" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
             <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
@@ -929,47 +929,47 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 </tr>
               </thead>
               <tbody>
-                {parcelasFiltradas.map(parcela => (
+                {mensalidadesFiltradas.map(mensalidade => (
                   <tr
-                    key={parcela.id}
+                    key={mensalidade.id}
                     style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                   >
                     <td style={{ padding: '16px 20px', fontSize: '14px', color: '#333', fontWeight: '500', textAlign: 'left' }}>
-                      {parcela.devedor?.nome || 'N/A'}
+                      {mensalidade.devedor?.nome || 'N/A'}
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
-                      {new Date(parcela.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      {new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: '16px', fontWeight: '700', color: '#333', textAlign: 'center' }}>
-                      R$ {parseFloat(parcela.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      R$ {parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {parcela.devedor?.plano?.nome || '-'}
+                      {mensalidade.devedor?.plano?.nome || '-'}
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                      {getStatusBadge(parcela.statusCalculado)}
+                      {getStatusBadge(mensalidade.statusCalculado)}
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
                         <button
-                          onClick={() => handleEnviarCobranca(parcela)}
-                          disabled={parcela.status === 'pago' || parcela.statusCalculado === 'pago'}
+                          onClick={() => handleEnviarCobranca(mensalidade)}
+                          disabled={mensalidade.status === 'pago' || mensalidade.statusCalculado === 'pago'}
                           style={{
                             padding: '8px',
                             backgroundColor: 'transparent',
                             border: 'none',
                             borderRadius: '6px',
-                            cursor: (parcela.status === 'pago' || parcela.statusCalculado === 'pago') ? 'not-allowed' : 'pointer',
-                            color: (parcela.status === 'pago' || parcela.statusCalculado === 'pago') ? '#ccc' : '#25D366',
+                            cursor: (mensalidade.status === 'pago' || mensalidade.statusCalculado === 'pago') ? 'not-allowed' : 'pointer',
+                            color: (mensalidade.status === 'pago' || mensalidade.statusCalculado === 'pago') ? '#ccc' : '#25D366',
                             display: 'flex',
                             alignItems: 'center',
                             transition: 'all 0.2s'
                           }}
-                          title={(parcela.status === 'pago' || parcela.statusCalculado === 'pago') ? 'Já pago' : 'Enviar cobrança por WhatsApp'}
+                          title={(mensalidade.status === 'pago' || mensalidade.statusCalculado === 'pago') ? 'Já pago' : 'Enviar cobrança por WhatsApp'}
                           onMouseEnter={(e) => {
-                            if (parcela.status !== 'pago' && parcela.statusCalculado !== 'pago') {
+                            if (mensalidade.status !== 'pago' && mensalidade.statusCalculado !== 'pago') {
                               e.currentTarget.style.backgroundColor = '#e8f5e9'
                             }
                           }}
@@ -983,8 +983,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                         <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
                           <input
                             type="checkbox"
-                            checked={parcela.status === 'pago'}
-                            onChange={(e) => alterarStatusPagamento(parcela, e.target.checked)}
+                            checked={mensalidade.status === 'pago'}
+                            onChange={(e) => alterarStatusPagamento(mensalidade, e.target.checked)}
                             style={{ opacity: 0, width: 0, height: 0 }}
                           />
                           <span style={{
@@ -994,7 +994,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          backgroundColor: parcela.status === 'pago' ? '#4CAF50' : '#ccc',
+                          backgroundColor: mensalidade.status === 'pago' ? '#4CAF50' : '#ccc',
                           transition: '0.3s',
                           borderRadius: '22px'
                         }}>
@@ -1003,7 +1003,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                             content: '',
                             height: '16px',
                             width: '16px',
-                            left: parcela.status === 'pago' ? '25px' : '3px',
+                            left: mensalidade.status === 'pago' ? '25px' : '3px',
                             bottom: '3px',
                             backgroundColor: 'white',
                             transition: '0.3s',
@@ -1021,12 +1021,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         )}
       </div>
 
-      {/* Modal de Adicionar Parcelas/Mensalidade */}
+      {/* Modal de Adicionar Mensalidades/Mensalidade */}
       <AddInstallmentsModal
         isOpen={mostrarModalAdicionar}
         onClose={() => setMostrarModalAdicionar(false)}
         clientes={clientes}
-        onSave={salvarParcelas}
+        onSave={salvarMensalidades}
         onClienteAdicionado={carregarClientes}
       />
 
@@ -1065,7 +1065,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               <button
                 onClick={() => {
                   setMostrarModalConfirmacao(false)
-                  setParcelaParaAtualizar(null)
+                  setMensalidadeParaAtualizar(null)
                   setFormaPagamento('')
                 }}
                 style={{
@@ -1087,11 +1087,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 {novoStatusPagamento ? (
                   <>
                     Confirmar pagamento de <strong style={{ color: '#344848' }}>
-                      R$ {parcelaParaAtualizar ? parseFloat(parcelaParaAtualizar.valor).toFixed(2) : '0.00'}
+                      R$ {mensalidadeParaAtualizar ? parseFloat(mensalidadeParaAtualizar.valor).toFixed(2) : '0.00'}
                     </strong>?
                   </>
                 ) : (
-                  'Tem certeza que deseja desfazer o pagamento desta parcela?'
+                  'Tem certeza que deseja desfazer o pagamento desta mensalidade?'
                 )}
               </p>
 
@@ -1140,7 +1140,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               <button
                 onClick={() => {
                   setMostrarModalConfirmacao(false)
-                  setParcelaParaAtualizar(null)
+                  setMensalidadeParaAtualizar(null)
                   setFormaPagamento('')
                 }}
                 style={{

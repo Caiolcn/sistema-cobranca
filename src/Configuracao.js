@@ -245,7 +245,7 @@ function Configuracao() {
     let mensalidadesFuturas = 0
     if (devedores?.length > 0) {
       const { count } = await supabase
-        .from('parcelas')
+        .from('mensalidades')
         .select('*', { count: 'exact', head: true })
         .in('devedor_id', devedores.map(d => d.id))
         .eq('is_mensalidade', true)
@@ -328,7 +328,7 @@ function Configuracao() {
         if (devedores?.length > 0) {
           const devedorIds = devedores.map(d => d.id)
 
-          const { error: updateError } = await supabase.from('parcelas')
+          const { error: updateError } = await supabase.from('mensalidades')
             .update({ valor: parseFloat(formPlano.valor) })
             .in('devedor_id', devedorIds)
             .eq('is_mensalidade', true)

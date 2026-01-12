@@ -24,7 +24,7 @@ export const getWhatsAppStatus = () => globalStatus
 // Mensagem padrão do template
 const MENSAGEM_PADRAO = `Olá {{nomeCliente}},
 
-Identificamos que a parcela no valor de {{valorParcela}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
+Identificamos que a mensalidade no valor de {{valorMensalidade}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
 
 Por favor, regularize sua situação o quanto antes.
 
@@ -290,7 +290,7 @@ export default function WhatsAppConexao() {
     return mensagem
       .replace(/\{\{nomeCliente\}\}/g, 'João Silva')
       .replace(/\{\{telefone\}\}/g, '(62) 98246-6639')
-      .replace(/\{\{valorParcela\}\}/g, 'R$ 150,00')
+      .replace(/\{\{valorMensalidade\}\}/g, 'R$ 150,00')
       .replace(/\{\{dataVencimento\}\}/g, '06/01/2026')
       .replace(/\{\{diasAtraso\}\}/g, '5')
       .replace(/\{\{nomeEmpresa\}\}/g, 'Minha Empresa')
@@ -309,7 +309,7 @@ export default function WhatsAppConexao() {
     if (tipo === 'overdue') {
       return `Olá {{nomeCliente}},
 
-Identificamos que a parcela no valor de {{valorParcela}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
+Identificamos que a mensalidade no valor de {{valorMensalidade}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
 
 Por favor, regularize sua situação o quanto antes.
 
@@ -318,7 +318,7 @@ Atenciosamente,
     } else if (tipo === 'pre_due_3days') {
       return `Olá {{nomeCliente}},
 
-Este é um lembrete de que sua mensalidade no valor de {{valorParcela}} vence em 3 dias ({{dataVencimento}}).
+Este é um lembrete de que sua mensalidade no valor de {{valorMensalidade}} vence em 3 dias ({{dataVencimento}}).
 
 Para evitar atrasos, você pode realizar o pagamento antecipadamente.
 
@@ -327,7 +327,7 @@ Atenciosamente,
     } else if (tipo === 'pre_due_5days') {
       return `Olá {{nomeCliente}},
 
-Lembramos que sua mensalidade no valor de {{valorParcela}} vence em 5 dias ({{dataVencimento}}).
+Lembramos que sua mensalidade no valor de {{valorMensalidade}} vence em 5 dias ({{dataVencimento}}).
 
 Fique atento ao prazo para evitar juros e multas.
 
@@ -1012,8 +1012,8 @@ Atenciosamente,
                   </code>
                   <code
                     onClick={() => {
-                      navigator.clipboard.writeText('{{valorParcela}}')
-                      alert('{{valorParcela}} copiado!')
+                      navigator.clipboard.writeText('{{valorMensalidade}}')
+                      alert('{{valorMensalidade}} copiado!')
                     }}
                     style={{
                       padding: '4px 8px',
@@ -1026,7 +1026,7 @@ Atenciosamente,
                       fontWeight: '600'
                     }}
                   >
-                    {`{{valorParcela}}`}
+                    {`{{valorMensalidade}}`}
                   </code>
                   <code
                     onClick={() => {

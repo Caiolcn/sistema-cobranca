@@ -94,9 +94,9 @@ function Home() {
       const [
         { data: usuario },
         { data: mensalidadesAtivasList },
-        { data: parcelasPagasMes },
-        { data: parcelasAtrasadas },
-        { data: parcelasPendenteMes },
+        { data: mensalidadesPagasMes },
+        { data: mensalidadesAtrasadas },
+        { data: mensalidadesPendenteMes },
         { data: todosClientes },
         { data: pagamentos7Dias },
         { data: todosRecebidos },
@@ -114,7 +114,7 @@ function Home() {
 
         // 1. Mensalidades ativas
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('devedor_id')
           .eq('user_id', user.id)
           .eq('is_mensalidade', true)
@@ -122,7 +122,7 @@ function Home() {
 
         // 2. Parcelas pagas no mês
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('valor')
           .eq('user_id', user.id)
           .eq('status', 'pago')
@@ -131,7 +131,7 @@ function Home() {
 
         // 3. Parcelas atrasadas
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('valor, devedor_id')
           .eq('user_id', user.id)
           .eq('status', 'pendente')
@@ -139,7 +139,7 @@ function Home() {
 
         // 4. Parcelas pendentes no mês
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('valor')
           .eq('user_id', user.id)
           .in('status', ['pendente', 'atrasado'])
@@ -154,7 +154,7 @@ function Home() {
 
         // 6. Pagamentos últimos 7 dias
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('valor')
           .eq('user_id', user.id)
           .eq('status', 'pago')
@@ -163,7 +163,7 @@ function Home() {
 
         // 7. Recebimentos últimos 3 meses
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('valor, updated_at')
           .eq('user_id', user.id)
           .eq('status', 'pago')
@@ -172,7 +172,7 @@ function Home() {
 
         // 8. Vencimentos últimos 3 meses
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('valor, data_vencimento')
           .eq('user_id', user.id)
           .gte('data_vencimento', tresMesesAtrasInicio)
@@ -180,12 +180,12 @@ function Home() {
 
         // 9. Fila de WhatsApp
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select(`
             id,
             valor,
             data_vencimento,
-            numero_parcela,
+            numero_mensalidade,
             enviado_hoje,
             devedores (nome, telefone)
           `)
@@ -202,7 +202,7 @@ function Home() {
           .select(`
             id,
             telefone,
-            valor_parcela,
+            valor_mensalidade,
             status,
             enviado_em,
             devedores (nome)
@@ -211,9 +211,9 @@ function Home() {
           .order('enviado_em', { ascending: false })
           .limit(8),
 
-        // 11. Todas as parcelas para distribuição de status
+        // 11. Todas as mensalidades para distribuição de status
         supabase
-          .from('parcelas')
+          .from('mensalidades')
           .select('status, data_vencimento')
           .eq('user_id', user.id)
       ]);
@@ -228,19 +228,19 @@ function Home() {
       setMensalidadesAtivas(mensalidadesAtivasCount);
 
       // 2. Recebimentos do mês
-      const recebidoMes = parcelasPagasMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      const recebidoMes = mensalidadesPagasMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setRecebimentosMes(recebidoMes);
 
       // 3. Valor em atraso
-      const valorAtraso = parcelasAtrasadas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      const valorAtraso = mensalidadesAtrasadas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setValorEmAtraso(valorAtraso);
 
       // 4. Clientes inadimplentes
-      const clientesInad = new Set(parcelasAtrasadas?.map(p => p.devedor_id)).size;
+      const clientesInad = new Set(mensalidadesAtrasadas?.map(p => p.devedor_id)).size;
       setClientesInadimplentes(clientesInad);
 
       // 5. Receita projetada
-      const aReceberMes = parcelasPendenteMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
+      const aReceberMes = mensalidadesPendenteMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
       setReceitaProjetadaMes(recebidoMes + aReceberMes);
 
       // 6. Taxa de cancelamento
@@ -370,14 +370,14 @@ function Home() {
     }
   };
 
-  const handleCancelarEnvio = async (parcelaId) => {
+  const handleCancelarEnvio = async (mensalidadeId) => {
     try {
       const confirmacao = window.confirm('Deseja realmente cancelar o envio desta mensagem?');
       if (!confirmacao) return;
 
-      // Atualizar o status da parcela ou remover da fila
+      // Atualizar o status da mensalidade ou remover da fila
       // Você pode implementar a lógica específica aqui
-      console.log('Cancelando envio da parcela:', parcelaId);
+      console.log('Cancelando envio da mensalidade:', mensalidadeId);
 
       alert('Envio cancelado com sucesso!');
 
@@ -648,7 +648,7 @@ function Home() {
             </div>
 
             <div className="status-total">
-              Total: {distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas} parcelas
+              Total: {distribuicaoStatus.pagas + distribuicaoStatus.pendentes + distribuicaoStatus.atrasadas} mensalidades
             </div>
           </div>
         </div>
@@ -741,7 +741,7 @@ function Home() {
                       <span className="mensagem-telefone">{msg.telefone}</span>
                     </div>
                     <div className="mensagem-detalhes">
-                      <span className="mensagem-valor">{formatarMoeda(msg.valor_parcela)}</span>
+                      <span className="mensagem-valor">{formatarMoeda(msg.valor_mensalidade)}</span>
                       <span className="mensagem-data">
                         {new Date(msg.enviado_em).toLocaleString('pt-BR', {
                           day: '2-digit',
