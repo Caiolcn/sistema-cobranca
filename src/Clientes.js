@@ -597,8 +597,7 @@ export default function Clientes() {
                 e.currentTarget.style.color = '#333'
               }}
             >
-              <Icon icon="mdi:file-export-outline" width="18" height="18" />
-              Exportar
+              <Icon icon="ph:export-light" width="18" height="18" />
             </button>
 
             <button
