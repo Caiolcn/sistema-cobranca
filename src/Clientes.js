@@ -320,15 +320,15 @@ export default function Clientes() {
   }
 
   const handleAlterarAssinatura = async (clienteId, novoStatus) => {
-    const confirmar = window.confirm(
-      novoStatus
-        ? 'Deseja reativar a assinatura deste cliente?'
-        : 'Deseja cancelar/pausar a assinatura deste cliente?'
-    )
-
-    if (!confirmar) return
-
     try {
+      const confirmar = window.confirm(
+        novoStatus
+          ? 'Deseja ativar a assinatura deste cliente?'
+          : 'Deseja desativar a assinatura deste cliente?'
+      )
+
+      if (!confirmar) return
+
       const { error } = await supabase
         .from('devedores')
         .update({ assinatura_ativa: novoStatus })
@@ -337,16 +337,19 @@ export default function Clientes() {
       if (error) throw error
 
       showToast(
-        novoStatus ? 'Assinatura reativada!' : 'Assinatura cancelada!',
+        novoStatus ? 'Assinatura ativada com sucesso!' : 'Assinatura desativada!',
         'success'
       )
 
-      // Atualizar cliente selecionado
-      setClienteSelecionado(prev => ({ ...prev, assinatura_ativa: novoStatus }))
+      // Atualizar cliente selecionado se existir
+      if (clienteSelecionado?.id === clienteId) {
+        setClienteSelecionado(prev => ({ ...prev, assinatura_ativa: novoStatus }))
+      }
 
       // Recarregar lista de clientes
-      carregarClientes()
+      await carregarClientes()
     } catch (error) {
+      console.error('Erro ao alterar assinatura:', error)
       showToast('Erro ao alterar assinatura: ' + error.message, 'error')
     }
   }
@@ -861,18 +864,20 @@ export default function Clientes() {
                         <span style={{ color: '#999', fontStyle: 'italic' }}>-</span>
                       )}
                     </td>
-                    <td style={{ padding: '16px 24px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-                        <input
-                          type="checkbox"
-                          checked={cliente.assinatura_ativa}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            handleAlterarAssinatura(cliente.id, e.target.checked)
-                          }}
-                          style={{ opacity: 0, width: 0, height: 0 }}
-                          title={cliente.assinatura_ativa ? 'Desativar assinatura' : 'Ativar assinatura'}
-                        />
+                    <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={cliente.assinatura_ativa}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              handleAlterarAssinatura(cliente.id, e.target.checked)
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                            title={cliente.assinatura_ativa ? 'Desativar assinatura' : 'Ativar assinatura'}
+                          />
                         <span style={{
                           position: 'absolute',
                           cursor: 'pointer',
@@ -897,6 +902,7 @@ export default function Clientes() {
                           }} />
                         </span>
                       </label>
+                      </div>
                     </td>
                   </tr>
                 ))}
