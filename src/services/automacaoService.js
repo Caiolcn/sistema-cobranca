@@ -124,6 +124,7 @@ const enviarViaWebhook = async (webhookUrl, payload) => {
 
 /**
  * Busca mensalidades que precisam de lembrete (X dias antes do vencimento)
+ * INCLUINDO credenciais WhatsApp individuais de cada cliente
  */
 export const buscarMensalidadesParaLembrete = async (userId, diasAntecipacao) => {
   try {
@@ -144,7 +145,8 @@ export const buscarMensalidadesParaLembrete = async (userId, diasAntecipacao) =>
         devedores (
           id,
           nome,
-          telefone
+          telefone,
+          whatsapp_config
         )
       `)
       .eq('user_id', userId)
@@ -163,6 +165,7 @@ export const buscarMensalidadesParaLembrete = async (userId, diasAntecipacao) =>
 
 /**
  * Busca mensalidades que vencem hoje
+ * INCLUINDO credenciais WhatsApp individuais de cada cliente
  */
 export const buscarMensalidadesVencimentoHoje = async (userId) => {
   try {
@@ -179,7 +182,8 @@ export const buscarMensalidadesVencimentoHoje = async (userId) => {
         devedores (
           id,
           nome,
-          telefone
+          telefone,
+          whatsapp_config
         )
       `)
       .eq('user_id', userId)
@@ -242,10 +246,36 @@ export const processarLembretes = async (userId) => {
         continue;
       }
 
+      // Verificar se cliente tem WhatsApp conectado
+      if (!devedor.whatsapp_config || !devedor.whatsapp_config.conectado) {
+        console.warn(`Cliente ${devedor.nome} não tem WhatsApp conectado`);
+        resultados.push({
+          mensalidade_id: mensalidade.id,
+          cliente: devedor.nome,
+          telefone: devedor.telefone,
+          sucesso: false,
+          erro: 'WhatsApp não conectado'
+        });
+        continue;
+      }
+
+      // Verificar se tem instância configurada
+      if (!devedor.whatsapp_config.evolution_instance_name) {
+        console.warn(`Cliente ${devedor.nome} não tem instância WhatsApp configurada`);
+        resultados.push({
+          mensalidade_id: mensalidade.id,
+          cliente: devedor.nome,
+          telefone: devedor.telefone,
+          sucesso: false,
+          erro: 'Instância WhatsApp não configurada'
+        });
+        continue;
+      }
+
       // Calcular dias restantes
       const diasRestantes = calcularDiasRestantes(mensalidade.data_vencimento);
 
-      // Preparar payload
+      // Preparar payload com API Key GLOBAL e instância INDIVIDUAL
       const payload = {
         nome: devedor.nome,
         telefone: devedor.telefone,
@@ -253,9 +283,9 @@ export const processarLembretes = async (userId) => {
         data_vencimento: mensalidade.data_vencimento,
         dias_restantes: diasRestantes,
         template: template,
-        evolution_api_key: config.evolution_api_key,
-        evolution_api_url: config.evolution_api_url,
-        evolution_instance_name: config.evolution_instance_name
+        evolution_api_key: config.evolution_api_key,  // GLOBAL
+        evolution_api_url: config.evolution_api_url,  // GLOBAL
+        evolution_instance_name: devedor.whatsapp_config.evolution_instance_name  // INDIVIDUAL
       };
 
       // Enviar via webhook
@@ -339,16 +369,42 @@ export const processarVencimentosHoje = async (userId) => {
         continue;
       }
 
-      // Preparar payload
+      // Verificar se cliente tem WhatsApp conectado
+      if (!devedor.whatsapp_config || !devedor.whatsapp_config.conectado) {
+        console.warn(`Cliente ${devedor.nome} não tem WhatsApp conectado`);
+        resultados.push({
+          mensalidade_id: mensalidade.id,
+          cliente: devedor.nome,
+          telefone: devedor.telefone,
+          sucesso: false,
+          erro: 'WhatsApp não conectado'
+        });
+        continue;
+      }
+
+      // Verificar se tem instância configurada
+      if (!devedor.whatsapp_config.evolution_instance_name) {
+        console.warn(`Cliente ${devedor.nome} não tem instância WhatsApp configurada`);
+        resultados.push({
+          mensalidade_id: mensalidade.id,
+          cliente: devedor.nome,
+          telefone: devedor.telefone,
+          sucesso: false,
+          erro: 'Instância WhatsApp não configurada'
+        });
+        continue;
+      }
+
+      // Preparar payload com API Key GLOBAL e instância INDIVIDUAL
       const payload = {
         nome: devedor.nome,
         telefone: devedor.telefone,
         valor: mensalidade.valor,
         data_vencimento: mensalidade.data_vencimento,
         template: template,
-        evolution_api_key: config.evolution_api_key,
-        evolution_api_url: config.evolution_api_url,
-        evolution_instance_name: config.evolution_instance_name
+        evolution_api_key: config.evolution_api_key,  // GLOBAL
+        evolution_api_url: config.evolution_api_url,  // GLOBAL
+        evolution_instance_name: devedor.whatsapp_config.evolution_instance_name  // INDIVIDUAL
       };
 
       // Enviar via webhook

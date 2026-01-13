@@ -231,7 +231,32 @@ export default function Clientes() {
         return
       }
 
-      setClienteSelecionado(cliente)
+      // Carregar mensalidades primeiro para calcular estatísticas
+      const { data: mensalidadesData, error } = await supabase
+        .from('mensalidades')
+        .select('*')
+        .eq('devedor_id', cliente.id)
+        .order('data_vencimento', { ascending: true })
+
+      if (error) throw error
+
+      // Calcular estatísticas
+      const mensalidades = mensalidadesData || []
+      const totalMensalidades = mensalidades.length
+      const mensalidadesPagas = mensalidades.filter(m => m.status === 'pago').length
+      const valorDevido = mensalidades
+        .filter(m => m.status === 'pendente' || m.status === 'atrasado')
+        .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
+
+      // Atualizar cliente com as estatísticas
+      const clienteComEstatisticas = {
+        ...cliente,
+        totalMensalidades,
+        mensalidadesPagas,
+        valorDevido
+      }
+
+      setClienteSelecionado(clienteComEstatisticas)
       setNomeEdit(cliente.nome || '')
       setTelefoneEdit(cliente.telefone || '')
       setEditando(false)
@@ -326,6 +351,15 @@ export default function Clientes() {
       if (clienteError) throw clienteError
 
       showToast('Cliente excluído com sucesso!', 'success')
+
+      // Fechar o modal de detalhes do cliente
+      setMostrarModal(false)
+      setClienteSelecionado(null)
+
+      // Fechar o modal de confirmação
+      setConfirmDelete({ show: false, cliente: null })
+
+      // Recarregar lista de clientes
       carregarClientes()
     } catch (error) {
       showToast('Erro ao excluir cliente: ' + error.message, 'error')

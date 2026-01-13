@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+import LandingPage from './LandingPage'
 import Login from './Login'
+import Signup from './Signup'
 import Dashboard from './Dashboard'
 import Home from './Home'
 import Financeiro from './Financeiro'
 import Clientes from './Clientes'
 import WhatsAppConexao from './WhatsAppConexao'
 import Configuracao from './Configuracao'
+import UpgradePage from './UpgradePage'
 import Toast from './Toast'
 import './App.css'
 
@@ -37,21 +40,29 @@ function App() {
   return (
     <Router>
       <div className="App">
-        {!session ? (
-          <Login onLogin={() => setSession(true)} />
-        ) : (
-          <Routes>
-            <Route path="/" element={<Dashboard />}>
-              <Route index element={<Navigate to="/home" replace />} />
-              <Route path="home" element={<Home />} />
-              <Route path="financeiro" element={<Financeiro />} />
-              <Route path="clientes" element={<Clientes />} />
-              <Route path="whatsapp" element={<WhatsAppConexao />} />
-              <Route path="configuracao" element={<Configuracao />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </Routes>
-        )}
+        <Routes>
+          {/* Rotas públicas */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
+
+          {/* Rotas protegidas (sistema) */}
+          {session ? (
+            <>
+              <Route path="/app/upgrade" element={<UpgradePage />} />
+              <Route path="/app" element={<Dashboard />}>
+                <Route index element={<Navigate to="/app/home" replace />} />
+                <Route path="home" element={<Home />} />
+                <Route path="financeiro" element={<Financeiro />} />
+                <Route path="clientes" element={<Clientes />} />
+                <Route path="whatsapp" element={<WhatsAppConexao />} />
+                <Route path="configuracao" element={<Configuracao />} />
+              </Route>
+            </>
+          ) : (
+            <Route path="/app/*" element={<Navigate to="/login" replace />} />
+          )}
+        </Routes>
         <Toast />
       </div>
     </Router>

@@ -1,0 +1,482 @@
+import { useState } from 'react'
+import { supabase } from './supabaseClient'
+import { useNavigate } from 'react-router-dom'
+import PlanCard from './components/PlanCard'
+
+export default function Signup() {
+  const navigate = useNavigate()
+
+  // Estados do formulário
+  const [nomeCompleto, setNomeCompleto] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [cpfCnpj, setCpfCnpj] = useState('')
+  const [planoSelecionado, setPlanoSelecionado] = useState('basico')
+
+  // Estados de controle
+  const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState('')
+  const [etapa, setEtapa] = useState(1) // 1 = dados, 2 = plano
+
+  const getLimitePorPlano = (plano) => {
+    const limites = {
+      basico: 100,
+      premium: 500,
+      enterprise: 999999
+    }
+    return limites[plano] || 100
+  }
+
+  const validarFormulario = () => {
+    // Validar nome
+    if (!nomeCompleto || nomeCompleto.trim().length < 3) {
+      setErro('Nome deve ter pelo menos 3 caracteres')
+      return false
+    }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setErro('Email inválido')
+      return false
+    }
+
+    // Validar senha
+    if (senha.length < 8) {
+      setErro('Senha deve ter pelo menos 8 caracteres')
+      return false
+    }
+
+    if (senha !== confirmarSenha) {
+      setErro('Senhas não conferem')
+      return false
+    }
+
+    // Validar telefone
+    const telefoneNumeros = telefone.replace(/\D/g, '')
+    if (telefoneNumeros.length < 10 || telefoneNumeros.length > 11) {
+      setErro('Telefone inválido (DDD + número)')
+      return false
+    }
+
+    // Validar CPF/CNPJ
+    const cpfCnpjNumeros = cpfCnpj.replace(/\D/g, '')
+    if (cpfCnpjNumeros.length !== 11 && cpfCnpjNumeros.length !== 14) {
+      setErro('CPF/CNPJ inválido')
+      return false
+    }
+
+    return true
+  }
+
+  const tratarErro = (error) => {
+    if (error.message.includes('already registered')) {
+      return 'Este email já está cadastrado. Faça login ou recupere sua senha.'
+    }
+    if (error.message.includes('invalid email')) {
+      return 'Email inválido. Verifique e tente novamente.'
+    }
+    if (error.message.includes('weak password') || error.message.includes('Password should be at least')) {
+      return 'Senha muito fraca. Use pelo menos 8 caracteres.'
+    }
+    return error.message || 'Erro ao criar conta. Tente novamente mais tarde.'
+  }
+
+  const handleProximaEtapa = (e) => {
+    e.preventDefault()
+    setErro('')
+
+    // Validar apenas os campos da etapa 1
+    if (!nomeCompleto || nomeCompleto.trim().length < 3) {
+      setErro('Nome deve ter pelo menos 3 caracteres')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setErro('Email inválido')
+      return
+    }
+
+    if (senha.length < 8) {
+      setErro('Senha deve ter pelo menos 8 caracteres')
+      return
+    }
+
+    if (senha !== confirmarSenha) {
+      setErro('Senhas não conferem')
+      return
+    }
+
+    const telefoneNumeros = telefone.replace(/\D/g, '')
+    if (telefoneNumeros.length < 10 || telefoneNumeros.length > 11) {
+      setErro('Telefone inválido (DDD + número)')
+      return
+    }
+
+    const cpfCnpjNumeros = cpfCnpj.replace(/\D/g, '')
+    if (cpfCnpjNumeros.length !== 11 && cpfCnpjNumeros.length !== 14) {
+      setErro('CPF/CNPJ inválido')
+      return
+    }
+
+    // Se tudo válido, avança para etapa 2
+    setEtapa(2)
+  }
+
+  const handleCadastro = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setErro('')
+
+    try {
+      // 1. Validar formulário completo
+      if (!validarFormulario()) {
+        setLoading(false)
+        return
+      }
+
+      // 2. Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: senha,
+        options: {
+          data: {
+            nome_completo: nomeCompleto,
+            telefone: telefone,
+            cpf_cnpj: cpfCnpj,
+            plano: planoSelecionado
+          }
+        }
+      })
+
+      if (authError) throw authError
+
+      const userId = authData.user.id
+
+      // 3. Atualizar registro em usuarios com dados completos
+      const { error: updateError } = await supabase
+        .from('usuarios')
+        .update({
+          nome_completo: nomeCompleto,
+          telefone: telefone,
+          cpf_cnpj: cpfCnpj,
+          plano: planoSelecionado,
+          limite_mensal: getLimitePorPlano(planoSelecionado)
+        })
+        .eq('id', userId)
+
+      if (updateError) throw updateError
+
+      // 4. Criar registro em controle_planos
+      const mesReferencia = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const { error: controleError } = await supabase
+        .from('controle_planos')
+        .insert({
+          user_id: userId,
+          plano: planoSelecionado,
+          limite_mensal: getLimitePorPlano(planoSelecionado),
+          usage_count: 0,
+          mes_referencia: mesReferencia,
+          status: 'ativo'
+        })
+
+      if (controleError) throw controleError
+
+      // 5. Login automático já está ativo (sessão criada pelo signUp)
+      // 6. Redirecionar para dashboard
+      navigate('/app/home')
+
+    } catch (error) {
+      console.error('Erro ao cadastrar:', error)
+      setErro(tratarErro(error))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '40px',
+        borderRadius: '12px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+        maxWidth: '500px',
+        width: '100%'
+      }}>
+        <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
+          Criar Conta
+        </h2>
+        <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666', fontSize: '14px' }}>
+          {etapa === 1 ? 'Preencha os dados abaixo para começar' : 'Escolha seu plano'}
+        </p>
+
+        {erro && (
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px',
+            backgroundColor: '#ffebee',
+            border: '1px solid #f44336',
+            borderRadius: '6px',
+            color: '#c62828',
+            fontSize: '14px'
+          }}>
+            {erro}
+          </div>
+        )}
+
+        {/* ETAPA 1: Dados Pessoais */}
+        {etapa === 1 && (
+          <form onSubmit={handleProximaEtapa}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                Nome Completo
+              </label>
+              <input
+                type="text"
+                value={nomeCompleto}
+                onChange={(e) => setNomeCompleto(e.target.value)}
+                placeholder="João Silva"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="joao@exemplo.com"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                Senha (mínimo 8 caracteres)
+              </label>
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="••••••••"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                Confirmar Senha
+              </label>
+              <input
+                type="password"
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                placeholder="••••••••"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                Telefone (com DDD)
+              </label>
+              <input
+                type="tel"
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                placeholder="(11) 99999-9999"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                CPF ou CNPJ
+              </label>
+              <input
+                type="text"
+                value={cpfCnpj}
+                onChange={(e) => setCpfCnpj(e.target.value)}
+                placeholder="000.000.000-00"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '14px',
+                backgroundColor: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#5568d3'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#667eea'}
+            >
+              Próximo: Escolher Plano →
+            </button>
+          </form>
+        )}
+
+        {/* ETAPA 2: Escolher Plano */}
+        {etapa === 2 && (
+          <form onSubmit={handleCadastro}>
+            <div style={{ marginBottom: '24px' }}>
+              <PlanCard
+                plano="Básico"
+                limite="100"
+                preco="Grátis"
+                selected={planoSelecionado === 'basico'}
+                onClick={() => setPlanoSelecionado('basico')}
+              />
+              <PlanCard
+                plano="Premium"
+                limite="500"
+                preco="R$ 49,90/mês"
+                selected={planoSelecionado === 'premium'}
+                onClick={() => setPlanoSelecionado('premium')}
+              />
+              <PlanCard
+                plano="Enterprise"
+                limite="Ilimitadas"
+                preco="R$ 149,90/mês"
+                selected={planoSelecionado === 'enterprise'}
+                onClick={() => setPlanoSelecionado('enterprise')}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setEtapa(1)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  backgroundColor: '#f5f5f5',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#e0e0e0'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+              >
+                ← Voltar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  backgroundColor: loading ? '#ccc' : '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  if (!loading) e.target.style.backgroundColor = '#5568d3'
+                }}
+                onMouseOut={(e) => {
+                  if (!loading) e.target.style.backgroundColor = '#667eea'
+                }}
+              >
+                {loading ? 'Criando conta...' : 'Criar Conta'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+          Já tem uma conta?
+          <a
+            href="/login"
+            style={{
+              color: '#667eea',
+              marginLeft: '5px',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Fazer login
+          </a>
+        </p>
+      </div>
+    </div>
+  )
+}

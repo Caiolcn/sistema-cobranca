@@ -3,6 +3,8 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
 import PerfilUsuario from './PerfilUsuario'
+import TrialExpiredModal from './TrialExpiredModal'
+import { useTrialStatus } from './useTrialStatus'
 import { Icon } from '@iconify/react'
 
 export default function Dashboard() {
@@ -10,9 +12,13 @@ export default function Dashboard() {
   const location = useLocation()
   const [mostrarPerfil, setMostrarPerfil] = useState(false)
   const [whatsappStatus, setWhatsappStatus] = useState(getWhatsAppStatus())
+  const [mostrarModalTrial, setMostrarModalTrial] = useState(false)
+
+  // Hook para verificar status do trial
+  const { isExpired, diasRestantes, planoPago, loading } = useTrialStatus()
 
   // Determinar tela ativa pela rota atual
-  const telaAtiva = location.pathname.replace('/', '') || 'home'
+  const telaAtiva = location.pathname.replace('/app/', '') || 'home'
 
   useEffect(() => {
     // Inscrever-se para atualizações do status do WhatsApp
@@ -24,13 +30,44 @@ export default function Dashboard() {
     return unsubscribe
   }, [])
 
+  // Mostrar modal se trial expirou
+  useEffect(() => {
+    if (!loading && isExpired && !planoPago) {
+      setMostrarModalTrial(true)
+    }
+  }, [isExpired, planoPago, loading])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.reload()
   }
 
+  // Se trial expirou, bloquear acesso
+  if (isExpired && !planoPago && !loading) {
+    return (
+      <>
+        <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden', filter: 'blur(5px)', pointerEvents: 'none' }}>
+          {/* Dashboard borrado no fundo */}
+        </div>
+        <TrialExpiredModal
+          diasRestantes={0}
+          onClose={() => {}}
+          onUpgrade={() => navigate('/app/upgrade')}
+        />
+      </>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden' }}>
+      {/* Modal de Trial (se estiver expirando mas ainda ativo) */}
+      {mostrarModalTrial && diasRestantes > 0 && diasRestantes <= 2 && (
+        <TrialExpiredModal
+          diasRestantes={diasRestantes}
+          onClose={() => setMostrarModalTrial(false)}
+          onUpgrade={() => navigate('/app/upgrade')}
+        />
+      )}
       {/* Menu lateral */}
       <div style={{
         width: '70px',
@@ -52,7 +89,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
           {/* Home */}
           <div
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/app/home')}
             style={{
               width: '40px',
               height: '40px',
@@ -78,7 +115,7 @@ export default function Dashboard() {
 
           {/* Financeiro */}
           <div
-            onClick={() => navigate('/financeiro')}
+            onClick={() => navigate('/app/financeiro')}
             style={{
               width: '40px',
               height: '40px',
@@ -104,7 +141,7 @@ export default function Dashboard() {
 
           {/* Clientes */}
           <div
-            onClick={() => navigate('/clientes')}
+            onClick={() => navigate('/app/clientes')}
             style={{
               width: '40px',
               height: '40px',
@@ -130,7 +167,7 @@ export default function Dashboard() {
 
           {/* WhatsApp */}
           <div
-            onClick={() => navigate('/whatsapp')}
+            onClick={() => navigate('/app/whatsapp')}
             style={{
               width: '40px',
               height: '40px',
@@ -170,7 +207,7 @@ export default function Dashboard() {
 
           {/* Configuração */}
           <div
-            onClick={() => navigate('/configuracao')}
+            onClick={() => navigate('/app/configuracao')}
             style={{
               width: '40px',
               height: '40px',

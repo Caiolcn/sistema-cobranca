@@ -57,6 +57,11 @@ export default function WhatsAppConexao() {
   const [tituloTemplate, setTituloTemplate] = useState('Mensagem de Cobrança - Em Atraso')
   const [mensagemTemplate, setMensagemTemplate] = useState(MENSAGEM_PADRAO)
 
+  // Estados para automação
+  const [automacao3DiasAtiva, setAutomacao3DiasAtiva] = useState(false)
+  const [automacao5DiasAtiva, setAutomacao5DiasAtiva] = useState(false)
+  const [automacaoEmAtrasoAtiva, setAutomacaoEmAtrasoAtiva] = useState(true) // Ativo por padrão
+
   // Atualizar status global quando mudar
   useEffect(() => {
     updateGlobalStatus(status)
@@ -114,7 +119,239 @@ export default function WhatsAppConexao() {
 
     init()
     carregarTemplates()
+    carregarConfiguracoesAutomacao()
   }, [])
+
+  // Salvar conexão WhatsApp no banco de dados (na tabela config E mensallizap)
+  const salvarConexaoNoBanco = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error('Usuário não autenticado')
+        return
+      }
+
+      console.log('🔍 Salvando conexão WhatsApp...')
+      console.log('User ID:', user.id)
+      console.log('Instance Name:', config.instanceName)
+
+      // Salvar instance_name na tabela config (GLOBAL para o usuário)
+      const { data: dataInstanceName, error: errorInstanceName } = await supabase
+        .from('config')
+        .upsert({
+          user_id: user.id,
+          chave: 'evolution_instance_name',
+          valor: config.instanceName,
+          descricao: 'Nome da instância conectada na Evolution API',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'chave'
+        })
+        .select()
+
+      if (errorInstanceName) {
+        console.error('❌ Erro ao salvar instance name:', errorInstanceName)
+        return
+      }
+
+      console.log('✅ Instance name salvo:', dataInstanceName)
+
+      // Salvar status de conexão (conectado = true)
+      const { data: dataStatus, error: errorStatus } = await supabase
+        .from('config')
+        .upsert({
+          user_id: user.id,
+          chave: 'whatsapp_conectado',
+          valor: 'true',
+          descricao: 'Status de conexão do WhatsApp',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'chave'
+        })
+        .select()
+
+      if (errorStatus) {
+        console.error('❌ Erro ao salvar status:', errorStatus)
+      } else {
+        console.log('✅ Status salvo:', dataStatus)
+        console.log('✅ Conexão WhatsApp salva no banco de dados')
+
+        // Verificar o que foi salvo
+        const { data: verificacao, error: errorVerificacao } = await supabase
+          .from('config')
+          .select('chave, valor')
+          .in('chave', ['evolution_instance_name', 'whatsapp_conectado'])
+
+        console.log('📊 Verificação no banco:', verificacao)
+        if (errorVerificacao) console.error('Erro na verificação:', errorVerificacao)
+      }
+
+      // ===================================
+      // ATUALIZAR TABELA MENSALLIZAP
+      // ===================================
+      console.log('💾 Atualizando tabela mensallizap...')
+
+      // Buscar dados do usuário
+      const { data: usuarioData, error: usuarioError } = await supabase
+        .from('usuarios')
+        .select('nome_completo, email, telefone, plano')
+        .eq('id', user.id)
+        .single()
+
+      if (usuarioError) {
+        console.error('❌ Erro ao buscar dados do usuário:', usuarioError)
+      }
+
+      // Buscar número do WhatsApp conectado (tentativa via Evolution API)
+      let whatsappNumero = null
+      try {
+        const profileResponse = await fetch(
+          `${config.apiUrl}/instance/fetchProfile/${config.instanceName}`,
+          { headers: { 'apikey': config.apiKey } }
+        )
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json()
+          whatsappNumero = profileData.wuid || profileData.id || null
+          console.log('📱 Número WhatsApp detectado:', whatsappNumero)
+        }
+      } catch (err) {
+        console.log('⚠️ Não foi possível buscar o número do WhatsApp:', err.message)
+      }
+
+      // Atualizar ou criar registro na mensallizap
+      const agora = new Date().toISOString()
+      const { data: mensallizapData, error: mensallizapError } = await supabase
+        .from('mensallizap')
+        .upsert({
+          user_id: user.id,
+          nome_completo: usuarioData?.nome_completo || null,
+          email: usuarioData?.email || user.email,
+          telefone: usuarioData?.telefone || null,
+          plano: usuarioData?.plano || 'basico',
+          whatsapp_numero: whatsappNumero,
+          instance_name: config.instanceName,
+          conectado: true,
+          ultima_conexao: agora,
+          updated_at: agora
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        })
+        .select()
+
+      if (mensallizapError) {
+        console.error('❌ Erro ao atualizar mensallizap:', mensallizapError)
+        console.error('❌ Detalhes do erro:', JSON.stringify(mensallizapError, null, 2))
+      } else {
+        console.log('✅ Mensallizap atualizada com sucesso!', mensallizapData)
+        console.log('📅 Horário salvo (ISO):', agora)
+        console.log('📅 Horário local:', new Date(agora).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }))
+      }
+
+    } catch (error) {
+      console.error('Erro ao salvar conexão:', error)
+    }
+  }
+
+  // Carregar configurações de automação
+  const carregarConfiguracoesAutomacao = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('config')
+        .select('chave, valor')
+        .eq('user_id', user.id)
+        .in('chave', ['automacao_3dias_ativa', 'automacao_5dias_ativa', 'automacao_ematraso_ativa'])
+
+      if (error) {
+        console.error('Erro ao carregar configurações de automação:', error)
+        return
+      }
+
+      const configMap = {}
+      data?.forEach(item => { configMap[item.chave] = item.valor })
+
+      setAutomacao3DiasAtiva(configMap['automacao_3dias_ativa'] === 'true')
+      setAutomacao5DiasAtiva(configMap['automacao_5dias_ativa'] === 'true')
+      // Em Atraso vem ativo por padrão se não houver configuração
+      setAutomacaoEmAtrasoAtiva(configMap['automacao_ematraso_ativa'] !== 'false')
+    } catch (error) {
+      console.error('Erro ao carregar configurações de automação:', error)
+    }
+  }
+
+  // Salvar configuração de automação
+  const salvarConfiguracaoAutomacao = async (chave, valor) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert('Usuário não autenticado')
+        return
+      }
+
+      let descricao = ''
+      if (chave === 'automacao_3dias_ativa') {
+        descricao = 'Automação de mensagens 3 dias antes do vencimento'
+      } else if (chave === 'automacao_5dias_ativa') {
+        descricao = 'Automação de mensagens 5 dias antes do vencimento'
+      } else if (chave === 'automacao_ematraso_ativa') {
+        descricao = 'Automação de mensagens para mensalidades em atraso'
+      }
+
+      const { error } = await supabase
+        .from('config')
+        .upsert({
+          user_id: user.id,
+          chave: chave,
+          valor: valor.toString(),
+          descricao: descricao,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,chave'
+        })
+
+      if (error) {
+        console.error('Erro ao salvar configuração:', error)
+        alert('Erro ao salvar configuração: ' + error.message)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Erro ao salvar configuração de automação:', error)
+      alert('Erro ao salvar configuração')
+      return false
+    }
+  }
+
+  // Toggle automação 3 dias
+  const toggleAutomacao3Dias = async () => {
+    const novoValor = !automacao3DiasAtiva
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_3dias_ativa', novoValor)
+    if (sucesso) {
+      setAutomacao3DiasAtiva(novoValor)
+    }
+  }
+
+  // Toggle automação 5 dias
+  const toggleAutomacao5Dias = async () => {
+    const novoValor = !automacao5DiasAtiva
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_5dias_ativa', novoValor)
+    if (sucesso) {
+      setAutomacao5DiasAtiva(novoValor)
+    }
+  }
+
+  // Toggle automação em atraso
+  const toggleAutomacaoEmAtraso = async () => {
+    const novoValor = !automacaoEmAtrasoAtiva
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_ematraso_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoEmAtrasoAtiva(novoValor)
+    }
+  }
 
   // FUNÇÃO UNIFICADA: Conectar WhatsApp
   const conectarWhatsApp = async () => {
@@ -228,6 +465,9 @@ export default function WhatsAppConexao() {
             console.log('✅ Conectado!')
             setStatus('connected')
             setQrCode(null)
+
+            // Salvar conexão no banco de dados
+            salvarConexaoNoBanco()
           }
         }
       } catch (error) {
@@ -273,6 +513,39 @@ export default function WhatsAppConexao() {
         method: 'DELETE',
         headers: { 'apikey': config.apiKey }
       })
+
+      // Atualizar status no banco de dados (tabela config)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase
+          .from('config')
+          .upsert({
+            user_id: user.id,
+            chave: 'whatsapp_conectado',
+            valor: 'false',
+            descricao: 'Status de conexão do WhatsApp',
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'chave'
+          })
+
+        // Atualizar tabela mensallizap (marcar como desconectado)
+        console.log('💾 Atualizando mensallizap (desconexão)...')
+        const { error: mensallizapError } = await supabase
+          .from('mensallizap')
+          .update({
+            conectado: false,
+            ultima_desconexao: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+
+        if (mensallizapError) {
+          console.error('❌ Erro ao atualizar mensallizap:', mensallizapError)
+        } else {
+          console.log('✅ Mensallizap atualizada (desconectado)')
+        }
+      }
 
       setStatus('disconnected')
       setQrCode(null)
@@ -787,6 +1060,174 @@ Atenciosamente,
                 Editor de Template
               </h4>
 
+              {/* Toggles de Automação - MOVIDO PARA O TOPO */}
+              <div style={{
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon icon="mdi:robot-outline" width="18" />
+                    Automação de Mensagens
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
+                    Ative ou desative o envio automático de mensagens
+                  </p>
+                </div>
+
+                {/* Toggle 3 Dias */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  marginBottom: '8px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:calendar-clock" width="20" style={{ color: '#2196F3' }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
+                        3 Dias Antes
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999' }}>
+                        Enviar lembretes 3 dias antes do vencimento
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleAutomacao3Dias}
+                    style={{
+                      position: 'relative',
+                      width: '50px',
+                      height: '26px',
+                      backgroundColor: automacao3DiasAtiva ? '#4CAF50' : '#ccc',
+                      borderRadius: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.3s',
+                      padding: 0
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: automacao3DiasAtiva ? '26px' : '3px',
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </button>
+                </div>
+
+                {/* Toggle 5 Dias */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:calendar-alert" width="20" style={{ color: '#ff9800' }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
+                        5 Dias Antes
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999' }}>
+                        Enviar lembretes 5 dias antes do vencimento
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleAutomacao5Dias}
+                    style={{
+                      position: 'relative',
+                      width: '50px',
+                      height: '26px',
+                      backgroundColor: automacao5DiasAtiva ? '#4CAF50' : '#ccc',
+                      borderRadius: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.3s',
+                      padding: 0
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: automacao5DiasAtiva ? '26px' : '3px',
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </button>
+                </div>
+
+                {/* Toggle Em Atraso */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  marginTop: '8px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:alert-circle" width="20" style={{ color: '#f44336' }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
+                        Em Atraso
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999' }}>
+                        Enviar cobranças para mensalidades vencidas
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleAutomacaoEmAtraso}
+                    style={{
+                      position: 'relative',
+                      width: '50px',
+                      height: '26px',
+                      backgroundColor: automacaoEmAtrasoAtiva ? '#4CAF50' : '#ccc',
+                      borderRadius: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.3s',
+                      padding: 0
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: automacaoEmAtrasoAtiva ? '26px' : '3px',
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </button>
+                </div>
+              </div>
+
               {/* Template Type Selector */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{
@@ -800,79 +1241,9 @@ Atenciosamente,
                 </label>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button
+                    disabled={!automacao3DiasAtiva}
                     onClick={() => {
-                      setTipoTemplateSelecionado('overdue')
-                      const template = templatesAgrupados.overdue
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('overdue'))
-                        setMensagemTemplate(getMensagemDefault('overdue'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'overdue' ? '#f44336' : 'white',
-                      color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'overdue' ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <Icon icon="mdi:alert-circle" width="20" />
-                    <span>Em Atraso</span>
-                    {templatesAgrupados.overdue && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTipoTemplateSelecionado('pre_due_5days')
-                      const template = templatesAgrupados.pre_due_5days
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('pre_due_5days'))
-                        setMensagemTemplate(getMensagemDefault('pre_due_5days'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'pre_due_5days' ? '#ff9800' : 'white',
-                      color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'pre_due_5days' ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <Icon icon="mdi:calendar-alert" width="20" />
-                    <span>5 Dias Antes</span>
-                    {templatesAgrupados.pre_due_5days && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => {
+                      if (!automacao3DiasAtiva) return
                       setTipoTemplateSelecionado('pre_due_3days')
                       const template = templatesAgrupados.pre_due_3days
                       if (template) {
@@ -890,20 +1261,105 @@ Atenciosamente,
                       color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#666',
                       border: tipoTemplateSelecionado === 'pre_due_3days' ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: 'pointer',
+                      cursor: automacao3DiasAtiva ? 'pointer' : 'not-allowed',
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      opacity: automacao3DiasAtiva ? 1 : 0.5,
+                      position: 'relative'
                     }}
+                    title={!automacao3DiasAtiva ? 'Ative a automação de 3 dias para editar este template' : ''}
                   >
                     <Icon icon="mdi:calendar-clock" width="20" />
                     <span>3 Dias Antes</span>
-                    {templatesAgrupados.pre_due_3days && (
+                    {templatesAgrupados.pre_due_3days && automacao3DiasAtiva && (
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
+
+                  <button
+                    disabled={!automacao5DiasAtiva}
+                    onClick={() => {
+                      if (!automacao5DiasAtiva) return
+                      setTipoTemplateSelecionado('pre_due_5days')
+                      const template = templatesAgrupados.pre_due_5days
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('pre_due_5days'))
+                        setMensagemTemplate(getMensagemDefault('pre_due_5days'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'pre_due_5days' ? '#ff9800' : 'white',
+                      color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'pre_due_5days' ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: automacao5DiasAtiva ? 'pointer' : 'not-allowed',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      opacity: automacao5DiasAtiva ? 1 : 0.5,
+                      position: 'relative'
+                    }}
+                    title={!automacao5DiasAtiva ? 'Ative a automação de 5 dias para editar este template' : ''}
+                  >
+                    <Icon icon="mdi:calendar-alert" width="20" />
+                    <span>5 Dias Antes</span>
+                    {templatesAgrupados.pre_due_5days && automacao5DiasAtiva && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
+
+                  <button
+                    disabled={!automacaoEmAtrasoAtiva}
+                    onClick={() => {
+                      if (!automacaoEmAtrasoAtiva) return
+                      setTipoTemplateSelecionado('overdue')
+                      const template = templatesAgrupados.overdue
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('overdue'))
+                        setMensagemTemplate(getMensagemDefault('overdue'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'overdue' ? '#f44336' : 'white',
+                      color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'overdue' ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: automacaoEmAtrasoAtiva ? 'pointer' : 'not-allowed',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      opacity: automacaoEmAtrasoAtiva ? 1 : 0.5,
+                      position: 'relative'
+                    }}
+                    title={!automacaoEmAtrasoAtiva ? 'Ative a automação de Em Atraso para editar este template' : ''}
+                  >
+                    <Icon icon="mdi:alert-circle" width="20" />
+                    <span>Em Atraso</span>
+                    {templatesAgrupados.overdue && automacaoEmAtrasoAtiva && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
                 </div>

@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 
 export default function Login({ onLogin }) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,7 +24,10 @@ export default function Login({ onLogin }) {
       })
 
       if (error) throw error
-      onLogin()
+
+      // Chamar callback e redirecionar
+      if (onLogin) onLogin()
+      navigate('/app/home')
     } catch (error) {
       alert('Erro ao fazer login: ' + error.message)
     } finally {
@@ -217,6 +222,22 @@ export default function Login({ onLogin }) {
             {loading ? 'Carregando...' : 'Continuar'}
           </button>
         </form>
+
+        {/* Link para Criar Conta */}
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+          Não tem uma conta?
+          <a
+            href="/signup"
+            style={{
+              color: '#667eea',
+              marginLeft: '5px',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Criar conta grátis
+          </a>
+        </p>
       </div>
     </div>
   )

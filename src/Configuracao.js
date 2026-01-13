@@ -54,20 +54,9 @@ function Configuracao() {
     mensagens: { usado: 0, limite: 100 }
   })
 
-  // Automação WhatsApp
-  const [configAutomacao, setConfigAutomacao] = useState({
-    evolution_api_key: '',
-    evolution_api_url: '',
-    evolution_instance_name: '',
-    n8n_webhook_lembrete: '',
-    n8n_webhook_vencimento_hoje: '',
-    msg_template_lembrete: '',
-    msg_template_vencimento_hoje: '',
-    dias_lembrete_antecipado: '3',
-    horario_envio_automatico: '09:00',
-    automacao_habilitada: 'false'
-  })
-  const [testando, setTestando] = useState(false)
+  // Automação WhatsApp - REMOVIDO (movido para /whatsapp)
+  // const [configAutomacao, setConfigAutomacao] = useState({...})
+  // const [testando, setTestando] = useState(false)
 
   useEffect(() => {
     carregarDados()
@@ -84,8 +73,7 @@ function Configuracao() {
           carregarDadosEmpresa(user.id),
           carregarConfigCobranca(user.id),
           carregarPlanos(user.id),
-          carregarUsoSistema(user.id),
-          carregarConfigAutomacao()
+          carregarUsoSistema(user.id)
         ])
       }
     } catch (error) {
@@ -463,82 +451,8 @@ function Configuracao() {
   // AUTOMAÇÃO WHATSAPP FUNCTIONS
   // ==========================================
 
-  const carregarConfigAutomacao = async () => {
-    try {
-      const { data: config } = await buscarConfiguracoes()
-      if (config) {
-        setConfigAutomacao({
-          evolution_api_key: config.evolution_api_key || '',
-          evolution_api_url: config.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host',
-          evolution_instance_name: config.evolution_instance_name || '',
-          n8n_webhook_lembrete: config.n8n_webhook_lembrete || '',
-          n8n_webhook_vencimento_hoje: config.n8n_webhook_vencimento_hoje || '',
-          msg_template_lembrete: config.msg_template_lembrete || '',
-          msg_template_vencimento_hoje: config.msg_template_vencimento_hoje || '',
-          dias_lembrete_antecipado: config.dias_lembrete_antecipado || '3',
-          horario_envio_automatico: config.horario_envio_automatico || '09:00',
-          automacao_habilitada: config.automacao_habilitada || 'false'
-        })
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações de automação:', error)
-    }
-  }
-
-  const salvarConfigAutomacao = async () => {
-    try {
-      setLoading(true)
-
-      // Validações básicas
-      if (!configAutomacao.evolution_api_key?.trim()) {
-        showToast('API Key da Evolution é obrigatória', 'warning')
-        return
-      }
-
-      if (!configAutomacao.evolution_instance_name?.trim()) {
-        showToast('Nome da instância é obrigatório', 'warning')
-        return
-      }
-
-      // Salvar cada configuração
-      const configsParaSalvar = Object.keys(configAutomacao)
-
-      for (const chave of configsParaSalvar) {
-        await atualizarConfiguracao(chave, configAutomacao[chave])
-      }
-
-      showToast('Configurações de automação salvas!', 'success')
-    } catch (error) {
-      console.error('Erro ao salvar configurações:', error)
-      showToast('Erro ao salvar: ' + error.message, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const testarAutomacao = async () => {
-    if (!user) return
-
-    try {
-      setTestando(true)
-      showToast('Processando automações...', 'info')
-
-      const resultado = await executarAutomacoes(user.id)
-
-      if (resultado.total_enviados > 0) {
-        showToast(`✅ ${resultado.total_enviados} mensagem(ns) enviada(s) com sucesso!`, 'success')
-      } else {
-        showToast('Nenhuma mensagem para enviar no momento', 'info')
-      }
-
-      console.log('Resultado completo:', resultado)
-    } catch (error) {
-      console.error('Erro ao testar automação:', error)
-      showToast('Erro ao executar automação: ' + error.message, 'error')
-    } finally {
-      setTestando(false)
-    }
-  }
+  // Funções de automação REMOVIDAS - movidas para /whatsapp
+  // carregarConfigAutomacao, salvarConfigAutomacao, testarAutomacao
 
   // ==========================================
   // RENDER FUNCTIONS
@@ -1407,337 +1321,8 @@ function Configuracao() {
     </div>
   )
 
-  const renderAutomacao = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Status Card */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div>
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
-              Automação de WhatsApp
-            </h3>
-            <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-              Configure o envio automático de lembretes via n8n + Evolution API
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '14px', fontWeight: '500', color: '#666' }}>
-              {configAutomacao.automacao_habilitada === 'true' ? 'Ativado' : 'Desativado'}
-            </span>
-            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-              <input
-                type="checkbox"
-                checked={configAutomacao.automacao_habilitada === 'true'}
-                onChange={(e) => setConfigAutomacao({ ...configAutomacao, automacao_habilitada: e.target.checked ? 'true' : 'false' })}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span style={{
-                position: 'absolute',
-                cursor: 'pointer',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: configAutomacao.automacao_habilitada === 'true' ? '#4CAF50' : '#ccc',
-                transition: '0.3s',
-                borderRadius: '22px'
-              }}>
-                <span style={{
-                  position: 'absolute',
-                  content: '',
-                  height: '16px',
-                  width: '16px',
-                  left: configAutomacao.automacao_habilitada === 'true' ? '25px' : '3px',
-                  bottom: '3px',
-                  backgroundColor: 'white',
-                  transition: '0.3s',
-                  borderRadius: '50%'
-                }} />
-              </span>
-            </label>
-          </div>
-        </div>
-
-        {configAutomacao.automacao_habilitada === 'true' && (
-          <div style={{ padding: '12px', backgroundColor: '#e8f5e9', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon icon="mdi:check-circle" width="20" style={{ color: '#2e7d32' }} />
-            <span style={{ fontSize: '13px', color: '#2e7d32' }}>
-              Automação ativa. Mensagens serão enviadas diariamente às {configAutomacao.horario_envio_automatico}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Evolution API Config */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Icon icon="mdi:api" width="20" style={{ color: '#25D366' }} />
-          Evolution API
-        </h4>
-
-        <div style={{ display: 'grid', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              API Key *
-            </label>
-            <input
-              type="password"
-              value={configAutomacao.evolution_api_key}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, evolution_api_key: e.target.value })}
-              placeholder="Sua API Key da Evolution"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              URL da API
-            </label>
-            <input
-              type="url"
-              value={configAutomacao.evolution_api_url}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, evolution_api_url: e.target.value })}
-              placeholder="https://seu-servidor.com"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Nome da Instância *
-            </label>
-            <input
-              type="text"
-              value={configAutomacao.evolution_instance_name}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, evolution_instance_name: e.target.value })}
-              placeholder="nome-da-instancia"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* n8n Webhooks Config */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Icon icon="mdi:webhook" width="20" style={{ color: '#FF6D00' }} />
-          n8n Webhooks
-        </h4>
-
-        <div style={{ display: 'grid', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Webhook: Lembrete de Vencimento
-            </label>
-            <input
-              type="url"
-              value={configAutomacao.n8n_webhook_lembrete}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, n8n_webhook_lembrete: e.target.value })}
-              placeholder="https://seu-n8n.com/webhook/lembrete-vencimento"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Webhook: Vencimento Hoje
-            </label>
-            <input
-              type="url"
-              value={configAutomacao.n8n_webhook_vencimento_hoje}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, n8n_webhook_vencimento_hoje: e.target.value })}
-              placeholder="https://seu-n8n.com/webhook/vencimento-hoje"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Templates */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Icon icon="mdi:message-text" width="20" style={{ color: '#2196F3' }} />
-          Templates de Mensagens
-        </h4>
-        <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#666' }}>
-          Use as variáveis: <code style={{ backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: '3px' }}>{'{{nome}}'}</code>, <code style={{ backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: '3px' }}>{'{{valor}}'}</code>, <code style={{ backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: '3px' }}>{'{{dias_restantes}}'}</code>, <code style={{ backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: '3px' }}>{'{{data_vencimento}}'}</code>
-        </p>
-
-        <div style={{ display: 'grid', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Template: Lembrete Antecipado
-            </label>
-            <textarea
-              value={configAutomacao.msg_template_lembrete}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, msg_template_lembrete: e.target.value })}
-              placeholder="Olá {{nome}}! Sua mensalidade de {{valor}} vence em {{dias_restantes}} dias..."
-              rows="4"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Template: Vencimento Hoje
-            </label>
-            <textarea
-              value={configAutomacao.msg_template_vencimento_hoje}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, msg_template_vencimento_hoje: e.target.value })}
-              placeholder="Olá {{nome}}! Sua mensalidade de {{valor}} vence hoje..."
-              rows="4"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Configurações Gerais */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Icon icon="mdi:cog" width="20" style={{ color: '#666' }} />
-          Configurações Gerais
-        </h4>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Dias de Antecedência para Lembrete
-            </label>
-            <input
-              type="number"
-              value={configAutomacao.dias_lembrete_antecipado}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, dias_lembrete_antecipado: e.target.value })}
-              min="1"
-              max="15"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-            <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
-              Quantos dias antes enviar o lembrete
-            </span>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-              Horário de Envio Automático
-            </label>
-            <input
-              type="time"
-              value={configAutomacao.horario_envio_automatico}
-              onChange={(e) => setConfigAutomacao({ ...configAutomacao, horario_envio_automatico: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px'
-              }}
-            />
-            <span style={{ fontSize: '12px', color: '#999', marginTop: '4px', display: 'block' }}>
-              Horário para processar mensagens
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-        <button
-          onClick={testarAutomacao}
-          disabled={testando || configAutomacao.automacao_habilitada !== 'true'}
-          style={{
-            backgroundColor: testando ? '#ccc' : '#FF9800',
-            color: 'white',
-            padding: '10px 24px',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: testando || configAutomacao.automacao_habilitada !== 'true' ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Icon icon={testando ? "eos-icons:loading" : "mdi:play"} width="18" />
-          {testando ? 'Testando...' : 'Testar Agora'}
-        </button>
-
-        <button
-          onClick={salvarConfigAutomacao}
-          disabled={loading}
-          style={{
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            padding: '10px 24px',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Icon icon="material-symbols:save-outline" width="18" />
-          Salvar Configurações
-        </button>
-      </div>
-    </div>
-  )
+  // Aba de Automação WhatsApp foi movida para /whatsapp
+  // A configuração de automações agora está integrada na página de templates
 
   // ==========================================
   // MAIN RENDER
@@ -1746,7 +1331,6 @@ function Configuracao() {
   const tabs = [
     { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
     { id: 'cobranca', label: 'Configurações de Cobrança', icon: 'mdi:credit-card-settings-outline' },
-    { id: 'automacao', label: 'Automação WhatsApp', icon: 'mdi:robot-outline' },
     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
@@ -1813,7 +1397,6 @@ function Configuracao() {
             <>
               {abaAtiva === 'empresa' && renderDadosEmpresa()}
               {abaAtiva === 'cobranca' && renderConfigCobranca()}
-              {abaAtiva === 'automacao' && renderAutomacao()}
               {abaAtiva === 'planos' && renderPlanos()}
               {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}

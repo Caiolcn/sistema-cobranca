@@ -70,6 +70,7 @@ class WhatsAppService {
       '{{nomeCliente}}': dados.nomeCliente || '',
       '{{telefone}}': dados.telefone || '',
       '{{valorMensalidade}}': dados.valorMensalidade || '',
+      '{{valorParcela}}': dados.valorMensalidade || '', // Alias para valorMensalidade
       '{{dataVencimento}}': dados.dataVencimento || '',
       '{{diasAtraso}}': dados.diasAtraso || '0',
       '{{nomeEmpresa}}': dados.nomeEmpresa || ''
