@@ -318,10 +318,18 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         return
       }
 
-      // 4. Calcular próximo vencimento (+30 dias da mensalidade paga)
-      const dataAtual = new Date(mensalidadeAtual.data_vencimento)
-      const proximoVencimento = new Date(dataAtual)
-      proximoVencimento.setDate(proximoVencimento.getDate() + 30)
+      // 4. Calcular próximo vencimento (mesmo dia do próximo mês)
+      const dataVencimentoAtual = new Date(mensalidadeAtual.data_vencimento + 'T00:00:00')
+      const proximoVencimento = new Date(dataVencimentoAtual)
+
+      // Adicionar 1 mês mantendo o mesmo dia
+      proximoVencimento.setMonth(proximoVencimento.getMonth() + 1)
+
+      // Ajustar caso o dia não exista no próximo mês (ex: 31 de jan → 28/29 de fev)
+      if (proximoVencimento.getDate() !== dataVencimentoAtual.getDate()) {
+        proximoVencimento.setDate(0) // Vai para o último dia do mês anterior
+      }
+
       const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
 
       // 5. Verificar se já existe mensalidade para esta data
@@ -397,12 +405,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         status: novoStatusPagamento ? 'pago' : 'pendente'
       }
 
-      // Adicionar forma de pagamento e data de pagamento se estiver marcando como pago
+      // Adicionar forma e data de pagamento se estiver marcando como pago
       if (novoStatusPagamento) {
         updateData.forma_pagamento = formaPagamento
         updateData.data_pagamento = new Date().toISOString().split('T')[0] // Data atual em formato ISO
       } else {
-        // Limpar forma de pagamento e data se estiver desfazendo
+        // Limpar forma e data se estiver desfazendo
         updateData.forma_pagamento = null
         updateData.data_pagamento = null
       }
@@ -1046,8 +1054,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '18%' }}>
                     Plano
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
                     Status
+                  </th>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
+                    Forma Pagamento
                   </th>
                   <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
                     Data Pagamento
@@ -1079,6 +1090,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       {getStatusBadge(mensalidade.statusCalculado)}
+                    </td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                      {mensalidade.forma_pagamento || '-'}
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
                       {mensalidade.data_pagamento

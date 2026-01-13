@@ -24,6 +24,14 @@ function Home() {
   const [mensalidadesVencer7Dias, setMensalidadesVencer7Dias] = useState(0);
   const [mensagensEnviadasAuto, setMensagensEnviadasAuto] = useState(0);
 
+  // Status Operacional de Acesso
+  const [statusAcesso, setStatusAcesso] = useState({
+    emDia: { valor: 0, clientes: 0 },
+    atrasoRecente: { valor: 0, clientes: 0 },
+    bloqueado: { valor: 0, clientes: 0 },
+    inativo: { valor: 0, clientes: 0 }
+  });
+
   // Recebimento vs Vencimento (últimos 3 meses)
   const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
 
@@ -108,7 +116,8 @@ function Home() {
         { data: todasParcelas },
         { data: mensalidadesVencer7DiasList },
         { data: mensagensAutomaticas },
-        { data: assinaturasAtivasList }
+        { data: assinaturasAtivasList },
+        { data: mensalidadesAtrasadasAging }
       ] = await Promise.all([
         // 0. Nome da empresa
         supabase
@@ -239,7 +248,14 @@ function Home() {
           `)
           .eq('user_id', user.id)
           .eq('assinatura_ativa', true)
-          .not('plano_id', 'is', null)
+          .not('plano_id', 'is', null),
+
+        // 15. Todas as mensalidades para calcular Status de Acesso
+        supabase
+          .from('mensalidades')
+          .select('valor, data_vencimento, status, devedor_id')
+          .eq('user_id', user.id)
+          .eq('is_mensalidade', true)
       ]);
 
       // Processar resultados
@@ -341,6 +357,57 @@ function Home() {
       });
 
       setDistribuicaoStatus({ emDia, aVencer, atrasadas, canceladas });
+
+      // 12. Calcular Status Operacional de Acesso
+      const statusData = {
+        emDia: { valor: 0, clientes: new Set() },
+        atrasoRecente: { valor: 0, clientes: new Set() },
+        bloqueado: { valor: 0, clientes: new Set() },
+        inativo: { valor: 0, clientes: new Set() }
+      };
+
+      // Agrupar por devedor para pegar a mensalidade mais recente
+      const mensalidadesPorCliente = {};
+      mensalidadesAtrasadasAging?.forEach(m => {
+        if (!mensalidadesPorCliente[m.devedor_id] ||
+            new Date(m.data_vencimento) > new Date(mensalidadesPorCliente[m.devedor_id].data_vencimento)) {
+          mensalidadesPorCliente[m.devedor_id] = m;
+        }
+      });
+
+      // Classificar cada cliente pelo status da mensalidade mais recente
+      Object.values(mensalidadesPorCliente).forEach(m => {
+        const valor = parseFloat(m.valor || 0);
+
+        if (m.status === 'pago') {
+          // 🟢 Em dia - Pagamento ok
+          statusData.emDia.valor += valor;
+          statusData.emDia.clientes.add(m.devedor_id);
+        } else {
+          const diasAtraso = calcularDiasAtraso(m.data_vencimento);
+
+          if (diasAtraso >= 1 && diasAtraso <= 7) {
+            // 🟡 Atraso recente (1-7 dias)
+            statusData.atrasoRecente.valor += valor;
+            statusData.atrasoRecente.clientes.add(m.devedor_id);
+          } else if (diasAtraso > 7 && diasAtraso <= 30) {
+            // 🔴 Bloqueado (7-30 dias)
+            statusData.bloqueado.valor += valor;
+            statusData.bloqueado.clientes.add(m.devedor_id);
+          } else if (diasAtraso > 30) {
+            // ⚫ Inativo (+30 dias)
+            statusData.inativo.valor += valor;
+            statusData.inativo.clientes.add(m.devedor_id);
+          }
+        }
+      });
+
+      setStatusAcesso({
+        emDia: { valor: statusData.emDia.valor, clientes: statusData.emDia.clientes.size },
+        atrasoRecente: { valor: statusData.atrasoRecente.valor, clientes: statusData.atrasoRecente.clientes.size },
+        bloqueado: { valor: statusData.bloqueado.valor, clientes: statusData.bloqueado.clientes.size },
+        inativo: { valor: statusData.inativo.valor, clientes: statusData.inativo.clientes.size }
+      });
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -748,6 +815,71 @@ function Home() {
                 </ResponsiveContainer>
               );
             })()}
+          </div>
+        </div>
+      </div>
+
+      {/* Status Operacional de Acesso */}
+      <div className="home-section aging-section">
+        <div className="section-header">
+          <Icon icon="material-symbols:lock-person-outline" width="24" />
+          <h2>Status de Acesso dos Clientes</h2>
+        </div>
+        <div className="aging-container">
+          <div className="aging-card status-em-dia">
+            <div className="aging-header">
+              <span className="aging-label">Em dia</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:check-circle-outline" width="20" />
+              </div>
+            </div>
+            <div className="aging-body">
+              <span className="aging-value">{formatarMoeda(statusAcesso.emDia.valor)}</span>
+              <span className="aging-clientes">{statusAcesso.emDia.clientes} cliente{statusAcesso.emDia.clientes !== 1 ? 's' : ''}</span>
+              <span className="aging-status-desc">Acesso liberado</span>
+            </div>
+          </div>
+
+          <div className="aging-card status-atraso-recente">
+            <div className="aging-header">
+              <span className="aging-label">Atraso recente</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:schedule" width="20" />
+              </div>
+            </div>
+            <div className="aging-body">
+              <span className="aging-value">{formatarMoeda(statusAcesso.atrasoRecente.valor)}</span>
+              <span className="aging-clientes">{statusAcesso.atrasoRecente.clientes} cliente{statusAcesso.atrasoRecente.clientes !== 1 ? 's' : ''}</span>
+              <span className="aging-status-desc">1-7 dias • Enviar mensagem</span>
+            </div>
+          </div>
+
+          <div className="aging-card status-bloqueado">
+            <div className="aging-header">
+              <span className="aging-label">Bloqueado</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:block" width="20" />
+              </div>
+            </div>
+            <div className="aging-body">
+              <span className="aging-value">{formatarMoeda(statusAcesso.bloqueado.valor)}</span>
+              <span className="aging-clientes">{statusAcesso.bloqueado.clientes} cliente{statusAcesso.bloqueado.clientes !== 1 ? 's' : ''}</span>
+              <span className="aging-status-desc">7-30 dias • Acesso suspenso</span>
+            </div>
+          </div>
+
+          <div className="aging-card status-inativo">
+            <div className="aging-header">
+              <span className="aging-label">Inativo</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:person-off-outline" width="20" />
+              </div>
+            </div>
+            <div className="aging-body">
+              <span className="aging-value">{formatarMoeda(statusAcesso.inativo.valor)}</span>
+              <span className="aging-clientes">{statusAcesso.inativo.clientes} cliente{statusAcesso.inativo.clientes !== 1 ? 's' : ''}</span>
+              <span className="aging-status-desc">+30 dias • Abandono</span>
+            </div>
           </div>
         </div>
       </div>

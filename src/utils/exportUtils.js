@@ -86,6 +86,7 @@ export const exportarMensalidades = (mensalidades) => {
     'Valor': formatarMoedaExport(m.valor),
     'Status': m.status === 'pago' ? 'Pago' : m.status === 'pendente' ? 'Pendente' : 'Cancelado',
     'Data Vencimento': formatarDataExport(m.data_vencimento),
+    'Forma Pagamento': m.forma_pagamento || '',
     'Data Pagamento': m.data_pagamento ? formatarDataExport(m.data_pagamento) : '',
     'Descrição': m.descricao || '',
     'Telefone': m.devedores?.telefone || ''

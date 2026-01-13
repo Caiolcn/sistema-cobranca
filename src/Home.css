@@ -599,7 +599,6 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
-  margin-bottom: 24px;
 }
 
 @media (max-width: 1024px) {
@@ -1006,4 +1005,124 @@
   min-height: 300px;
   color: #9ca3af;
   font-size: 14px;
+}
+
+/* Status Operacional de Acesso */
+.aging-section {
+  margin-bottom: 24px;
+}
+
+.aging-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 8px 0;
+}
+
+@media (max-width: 1200px) {
+  .aging-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .aging-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.aging-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.aging-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.aging-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.aging-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.aging-header .card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.aging-header svg {
+  width: 20px;
+  height: 20px;
+}
+
+.aging-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.aging-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  color: #1a1a1a;
+}
+
+.aging-clientes {
+  font-size: 13px;
+  color: #999;
+  font-weight: 400;
+  margin-top: 8px;
+}
+
+.aging-status-desc {
+  font-size: 11px;
+  color: #999;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* 🟢 Em dia - Verde (Acesso Liberado) */
+.status-em-dia .card-icon {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+/* 🟡 Atraso recente (1-7 dias) - Amarelo (Enviar Mensagem) */
+.status-atraso-recente .card-icon {
+  background: #FFF3E0;
+  color: #FF9800;
+}
+
+/* 🔴 Bloqueado (7-30 dias) - Vermelho (Acesso Suspenso) */
+.status-bloqueado .card-icon {
+  background: #FFEBEE;
+  color: #f44336;
+}
+
+/* ⚫ Inativo (+30 dias) - Cinza (Abandono/Churn) */
+.status-inativo .card-icon {
+  background: #F5F5F5;
+  color: #757575;
 }
