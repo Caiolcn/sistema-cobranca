@@ -1,0 +1,207 @@
+{
+  "workflows": [
+    {
+      "name": "Lembrete de Vencimento",
+      "description": "Envia lembrete via WhatsApp X dias antes do vencimento da mensalidade",
+      "nodes": [
+        {
+          "id": "webhook",
+          "type": "Webhook",
+          "name": "Webhook - Receber Dados",
+          "parameters": {
+            "path": "lembrete-vencimento",
+            "method": "POST",
+            "responseMode": "lastNode"
+          },
+          "notes": "Endpoint: https://seu-n8n.com/webhook/lembrete-vencimento"
+        },
+        {
+          "id": "function",
+          "type": "Function",
+          "name": "Processar Template",
+          "parameters": {
+            "functionCode": "// Recebe dados do webhook\nconst mensalidade = $input.item.json;\n\n// Formatar valor em BRL\nconst valor = new Intl.NumberFormat('pt-BR', {\n  style: 'currency',\n  currency: 'BRL'\n}).format(mensalidade.valor);\n\n// Formatar data\nconst dataVencimento = new Date(mensalidade.data_vencimento).toLocaleDateString('pt-BR');\n\n// Substituir variáveis no template\nlet mensagem = mensalidade.template\n  .replace(/{{nome}}/g, mensalidade.nome)\n  .replace(/{{valor}}/g, valor)\n  .replace(/{{dias_restantes}}/g, mensalidade.dias_restantes)\n  .replace(/{{data_vencimento}}/g, dataVencimento);\n\nreturn {\n  json: {\n    numero: mensalidade.telefone,\n    mensagem: mensagem\n  }\n};"
+          }
+        },
+        {
+          "id": "evolution",
+          "type": "HTTP Request",
+          "name": "Enviar via Evolution API",
+          "parameters": {
+            "method": "POST",
+            "url": "={{$node[\"Webhook - Receber Dados\"].json[\"evolution_api_url\"]}}/message/sendText/={{$node[\"Webhook - Receber Dados\"].json[\"evolution_instance_name\"]}}",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "apikey",
+                  "value": "={{$node[\"Webhook - Receber Dados\"].json[\"evolution_api_key\"]}}"
+                }
+              ]
+            },
+            "sendBody": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "number",
+                  "value": "={{$node[\"Processar Template\"].json[\"numero\"]}}"
+                },
+                {
+                  "name": "text",
+                  "value": "={{$node[\"Processar Template\"].json[\"mensagem\"]}}"
+                }
+              ]
+            },
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "respond",
+          "type": "Respond to Webhook",
+          "name": "Responder Webhook",
+          "parameters": {
+            "respondWith": "json",
+            "responseBody": "={{{\n  \"success\": true,\n  \"mensagem_enviada\": $node[\"Processar Template\"].json[\"mensagem\"],\n  \"destinatario\": $node[\"Processar Template\"].json[\"numero\"]\n}}}"
+          }
+        }
+      ],
+      "connections": {
+        "Webhook - Receber Dados": {
+          "main": [[{ "node": "Processar Template", "type": "main", "index": 0 }]]
+        },
+        "Processar Template": {
+          "main": [[{ "node": "Enviar via Evolution API", "type": "main", "index": 0 }]]
+        },
+        "Enviar via Evolution API": {
+          "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+        }
+      }
+    },
+    {
+      "name": "Vencimento Hoje",
+      "description": "Envia aviso via WhatsApp quando a mensalidade vence hoje",
+      "nodes": [
+        {
+          "id": "webhook2",
+          "type": "Webhook",
+          "name": "Webhook - Receber Dados",
+          "parameters": {
+            "path": "vencimento-hoje",
+            "method": "POST",
+            "responseMode": "lastNode"
+          },
+          "notes": "Endpoint: https://seu-n8n.com/webhook/vencimento-hoje"
+        },
+        {
+          "id": "function2",
+          "type": "Function",
+          "name": "Processar Template",
+          "parameters": {
+            "functionCode": "// Recebe dados do webhook\nconst mensalidade = $input.item.json;\n\n// Formatar valor em BRL\nconst valor = new Intl.NumberFormat('pt-BR', {\n  style: 'currency',\n  currency: 'BRL'\n}).format(mensalidade.valor);\n\n// Formatar data\nconst dataVencimento = new Date(mensalidade.data_vencimento).toLocaleDateString('pt-BR');\n\n// Substituir variáveis no template\nlet mensagem = mensalidade.template\n  .replace(/{{nome}}/g, mensalidade.nome)\n  .replace(/{{valor}}/g, valor)\n  .replace(/{{data_vencimento}}/g, dataVencimento);\n\nreturn {\n  json: {\n    numero: mensalidade.telefone,\n    mensagem: mensagem\n  }\n};"
+          }
+        },
+        {
+          "id": "evolution2",
+          "type": "HTTP Request",
+          "name": "Enviar via Evolution API",
+          "parameters": {
+            "method": "POST",
+            "url": "={{$node[\"Webhook - Receber Dados\"].json[\"evolution_api_url\"]}}/message/sendText/={{$node[\"Webhook - Receber Dados\"].json[\"evolution_instance_name\"]}}",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "apikey",
+                  "value": "={{$node[\"Webhook - Receber Dados\"].json[\"evolution_api_key\"]}}"
+                }
+              ]
+            },
+            "sendBody": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "number",
+                  "value": "={{$node[\"Processar Template\"].json[\"numero\"]}}"
+                },
+                {
+                  "name": "text",
+                  "value": "={{$node[\"Processar Template\"].json[\"mensagem\"]}}"
+                }
+              ]
+            },
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "respond2",
+          "type": "Respond to Webhook",
+          "name": "Responder Webhook",
+          "parameters": {
+            "respondWith": "json",
+            "responseBody": "={{{\n  \"success\": true,\n  \"mensagem_enviada\": $node[\"Processar Template\"].json[\"mensagem\"],\n  \"destinatario\": $node[\"Processar Template\"].json[\"numero\"]\n}}}"
+          }
+        }
+      ],
+      "connections": {
+        "Webhook - Receber Dados": {
+          "main": [[{ "node": "Processar Template", "type": "main", "index": 0 }]]
+        },
+        "Processar Template": {
+          "main": [[{ "node": "Enviar via Evolution API", "type": "main", "index": 0 }]]
+        },
+        "Enviar via Evolution API": {
+          "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+        }
+      }
+    }
+  ],
+  "instrucoes": {
+    "titulo": "Como Importar os Workflows no n8n",
+    "passos": [
+      "1. Acesse seu n8n",
+      "2. Clique em 'Workflows' no menu lateral",
+      "3. Clique no botão '+' para criar novo workflow",
+      "4. Clique nos 3 pontinhos (⋮) > 'Import from File'",
+      "5. Selecione este arquivo JSON",
+      "6. Repita para cada workflow (Lembrete e Vencimento Hoje)",
+      "7. Ative os workflows clicando no toggle 'Active'",
+      "8. Copie as URLs dos webhooks e cole no Supabase (tabela config)"
+    ],
+    "formato_payload": {
+      "descricao": "O sistema React enviará este formato para os webhooks:",
+      "exemplo": {
+        "nome": "João Silva",
+        "telefone": "5511999999999",
+        "valor": 150.00,
+        "data_vencimento": "2026-01-20",
+        "dias_restantes": 3,
+        "template": "Olá {{nome}}! Sua mensalidade de {{valor}} vence em {{dias_restantes}} dias.",
+        "evolution_api_key": "sua-api-key",
+        "evolution_api_url": "https://service-evolution-api.tnvro1.easypanel.host",
+        "evolution_instance_name": "sua-instancia"
+      }
+    },
+    "observacoes": [
+      "- O telefone deve estar no formato internacional sem '+' (ex: 5511999999999)",
+      "- Os workflows já formatam valores em BRL e datas em pt-BR",
+      "- As credenciais da Evolution API são enviadas junto no payload para segurança",
+      "- Os workflows retornam confirmação de envio para registrar no sistema"
+    ]
+  }
+}
