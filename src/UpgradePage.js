@@ -1,13 +1,69 @@
+import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
 import { useTrialStatus } from './useTrialStatus'
+import { mercadoPagoService } from './services/mercadoPagoService'
 
 export default function UpgradePage() {
   const navigate = useNavigate()
   const { diasRestantes, isExpired } = useTrialStatus()
+  const [loading, setLoading] = useState(false)
+  const [assinaturaAtiva, setAssinaturaAtiva] = useState(null)
+  const [erro, setErro] = useState(null)
+
+  // Verificar se já tem assinatura ativa
+  useEffect(() => {
+    verificarAssinatura()
+  }, [])
+
+  const verificarAssinatura = async () => {
+    const assinatura = await mercadoPagoService.verificarAssinaturaAtiva()
+    setAssinaturaAtiva(assinatura)
+  }
+
+  const handleContratarPlano = async (planoId) => {
+    try {
+      setLoading(true)
+      setErro(null)
+
+      console.log('🚀 Criando assinatura para plano:', planoId)
+
+      // Criar assinatura via Edge Function
+      const { init_point, subscription_id } = await mercadoPagoService.criarAssinatura(planoId)
+
+      console.log('✅ Assinatura criada:', subscription_id)
+      console.log('🔗 Redirecionando para:', init_point)
+
+      // Redirecionar para checkout do Mercado Pago
+      window.location.href = init_point
+
+    } catch (error) {
+      console.error('❌ Erro ao contratar plano:', error)
+      setErro(error.message || 'Erro ao processar pagamento. Tente novamente.')
+      setLoading(false)
+    }
+  }
+
+  const handleCancelarAssinatura = async () => {
+    if (!window.confirm('Tem certeza que deseja cancelar sua assinatura?')) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      await mercadoPagoService.cancelarAssinatura()
+      window.alert('Assinatura cancelada com sucesso!')
+      setAssinaturaAtiva(null)
+      setLoading(false)
+    } catch (error) {
+      window.alert(`Erro ao cancelar: ${error.message}`)
+      setLoading(false)
+    }
+  }
 
   const planos = [
     {
+      id: 'premium',
       nome: 'Premium',
       preco: 'R$ 49,90',
       periodo: '/mês',
@@ -24,6 +80,7 @@ export default function UpgradePage() {
       cor: '#667eea'
     },
     {
+      id: 'enterprise',
       nome: 'Enterprise',
       preco: 'R$ 149,90',
       periodo: '/mês',
@@ -84,6 +141,63 @@ export default function UpgradePage() {
           Escolha o plano ideal para o seu negócio e automatize suas cobranças sem limites
         </p>
       </div>
+
+      {/* Mensagem de Erro */}
+      {erro && (
+        <div style={{
+          backgroundColor: '#ffebee',
+          color: '#c62828',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          marginBottom: '32px',
+          textAlign: 'center',
+          fontSize: '15px'
+        }}>
+          <Icon icon="mdi:alert-circle" width="20" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          {erro}
+        </div>
+      )}
+
+      {/* Assinatura Ativa */}
+      {assinaturaAtiva && (
+        <div style={{
+          backgroundColor: '#e8f5e9',
+          padding: '32px',
+          borderRadius: '16px',
+          marginBottom: '40px',
+          textAlign: 'center',
+          border: '2px solid #4caf50'
+        }}>
+          <Icon icon="mdi:check-circle" width="48" style={{ color: '#4caf50', marginBottom: '16px' }} />
+          <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>
+            Você já tem uma assinatura ativa!
+          </h3>
+          <p style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
+            Plano: <strong style={{ color: '#333' }}>{assinaturaAtiva.plano.charAt(0).toUpperCase() + assinaturaAtiva.plano.slice(1)}</strong>
+          </p>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
+            Status: <span style={{ color: '#4caf50', fontWeight: '600' }}>Ativo</span>
+          </p>
+          <button
+            onClick={handleCancelarAssinatura}
+            disabled={loading}
+            style={{
+              padding: '12px 32px',
+              backgroundColor: loading ? '#ccc' : '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              transition: 'all 0.2s'
+            }}
+          >
+            {loading ? 'Processando...' : 'Cancelar Assinatura'}
+          </button>
+        </div>
+      )}
 
       {/* Cards de Planos */}
       <div style={{
@@ -176,37 +290,40 @@ export default function UpgradePage() {
               ))}
             </ul>
 
-            <a
-              href={`https://wa.me/5562982466639?text=Olá! Gostaria de fazer upgrade para o plano ${plano.nome} (${plano.preco}/mês)`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => handleContratarPlano(plano.id)}
+              disabled={loading || assinaturaAtiva}
               style={{
                 display: 'block',
                 width: '100%',
                 padding: '16px',
-                backgroundColor: plano.cor,
+                backgroundColor: (loading || assinaturaAtiva) ? '#ccc' : plano.cor,
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
                 fontSize: '16px',
                 fontWeight: '600',
                 textAlign: 'center',
-                textDecoration: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                cursor: (loading || assinaturaAtiva) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: (loading || assinaturaAtiva) ? 0.6 : 1
               }}
               onMouseOver={(e) => {
-                e.target.style.transform = 'translateY(-2px)'
-                e.target.style.boxShadow = `0 4px 12px ${plano.cor}80`
+                if (!loading && !assinaturaAtiva) {
+                  e.target.style.transform = 'translateY(-2px)'
+                  e.target.style.boxShadow = `0 4px 12px ${plano.cor}80`
+                }
               }}
               onMouseOut={(e) => {
-                e.target.style.transform = 'translateY(0)'
-                e.target.style.boxShadow = 'none'
+                if (!loading && !assinaturaAtiva) {
+                  e.target.style.transform = 'translateY(0)'
+                  e.target.style.boxShadow = 'none'
+                }
               }}
             >
-              <Icon icon="mdi:whatsapp" width="20" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-              Contratar via WhatsApp
-            </a>
+              <Icon icon="mdi:credit-card" width="20" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : 'Assinar Agora'}
+            </button>
           </div>
         ))}
       </div>
@@ -226,7 +343,7 @@ export default function UpgradePage() {
           color: '#333',
           textAlign: 'center'
         }}>
-          Como Funciona o Upgrade?
+          Pagamento Seguro via Mercado Pago
         </h3>
 
         <div style={{
@@ -245,13 +362,13 @@ export default function UpgradePage() {
               justifyContent: 'center',
               margin: '0 auto 16px'
             }}>
-              <Icon icon="mdi:whatsapp" width="32" style={{ color: '#2196F3' }} />
+              <Icon icon="mdi:shield-check" width="32" style={{ color: '#2196F3' }} />
             </div>
             <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              1. Entre em Contato
+              100% Seguro
             </h4>
             <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Clique no botão "Contratar via WhatsApp" e envie uma mensagem
+              Pagamentos processados pelo Mercado Pago com criptografia SSL
             </p>
           </div>
 
@@ -266,13 +383,13 @@ export default function UpgradePage() {
               justifyContent: 'center',
               margin: '0 auto 16px'
             }}>
-              <Icon icon="mdi:credit-card" width="32" style={{ color: '#9C27B0' }} />
+              <Icon icon="mdi:credit-card-multiple" width="32" style={{ color: '#9C27B0' }} />
             </div>
             <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              2. Faça o Pagamento
+              Várias Formas de Pagamento
             </h4>
             <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Te enviaremos as instruções de pagamento via PIX ou cartão
+              Cartão de crédito, débito, PIX e boleto bancário
             </p>
           </div>
 
@@ -287,13 +404,13 @@ export default function UpgradePage() {
               justifyContent: 'center',
               margin: '0 auto 16px'
             }}>
-              <Icon icon="mdi:check-circle" width="32" style={{ color: '#4CAF50' }} />
+              <Icon icon="mdi:autorenew" width="32" style={{ color: '#4CAF50' }} />
             </div>
             <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              3. Ativação Imediata
+              Cobrança Recorrente
             </h4>
             <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Sua conta será ativada em até 5 minutos após confirmação
+              Renovação automática mensal. Cancele quando quiser
             </p>
           </div>
         </div>

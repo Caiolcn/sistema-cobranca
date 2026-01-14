@@ -156,19 +156,30 @@ export default function Signup() {
 
       const userId = authData.user.id
 
-      // 3. Atualizar registro em usuarios com dados completos
-      const { error: updateError } = await supabase
+      // 3. Atualizar/criar registro completo em usuarios (UPSERT)
+      // O Supabase já cria o registro automaticamente, então vamos atualizar
+      const { error: upsertError } = await supabase
         .from('usuarios')
-        .update({
+        .upsert({
+          id: userId,
+          email: email,
           nome_completo: nomeCompleto,
           telefone: telefone,
           cpf_cnpj: cpfCnpj,
           plano: planoSelecionado,
-          limite_mensal: getLimitePorPlano(planoSelecionado)
+          limite_mensal: getLimitePorPlano(planoSelecionado),
+          trial_fim: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 dias
+          trial_ativo: true,
+          plano_pago: false,
+          status_conta: 'ativo'
+        }, {
+          onConflict: 'id'
         })
-        .eq('id', userId)
 
-      if (updateError) throw updateError
+      if (upsertError) {
+        console.error('Erro detalhado ao salvar usuário:', upsertError)
+        throw new Error(`Database error: ${upsertError.message || upsertError.code || 'Unknown error'}`)
+      }
 
       // 4. Criar registro em controle_planos
       const mesReferencia = new Date().toISOString().slice(0, 7) // YYYY-MM

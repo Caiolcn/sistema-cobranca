@@ -11,6 +11,8 @@ import Clientes from './Clientes'
 import WhatsAppConexao from './WhatsAppConexao'
 import Configuracao from './Configuracao'
 import UpgradePage from './UpgradePage'
+import UpgradeSuccessPage from './UpgradeSuccessPage'
+import ResetPassword from './ResetPassword'
 import Toast from './Toast'
 import './App.css'
 
@@ -45,11 +47,13 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Rotas protegidas (sistema) */}
           {session ? (
             <>
               <Route path="/app/upgrade" element={<UpgradePage />} />
+              <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
               <Route path="/app" element={<Dashboard />}>
                 <Route index element={<Navigate to="/app/home" replace />} />
                 <Route path="home" element={<Home />} />
