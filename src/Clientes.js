@@ -282,6 +282,28 @@ export default function Clientes() {
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Verificar se já existe outro cliente com o mesmo telefone
+      const telefoneFormatado = telefoneEdit.trim().replace(/\D/g, '')
+      const { data: clienteExistente } = await supabase
+        .from('devedores')
+        .select('id, nome')
+        .eq('user_id', user.id)
+        .neq('id', clienteSelecionado.id)
+
+      const duplicado = clienteExistente?.find(c =>
+        c.telefone?.replace(/\D/g, '') === telefoneFormatado
+      ) || clientes.find(c =>
+        c.id !== clienteSelecionado.id &&
+        c.telefone?.replace(/\D/g, '') === telefoneFormatado
+      )
+
+      if (duplicado) {
+        showToast(`Já existe um cliente com este telefone: ${duplicado.nome}`, 'warning')
+        return
+      }
+
       const { error } = await supabase
         .from('devedores')
         .update({
@@ -525,6 +547,17 @@ export default function Clientes() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
+
+      // Verificar se já existe cliente com o mesmo telefone
+      const telefoneFormatado = novoClienteTelefone.trim().replace(/\D/g, '')
+      const duplicado = clientes.find(c =>
+        c.telefone?.replace(/\D/g, '') === telefoneFormatado
+      )
+
+      if (duplicado) {
+        showToast(`Já existe um cliente com este telefone: ${duplicado.nome}`, 'warning')
+        return
+      }
 
       // Criar cliente
       const { data: clienteData, error: clienteError } = await supabase
