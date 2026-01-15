@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
 import { showToast } from './Toast'
+import useWindowSize from './hooks/useWindowSize'
 
 function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdicionado }) {
+  const { isMobile } = useWindowSize()
   const [selectedClient, setSelectedClient] = useState('')
   const [totalValue, setTotalValue] = useState('')
   const [firstDueDate, setFirstDueDate] = useState('')
@@ -232,20 +234,23 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'stretch' : 'center',
       justifyContent: 'center',
       zIndex: 1000
     }}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
-        width: '90%',
-        maxWidth: '600px',
-        maxHeight: '90vh',
+        borderRadius: isMobile ? 0 : '8px',
+        width: isMobile ? '100%' : '90%',
+        maxWidth: isMobile ? '100%' : '600px',
+        height: isMobile ? '100%' : 'auto',
+        maxHeight: isMobile ? '100%' : '90vh',
         overflow: 'auto',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+        boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
         {/* Header */}
         <div style={{
@@ -274,7 +279,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: isMobile ? '16px' : '20px', flex: 1, overflow: 'auto' }}>
           {/* Client Selection */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
@@ -455,18 +460,21 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.6)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
           justifyContent: 'center',
           zIndex: 2000
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '8px',
-            width: '90%',
-            maxWidth: '450px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+            borderRadius: isMobile ? 0 : '8px',
+            width: isMobile ? '100%' : '90%',
+            maxWidth: isMobile ? '100%' : '450px',
+            height: isMobile ? '100%' : 'auto',
+            boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             {/* Header */}
             <div style={{
@@ -501,7 +509,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
             </div>
 
             {/* Body */}
-            <div style={{ padding: '20px' }}>
+            <div style={{ padding: isMobile ? '16px' : '20px', flex: 1 }}>
               {/* Nome */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
