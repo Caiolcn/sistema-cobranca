@@ -20,6 +20,60 @@ export default function Signup() {
   const [erro, setErro] = useState('')
   const [etapa, setEtapa] = useState(1) // 1 = dados, 2 = plano
 
+  // Função para aplicar máscara de telefone
+  const formatarTelefone = (value) => {
+    const numeros = value.replace(/\D/g, '')
+    if (numeros.length <= 2) {
+      return `(${numeros}`
+    } else if (numeros.length <= 6) {
+      return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`
+    } else if (numeros.length <= 10) {
+      return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`
+    } else {
+      return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7, 11)}`
+    }
+  }
+
+  // Função para aplicar máscara de CPF ou CNPJ
+  const formatarCpfCnpj = (value) => {
+    const numeros = value.replace(/\D/g, '')
+    if (numeros.length <= 11) {
+      // CPF: 000.000.000-00
+      if (numeros.length <= 3) {
+        return numeros
+      } else if (numeros.length <= 6) {
+        return `${numeros.slice(0, 3)}.${numeros.slice(3)}`
+      } else if (numeros.length <= 9) {
+        return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6)}`
+      } else {
+        return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6, 9)}-${numeros.slice(9)}`
+      }
+    } else {
+      // CNPJ: 00.000.000/0000-00
+      if (numeros.length <= 2) {
+        return numeros
+      } else if (numeros.length <= 5) {
+        return `${numeros.slice(0, 2)}.${numeros.slice(2)}`
+      } else if (numeros.length <= 8) {
+        return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5)}`
+      } else if (numeros.length <= 12) {
+        return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5, 8)}/${numeros.slice(8)}`
+      } else {
+        return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5, 8)}/${numeros.slice(8, 12)}-${numeros.slice(12, 14)}`
+      }
+    }
+  }
+
+  const handleTelefoneChange = (e) => {
+    const formatted = formatarTelefone(e.target.value)
+    setTelefone(formatted)
+  }
+
+  const handleCpfCnpjChange = (e) => {
+    const formatted = formatarCpfCnpj(e.target.value)
+    setCpfCnpj(formatted)
+  }
+
   const getLimitePorPlano = (plano) => {
     const limites = {
       basico: 100,
@@ -340,8 +394,9 @@ export default function Signup() {
               <input
                 type="tel"
                 value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
+                onChange={handleTelefoneChange}
                 placeholder="(11) 99999-9999"
+                maxLength={15}
                 required
                 style={{
                   width: '100%',
@@ -361,8 +416,9 @@ export default function Signup() {
               <input
                 type="text"
                 value={cpfCnpj}
-                onChange={(e) => setCpfCnpj(e.target.value)}
+                onChange={handleCpfCnpjChange}
                 placeholder="000.000.000-00"
+                maxLength={18}
                 required
                 style={{
                   width: '100%',
