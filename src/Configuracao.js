@@ -19,6 +19,9 @@ function Configuracao() {
     nomeEmpresa: '',
     cnpj: '',
     endereco: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
     cidade: '',
     estado: '',
     cep: '',
@@ -100,6 +103,9 @@ function Configuracao() {
         nomeEmpresa: data.nome_empresa || '',
         cnpj: data.cpf_cnpj || '',
         endereco: data.endereco || '',
+        numero: data.numero || '',
+        complemento: data.complemento || '',
+        bairro: data.bairro || '',
         cidade: data.cidade || '',
         estado: data.estado || '',
         cep: data.cep || '',
@@ -128,6 +134,9 @@ function Configuracao() {
           nome_empresa: dadosEmpresa.nomeEmpresa,
           cpf_cnpj: dadosEmpresa.cnpj,
           endereco: dadosEmpresa.endereco,
+          numero: dadosEmpresa.numero,
+          complemento: dadosEmpresa.complemento,
+          bairro: dadosEmpresa.bairro,
           cidade: dadosEmpresa.cidade,
           estado: dadosEmpresa.estado,
           cep: dadosEmpresa.cep,
@@ -512,7 +521,64 @@ function Configuracao() {
             type="text"
             value={dadosEmpresa.endereco}
             onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, endereco: e.target.value })}
-            placeholder="Rua, número, complemento"
+            placeholder="Rua, Avenida..."
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
+            Número
+          </label>
+          <input
+            type="text"
+            value={dadosEmpresa.numero}
+            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, numero: e.target.value })}
+            placeholder="123"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
+            Complemento
+          </label>
+          <input
+            type="text"
+            value={dadosEmpresa.complemento}
+            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, complemento: e.target.value })}
+            placeholder="Sala 101, Bloco A..."
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
+            Bairro
+          </label>
+          <input
+            type="text"
+            value={dadosEmpresa.bairro}
+            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, bairro: e.target.value })}
+            placeholder="Centro"
             style={{
               width: '100%',
               padding: '10px',
