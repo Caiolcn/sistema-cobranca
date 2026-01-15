@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
 import { useTrialStatus } from './useTrialStatus'
 import { mercadoPagoService } from './services/mercadoPagoService'
+import { supabase } from './supabaseClient'
 
 export default function UpgradePage() {
   const navigate = useNavigate()
@@ -14,11 +15,57 @@ export default function UpgradePage() {
   const [metodoPagamento, setMetodoPagamento] = useState(null) // 'cartao' ou 'pix'
   const [pixData, setPixData] = useState(null) // Dados do Pix gerado
   const [copiado, setCopiado] = useState(false)
+  const [pagamentoConfirmado, setPagamentoConfirmado] = useState(false) // Tela de sucesso
+  const [verificandoPagamento, setVerificandoPagamento] = useState(false)
+  const pollingRef = useRef(null)
 
   // Verificar se já tem assinatura ativa
   useEffect(() => {
     verificarAssinatura()
   }, [])
+
+  // Polling para verificar pagamento Pix
+  useEffect(() => {
+    if (pixData && !pagamentoConfirmado) {
+      setVerificandoPagamento(true)
+
+      // Verificar a cada 5 segundos
+      pollingRef.current = setInterval(async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return
+
+          // Verificar se o usuário foi ativado
+          const { data: usuario } = await supabase
+            .from('usuarios')
+            .select('plano_pago, plano')
+            .eq('id', user.id)
+            .single()
+
+          if (usuario?.plano_pago) {
+            clearInterval(pollingRef.current)
+            setVerificandoPagamento(false)
+            setPagamentoConfirmado(true)
+          }
+        } catch (error) {
+          console.error('Erro ao verificar pagamento:', error)
+        }
+      }, 5000)
+
+      // Limpar intervalo após 10 minutos (timeout)
+      const timeout = setTimeout(() => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current)
+          setVerificandoPagamento(false)
+        }
+      }, 600000)
+
+      return () => {
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        clearTimeout(timeout)
+      }
+    }
+  }, [pixData, pagamentoConfirmado])
 
   const verificarAssinatura = async () => {
     const assinatura = await mercadoPagoService.verificarAssinaturaAtiva()
@@ -165,6 +212,142 @@ export default function UpgradePage() {
       cor: '#764ba2'
     }
   ]
+
+  // Tela de Sucesso - Pagamento Confirmado
+  if (pagamentoConfirmado) {
+    return (
+      <div style={{
+        padding: '40px 24px',
+        maxWidth: '600px',
+        margin: '0 auto',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '60px 40px',
+          borderRadius: '16px',
+          border: '2px solid #4caf50',
+          boxShadow: '0 8px 32px rgba(76, 175, 80, 0.2)',
+          textAlign: 'center',
+          width: '100%'
+        }}>
+          {/* Ícone de sucesso animado */}
+          <div style={{
+            width: '100px',
+            height: '100px',
+            borderRadius: '50%',
+            backgroundColor: '#e8f5e9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            animation: 'scaleIn 0.5s ease-out'
+          }}>
+            <Icon icon="mdi:check-circle" width="64" style={{ color: '#4caf50' }} />
+          </div>
+
+          <h2 style={{
+            fontSize: '32px',
+            fontWeight: 'bold',
+            marginBottom: '12px',
+            color: '#333'
+          }}>
+            Pagamento Confirmado!
+          </h2>
+
+          <p style={{
+            fontSize: '18px',
+            color: '#666',
+            marginBottom: '8px'
+          }}>
+            Seu plano foi ativado com sucesso.
+          </p>
+
+          <p style={{
+            fontSize: '16px',
+            color: '#4caf50',
+            fontWeight: '600',
+            marginBottom: '32px'
+          }}>
+            Plano {pixData?.plano?.charAt(0).toUpperCase() + pixData?.plano?.slice(1)} - 30 dias
+          </p>
+
+          {/* Confete visual */}
+          <div style={{
+            backgroundColor: '#f5f5f5',
+            padding: '20px',
+            borderRadius: '12px',
+            marginBottom: '32px'
+          }}>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
+              Agora você pode aproveitar todos os recursos do MensalliZap!
+            </p>
+            <ul style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '16px'
+            }}>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', fontSize: '14px' }}>
+                <Icon icon="mdi:check" width="18" style={{ color: '#4caf50' }} /> Mensagens ilimitadas
+              </li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', fontSize: '14px' }}>
+                <Icon icon="mdi:check" width="18" style={{ color: '#4caf50' }} /> Automação completa
+              </li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', fontSize: '14px' }}>
+                <Icon icon="mdi:check" width="18" style={{ color: '#4caf50' }} /> Suporte prioritário
+              </li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => navigate('/app/home')}
+            style={{
+              width: '100%',
+              padding: '18px 32px',
+              backgroundColor: '#4caf50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '18px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#43a047'
+              e.target.style.transform = 'translateY(-2px)'
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#4caf50'
+              e.target.style.transform = 'translateY(0)'
+            }}
+          >
+            <Icon icon="mdi:home" width="24" />
+            Ir para o Dashboard
+          </button>
+        </div>
+
+        <style>{`
+          @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   // Tela de QR Code Pix
   if (pixData) {
