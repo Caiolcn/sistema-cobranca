@@ -45,6 +45,7 @@ export default function Clientes() {
   const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
   const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState({ show: false, clienteId: null })
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
+  const [erroModalNovoCliente, setErroModalNovoCliente] = useState('')
 
   useEffect(() => {
     carregarClientes()
@@ -300,7 +301,7 @@ export default function Clientes() {
       )
 
       if (duplicado) {
-        showToast(`Já existe um cliente com este telefone: ${duplicado.nome}`, 'warning')
+        showToast(`Já existe um cliente com este telefone (${duplicado.nome})`, 'warning')
         return
       }
 
@@ -535,13 +536,15 @@ export default function Clientes() {
   }
 
   const handleCriarCliente = async () => {
+    setErroModalNovoCliente('')
+
     if (!novoClienteNome.trim() || !novoClienteTelefone.trim()) {
-      showToast('Preencha nome e telefone', 'warning')
+      setErroModalNovoCliente('Preencha nome e telefone')
       return
     }
 
     if (criarAssinatura && (!dataInicioAssinatura || !planoSelecionado)) {
-      showToast('Preencha a data de início e selecione um plano', 'warning')
+      setErroModalNovoCliente('Preencha a data de início e selecione um plano')
       return
     }
 
@@ -555,7 +558,7 @@ export default function Clientes() {
       )
 
       if (duplicado) {
-        showToast(`Já existe um cliente com este telefone: ${duplicado.nome}`, 'warning')
+        setErroModalNovoCliente(`Já existe um cliente com este telefone (${duplicado.nome})`)
         return
       }
 
@@ -787,7 +790,10 @@ export default function Clientes() {
             </button>
 
             <button
-              onClick={() => setMostrarModalNovoCliente(true)}
+              onClick={() => {
+                setErroModalNovoCliente('')
+                setMostrarModalNovoCliente(true)
+              }}
               style={{
                 padding: '10px 20px',
                 backgroundColor: '#333',
@@ -1886,7 +1892,10 @@ export default function Clientes() {
       {/* Modal de novo cliente */}
       {mostrarModalNovoCliente && (
         <div
-          onClick={() => setMostrarModalNovoCliente(false)}
+          onClick={() => {
+            setMostrarModalNovoCliente(false)
+            setErroModalNovoCliente('')
+          }}
           style={{
             position: 'fixed',
             top: 0,
@@ -1919,6 +1928,25 @@ export default function Clientes() {
             }}>
               Adicionar Novo Cliente
             </h3>
+
+            {/* Mensagem de erro */}
+            {erroModalNovoCliente && (
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '6px',
+                marginBottom: '16px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Icon icon="mdi:alert-circle" width="18" height="18" />
+                {erroModalNovoCliente}
+              </div>
+            )}
 
             {/* Nome */}
             <div style={{ marginBottom: '20px' }}>
@@ -2202,6 +2230,7 @@ export default function Clientes() {
                   setCriarAssinatura(false)
                   setDataInicioAssinatura('')
                   setPlanoSelecionado('')
+                  setErroModalNovoCliente('')
                 }}
                 style={{
                   padding: '10px 20px',

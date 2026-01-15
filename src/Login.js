@@ -9,13 +9,35 @@ export default function Login({ onLogin }) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
+  const [mensagem, setMensagem] = useState({ texto: '', tipo: '' }) // tipo: 'erro', 'sucesso'
 
   // Validar se o formulário está completo
   const isFormValid = email.trim() !== '' && password.trim() !== ''
 
+  // Traduzir mensagens de erro do Supabase
+  const traduzirErro = (mensagem) => {
+    if (mensagem.includes('Invalid login credentials')) {
+      return 'E-mail ou senha incorretos'
+    }
+    if (mensagem.includes('Email not confirmed')) {
+      return 'E-mail não confirmado. Verifique sua caixa de entrada.'
+    }
+    if (mensagem.includes('Too many requests')) {
+      return 'Muitas tentativas. Aguarde alguns minutos.'
+    }
+    if (mensagem.includes('User not found')) {
+      return 'Usuário não encontrado'
+    }
+    if (mensagem.includes('Database error')) {
+      return 'Erro no servidor. Tente novamente em alguns instantes.'
+    }
+    return mensagem
+  }
+
   const handleAuth = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setMensagem({ texto: '', tipo: '' })
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -29,7 +51,7 @@ export default function Login({ onLogin }) {
       if (onLogin) onLogin()
       navigate('/app/home')
     } catch (error) {
-      alert('Erro ao fazer login: ' + error.message)
+      setMensagem({ texto: traduzirErro(error.message), tipo: 'erro' })
     } finally {
       setLoading(false)
     }
@@ -37,7 +59,7 @@ export default function Login({ onLogin }) {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      alert('Por favor, digite seu e-mail primeiro')
+      setMensagem({ texto: 'Por favor, digite seu e-mail primeiro', tipo: 'erro' })
       return
     }
 
@@ -47,9 +69,9 @@ export default function Login({ onLogin }) {
       })
 
       if (error) throw error
-      alert('Email de recuperação enviado! Verifique sua caixa de entrada.')
+      setMensagem({ texto: 'Email de recuperação enviado! Verifique sua caixa de entrada.', tipo: 'sucesso' })
     } catch (error) {
-      alert('Erro ao enviar email: ' + error.message)
+      setMensagem({ texto: 'Erro ao enviar email: ' + error.message, tipo: 'erro' })
     }
   }
 
@@ -200,6 +222,31 @@ export default function Login({ onLogin }) {
               </svg>
             </button>
           </div>
+
+          {/* Mensagem de erro/sucesso */}
+          {mensagem.texto && (
+            <div style={{
+              padding: '12px 14px',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              backgroundColor: mensagem.tipo === 'erro' ? '#fef2f2' : '#f0fdf4',
+              border: `1px solid ${mensagem.tipo === 'erro' ? '#fecaca' : '#bbf7d0'}`,
+              color: mensagem.tipo === 'erro' ? '#dc2626' : '#16a34a',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                {mensagem.tipo === 'erro' ? (
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                ) : (
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                )}
+              </svg>
+              {mensagem.texto}
+            </div>
+          )}
 
           {/* Botão Continuar */}
           <button
