@@ -17,6 +17,8 @@ export default function Clientes() {
   const [editando, setEditando] = useState(false)
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
+  const [cpfEdit, setCpfEdit] = useState('')
+  const [dataNascimentoEdit, setDataNascimentoEdit] = useState('')
   const [busca, setBusca] = useState('')
 
   // Filtros
@@ -30,6 +32,7 @@ export default function Clientes() {
   const [novoClienteNome, setNovoClienteNome] = useState('')
   const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
   const [novoClienteCpf, setNovoClienteCpf] = useState('')
+  const [novoClienteDataNascimento, setNovoClienteDataNascimento] = useState('')
   const [criarAssinatura, setCriarAssinatura] = useState(false)
   const [dataInicioAssinatura, setDataInicioAssinatura] = useState('')
   const [planoSelecionado, setPlanoSelecionado] = useState('')
@@ -45,6 +48,7 @@ export default function Clientes() {
   const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
   const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState({ show: false, clienteId: null })
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
+  const [dataInicioAssinaturaModal, setDataInicioAssinaturaModal] = useState('')
   const [erroModalNovoCliente, setErroModalNovoCliente] = useState('')
 
   useEffect(() => {
@@ -134,7 +138,7 @@ export default function Clientes() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Buscar clientes com dados do plano
+      // Buscar clientes com dados do plano (apenas ativos, lixo = false)
       const { data: clientesData, error: clientesError } = await supabase
         .from('devedores')
         .select(`
@@ -148,6 +152,7 @@ export default function Clientes() {
           planos:plano_id (nome)
         `)
         .eq('user_id', user.id)
+        .or('lixo.is.null,lixo.eq.false')
         .order('nome', { ascending: true })
 
       if (clientesError) throw clientesError
@@ -255,17 +260,76 @@ export default function Clientes() {
         .filter(m => m.status === 'pendente' || m.status === 'atrasado')
         .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
 
+      // Novos cálculos para indicadores melhorados
+      const valorPago = mensalidades
+        .filter(m => m.status === 'pago')
+        .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
+
+      const hoje = new Date()
+      hoje.setHours(0, 0, 0, 0)
+
+      const mensalidadesAtrasadas = mensalidades.filter(m => {
+        if (m.status === 'pago') return false
+        const vencimento = new Date(m.data_vencimento)
+        vencimento.setHours(0, 0, 0, 0)
+        return vencimento < hoje
+      }).length
+
+      const valorAtrasado = mensalidades
+        .filter(m => {
+          if (m.status === 'pago') return false
+          const vencimento = new Date(m.data_vencimento)
+          vencimento.setHours(0, 0, 0, 0)
+          return vencimento < hoje
+        })
+        .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
+
+      const parcelasPendentes = totalMensalidades - mensalidadesPagas
+
+      // Buscar logs de mensagens enviadas para este cliente
+      const { data: logsData } = await supabase
+        .from('logs_mensagens')
+        .select('id, enviado_em')
+        .eq('devedor_id', cliente.id)
+        .order('enviado_em', { ascending: false })
+
+      const totalMensagensEnviadas = logsData?.length || 0
+      const ultimoContato = logsData?.[0]?.enviado_em || null
+
+      // Calcular tempo de casa (baseado na primeira mensalidade ou data de criação)
+      let tempoDeCasa = null
+      if (mensalidades.length > 0) {
+        const primeiraData = new Date(mensalidades[0].data_vencimento)
+        const diffTime = Math.abs(hoje - primeiraData)
+        const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30))
+        tempoDeCasa = diffMonths
+      } else if (cliente.created_at) {
+        const dataCreated = new Date(cliente.created_at)
+        const diffTime = Math.abs(hoje - dataCreated)
+        const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30))
+        tempoDeCasa = diffMonths
+      }
+
       // Atualizar cliente com as estatísticas
       const clienteComEstatisticas = {
         ...cliente,
         totalMensalidades,
         mensalidadesPagas,
-        valorDevido
+        valorDevido,
+        valorPago,
+        mensalidadesAtrasadas,
+        valorAtrasado,
+        parcelasPendentes,
+        totalMensagensEnviadas,
+        ultimoContato,
+        tempoDeCasa
       }
 
       setClienteSelecionado(clienteComEstatisticas)
       setNomeEdit(cliente.nome || '')
       setTelefoneEdit(cliente.telefone || '')
+      setCpfEdit(cliente.cpf || '')
+      setDataNascimentoEdit(cliente.data_nascimento || '')
       setEditando(false)
       setMostrarModal(true)
       await carregarMensalidadesCliente(cliente.id)
@@ -309,7 +373,9 @@ export default function Clientes() {
         .from('devedores')
         .update({
           nome: nomeEdit.trim(),
-          telefone: telefoneEdit.trim()
+          telefone: telefoneEdit.trim(),
+          cpf: cpfEdit.trim() || null,
+          data_nascimento: dataNascimentoEdit || null
         })
         .eq('id', clienteSelecionado.id)
 
@@ -364,18 +430,13 @@ export default function Clientes() {
     if (!cliente) return
 
     try {
-      // Primeiro excluir mensalidades
-      const { error: mensalidadesError } = await supabase
-        .from('mensalidades')
-        .delete()
-        .eq('devedor_id', cliente.id)
-
-      if (mensalidadesError) throw mensalidadesError
-
-      // Depois excluir cliente
+      // Soft delete: marcar cliente como lixo = true
       const { error: clienteError } = await supabase
         .from('devedores')
-        .delete()
+        .update({
+          lixo: true,
+          deletado_em: new Date().toISOString()
+        })
         .eq('id', cliente.id)
 
       if (clienteError) throw clienteError
@@ -404,6 +465,7 @@ export default function Clientes() {
       if (!cliente?.plano_id) {
         // Se não tem plano, abrir modal para selecionar
         setPlanoParaAtivar('')
+        setDataInicioAssinaturaModal(new Date().toISOString().split('T')[0])
         setMostrarModalSelecionarPlano({ show: true, clienteId })
         return
       }
@@ -414,12 +476,20 @@ export default function Clientes() {
 
   const confirmarAtivarAssinaturaComPlano = async () => {
     const { clienteId } = mostrarModalSelecionarPlano
-    if (!clienteId || !planoParaAtivar) {
-      showToast('Selecione um plano', 'warning')
+    if (!clienteId || !planoParaAtivar || !dataInicioAssinaturaModal) {
+      showToast('Selecione um plano e data de início', 'warning')
       return
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const plano = planos.find(p => p.id === planoParaAtivar)
+
+      if (!plano) {
+        showToast('Plano não encontrado', 'error')
+        return
+      }
+
       // Atualizar o cliente com o plano e ativar a assinatura
       const { error } = await supabase
         .from('devedores')
@@ -431,11 +501,32 @@ export default function Clientes() {
 
       if (error) throw error
 
-      showToast('Assinatura ativada com sucesso!', 'success')
+      // Criar primeira mensalidade
+      const dataInicio = new Date(dataInicioAssinaturaModal + 'T00:00:00')
+      const dataVencimento = new Date(dataInicio)
+      dataVencimento.setDate(dataVencimento.getDate() + 30)
+
+      const { error: mensalidadeError } = await supabase
+        .from('mensalidades')
+        .insert({
+          user_id: user.id,
+          devedor_id: clienteId,
+          valor: parseFloat(plano.valor),
+          data_vencimento: dataVencimento.toISOString().split('T')[0],
+          status: 'pendente',
+          is_mensalidade: true,
+          numero_mensalidade: 1
+        })
+
+      if (mensalidadeError) {
+        console.error('Erro ao criar mensalidade:', mensalidadeError)
+        showToast('Assinatura ativada, mas houve erro ao criar mensalidade', 'warning')
+      } else {
+        showToast('Assinatura ativada e primeira mensalidade criada!', 'success')
+      }
 
       // Atualizar cliente selecionado se existir
       if (clienteSelecionado?.id === clienteId) {
-        const plano = planos.find(p => p.id === planoParaAtivar)
         setClienteSelecionado(prev => ({
           ...prev,
           assinatura_ativa: true,
@@ -452,6 +543,7 @@ export default function Clientes() {
     } finally {
       setMostrarModalSelecionarPlano({ show: false, clienteId: null })
       setPlanoParaAtivar('')
+      setDataInicioAssinaturaModal('')
     }
   }
 
@@ -495,6 +587,24 @@ export default function Clientes() {
         .replace(/(\d{5})(\d)/, '$1-$2')
     }
     return value
+  }
+
+  const formatarCpfCnpj = (value) => {
+    const numeros = value.replace(/\D/g, '')
+    if (numeros.length <= 11) {
+      // CPF: 000.000.000-00
+      if (numeros.length <= 3) return numeros
+      if (numeros.length <= 6) return numeros.replace(/(\d{3})(\d+)/, '$1.$2')
+      if (numeros.length <= 9) return numeros.replace(/(\d{3})(\d{3})(\d+)/, '$1.$2.$3')
+      return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d+)/, '$1.$2.$3-$4')
+    } else {
+      // CNPJ: 00.000.000/0000-00
+      if (numeros.length <= 2) return numeros
+      if (numeros.length <= 5) return numeros.replace(/(\d{2})(\d+)/, '$1.$2')
+      if (numeros.length <= 8) return numeros.replace(/(\d{2})(\d{3})(\d+)/, '$1.$2.$3')
+      if (numeros.length <= 12) return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d+)/, '$1.$2.$3/$4')
+      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d+)/, '$1.$2.$3/$4-$5').slice(0, 18)
+    }
   }
 
   const handleCriarPlanoRapido = async () => {
@@ -570,6 +680,7 @@ export default function Clientes() {
           nome: novoClienteNome.trim(),
           telefone: novoClienteTelefone.trim(),
           cpf: novoClienteCpf.trim() || null,
+          data_nascimento: novoClienteDataNascimento || null,
           valor_devido: 0,
           data_vencimento: new Date().toISOString().split('T')[0],
           status: 'pendente',
@@ -613,6 +724,7 @@ export default function Clientes() {
       setNovoClienteNome('')
       setNovoClienteTelefone('')
       setNovoClienteCpf('')
+      setNovoClienteDataNascimento('')
       setCriarAssinatura(false)
       setDataInicioAssinatura('')
       setPlanoSelecionado('')
@@ -1354,20 +1466,44 @@ export default function Clientes() {
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      CPF
+                      CPF/CNPJ
                     </label>
                     <input
                       type="text"
-                      value={clienteSelecionado.cpf || 'Não informado'}
-                      disabled
+                      value={cpfEdit}
+                      onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))}
+                      disabled={!editando}
+                      maxLength="18"
+                      placeholder="000.000.000-00"
                       style={{
                         width: '100%',
                         padding: '10px',
                         fontSize: '14px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        backgroundColor: '#f5f5f5',
-                        color: '#333',
+                        backgroundColor: editando ? 'white' : '#f5f5f5',
+                        color: cpfEdit ? '#333' : '#999',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
+                      Data de Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      value={dataNascimentoEdit}
+                      onChange={(e) => setDataNascimentoEdit(e.target.value)}
+                      disabled={!editando}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: editando ? 'white' : '#f5f5f5',
+                        color: dataNascimentoEdit ? '#333' : '#999',
                         boxSizing: 'border-box'
                       }}
                     />
@@ -1381,6 +1517,8 @@ export default function Clientes() {
                         setEditando(false)
                         setNomeEdit(clienteSelecionado.nome)
                         setTelefoneEdit(clienteSelecionado.telefone)
+                        setCpfEdit(clienteSelecionado.cpf || '')
+                        setDataNascimentoEdit(clienteSelecionado.data_nascimento || '')
                       }}
                       style={{
                         padding: '8px 16px',
@@ -1474,49 +1612,185 @@ export default function Clientes() {
                 </div>
               )}
 
-              {/* Resumo Financeiro */}
+              {/* Indicadores do Cliente - 4 Cards */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '16px',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '12px',
                 marginBottom: '24px'
               }}>
+                {/* Card 1: Total Pago */}
                 <div style={{
-                  backgroundColor: '#fff3e0',
-                  border: '2px solid #ff9800',
-                  borderRadius: '8px',
-                  padding: '16px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  border: '1px solid #bbf7d0',
                   textAlign: 'center'
                 }}>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Total de Mensalidades</p>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '700', color: '#ff9800' }}>
-                    {clienteSelecionado.totalMensalidades}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#dcfce7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 8px'
+                  }}>
+                    <Icon icon="mdi:currency-usd" width="20" style={{ color: '#22c55e' }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Total Pago</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '700', color: '#22c55e' }}>
+                    R$ {formatCurrency(clienteSelecionado.valorPago || 0)}
                   </p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>desde o início</p>
                 </div>
+
+                {/* Card 2: Tempo de Casa */}
                 <div style={{
-                  backgroundColor: '#e8f5e9',
-                  border: '2px solid #4CAF50',
-                  borderRadius: '8px',
-                  padding: '16px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  border: '1px solid #bfdbfe',
                   textAlign: 'center'
                 }}>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Pagas</p>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '700', color: '#4CAF50' }}>
-                    {clienteSelecionado.mensalidadesPagas}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#dbeafe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 8px'
+                  }}>
+                    <Icon icon="mdi:calendar-clock" width="20" style={{ color: '#3b82f6' }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Tempo de Casa</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '700', color: '#3b82f6' }}>
+                    {clienteSelecionado.tempoDeCasa ? (
+                      clienteSelecionado.tempoDeCasa >= 12
+                        ? `${Math.floor(clienteSelecionado.tempoDeCasa / 12)} ano${Math.floor(clienteSelecionado.tempoDeCasa / 12) !== 1 ? 's' : ''}`
+                        : `${clienteSelecionado.tempoDeCasa} ${clienteSelecionado.tempoDeCasa === 1 ? 'mês' : 'meses'}`
+                    ) : '-'}
                   </p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>como cliente</p>
                 </div>
+
+                {/* Card 3: Mensagens Enviadas */}
                 <div style={{
-                  backgroundColor: '#ffebee',
-                  border: '2px solid #f44336',
-                  borderRadius: '8px',
-                  padding: '16px',
+                  backgroundColor: '#faf5ff',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  border: '1px solid #e9d5ff',
                   textAlign: 'center'
                 }}>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Valor em Aberto</p>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: '700', color: '#f44336' }}>
-                    R$ {formatCurrency(clienteSelecionado.valorDevido)}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#f3e8ff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 8px'
+                  }}>
+                    <Icon icon="mdi:message-text-outline" width="20" style={{ color: '#a855f7' }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Mensagens</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '700', color: '#a855f7' }}>
+                    {clienteSelecionado.totalMensagensEnviadas || 0}
+                  </p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>enviadas</p>
+                </div>
+
+                {/* Card 4: Último Contato */}
+                <div style={{
+                  backgroundColor: '#fefce8',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  border: '1px solid #fef08a',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#fef9c3',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 8px'
+                  }}>
+                    <Icon icon="mdi:clock-check-outline" width="20" style={{ color: '#ca8a04' }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Último Contato</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: '700', color: '#ca8a04' }}>
+                    {clienteSelecionado.ultimoContato
+                      ? new Date(clienteSelecionado.ultimoContato).toLocaleDateString('pt-BR')
+                      : 'Nunca'}
+                  </p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>
+                    {clienteSelecionado.ultimoContato
+                      ? new Date(clienteSelecionado.ultimoContato).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                      : 'sem registro'}
                   </p>
                 </div>
+              </div>
+
+              {/* Resumo Financeiro */}
+              <div style={{
+                backgroundColor: clienteSelecionado.mensalidadesAtrasadas > 0 ? '#fef2f2' : '#f8f9fa',
+                borderRadius: '10px',
+                padding: '16px',
+                marginBottom: '24px',
+                border: clienteSelecionado.mensalidadesAtrasadas > 0 ? '1px solid #fecaca' : '1px solid #e9ecef'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>Resumo Financeiro</span>
+                  {clienteSelecionado.mensalidadesAtrasadas > 0 && (
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: '#ef4444',
+                      backgroundColor: '#fee2e2',
+                      padding: '2px 8px',
+                      borderRadius: '10px'
+                    }}>
+                      {clienteSelecionado.mensalidadesAtrasadas} em atraso
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>Mensalidades</p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                      {clienteSelecionado.mensalidadesPagas}/{clienteSelecionado.totalMensalidades} pagas
+                    </p>
+                  </div>
+                  <div style={{ flex: 1, textAlign: 'right' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>Em Aberto</p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: '600', color: clienteSelecionado.mensalidadesAtrasadas > 0 ? '#ef4444' : '#f59e0b' }}>
+                      R$ {formatCurrency(clienteSelecionado.valorDevido)}
+                    </p>
+                  </div>
+                </div>
+                {clienteSelecionado.totalMensalidades > 0 && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ backgroundColor: '#e5e7eb', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${(clienteSelecionado.mensalidadesPagas / clienteSelecionado.totalMensalidades) * 100}%`,
+                        backgroundColor: '#22c55e',
+                        height: '100%',
+                        borderRadius: '4px',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: '#888', textAlign: 'right' }}>
+                      {Math.round((clienteSelecionado.mensalidadesPagas / clienteSelecionado.totalMensalidades) * 100)}% quitado
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Lista de Mensalidades */}
@@ -1711,6 +1985,7 @@ export default function Clientes() {
           onClick={() => {
             setMostrarModalSelecionarPlano({ show: false, clienteId: null })
             setPlanoParaAtivar('')
+            setDataInicioAssinaturaModal('')
           }}
           style={{
             position: 'fixed',
@@ -1792,26 +2067,65 @@ export default function Clientes() {
                 </div>
               ) : (
                 <>
-                  <select
-                    value={planoParaAtivar}
-                    onChange={(e) => setPlanoParaAtivar(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
                       fontSize: '14px',
-                      cursor: 'pointer',
-                      backgroundColor: 'white'
-                    }}
-                  >
-                    <option value="">Selecione um plano</option>
-                    {planos.map(plano => (
-                      <option key={plano.id} value={plano.id}>
-                        {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}/mês
-                      </option>
-                    ))}
-                  </select>
+                      fontWeight: '500',
+                      color: '#333'
+                    }}>
+                      Plano
+                    </label>
+                    <select
+                      value={planoParaAtivar}
+                      onChange={(e) => setPlanoParaAtivar(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      <option value="">Selecione um plano</option>
+                      {planos.map(plano => (
+                        <option key={plano.id} value={plano.id}>
+                          {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}/mês
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#333'
+                    }}>
+                      Data de Início
+                    </label>
+                    <input
+                      type="date"
+                      value={dataInicioAssinaturaModal}
+                      onChange={(e) => setDataInicioAssinaturaModal(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        backgroundColor: 'white'
+                      }}
+                    />
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
+                      A primeira mensalidade será criada com vencimento 30 dias após esta data
+                    </p>
+                  </div>
 
                   <button
                     onClick={() => {
@@ -1854,6 +2168,7 @@ export default function Clientes() {
                 onClick={() => {
                   setMostrarModalSelecionarPlano({ show: false, clienteId: null })
                   setPlanoParaAtivar('')
+                  setDataInicioAssinaturaModal('')
                 }}
                 style={{
                   padding: '10px 20px',
@@ -1870,14 +2185,14 @@ export default function Clientes() {
               </button>
               <button
                 onClick={confirmarAtivarAssinaturaComPlano}
-                disabled={!planoParaAtivar}
+                disabled={!planoParaAtivar || !dataInicioAssinaturaModal}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: planoParaAtivar ? '#4CAF50' : '#ccc',
+                  backgroundColor: (planoParaAtivar && dataInicioAssinaturaModal) ? '#4CAF50' : '#ccc',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: planoParaAtivar ? 'pointer' : 'not-allowed',
+                  cursor: (planoParaAtivar && dataInicioAssinaturaModal) ? 'pointer' : 'not-allowed',
                   fontSize: '14px',
                   fontWeight: '500'
                 }}
@@ -2025,6 +2340,35 @@ export default function Clientes() {
                 value={novoClienteCpf}
                 onChange={(e) => setNovoClienteCpf(e.target.value)}
                 placeholder="000.000.000-00"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#333'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+            </div>
+
+            {/* Data de Nascimento */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Data de Nascimento (opcional)
+              </label>
+              <input
+                type="date"
+                value={novoClienteDataNascimento}
+                onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -2227,6 +2571,7 @@ export default function Clientes() {
                   setNovoClienteNome('')
                   setNovoClienteTelefone('')
                   setNovoClienteCpf('')
+                  setNovoClienteDataNascimento('')
                   setCriarAssinatura(false)
                   setDataInicioAssinatura('')
                   setPlanoSelecionado('')
