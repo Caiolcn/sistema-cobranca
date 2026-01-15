@@ -97,7 +97,7 @@ function Configuracao() {
 
     if (data) {
       setDadosEmpresa({
-        nomeEmpresa: data.nome_fantasia || data.razao_social || '',
+        nomeEmpresa: data.nome_empresa || '',
         cnpj: data.cpf_cnpj || '',
         endereco: data.endereco || '',
         cidade: data.cidade || '',
@@ -125,7 +125,7 @@ function Configuracao() {
       const { error } = await supabase
         .from('usuarios')
         .update({
-          nome_fantasia: dadosEmpresa.nomeEmpresa,
+          nome_empresa: dadosEmpresa.nomeEmpresa,
           cpf_cnpj: dadosEmpresa.cnpj,
           endereco: dadosEmpresa.endereco,
           cidade: dadosEmpresa.cidade,
