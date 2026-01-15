@@ -90,21 +90,21 @@ function Configuracao() {
 
   const carregarDadosEmpresa = async (userId) => {
     const { data, error } = await supabase
-      .from('configuracoes_empresa')
+      .from('usuarios')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle()
 
     if (data) {
       setDadosEmpresa({
-        nomeEmpresa: data.nome_empresa || '',
-        cnpj: data.cnpj || '',
+        nomeEmpresa: data.nome_fantasia || data.razao_social || '',
+        cnpj: data.cpf_cnpj || '',
         endereco: data.endereco || '',
         cidade: data.cidade || '',
         estado: data.estado || '',
         cep: data.cep || '',
         telefone: data.telefone || '',
-        email: data.email || '',
+        email: data.email_empresa || data.email || '',
         site: data.site || ''
       })
     }
@@ -123,20 +123,20 @@ function Configuracao() {
 
     try {
       const { error } = await supabase
-        .from('configuracoes_empresa')
-        .upsert({
-          user_id: user.id,
-          nome_empresa: dadosEmpresa.nomeEmpresa,
-          cnpj: dadosEmpresa.cnpj,
+        .from('usuarios')
+        .update({
+          nome_fantasia: dadosEmpresa.nomeEmpresa,
+          cpf_cnpj: dadosEmpresa.cnpj,
           endereco: dadosEmpresa.endereco,
           cidade: dadosEmpresa.cidade,
           estado: dadosEmpresa.estado,
           cep: dadosEmpresa.cep,
           telefone: dadosEmpresa.telefone,
-          email: dadosEmpresa.email,
+          email_empresa: dadosEmpresa.email,
           site: dadosEmpresa.site,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' })
+        })
+        .eq('id', user.id)
 
       if (error) throw error
       showToast('Configurações salvas!', 'success')
