@@ -38,6 +38,14 @@ export default function ConfirmModal({
           confirmBg: '#2196F3',
           confirmHover: '#1976D2'
         }
+      case 'success':
+        return {
+          icon: 'mdi:check-circle-outline',
+          iconColor: '#4CAF50',
+          iconBg: '#e8f5e9',
+          confirmBg: '#4CAF50',
+          confirmHover: '#388E3C'
+        }
       default:
         return {
           icon: 'mdi:alert-circle-outline',

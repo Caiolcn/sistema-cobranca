@@ -40,6 +40,10 @@ export default function Clientes() {
   const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
   const [novoPlanoDescricao, setNovoPlanoDescricao] = useState('')
 
+  // Estados para modais de confirmação
+  const [confirmPagamento, setConfirmPagamento] = useState({ show: false, mensalidade: null, novoPago: false })
+  const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
+
   useEffect(() => {
     carregarClientes()
     carregarPlanos()
@@ -295,14 +299,13 @@ export default function Clientes() {
     }
   }
 
-  const handleAlterarStatusMensalidade = async (mensalidade, novoPago) => {
-    const confirmar = window.confirm(
-      novoPago
-        ? `Confirmar pagamento de R$ ${parseFloat(mensalidade.valor).toFixed(2)}?`
-        : 'Desfazer o pagamento desta mensalidade?'
-    )
+  const handleAlterarStatusMensalidade = (mensalidade, novoPago) => {
+    setConfirmPagamento({ show: true, mensalidade, novoPago })
+  }
 
-    if (!confirmar) return
+  const confirmarAlteracaoPagamento = async () => {
+    const { mensalidade, novoPago } = confirmPagamento
+    if (!mensalidade) return
 
     try {
       const { error } = await supabase
@@ -321,6 +324,8 @@ export default function Clientes() {
       carregarClientes()
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
+    } finally {
+      setConfirmPagamento({ show: false, mensalidade: null, novoPago: false })
     }
   }
 
@@ -366,16 +371,15 @@ export default function Clientes() {
     }
   }
 
-  const handleAlterarAssinatura = async (clienteId, novoStatus) => {
+  const handleAlterarAssinatura = (clienteId, novoStatus) => {
+    setConfirmAssinatura({ show: true, clienteId, novoStatus })
+  }
+
+  const confirmarAlteracaoAssinatura = async () => {
+    const { clienteId, novoStatus } = confirmAssinatura
+    if (!clienteId) return
+
     try {
-      const confirmar = window.confirm(
-        novoStatus
-          ? 'Deseja ativar a assinatura deste cliente?'
-          : 'Deseja desativar a assinatura deste cliente?'
-      )
-
-      if (!confirmar) return
-
       const { error } = await supabase
         .from('devedores')
         .update({ assinatura_ativa: novoStatus })
@@ -398,6 +402,8 @@ export default function Clientes() {
     } catch (error) {
       console.error('Erro ao alterar assinatura:', error)
       showToast('Erro ao alterar assinatura: ' + error.message, 'error')
+    } finally {
+      setConfirmAssinatura({ show: false, clienteId: null, novoStatus: false })
     }
   }
 
@@ -1569,6 +1575,38 @@ export default function Clientes() {
         confirmText="OK"
         cancelText="Cancelar"
         type="danger"
+      />
+
+      {/* Modal de confirmação de pagamento */}
+      <ConfirmModal
+        isOpen={confirmPagamento.show}
+        onClose={() => setConfirmPagamento({ show: false, mensalidade: null, novoPago: false })}
+        onConfirm={confirmarAlteracaoPagamento}
+        title={confirmPagamento.novoPago ? 'Confirmar Pagamento' : 'Desfazer Pagamento'}
+        message={
+          confirmPagamento.novoPago
+            ? `Confirmar pagamento de R$ ${confirmPagamento.mensalidade ? parseFloat(confirmPagamento.mensalidade.valor).toFixed(2) : '0.00'}?`
+            : 'Deseja desfazer o pagamento desta mensalidade?'
+        }
+        confirmText={confirmPagamento.novoPago ? 'Confirmar' : 'Desfazer'}
+        cancelText="Cancelar"
+        type={confirmPagamento.novoPago ? 'success' : 'warning'}
+      />
+
+      {/* Modal de confirmação de assinatura */}
+      <ConfirmModal
+        isOpen={confirmAssinatura.show}
+        onClose={() => setConfirmAssinatura({ show: false, clienteId: null, novoStatus: false })}
+        onConfirm={confirmarAlteracaoAssinatura}
+        title={confirmAssinatura.novoStatus ? 'Ativar Assinatura' : 'Desativar Assinatura'}
+        message={
+          confirmAssinatura.novoStatus
+            ? 'Deseja ativar a assinatura deste cliente?'
+            : 'Deseja desativar a assinatura deste cliente?'
+        }
+        confirmText={confirmAssinatura.novoStatus ? 'Ativar' : 'Desativar'}
+        cancelText="Cancelar"
+        type={confirmAssinatura.novoStatus ? 'success' : 'warning'}
       />
 
       {/* Modal de novo cliente */}
