@@ -43,6 +43,8 @@ export default function Clientes() {
   // Estados para modais de confirmação
   const [confirmPagamento, setConfirmPagamento] = useState({ show: false, mensalidade: null, novoPago: false })
   const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
+  const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState({ show: false, clienteId: null })
+  const [planoParaAtivar, setPlanoParaAtivar] = useState('')
 
   useEffect(() => {
     carregarClientes()
@@ -372,7 +374,62 @@ export default function Clientes() {
   }
 
   const handleAlterarAssinatura = (clienteId, novoStatus) => {
+    // Se está tentando ativar a assinatura
+    if (novoStatus) {
+      // Verificar se o cliente já tem um plano
+      const cliente = clientes.find(c => c.id === clienteId) || clienteSelecionado
+      if (!cliente?.plano_id) {
+        // Se não tem plano, abrir modal para selecionar
+        setPlanoParaAtivar('')
+        setMostrarModalSelecionarPlano({ show: true, clienteId })
+        return
+      }
+    }
+    // Se já tem plano ou está desativando, mostrar confirmação normal
     setConfirmAssinatura({ show: true, clienteId, novoStatus })
+  }
+
+  const confirmarAtivarAssinaturaComPlano = async () => {
+    const { clienteId } = mostrarModalSelecionarPlano
+    if (!clienteId || !planoParaAtivar) {
+      showToast('Selecione um plano', 'warning')
+      return
+    }
+
+    try {
+      // Atualizar o cliente com o plano e ativar a assinatura
+      const { error } = await supabase
+        .from('devedores')
+        .update({
+          assinatura_ativa: true,
+          plano_id: planoParaAtivar
+        })
+        .eq('id', clienteId)
+
+      if (error) throw error
+
+      showToast('Assinatura ativada com sucesso!', 'success')
+
+      // Atualizar cliente selecionado se existir
+      if (clienteSelecionado?.id === clienteId) {
+        const plano = planos.find(p => p.id === planoParaAtivar)
+        setClienteSelecionado(prev => ({
+          ...prev,
+          assinatura_ativa: true,
+          plano_id: planoParaAtivar,
+          plano_nome: plano?.nome
+        }))
+      }
+
+      // Recarregar lista de clientes
+      await carregarClientes()
+    } catch (error) {
+      console.error('Erro ao ativar assinatura:', error)
+      showToast('Erro ao ativar assinatura: ' + error.message, 'error')
+    } finally {
+      setMostrarModalSelecionarPlano({ show: false, clienteId: null })
+      setPlanoParaAtivar('')
+    }
   }
 
   const confirmarAlteracaoAssinatura = async () => {
@@ -1608,6 +1665,190 @@ export default function Clientes() {
         cancelText="Cancelar"
         type={confirmAssinatura.novoStatus ? 'success' : 'warning'}
       />
+
+      {/* Modal para selecionar plano ao ativar assinatura */}
+      {mostrarModalSelecionarPlano.show && (
+        <div
+          onClick={() => {
+            setMostrarModalSelecionarPlano({ show: false, clienteId: null })
+            setPlanoParaAtivar('')
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '450px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#e8f5e9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Icon icon="mdi:card-account-details" width="24" style={{ color: '#4CAF50' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
+                  Selecione um Plano
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
+                  Para ativar a assinatura, selecione um plano
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px' }}>
+              {planos.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <Icon icon="mdi:package-variant-closed" width="48" style={{ color: '#ccc' }} />
+                  <p style={{ color: '#666', margin: '12px 0 0' }}>Nenhum plano cadastrado</p>
+                  <button
+                    onClick={() => {
+                      setMostrarModalSelecionarPlano({ show: false, clienteId: null })
+                      setMostrarModalCriarPlano(true)
+                    }}
+                    style={{
+                      marginTop: '16px',
+                      padding: '10px 20px',
+                      backgroundColor: '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Criar Plano
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={planoParaAtivar}
+                    onChange={(e) => setPlanoParaAtivar(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    <option value="">Selecione um plano</option>
+                    {planos.map(plano => (
+                      <option key={plano.id} value={plano.id}>
+                        {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}/mês
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      setMostrarModalSelecionarPlano({ show: false, clienteId: null })
+                      setMostrarModalCriarPlano(true)
+                    }}
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 16px',
+                      backgroundColor: 'transparent',
+                      color: '#2196F3',
+                      border: '2px dashed #2196F3',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      width: '100%',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Icon icon="material-symbols:add" width="18" />
+                    Criar novo plano
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px'
+            }}>
+              <button
+                onClick={() => {
+                  setMostrarModalSelecionarPlano({ show: false, clienteId: null })
+                  setPlanoParaAtivar('')
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'transparent',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarAtivarAssinaturaComPlano}
+                disabled={!planoParaAtivar}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: planoParaAtivar ? '#4CAF50' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: planoParaAtivar ? 'pointer' : 'not-allowed',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Ativar Assinatura
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de novo cliente */}
       {mostrarModalNovoCliente && (
