@@ -10,6 +10,10 @@ export default function UpgradePage() {
   const [loading, setLoading] = useState(false)
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(null)
   const [erro, setErro] = useState(null)
+  const [planoSelecionado, setPlanoSelecionado] = useState(null)
+  const [metodoPagamento, setMetodoPagamento] = useState(null) // 'cartao' ou 'pix'
+  const [pixData, setPixData] = useState(null) // Dados do Pix gerado
+  const [copiado, setCopiado] = useState(false)
 
   // Verificar se já tem assinatura ativa
   useEffect(() => {
@@ -21,15 +25,35 @@ export default function UpgradePage() {
     setAssinaturaAtiva(assinatura)
   }
 
-  const handleContratarPlano = async (planoId) => {
+  const handleSelecionarPlano = (planoId) => {
+    setPlanoSelecionado(planoId)
+    setMetodoPagamento(null)
+    setPixData(null)
+    setErro(null)
+  }
+
+  const handleSelecionarMetodo = async (metodo) => {
+    setMetodoPagamento(metodo)
+    setErro(null)
+
+    if (metodo === 'cartao') {
+      // Redirecionar para checkout do MP
+      await handlePagarCartao()
+    } else if (metodo === 'pix') {
+      // Gerar QR Code Pix
+      await handleGerarPix()
+    }
+  }
+
+  const handlePagarCartao = async () => {
     try {
       setLoading(true)
       setErro(null)
 
-      console.log('🚀 Criando assinatura para plano:', planoId)
+      console.log('🚀 Criando assinatura para plano:', planoSelecionado)
 
       // Criar assinatura via Edge Function
-      const { init_point, subscription_id } = await mercadoPagoService.criarAssinatura(planoId)
+      const { init_point, subscription_id } = await mercadoPagoService.criarAssinatura(planoSelecionado)
 
       console.log('✅ Assinatura criada:', subscription_id)
       console.log('🔗 Redirecionando para:', init_point)
@@ -41,6 +65,36 @@ export default function UpgradePage() {
       console.error('❌ Erro ao contratar plano:', error)
       setErro(error.message || 'Erro ao processar pagamento. Tente novamente.')
       setLoading(false)
+    }
+  }
+
+  const handleGerarPix = async () => {
+    try {
+      setLoading(true)
+      setErro(null)
+
+      console.log('💠 Gerando Pix para plano:', planoSelecionado)
+
+      // Criar pagamento Pix via Edge Function
+      const data = await mercadoPagoService.criarPagamentoPix(planoSelecionado)
+
+      console.log('✅ Pix gerado:', data.payment_id)
+
+      setPixData(data)
+      setLoading(false)
+
+    } catch (error) {
+      console.error('❌ Erro ao gerar Pix:', error)
+      setErro(error.message || 'Erro ao gerar Pix. Tente novamente.')
+      setLoading(false)
+    }
+  }
+
+  const handleCopiarPix = () => {
+    if (pixData?.pix?.qr_code) {
+      navigator.clipboard.writeText(pixData.pix.qr_code)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 3000)
     }
   }
 
@@ -58,6 +112,19 @@ export default function UpgradePage() {
     } catch (error) {
       window.alert(`Erro ao cancelar: ${error.message}`)
       setLoading(false)
+    }
+  }
+
+  const handleVoltar = () => {
+    if (pixData) {
+      setPixData(null)
+      setMetodoPagamento(null)
+    } else if (metodoPagamento) {
+      setMetodoPagamento(null)
+    } else if (planoSelecionado) {
+      setPlanoSelecionado(null)
+    } else {
+      navigate('/app/home')
     }
   }
 
@@ -99,6 +166,287 @@ export default function UpgradePage() {
     }
   ]
 
+  // Tela de QR Code Pix
+  if (pixData) {
+    return (
+      <div style={{
+        padding: '40px 24px',
+        maxWidth: '600px',
+        margin: '0 auto',
+        minHeight: '100vh',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '40px',
+          borderRadius: '16px',
+          border: '1px solid #e0e0e0',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+        }}>
+          <Icon icon="mdi:qrcode" width="64" style={{ color: '#00b894', marginBottom: '16px' }} />
+
+          <h2 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+            Pague com Pix
+          </h2>
+
+          <p style={{ fontSize: '16px', color: '#666', marginBottom: '24px' }}>
+            Escaneie o QR Code ou copie o código abaixo
+          </p>
+
+          {/* QR Code */}
+          {pixData.pix?.qr_code_base64 && (
+            <div style={{ marginBottom: '24px' }}>
+              <img
+                src={`data:image/png;base64,${pixData.pix.qr_code_base64}`}
+                alt="QR Code Pix"
+                style={{
+                  width: '220px',
+                  height: '220px',
+                  border: '4px solid #00b894',
+                  borderRadius: '12px'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Valor */}
+          <div style={{
+            backgroundColor: '#f5f5f5',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '24px'
+          }}>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Valor</p>
+            <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>
+              {mercadoPagoService.formatarValor(pixData.valor)}
+            </p>
+            <p style={{ fontSize: '14px', color: '#666' }}>
+              Plano {pixData.plano?.charAt(0).toUpperCase() + pixData.plano?.slice(1)} - 30 dias
+            </p>
+          </div>
+
+          {/* Código copia-cola */}
+          <div style={{ marginBottom: '24px' }}>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Pix Copia e Cola:</p>
+            <div style={{
+              backgroundColor: '#f9f9f9',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              padding: '12px',
+              wordBreak: 'break-all',
+              fontSize: '12px',
+              color: '#666',
+              maxHeight: '80px',
+              overflow: 'auto'
+            }}>
+              {pixData.pix?.qr_code}
+            </div>
+          </div>
+
+          {/* Botão Copiar */}
+          <button
+            onClick={handleCopiarPix}
+            style={{
+              width: '100%',
+              padding: '16px',
+              backgroundColor: copiado ? '#4caf50' : '#00b894',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <Icon icon={copiado ? 'mdi:check' : 'mdi:content-copy'} width="20" />
+            {copiado ? 'Código Copiado!' : 'Copiar Código Pix'}
+          </button>
+
+          {/* Aviso */}
+          <div style={{
+            backgroundColor: '#fff8e1',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '24px'
+          }}>
+            <p style={{ fontSize: '14px', color: '#f57c00', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon icon="mdi:information" width="20" />
+              Após o pagamento, aguarde alguns segundos para ativação automática.
+            </p>
+          </div>
+
+          {/* Botão Voltar */}
+          <button
+            onClick={handleVoltar}
+            style={{
+              padding: '12px 32px',
+              backgroundColor: 'transparent',
+              color: '#666',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Voltar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Tela de seleção de método de pagamento
+  if (planoSelecionado && !metodoPagamento) {
+    const plano = planos.find(p => p.id === planoSelecionado)
+
+    return (
+      <div style={{
+        padding: '40px 24px',
+        maxWidth: '600px',
+        margin: '0 auto',
+        minHeight: '100vh'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
+            Como você quer pagar?
+          </h2>
+          <p style={{ fontSize: '16px', color: '#666' }}>
+            Plano {plano.nome} - {plano.preco}{plano.periodo}
+          </p>
+        </div>
+
+        {/* Mensagem de Erro */}
+        {erro && (
+          <div style={{
+            backgroundColor: '#ffebee',
+            color: '#c62828',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            textAlign: 'center',
+            fontSize: '15px'
+          }}>
+            <Icon icon="mdi:alert-circle" width="20" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            {erro}
+          </div>
+        )}
+
+        {/* Opção Cartão */}
+        <button
+          onClick={() => handleSelecionarMetodo('cartao')}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '24px',
+            backgroundColor: 'white',
+            border: '2px solid #667eea',
+            borderRadius: '12px',
+            marginBottom: '16px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '12px',
+            backgroundColor: '#667eea20',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Icon icon="mdi:credit-card" width="32" style={{ color: '#667eea' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
+              Cartão de Crédito
+            </h3>
+            <p style={{ fontSize: '14px', color: '#666' }}>
+              Cobrança automática todo mês
+            </p>
+          </div>
+          <Icon icon="mdi:chevron-right" width="24" style={{ color: '#667eea' }} />
+        </button>
+
+        {/* Opção Pix */}
+        <button
+          onClick={() => handleSelecionarMetodo('pix')}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '24px',
+            backgroundColor: 'white',
+            border: '2px solid #00b894',
+            borderRadius: '12px',
+            marginBottom: '32px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '12px',
+            backgroundColor: '#00b89420',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Icon icon="mdi:qrcode" width="32" style={{ color: '#00b894' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
+              Pix
+            </h3>
+            <p style={{ fontSize: '14px', color: '#666' }}>
+              Pagamento único - renovar manualmente após 30 dias
+            </p>
+          </div>
+          <Icon icon="mdi:chevron-right" width="24" style={{ color: '#00b894' }} />
+        </button>
+
+        {loading && (
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <Icon icon="mdi:loading" width="32" style={{ color: '#667eea', animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: '#666', marginTop: '8px' }}>Processando...</p>
+          </div>
+        )}
+
+        {/* Botão Voltar */}
+        <div style={{ textAlign: 'center' }}>
+          <button
+            onClick={handleVoltar}
+            style={{
+              padding: '12px 32px',
+              backgroundColor: 'transparent',
+              color: '#666',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Escolher outro plano
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Tela principal - Seleção de Plano
   return (
     <div style={{
       padding: '40px 24px',
@@ -291,7 +639,7 @@ export default function UpgradePage() {
             </ul>
 
             <button
-              onClick={() => handleContratarPlano(plano.id)}
+              onClick={() => handleSelecionarPlano(plano.id)}
               disabled={loading || assinaturaAtiva}
               style={{
                 display: 'block',
@@ -321,8 +669,7 @@ export default function UpgradePage() {
                 }
               }}
             >
-              <Icon icon="mdi:credit-card" width="20" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-              {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : 'Assinar Agora'}
+              {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : 'Escolher Plano'}
             </button>
           </div>
         ))}
@@ -377,19 +724,19 @@ export default function UpgradePage() {
               width: '60px',
               height: '60px',
               borderRadius: '50%',
-              backgroundColor: '#f3e5f5',
+              backgroundColor: '#e8f5e9',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px'
             }}>
-              <Icon icon="mdi:credit-card-multiple" width="32" style={{ color: '#9C27B0' }} />
+              <Icon icon="mdi:qrcode" width="32" style={{ color: '#00b894' }} />
             </div>
             <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              Várias Formas de Pagamento
+              Pix Disponível
             </h4>
             <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Cartão de crédito, débito, PIX e boleto bancário
+              Pague instantaneamente com Pix ou escolha cartão de crédito
             </p>
           </div>
 
@@ -398,19 +745,19 @@ export default function UpgradePage() {
               width: '60px',
               height: '60px',
               borderRadius: '50%',
-              backgroundColor: '#e8f5e9',
+              backgroundColor: '#f3e5f5',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px'
             }}>
-              <Icon icon="mdi:autorenew" width="32" style={{ color: '#4CAF50' }} />
+              <Icon icon="mdi:autorenew" width="32" style={{ color: '#9C27B0' }} />
             </div>
             <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              Cobrança Recorrente
+              Cancele Quando Quiser
             </h4>
             <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Renovação automática mensal. Cancele quando quiser
+              Sem fidelidade. Cancele sua assinatura a qualquer momento
             </p>
           </div>
         </div>
@@ -443,6 +790,13 @@ export default function UpgradePage() {
           </button>
         </div>
       )}
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }

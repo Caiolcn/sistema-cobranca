@@ -11,6 +11,46 @@ export const mercadoPagoService = {
    * @param {string} plano - 'premium' ou 'enterprise'
    * @returns {Promise<{init_point: string, subscription_id: string}>}
    */
+  /**
+   * Cria um pagamento único via Pix
+   * @param {string} plano - 'premium' ou 'enterprise'
+   * @returns {Promise<{pix: {qr_code, qr_code_base64}, payment_id, valor}>}
+   */
+  async criarPagamentoPix(plano) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        throw new Error('Usuário não autenticado')
+      }
+
+      console.log('💠 Criando pagamento Pix:', plano)
+
+      const response = await fetch(`${FUNCTIONS_URL}/create-pix-payment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plano }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Erro ao criar pagamento Pix')
+      }
+
+      const data = await response.json()
+      console.log('✅ Pix criado:', data.payment_id)
+
+      return data // { pix: { qr_code, qr_code_base64 }, payment_id, valor, plano }
+
+    } catch (error) {
+      console.error('❌ Erro ao criar pagamento Pix:', error)
+      throw error
+    }
+  },
+
   async criarAssinatura(plano) {
     try {
       const { data: { session } } = await supabase.auth.getSession()

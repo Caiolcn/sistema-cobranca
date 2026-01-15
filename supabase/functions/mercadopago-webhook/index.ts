@@ -249,67 +249,130 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
 
     const payment = await mpResponse.json()
 
-    // Extrair user_id e subscription_id
-    const userId = payment.external_reference
+    // Extrair user_id - pode vir como string ou JSON
+    let userId = null
+    let planoFromRef = null
+    let tipoPagamento = null
+
+    try {
+      // Tentar parsear como JSON (pagamento Pix)
+      const refData = JSON.parse(payment.external_reference)
+      userId = refData.user_id
+      planoFromRef = refData.plano
+      tipoPagamento = refData.tipo // 'pix_mensal'
+    } catch {
+      // Se não for JSON, é o user_id direto (assinatura)
+      userId = payment.external_reference
+    }
+
     const subscriptionId = payment.metadata?.subscription_id || payment.subscription_id
 
     if (!userId) {
       throw new Error('external_reference (user_id) não encontrado no pagamento')
     }
 
-    // Buscar assinatura no banco
-    const { data: assinatura } = await supabase
-      .from('assinaturas_mercadopago')
-      .select('id, plano, status')
-      .eq('subscription_id', subscriptionId)
+    // Verificar se é pagamento Pix (pagamento único)
+    const isPix = payment.payment_method_id === 'pix' || tipoPagamento === 'pix_mensal'
+
+    // Buscar assinatura no banco (se existir)
+    let assinatura = null
+    if (subscriptionId) {
+      const { data } = await supabase
+        .from('assinaturas_mercadopago')
+        .select('id, plano, status')
+        .eq('subscription_id', subscriptionId)
+        .single()
+      assinatura = data
+    }
+
+    // Atualizar pagamento existente ou inserir novo
+    const { data: existingPayment } = await supabase
+      .from('pagamentos_mercadopago')
+      .select('id')
+      .eq('payment_id', paymentId.toString())
       .single()
 
-    // Salvar pagamento
-    await supabase
-      .from('pagamentos_mercadopago')
-      .upsert(
-        {
-          user_id: userId,
-          assinatura_id: assinatura?.id || null,
-          payment_id: paymentId,
-          subscription_id: subscriptionId,
-          valor: payment.transaction_amount,
-          status: payment.status,
-          status_detail: payment.status_detail,
-          payment_type_id: payment.payment_type_id,
-          payment_method_id: payment.payment_method_id,
-          data_pagamento: payment.date_created,
-          data_aprovacao: payment.date_approved,
-          external_reference: payment.external_reference,
-          metadata: payment.metadata,
-          raw_webhook: webhookData,
-        },
-        { onConflict: 'payment_id' }
-      )
+    const paymentData = {
+      user_id: userId,
+      assinatura_id: assinatura?.id || null,
+      payment_id: paymentId.toString(),
+      subscription_id: subscriptionId,
+      valor: payment.transaction_amount,
+      status: payment.status,
+      status_detail: payment.status_detail,
+      payment_type_id: payment.payment_type_id,
+      payment_method_id: payment.payment_method_id,
+      data_pagamento: payment.date_created,
+      data_aprovacao: payment.date_approved,
+      raw_webhook: {
+        ...webhookData,
+        plano: planoFromRef,
+        tipo: tipoPagamento,
+      },
+    }
 
-    // Se pagamento aprovado, garantir que assinatura está ativa
-    if (payment.status === 'approved' && assinatura) {
-      if (assinatura.status === 'authorized') {
-        await supabase.rpc('ativar_assinatura_usuario', {
-          p_user_id: userId,
-          p_plano: assinatura.plano,
-        })
+    if (existingPayment) {
+      await supabase
+        .from('pagamentos_mercadopago')
+        .update(paymentData)
+        .eq('id', existingPayment.id)
+    } else {
+      await supabase
+        .from('pagamentos_mercadopago')
+        .insert(paymentData)
+    }
 
-        // Limpar grace period se houver
-        await supabase.rpc('limpar_grace_period', {
-          p_user_id: userId,
-        })
+    // Se pagamento aprovado
+    if (payment.status === 'approved') {
+      // Pagamento Pix aprovado - ativar usuário por 30 dias
+      if (isPix && planoFromRef) {
+        // Determinar limite mensal
+        let limiteMensal = 100
+        if (planoFromRef === 'premium') limiteMensal = 500
+        if (planoFromRef === 'enterprise') limiteMensal = -1 // ilimitado
 
-        console.log(`✅ Pagamento aprovado - usuário ${userId} mantido ativo`)
+        // Calcular data de expiração (30 dias)
+        const dataExpiracao = new Date()
+        dataExpiracao.setDate(dataExpiracao.getDate() + 30)
+
+        // Ativar usuário com plano pago por 30 dias
+        await supabase
+          .from('usuarios')
+          .update({
+            plano_pago: true,
+            plano: planoFromRef,
+            limite_mensal: limiteMensal,
+            trial_ativo: false,
+            trial_fim: dataExpiracao.toISOString(), // Reutilizando campo para expiração do Pix
+            status_conta: 'ativo',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId)
+
+        console.log(`✅ Pix aprovado - usuário ${userId} ativado com plano ${planoFromRef} por 30 dias`)
+      }
+      // Pagamento de assinatura aprovado
+      else if (assinatura) {
+        if (assinatura.status === 'authorized') {
+          await supabase.rpc('ativar_assinatura_usuario', {
+            p_user_id: userId,
+            p_plano: assinatura.plano,
+          })
+
+          console.log(`✅ Pagamento aprovado - usuário ${userId} mantido ativo`)
+        }
       }
     }
 
-    // Se pagamento rejeitado, definir grace period
+    // Se pagamento rejeitado e é assinatura, definir grace period
     if (payment.status === 'rejected' && assinatura) {
-      await supabase.rpc('definir_grace_period', {
-        p_user_id: userId,
-        p_dias: 3,
-      })
+      await supabase
+        .from('usuarios')
+        .update({
+          grace_period_until: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
       console.log(`⚠️ Pagamento rejeitado - grace period de 3 dias definido para ${userId}`)
     }
 

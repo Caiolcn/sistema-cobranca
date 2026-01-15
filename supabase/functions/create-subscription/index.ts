@@ -51,10 +51,10 @@ serve(async (req) => {
 
     console.log('📦 Criando assinatura:', plano)
 
-    // Definir valores dos planos
+    // Definir valores dos planos (TEMPORÁRIO: R$ 5,00 para teste)
     const precos: Record<string, number> = {
-      premium: 49.90,
-      enterprise: 149.90,
+      premium: 5.00,
+      enterprise: 5.00,
     }
     const valor = precos[plano]
 
@@ -86,6 +86,13 @@ serve(async (req) => {
         transaction_amount: valor,
         currency_id: 'BRL',
         start_date: startDateISO, // ✅ Campo obrigatório
+      },
+      payment_methods_allowed: {
+        payment_types: [
+          { id: 'credit_card' },
+          { id: 'debit_card' },
+          { id: 'account_money' }
+        ]
       },
       back_url: backUrl,
       payer_email: usuario?.email || user.email,
