@@ -6,6 +6,7 @@ import PerfilUsuario from './PerfilUsuario'
 import TrialExpiredModal from './TrialExpiredModal'
 import { useTrialStatus } from './useTrialStatus'
 import { Icon } from '@iconify/react'
+import useWindowSize from './hooks/useWindowSize'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -13,6 +14,9 @@ export default function Dashboard() {
   const [mostrarPerfil, setMostrarPerfil] = useState(false)
   const [whatsappStatus, setWhatsappStatus] = useState(getWhatsAppStatus())
   const [mostrarModalTrial, setMostrarModalTrial] = useState(false)
+  const [menuAberto, setMenuAberto] = useState(false)
+
+  const { isMobile, isTablet } = useWindowSize()
 
   // Hook para verificar status do trial
   const { isExpired, diasRestantes, planoPago, loading } = useTrialStatus()
@@ -68,36 +72,82 @@ export default function Dashboard() {
           onUpgrade={() => navigate('/app/upgrade')}
         />
       )}
+      {/* Overlay para fechar menu em mobile */}
+      {isMobile && menuAberto && (
+        <div
+          onClick={() => setMenuAberto(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 99
+          }}
+        />
+      )}
+
+      {/* Botão hamburguer - mobile only */}
+      {isMobile && (
+        <button
+          onClick={() => setMenuAberto(!menuAberto)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '16px',
+            zIndex: 101,
+            width: '44px',
+            height: '44px',
+            backgroundColor: 'white',
+            border: '1px solid #e0e0e0',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
+          <Icon icon={menuAberto ? 'mdi:close' : 'mdi:menu'} width="24" height="24" />
+        </button>
+      )}
+
       {/* Menu lateral */}
       <div style={{
-        width: '70px',
+        width: isMobile ? '220px' : '70px',
         backgroundColor: 'white',
         borderRight: '1px solid #e0e0e0',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
+        alignItems: isMobile ? 'flex-start' : 'center',
         justifyContent: 'space-between',
-        paddingTop: '20px',
+        paddingTop: isMobile ? '70px' : '20px',
         paddingBottom: '20px',
+        paddingLeft: isMobile ? '16px' : '0',
+        paddingRight: isMobile ? '16px' : '0',
         height: '100vh',
         position: 'fixed',
-        left: 0,
+        left: isMobile ? (menuAberto ? '0' : '-220px') : '0',
         top: 0,
-        zIndex: 100
+        zIndex: 100,
+        transition: 'left 0.3s ease'
       }}>
         {/* Ícones principais do menu */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '25px', width: isMobile ? '100%' : 'auto' }}>
           {/* Home */}
           <div
-            onClick={() => navigate('/app/home')}
+            onClick={() => { navigate('/app/home'); if (isMobile) setMenuAberto(false) }}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               backgroundColor: telaAtiva === 'home' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               color: telaAtiva === 'home' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
@@ -111,19 +161,22 @@ export default function Dashboard() {
             }}
           >
             <Icon icon="material-symbols-light:home-outline-rounded" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Início</span>}
           </div>
 
           {/* Financeiro */}
           <div
-            onClick={() => navigate('/app/financeiro')}
+            onClick={() => { navigate('/app/financeiro'); if (isMobile) setMenuAberto(false) }}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               backgroundColor: telaAtiva === 'financeiro' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               color: telaAtiva === 'financeiro' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
@@ -137,19 +190,22 @@ export default function Dashboard() {
             }}
           >
             <Icon icon="fluent:receipt-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Financeiro</span>}
           </div>
 
           {/* Clientes */}
           <div
-            onClick={() => navigate('/app/clientes')}
+            onClick={() => { navigate('/app/clientes'); if (isMobile) setMenuAberto(false) }}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               backgroundColor: telaAtiva === 'clientes' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               color: telaAtiva === 'clientes' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
@@ -163,19 +219,22 @@ export default function Dashboard() {
             }}
           >
             <Icon icon="fluent:people-24-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Clientes</span>}
           </div>
 
           {/* WhatsApp */}
           <div
-            onClick={() => navigate('/app/whatsapp')}
+            onClick={() => { navigate('/app/whatsapp'); if (isMobile) setMenuAberto(false) }}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               backgroundColor: telaAtiva === 'whatsapp' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               color: telaAtiva === 'whatsapp' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
@@ -189,33 +248,38 @@ export default function Dashboard() {
               if (telaAtiva !== 'whatsapp') e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            <Icon icon="mdi:whatsapp" width="22" height="22" />
-            {/* Indicador de status */}
-            <div style={{
-              position: 'absolute',
-              top: '3px',
-              right: '3px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: whatsappStatus === 'connected' ? '#4CAF50' :
-                             whatsappStatus === 'connecting' ? '#ff9800' :
-                             '#f44336',
-              boxShadow: '0 0 4px rgba(0,0,0,0.3)'
-            }} />
+            <div style={{ position: 'relative' }}>
+              <Icon icon="mdi:whatsapp" width="22" height="22" />
+              {/* Indicador de status */}
+              <div style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: whatsappStatus === 'connected' ? '#4CAF50' :
+                               whatsappStatus === 'connecting' ? '#ff9800' :
+                               '#f44336',
+                boxShadow: '0 0 4px rgba(0,0,0,0.3)'
+              }} />
+            </div>
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>WhatsApp</span>}
           </div>
 
           {/* Configuração */}
           <div
-            onClick={() => navigate('/app/configuracao')}
+            onClick={() => { navigate('/app/configuracao'); if (isMobile) setMenuAberto(false) }}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               backgroundColor: telaAtiva === 'configuracao' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               color: telaAtiva === 'configuracao' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
@@ -229,67 +293,77 @@ export default function Dashboard() {
             }}
           >
             <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Configurações</span>}
           </div>
         </div>
 
         {/* Ícones de perfil e sair (fixos na parte inferior) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '15px', alignItems: isMobile ? 'flex-start' : 'center', width: isMobile ? '100%' : 'auto' }}>
           {/* Divisória */}
           <div style={{
-            width: '30px',
+            width: isMobile ? '100%' : '30px',
             height: '1px',
             backgroundColor: '#e0e0e0'
           }} />
 
           {/* Perfil */}
           <div
-            onClick={() => setMostrarPerfil(true)}
+            onClick={() => { setMostrarPerfil(true); if (isMobile) setMenuAberto(false) }}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               fontSize: '20px',
               cursor: 'pointer',
-              transition: 'background-color 0.2s'
+              transition: 'background-color 0.2s',
+              color: '#666'
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <Icon icon="material-symbols-light:frame-person-outline-rounded" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Meu Perfil</span>}
           </div>
 
           {/* Sair */}
           <div
             onClick={handleLogout}
             style={{
-              width: '40px',
+              width: isMobile ? '100%' : '40px',
               height: '40px',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
               fontSize: '20px',
               cursor: 'pointer',
-              transition: 'background-color 0.2s'
+              transition: 'background-color 0.2s',
+              color: '#666'
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <Icon icon="iconoir:log-out" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: '#f44336' }}>Sair</span>}
           </div>
         </div>
       </div>
 
       {/* Conteúdo principal */}
       <div style={{
-        marginLeft: '70px',
-        width: 'calc(100% - 70px)',
+        marginLeft: isMobile ? 0 : '70px',
+        width: isMobile ? '100%' : 'calc(100% - 70px)',
         height: '100vh',
         overflow: 'auto',
-        display: 'flex'
+        display: 'flex',
+        paddingTop: isMobile ? '70px' : '0'
       }}>
         <Outlet />
       </div>

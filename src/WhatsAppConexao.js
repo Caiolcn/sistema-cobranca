@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
+import useWindowSize from './hooks/useWindowSize'
 
 // Estado global do status de conexão do WhatsApp
 let globalStatus = 'disconnected'
@@ -32,6 +33,7 @@ Atenciosamente,
 {{nomeEmpresa}}`
 
 export default function WhatsAppConexao() {
+  const { isMobile, isTablet } = useWindowSize()
   const [activeTab, setActiveTab] = useState('conexao')
 
   // ESTADOS SIMPLIFICADOS (6 essenciais)
@@ -704,22 +706,22 @@ Atenciosamente,
   // ========== RENDER ==========
 
   return (
-    <div style={{ flex: 1, padding: '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '25px',
+        padding: isMobile ? '16px' : '20px',
+        marginBottom: isMobile ? '16px' : '25px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Icon icon="mdi:whatsapp" width="32" height="32" style={{ color: '#25D366' }} />
+          <Icon icon="mdi:whatsapp" width={isMobile ? 28 : 32} height={isMobile ? 28 : 32} style={{ color: '#25D366' }} />
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+            <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
               WhatsApp
             </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
+            <p style={{ margin: '5px 0 0 0', fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
               Gerencie sua conexão e templates de mensagens
             </p>
           </div>
@@ -730,7 +732,7 @@ Atenciosamente,
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        marginBottom: '25px',
+        marginBottom: isMobile ? '16px' : '25px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
         display: 'flex',
         gap: '4px',
@@ -740,45 +742,45 @@ Atenciosamente,
           onClick={() => setActiveTab('conexao')}
           style={{
             flex: 1,
-            padding: '12px 20px',
+            padding: isMobile ? '10px 12px' : '12px 20px',
             backgroundColor: activeTab === 'conexao' ? '#25D366' : 'transparent',
             color: activeTab === 'conexao' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
-            fontSize: '14px',
+            fontSize: isMobile ? '13px' : '14px',
             fontWeight: '500',
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px'
+            gap: '6px'
           }}
         >
           <Icon icon="mdi:connection" width="18" />
-          Conexão
+          {isMobile ? 'Conexão' : 'Conexão'}
         </button>
         <button
           onClick={() => setActiveTab('templates')}
           style={{
             flex: 1,
-            padding: '12px 20px',
+            padding: isMobile ? '10px 12px' : '12px 20px',
             backgroundColor: activeTab === 'templates' ? '#25D366' : 'transparent',
             color: activeTab === 'templates' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
-            fontSize: '14px',
+            fontSize: isMobile ? '13px' : '14px',
             fontWeight: '500',
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px'
+            gap: '6px'
           }}
         >
           <Icon icon="mdi:message-text" width="18" />
-          Templates de Mensagens
+          {isMobile ? 'Templates' : 'Templates de Mensagens'}
         </button>
       </div>
 
@@ -789,12 +791,14 @@ Atenciosamente,
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '16px 20px',
-            marginBottom: '25px',
+            padding: isMobile ? '12px 16px' : '16px 20px',
+            marginBottom: isMobile ? '16px' : '25px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: isMobile ? 'stretch' : 'center',
+            gap: isMobile ? '12px' : '0'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
@@ -832,7 +836,7 @@ Atenciosamente,
           <div style={{
             backgroundColor: 'white',
             borderRadius: '8px',
-            padding: '40px',
+            padding: isMobile ? '20px' : '40px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
           }}>
             {status === 'connected' ? (
@@ -858,7 +862,7 @@ Atenciosamente,
 
                 <div style={{
                   display: 'inline-block',
-                  padding: '20px',
+                  padding: isMobile ? '12px' : '20px',
                   backgroundColor: 'white',
                   borderRadius: '12px',
                   border: '2px solid #e0e0e0',
@@ -868,8 +872,8 @@ Atenciosamente,
                     src={qrCode}
                     alt="QR Code WhatsApp"
                     style={{
-                      width: '300px',
-                      height: '300px',
+                      width: isMobile ? '220px' : '300px',
+                      height: isMobile ? '220px' : '300px',
                       display: 'block'
                     }}
                   />
@@ -1041,19 +1045,19 @@ Atenciosamente,
         <div style={{
           backgroundColor: 'white',
           borderRadius: '8px',
-          padding: '30px',
+          padding: isMobile ? '16px' : '30px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ marginBottom: '30px' }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+          <div style={{ marginBottom: isMobile ? '20px' : '30px' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
               Templates de Mensagens
             </h3>
-            <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+            <p style={{ margin: 0, fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
               Crie e gerencie templates de mensagens personalizadas para enviar aos seus clientes
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile || isTablet ? '1fr' : '1fr 1fr', gap: isMobile ? '20px' : '30px', marginBottom: isMobile ? '20px' : '30px' }}>
             {/* Editor */}
             <div>
               <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
