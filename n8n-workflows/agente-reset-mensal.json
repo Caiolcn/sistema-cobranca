@@ -1,0 +1,106 @@
+{
+  "name": "MensalliZap - Reset Mensal de Uso",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "1 0 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (Dia 1 às 00:01)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/controle_planos?usage_count=gte.0",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"usage_count\": 0\n}",
+        "options": {}
+      },
+      "id": "reset-contadores",
+      "name": "Reset Contadores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Contar quantos registros foram atualizados\nconst items = $input.all();\nlet count = 0;\n\nif (Array.isArray(items) && items.length > 0) {\n  // Se retornou array de objetos, conta\n  if (Array.isArray(items[0].json)) {\n    count = items[0].json.length;\n  } else {\n    count = items.length;\n  }\n}\n\nconst now = new Date();\nconst mesAno = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });\n\nreturn [{\n  json: {\n    mensagem: `✅ Reset mensal executado com sucesso! ${mesAno} - ${count} usuário(s) resetado(s)`,\n    usuarios_resetados: count,\n    data_execucao: now.toISOString()\n  }\n}];"
+      },
+      "id": "criar-resumo",
+      "name": "Criar Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (Dia 1 às 00:01)": {
+      "main": [
+        [
+          {
+            "node": "Reset Contadores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset Contadores": {
+      "main": [
+        [
+          {
+            "node": "Criar Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "MensalliZap",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "2"
+}

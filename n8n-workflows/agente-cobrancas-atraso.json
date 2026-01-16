@@ -1,0 +1,274 @@
+{
+  "name": "MensalliZap - Cobranças em Atraso (TODOS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9,14 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (9h e 14h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_em_atraso",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-atraso",
+      "name": "Buscar Parcelas Vencidas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar cada item da lista\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Template padrão para cobrança em atraso\n  const templatePadraoAtraso = `*🔔 Lembrete de Pagamento*\n\nOlá, *${data.nome_cliente}*! 👋\n\nIdentificamos que você possui um pagamento pendente:\n\n💰 *Valor:* R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}\n📅 *Vencimento:* ${new Date(data.data_vencimento).toLocaleDateString('pt-BR')}\n${data.dias_atraso > 0 ? `⚠️ *${data.dias_atraso} dia(s) em atraso*\\n` : ''}\n✅ *Formas de Pagamento:*\n${data.chave_pix ? `\\n*PIX (Instantâneo):*\\nChave Pix: \\`${data.chave_pix}\\`\\n` : ''}\n${data.descricao ? `📝 ${data.descricao}\\n\\n` : ''}✔️ Já pagou? Por favor, desconsidere esta mensagem e nos envie o comprovante.\n\n❓ Dúvidas? Estamos à disposição!\n\n_${data.nome_empresa || 'Equipe de Cobrança'}_`;\n\n  // Usar template do usuário ou padrão\n  let mensagem = data.template_mensagem || templatePadraoAtraso;\n\n  // Substituir variáveis no template\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasAtraso}}': data.dias_atraso || 0,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe de Cobrança',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  // Formatar telefone\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) {\n    telefone = '55' + telefone;\n  }\n\n  results.push({\n    json: {\n      ...data,\n      mensagem: mensagem,\n      telefone: telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_cobranca: 'atraso'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "criar-mensagem",
+      "name": "Criar Mensagens",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "includeInputFields": true
+        }
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Mensagens').item.json.parcela_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"enviado_vencimento\": true,\n  \"total_envios\": {{ ($('Criar Mensagens').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "marcar-enviado-vencimento",
+      "name": "Marcar Enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Mensagens').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Mensagens').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Mensagens').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Mensagens').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Mensagens').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Mensagens').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "options": {}
+      },
+      "id": "registrar-log",
+      "name": "Registrar Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/rpc/incrementar_uso",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Mensagens').item.json.user_id }}\"\n}",
+        "options": {}
+      },
+      "id": "incrementar-contador",
+      "name": "Incrementar Contador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (9h e 14h)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Parcelas Vencidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Parcelas Vencidas": {
+      "main": [
+        [
+          {
+            "node": "Criar Mensagens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Mensagens": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Marcar Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Enviado": {
+      "main": [
+        [
+          {
+            "node": "Registrar Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Log": {
+      "main": [
+        [
+          {
+            "node": "Incrementar Contador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "MensalliZap",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "4"
+}

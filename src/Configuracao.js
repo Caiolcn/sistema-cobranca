@@ -61,6 +61,10 @@ function Configuracao() {
     mensagens: { usado: 0, limite: 100 }
   })
 
+  // Upgrade
+  const [planoAtual, setPlanoAtual] = useState('starter')
+  const [processandoCheckout, setProcessandoCheckout] = useState(false)
+
   // Automação WhatsApp - REMOVIDO (movido para /whatsapp)
   // const [configAutomacao, setConfigAutomacao] = useState({...})
   // const [testando, setTestando] = useState(false)
@@ -1478,44 +1482,314 @@ function Configuracao() {
     )
   }
 
+  // Carregar plano atual do usuário
+  useEffect(() => {
+    const carregarPlanoAtual = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('usuarios')
+          .select('plano')
+          .eq('id', user.id)
+          .single()
+        if (data?.plano) {
+          setPlanoAtual(data.plano)
+        }
+      }
+    }
+    carregarPlanoAtual()
+  }, [user])
+
+  const planosDisponiveis = [
+    {
+      id: 'starter',
+      nome: 'Starter',
+      preco: 49.90,
+      clientes: 50,
+      mensagens: 200,
+      recursos: [
+        'Até 50 clientes ativos',
+        '200 mensagens/mês',
+        '1 template padrão',
+        'Automação em atraso',
+        'Dashboard básico'
+      ],
+      cor: '#4CAF50',
+      popular: false
+    },
+    {
+      id: 'pro',
+      nome: 'Pro',
+      preco: 99.90,
+      clientes: 150,
+      mensagens: 600,
+      recursos: [
+        'Até 150 clientes ativos',
+        '600 mensagens/mês',
+        '3 templates de mensagens personalizáveis',
+        'Regra de cobrança (disparo de mensagens 3 dias, 5 dias e em atraso)',
+        'Dashboard completa com gráficos',
+        'Suporte via WhatsApp',
+        'Aging Report (status dos clientes)',
+        'Receita Projetada',
+        'Histórico Completo de Mensalidades'
+      ],
+      cor: '#2196F3',
+      popular: true
+    },
+    {
+      id: 'premium',
+      nome: 'Premium',
+      preco: 149.90,
+      clientes: 500,
+      mensagens: 3000,
+      recursos: [
+        'Tudo do Pro',
+        'Até 500 clientes ativos',
+        '3.000 mensagens/mês',
+        'Consultoria inicial (1h)',
+        'Suporte prioritário via WhatsApp',
+        'Acesso antecipado a novas features'
+      ],
+      cor: '#9c27b0',
+      popular: false
+    }
+  ]
+
+  const handleUpgrade = async (planoId) => {
+    if (planoId === planoAtual) {
+      showToast('Você já está neste plano', 'info')
+      return
+    }
+
+    setProcessandoCheckout(true)
+    try {
+      // Aqui você pode integrar com Stripe, Mercado Pago, etc.
+      // Por enquanto, apenas mostra mensagem
+      showToast('Redirecionando para checkout...', 'info')
+
+      // Simular redirecionamento (substituir pela integração real)
+      setTimeout(() => {
+        showToast('Integração de pagamento em desenvolvimento', 'warning')
+        setProcessandoCheckout(false)
+      }, 1500)
+    } catch (error) {
+      console.error('Erro no checkout:', error)
+      showToast('Erro ao processar. Tente novamente.', 'error')
+      setProcessandoCheckout(false)
+    }
+  }
+
   const renderUpgrade = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '24px 16px' : '40px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', textAlign: 'center' }}>
-      <div style={{
-        width: '80px',
-        height: '80px',
-        backgroundColor: '#fff3e0',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '0 auto 24px'
-      }}>
-        <Icon icon="mdi:rocket-launch-outline" width="48" style={{ color: '#ff9800' }} />
+    <div>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h3 style={{
+          fontSize: isSmallScreen ? '24px' : '32px',
+          fontWeight: '800',
+          marginBottom: '12px',
+          letterSpacing: '-0.5px',
+          color: '#1a1a1a'
+        }}>
+          Escolha seu plano
+        </h3>
+        <p style={{ fontSize: '16px', color: '#666' }}>
+          Comece a automatizar suas cobranças hoje mesmo
+        </p>
       </div>
 
-      <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600', color: '#333' }}>
-        Fazer Upgrade do Plano
-      </h3>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+        gap: '24px',
+        alignItems: 'stretch'
+      }}>
+        {planosDisponiveis.map((plano) => {
+          const isAtual = plano.id === planoAtual
+          const isDowngrade = planosDisponiveis.findIndex(p => p.id === plano.id) < planosDisponiveis.findIndex(p => p.id === planoAtual)
 
-      <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
-        Aumente seus limites de clientes e mensagens e desbloqueie recursos premium para expandir seu negócio.
-      </p>
+          return (
+            <div
+              key={plano.id}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                padding: '32px 24px',
+                boxShadow: plano.popular ? '0 8px 30px rgba(33, 150, 243, 0.2)' : '0 2px 12px rgba(0,0,0,0.08)',
+                border: plano.id === 'premium' ? '2px solid #9c27b0' : plano.popular ? '2px solid #2196F3' : '1px solid #e0e0e0',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              {/* Badge Mais Popular */}
+              {plano.popular && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-14px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  padding: '6px 20px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Mais popular
+                </div>
+              )}
 
-      <button
-        disabled
-        style={{
-          backgroundColor: '#e0e0e0',
-          color: '#999',
-          padding: '12px 32px',
-          border: 'none',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: '500',
-          cursor: 'not-allowed'
-        }}
-      >
-        Em breve
-      </button>
+              {/* Badge Plano Atual */}
+              {isAtual && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: '#e8f5e9',
+                  color: '#2e7d32',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  SEU PLANO
+                </div>
+              )}
+
+              {/* Nome do Plano */}
+              <h4 style={{
+                margin: '0 0 16px 0',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: plano.id === 'premium' ? '#9c27b0' : '#666',
+                letterSpacing: '1px',
+                textTransform: 'uppercase'
+              }}>
+                {plano.nome}
+              </h4>
+
+              {/* Preço */}
+              <div style={{ marginBottom: '8px' }}>
+                <span style={{ fontSize: '48px', fontWeight: '700', color: '#333' }}>
+                  R${plano.preco.toFixed(2).split('.')[0]}
+                </span>
+                <span style={{ fontSize: '18px', color: '#666' }}>
+                  ,{plano.preco.toFixed(2).split('.')[1]}/mês
+                </span>
+              </div>
+
+              {/* Limites resumidos */}
+              <p style={{
+                margin: '0 0 24px 0',
+                fontSize: '14px',
+                color: '#666'
+              }}>
+                {plano.clientes} clientes ativos • {plano.mensagens.toLocaleString('pt-BR')} mensagens/mês
+              </p>
+
+              {/* Recursos */}
+              <ul style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: '0 0 24px 0',
+                flex: 1
+              }}>
+                {plano.recursos.map((recurso, idx) => (
+                  <li
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      marginBottom: '12px',
+                      fontSize: '14px',
+                      color: '#333',
+                      lineHeight: '1.4'
+                    }}
+                  >
+                    <Icon
+                      icon="mdi:check"
+                      width="20"
+                      style={{
+                        color: plano.cor,
+                        flexShrink: 0,
+                        marginTop: '2px'
+                      }}
+                    />
+                    {recurso}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Botão */}
+              <button
+                onClick={() => handleUpgrade(plano.id)}
+                disabled={isAtual || processandoCheckout}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: isAtual ? 'default' : 'pointer',
+                  border: isAtual ? 'none' : (plano.id === 'starter' ? '2px solid #333' : 'none'),
+                  backgroundColor: isAtual ? '#e0e0e0' : (plano.id === 'starter' ? 'transparent' : plano.cor),
+                  color: isAtual ? '#999' : (plano.id === 'starter' ? '#333' : 'white'),
+                  transition: 'all 0.2s'
+                }}
+              >
+                {processandoCheckout ? (
+                  <Icon icon="eos-icons:loading" width="20" />
+                ) : isAtual ? (
+                  'Plano Atual'
+                ) : plano.id === 'starter' ? (
+                  'Começar agora'
+                ) : plano.id === 'pro' ? (
+                  'Escolher Pro'
+                ) : (
+                  'Escolher Premium'
+                )}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Footer - Informações de segurança */}
+      <div style={{
+        marginTop: '40px',
+        textAlign: 'center',
+        padding: '24px',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e0e0e0'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: isSmallScreen ? '16px' : '32px',
+          flexWrap: 'wrap',
+          marginBottom: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icon icon="mdi:shield-check" width="20" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '13px', color: '#666' }}>Pagamento seguro</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icon icon="mdi:lock-outline" width="20" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '13px', color: '#666' }}>Dados criptografados</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icon icon="mdi:cancel" width="20" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '13px', color: '#666' }}>Cancele quando quiser</span>
+          </div>
+        </div>
+        <p style={{ margin: 0, fontSize: '12px', color: '#999' }}>
+          Upgrade ou downgrade a qualquer momento. Sem multas, sem burocracia.
+        </p>
+      </div>
     </div>
   )
 

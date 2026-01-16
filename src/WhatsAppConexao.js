@@ -77,6 +77,9 @@ export default function WhatsAppConexao() {
   // Estado para modal de upgrade (recurso bloqueado)
   const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' })
 
+  // Estado para modal de confirmação de desconexão
+  const [confirmDesconexaoModal, setConfirmDesconexaoModal] = useState(false)
+
   // Atualizar status global quando mudar
   useEffect(() => {
     updateGlobalStatus(status)

@@ -1,0 +1,504 @@
+{
+  "name": "MensalliZap - Lembretes Antecipados (PRO+)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (9h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_lembrete_5dias",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-5dias",
+      "name": "Buscar 5 Dias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_lembrete_3dias",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-3dias",
+      "name": "Buscar 3 Dias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar parcelas com vencimento em 5 dias\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Template padrão para lembrete 5 dias\n  const templatePadrao = `*📅 Lembrete de Pagamento*\n\nOlá, *${data.nome_cliente}*! 👋\n\nEste é um lembrete amigável sobre sua próxima mensalidade:\n\n💰 *Valor:* R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}\n📅 *Vencimento:* ${new Date(data.data_vencimento).toLocaleDateString('pt-BR')}\n⏰ *Faltam 5 dias*\n\n✅ *Formas de Pagamento:*\n${data.chave_pix ? `\\n*PIX (Instantâneo):*\\nChave Pix: \\`${data.chave_pix}\\`\\n` : ''}\n${data.descricao ? `📝 ${data.descricao}\\n\\n` : ''}Pague em dia e evite transtornos! 😊\n\n_${data.nome_empresa || 'Equipe de Cobrança'}_`;\n\n  // Usar template do usuário ou padrão\n  let mensagem = data.template_mensagem || templatePadrao;\n\n  // Substituir variáveis no template\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasRestantes}}': data.dias_restantes || 5,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe de Cobrança',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  // Formatar telefone\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) {\n    telefone = '55' + telefone;\n  }\n\n  results.push({\n    json: {\n      ...data,\n      mensagem: mensagem,\n      telefone: telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: '5dias',\n      flag_campo: 'enviado_5dias'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "criar-msg-5dias",
+      "name": "Criar Msg 5 Dias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar parcelas com vencimento em 3 dias\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Template padrão para lembrete 3 dias\n  const templatePadrao = `*⚠️ Lembrete Importante*\n\nOlá, *${data.nome_cliente}*! 👋\n\nSua mensalidade vence em breve:\n\n💰 *Valor:* R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}\n📅 *Vencimento:* ${new Date(data.data_vencimento).toLocaleDateString('pt-BR')}\n⏰ *Faltam apenas 3 dias!*\n\n✅ *Formas de Pagamento:*\n${data.chave_pix ? `\\n*PIX (Instantâneo):*\\nChave Pix: \\`${data.chave_pix}\\`\\n` : ''}\n${data.descricao ? `📝 ${data.descricao}\\n\\n` : ''}Evite juros e multas, pague em dia! 💪\n\n_${data.nome_empresa || 'Equipe de Cobrança'}_`;\n\n  // Usar template do usuário ou padrão\n  let mensagem = data.template_mensagem || templatePadrao;\n\n  // Substituir variáveis no template\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasRestantes}}': data.dias_restantes || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe de Cobrança',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  // Formatar telefone\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) {\n    telefone = '55' + telefone;\n  }\n\n  results.push({\n    json: {\n      ...data,\n      mensagem: mensagem,\n      telefone: telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: '3dias',\n      flag_campo: 'enviado_3dias'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "criar-msg-3dias",
+      "name": "Criar Msg 3 Dias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "includeInputFields": true
+        }
+      },
+      "id": "enviar-whatsapp-5dias",
+      "name": "Enviar WhatsApp 5d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "includeInputFields": true
+        }
+      },
+      "id": "enviar-whatsapp-3dias",
+      "name": "Enviar WhatsApp 3d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Msg 5 Dias').item.json.parcela_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"enviado_5dias\": true,\n  \"total_envios\": {{ ($('Criar Msg 5 Dias').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "marcar-5dias",
+      "name": "Marcar 5 Dias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Msg 3 Dias').item.json.parcela_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"enviado_3dias\": true,\n  \"total_envios\": {{ ($('Criar Msg 3 Dias').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "marcar-3dias",
+      "name": "Marcar 3 Dias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg 5 Dias').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg 5 Dias').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg 5 Dias').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg 5 Dias').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg 5 Dias').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg 5 Dias').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "options": {}
+      },
+      "id": "log-5dias",
+      "name": "Log 5 Dias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg 3 Dias').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg 3 Dias').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg 3 Dias').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg 3 Dias').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg 3 Dias').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg 3 Dias').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "options": {}
+      },
+      "id": "log-3dias",
+      "name": "Log 3 Dias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/rpc/incrementar_uso",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Msg 5 Dias').item.json.user_id }}\"\n}",
+        "options": {}
+      },
+      "id": "incrementar-5dias",
+      "name": "Incrementar 5d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/rpc/incrementar_uso",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Msg 3 Dias').item.json.user_id }}\"\n}",
+        "options": {}
+      },
+      "id": "incrementar-3dias",
+      "name": "Incrementar 3d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Schedule (9h)": {
+      "main": [
+        [
+          {
+            "node": "Buscar 5 Dias",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar 5 Dias": {
+      "main": [
+        [
+          {
+            "node": "Criar Msg 5 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Criar Msg 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Msg 5 Dias": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp 5d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Msg 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp 3d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp 5d": {
+      "main": [
+        [
+          {
+            "node": "Marcar 5 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp 3d": {
+      "main": [
+        [
+          {
+            "node": "Marcar 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar 5 Dias": {
+      "main": [
+        [
+          {
+            "node": "Log 5 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Log 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log 5 Dias": {
+      "main": [
+        [
+          {
+            "node": "Incrementar 5d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Incrementar 3d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "MensalliZap",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
