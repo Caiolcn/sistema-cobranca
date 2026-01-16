@@ -11,7 +11,7 @@ import {
 import useWindowSize from './hooks/useWindowSize'
 
 function Configuracao() {
-  const { isMobile, isTablet } = useWindowSize()
+  const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [abaAtiva, setAbaAtiva] = useState('empresa')
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
@@ -461,12 +461,12 @@ function Configuracao() {
   // ==========================================
 
   const renderDadosEmpresa = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isMobile ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ margin: '0 0 24px 0', fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <h3 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
         Dados da Empresa
       </h3>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
         <div>
           <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
             Nome da Empresa *
@@ -665,8 +665,8 @@ function Configuracao() {
   )
 
   const renderConfigCobranca = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isMobile ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ margin: '0 0 8px 0', fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <h3 style={{ margin: '0 0 8px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
         Configurações de Cobrança
       </h3>
       <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
@@ -841,9 +841,9 @@ function Configuracao() {
 
   const renderPlanos = () => (
     <div>
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isMobile ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '16px' : '0', marginBottom: '24px' }}>
-          <h3 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0', marginBottom: '24px' }}>
+          <h3 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
             Planos de Mensalidade
           </h3>
           <button
@@ -878,8 +878,8 @@ function Configuracao() {
               Clique em "Adicionar Plano" para começar
             </p>
           </div>
-        ) : isMobile ? (
-          /* Cards para Mobile */
+        ) : isSmallScreen ? (
+          /* Cards para Mobile/Tablet */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {planos.map((plano) => (
               <div
@@ -1073,9 +1073,9 @@ function Configuracao() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            alignItems: isMobile ? 'stretch' : 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center',
             zIndex: 1000
           }}
@@ -1085,13 +1085,13 @@ function Configuracao() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: isMobile ? 0 : '12px',
-              width: isMobile ? '100%' : '90%',
-              maxWidth: isMobile ? '100%' : '500px',
-              height: isMobile ? '100%' : 'auto',
-              maxHeight: isMobile ? '100%' : '90vh',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              width: isSmallScreen ? '100%' : '90%',
+              maxWidth: isSmallScreen ? '100%' : '450px',
+              height: isSmallScreen ? '100%' : 'auto',
+              maxHeight: isSmallScreen ? '100%' : 'calc(100vh - 40px)',
               overflow: 'auto',
-              boxShadow: isMobile ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
+              boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
               display: 'flex',
               flexDirection: 'column'
             }}
@@ -1288,13 +1288,13 @@ function Configuracao() {
 
     return (
       <div>
-        <h3 style={{ margin: '0 0 24px 0', fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
+        <h3 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
           Uso do Sistema
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Card Clientes */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isMobile ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '48px',
@@ -1330,7 +1330,7 @@ function Configuracao() {
           </div>
 
           {/* Card Mensagens */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isMobile ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '48px',
@@ -1370,7 +1370,7 @@ function Configuracao() {
   }
 
   const renderUpgrade = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isMobile ? '24px 16px' : '40px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', textAlign: 'center' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '24px 16px' : '40px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', textAlign: 'center' }}>
       <div style={{
         width: '80px',
         height: '80px',
@@ -1426,13 +1426,13 @@ function Configuracao() {
   ]
 
   return (
-    <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      <h2 style={{ margin: '0 0 24px 0', fontSize: isMobile ? '20px' : '24px', fontWeight: '600', color: '#333' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <h2 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '18px' : '24px', fontWeight: '600', color: '#333' }}>
         Configurações
       </h2>
 
-      {/* Tabs - horizontal scroll em mobile */}
-      {isMobile && (
+      {/* Tabs - horizontal scroll em mobile/tablet */}
+      {isSmallScreen && (
         <div style={{
           display: 'flex',
           gap: '8px',
@@ -1468,10 +1468,10 @@ function Configuracao() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '24px', flexDirection: isMobile ? 'column' : 'row' }}>
-        {/* Tabs Sidebar - só para desktop */}
-        {!isMobile && (
-          <div style={{ width: '240px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: '24px', flexDirection: isSmallScreen ? 'column' : 'row' }}>
+        {/* Tabs Sidebar - só para desktop/laptop */}
+        {!isSmallScreen && (
+          <div style={{ width: '220px', flexShrink: 0 }}>
             <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               {tabs.map((tab) => (
                 <div

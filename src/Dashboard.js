@@ -115,7 +115,8 @@ export default function Dashboard() {
 
       {/* Menu lateral */}
       <div style={{
-        width: isMobile ? '220px' : '70px',
+        width: isMobile ? '260px' : '70px',
+        maxWidth: isMobile ? '85vw' : '70px',
         backgroundColor: 'white',
         borderRight: '1px solid #e0e0e0',
         display: 'flex',
@@ -128,10 +129,11 @@ export default function Dashboard() {
         paddingRight: isMobile ? '16px' : '0',
         height: '100vh',
         position: 'fixed',
-        left: isMobile ? (menuAberto ? '0' : '-220px') : '0',
+        left: isMobile ? (menuAberto ? '0' : '-260px') : '0',
         top: 0,
         zIndex: 100,
-        transition: 'left 0.3s ease'
+        transition: 'left 0.3s ease',
+        boxShadow: isMobile && menuAberto ? '4px 0 20px rgba(0,0,0,0.15)' : 'none'
       }}>
         {/* Ícones principais do menu */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '25px', width: isMobile ? '100%' : 'auto' }}>

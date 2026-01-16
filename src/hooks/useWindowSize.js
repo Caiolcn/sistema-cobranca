@@ -18,10 +18,17 @@ export default function useWindowSize() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const isMobile = windowSize.width <= 480
-  const isTablet = windowSize.width > 480 && windowSize.width <= 768
-  const isLaptop = windowSize.width > 768 && windowSize.width <= 1024
-  const isDesktop = windowSize.width > 1024
+  // Breakpoints otimizados para dispositivos reais
+  // Mobile: até 640px (cobre maioria dos smartphones)
+  // Tablet: 641px - 1024px (tablets e notebooks pequenos)
+  // Desktop: acima de 1024px
+  const isMobile = windowSize.width <= 640
+  const isTablet = windowSize.width > 640 && windowSize.width <= 1024
+  const isLaptop = windowSize.width > 1024 && windowSize.width <= 1280
+  const isDesktop = windowSize.width > 1280
 
-  return { ...windowSize, isMobile, isTablet, isLaptop, isDesktop }
+  // Helper para telas pequenas (mobile + tablet pequeno)
+  const isSmallScreen = windowSize.width <= 768
+
+  return { ...windowSize, isMobile, isTablet, isLaptop, isDesktop, isSmallScreen }
 }

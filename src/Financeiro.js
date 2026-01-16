@@ -8,7 +8,7 @@ import { exportarMensalidades } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
-  const { isMobile, isTablet } = useWindowSize()
+  const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [mensalidades, setMensalidades] = useState([])
   const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -587,36 +587,33 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     )
   }
 
-  // Detectar se é tela pequena (mobile ou tablet ou notebook pequeno)
-  const isSmallScreen = isMobile || isTablet
-
   return (
-    <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header - Título e Botões */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: isMobile ? '16px' : '20px',
-        marginBottom: isMobile ? '12px' : '16px',
+        padding: isSmallScreen ? '16px' : '20px',
+        marginBottom: isSmallScreen ? '12px' : '16px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
       }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '16px' : '0' }}>
+        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0' }}>
           {/* Título */}
           <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
               Mensalidades
             </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
+            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
               {mensalidadesFiltradas.length} de {mensalidades.length} mensalidade(s)
             </p>
           </div>
 
           {/* Botões */}
-          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isSmallScreen ? 'stretch' : 'flex-end' }}>
             <button
               onClick={() => exportarMensalidades(mensalidadesFiltradas)}
               style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: 'white',
                 color: '#333',
                 border: '1px solid #ddd',
@@ -629,7 +626,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'all 0.2s',
-                flex: isMobile ? 1 : 'none'
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = '#344848'
@@ -647,7 +644,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               className="btn-filtrar"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
               style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
                 color: temFiltrosAtivos ? 'white' : '#333',
                 border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
@@ -661,7 +658,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 gap: '8px',
                 position: 'relative',
                 transition: 'all 0.2s',
-                flex: isMobile ? 1 : 'none'
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => {
                 if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5'
@@ -671,7 +668,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               }}
             >
               <Icon icon="mdi:filter-outline" width="18" height="18" />
-              {!isMobile && 'Filtrar'}
+              {!isSmallScreen && 'Filtrar'}
               {temFiltrosAtivos && (
                 <span style={{
                   position: 'absolute',
@@ -696,7 +693,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <button
               onClick={() => setMostrarModalAdicionar(true)}
               style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: '#333',
                 color: 'white',
                 border: 'none',
@@ -709,13 +706,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'background-color 0.2s',
-                flex: isMobile ? 1 : 'none'
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
             >
               <Icon icon="mdi:plus" width="18" height="18" />
-              {!isMobile && 'Adicionar'}
+              {!isSmallScreen && 'Adicionar'}
             </button>
 
             {/* Popover de filtros */}
@@ -723,25 +720,25 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               <div
                 className="popover-filtros"
                 style={{
-                  position: isMobile ? 'fixed' : 'absolute',
-                  top: isMobile ? 0 : '50px',
-                  right: isMobile ? 0 : '0',
-                  left: isMobile ? 0 : 'auto',
-                  bottom: isMobile ? 0 : 'auto',
-                  width: isMobile ? '100%' : '340px',
-                  height: isMobile ? '100vh' : 'auto',
+                  position: isSmallScreen ? 'fixed' : 'absolute',
+                  top: isSmallScreen ? 0 : '50px',
+                  right: isSmallScreen ? 0 : '0',
+                  left: isSmallScreen ? 0 : 'auto',
+                  bottom: isSmallScreen ? 0 : 'auto',
+                  width: isSmallScreen ? '100%' : '340px',
+                  height: isSmallScreen ? '100vh' : 'auto',
                   backgroundColor: 'white',
-                  borderRadius: isMobile ? 0 : '8px',
-                  boxShadow: isMobile ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-                  border: isMobile ? 'none' : '1px solid #e0e0e0',
+                  borderRadius: isSmallScreen ? 0 : '8px',
+                  boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+                  border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
                   zIndex: 1001,
-                  overflow: isMobile ? 'auto' : 'hidden',
+                  overflow: isSmallScreen ? 'auto' : 'hidden',
                   display: 'flex',
                   flexDirection: 'column'
                 }}
               >
-                {/* Header do popover (mobile) */}
-                {isMobile && (
+                {/* Header do popover (mobile/tablet) */}
+                {isSmallScreen && (
                   <div style={{
                     padding: '16px 20px',
                     borderBottom: '1px solid #e0e0e0',
@@ -974,9 +971,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       {/* Cards de Indicadores - em seção separada */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-        gap: isMobile ? '12px' : '16px',
-        marginBottom: isMobile ? '16px' : '20px'
+        gridTemplateColumns: isMobile ? '1fr' : isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: isSmallScreen ? '12px' : '16px',
+        marginBottom: isSmallScreen ? '16px' : '20px'
       }}>
             {/* Card 1: Em Atraso */}
             <div style={{
@@ -1152,9 +1149,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       {/* Tabela/Cards de Mensalidades */}
       <div style={{
-        backgroundColor: isMobile ? 'transparent' : 'white',
-        borderRadius: isMobile ? 0 : '8px',
-        boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+        backgroundColor: isSmallScreen ? 'transparent' : 'white',
+        borderRadius: isSmallScreen ? 0 : '8px',
+        boxShadow: isSmallScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
         overflow: 'hidden'
       }}>
         {mensalidadesFiltradas.length === 0 ? (
@@ -1167,8 +1164,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               Clique em "Adicionar" para criar mensalidades
             </p>
           </div>
-        ) : isMobile ? (
-          /* Cards para Mobile */
+        ) : isSmallScreen ? (
+          /* Cards para Mobile/Tablet */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {mensalidadesFiltradas.map(mensalidade => (
               <div
@@ -1372,19 +1369,20 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: isSmallScreen ? 'stretch' : 'center',
           justifyContent: 'center',
           zIndex: 1000
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: isMobile ? 0 : '12px',
-            width: isMobile ? '100%' : '90%',
-            maxWidth: isMobile ? '100%' : '500px',
-            height: isMobile ? '100%' : 'auto',
-            boxShadow: isMobile ? 'none' : '0 4px 20px rgba(0, 0, 0, 0.15)',
+            borderRadius: isSmallScreen ? 0 : '12px',
+            width: isSmallScreen ? '100%' : '90%',
+            maxWidth: isSmallScreen ? '100%' : '450px',
+            height: isSmallScreen ? '100%' : 'auto',
+            maxHeight: isSmallScreen ? '100%' : 'calc(100vh - 40px)',
+            boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0, 0, 0, 0.15)',
             display: 'flex',
             flexDirection: 'column'
           }}>
@@ -1549,19 +1547,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: isSmallScreen ? 'stretch' : 'center',
           justifyContent: 'center',
           zIndex: 1002
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: isMobile ? 0 : '8px',
-            width: isMobile ? '100%' : '90%',
-            maxWidth: isMobile ? '100%' : '450px',
-            height: isMobile ? '100%' : 'auto',
-            boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            borderRadius: isSmallScreen ? 0 : '8px',
+            width: isSmallScreen ? '100%' : '90%',
+            maxWidth: isSmallScreen ? '100%' : '450px',
+            height: isSmallScreen ? '100%' : 'auto',
+            boxShadow: isSmallScreen ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             flexDirection: 'column'
           }}>
