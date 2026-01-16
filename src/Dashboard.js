@@ -319,7 +319,6 @@ export default function Dashboard() {
                 }}>
                   {[
                     { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
-                    { id: 'cobranca', label: 'Config. de Cobrança', icon: 'mdi:credit-card-settings-outline' },
                     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
                     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
                     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }

@@ -72,7 +72,7 @@ function Configuracao() {
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'cobranca', 'planos', 'uso', 'upgrade'].includes(abaUrl)) {
+    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade'].includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
   }, [searchParams])
@@ -1509,7 +1509,6 @@ function Configuracao() {
 
   const tabs = [
     { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
-    { id: 'cobranca', label: 'Configurações de Cobrança', icon: 'mdi:credit-card-settings-outline' },
     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
@@ -1630,7 +1629,6 @@ function Configuracao() {
           ) : (
             <>
               {abaAtiva === 'empresa' && renderDadosEmpresa()}
-              {abaAtiva === 'cobranca' && renderConfigCobranca()}
               {abaAtiva === 'planos' && renderPlanos()}
               {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
