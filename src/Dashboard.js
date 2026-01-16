@@ -109,7 +109,13 @@ export default function Dashboard() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}
         >
-          <Icon icon={menuAberto ? 'mdi:close' : 'mdi:menu'} width="24" height="24" />
+          {menuAberto ? (
+            <Icon icon="mdi:close" width="24" height="24" color="#333" />
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6H21M3 12H21M3 18H21" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          )}
         </button>
       )}
 

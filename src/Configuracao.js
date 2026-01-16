@@ -481,7 +481,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -501,7 +502,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -520,7 +522,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -539,7 +542,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -559,8 +563,9 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px',
-              textTransform: 'uppercase'
+              fontSize: '16px',
+              textTransform: 'uppercase',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -580,7 +585,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -600,7 +606,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -619,7 +626,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -638,7 +646,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -1139,7 +1148,8 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px'
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -1160,7 +1170,8 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px'
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -1177,8 +1188,10 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px',
-                    cursor: 'pointer'
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white'
                   }}
                 >
                   <option value="mensal">Mensal</option>
@@ -1201,9 +1214,10 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     fontFamily: 'inherit',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
