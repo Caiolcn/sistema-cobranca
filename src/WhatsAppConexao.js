@@ -25,15 +25,61 @@ const updateGlobalStatus = (newStatus) => {
 
 export const getWhatsAppStatus = () => globalStatus
 
-// Mensagem padrão do template
-const MENSAGEM_PADRAO = `Olá {{nomeCliente}},
+// Templates padrão bonitos com emojis
+const TEMPLATES_PADRAO = {
+  overdue: `*🚨 Aviso de Cobrança*
 
-Identificamos que a mensalidade no valor de {{valorMensalidade}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
+Olá, *{{nomeCliente}}*! 👋
 
-Por favor, regularize sua situação o quanto antes.
+Identificamos uma pendência em seu nome:
 
-Atenciosamente,
-{{nomeEmpresa}}`
+💰 *Valor:* {{valorMensalidade}}
+📅 *Vencimento:* {{dataVencimento}}
+⏰ *Dias em atraso:* {{diasAtraso}}
+
+Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
+
+Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
+
+_{{nomeEmpresa}}_`,
+
+  pre_due_3days: `*⚠️ Lembrete Importante*
+
+Olá, *{{nomeCliente}}*! 👋
+
+Sua mensalidade vence em breve:
+
+💰 *Valor:* {{valorMensalidade}}
+📆 *Vencimento:* {{dataVencimento}}
+⏰ *Faltam apenas 3 dias!*
+
+✅ *Formas de Pagamento:*
+Realize o pagamento para evitar juros e multas.
+
+Evite juros e multas, pague em dia! 💪
+
+_{{nomeEmpresa}}_`,
+
+  pre_due_5days: `*📅 Lembrete de Pagamento*
+
+Olá, *{{nomeCliente}}*! 👋
+
+Este é um lembrete amigável sobre sua próxima mensalidade:
+
+💰 *Valor:* {{valorMensalidade}}
+📆 *Vencimento:* {{dataVencimento}}
+⏰ *Faltam 5 dias*
+
+✅ *Formas de Pagamento:*
+Antecipe seu pagamento e fique tranquilo!
+
+Pague em dia e evite transtornos! 😊
+
+_{{nomeEmpresa}}_`
+}
+
+// Mensagem padrão do template (fallback para compatibilidade)
+const MENSAGEM_PADRAO = TEMPLATES_PADRAO.overdue
 
 export default function WhatsAppConexao() {
   const navigate = useNavigate()
@@ -385,30 +431,160 @@ export default function WhatsAppConexao() {
     }
   }
 
+  // Função para criar template padrão automaticamente ao ativar toggle
+  const criarTemplatePadraoSeNaoExiste = async (tipo) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return false
+
+      // Verificar se já existe template deste tipo
+      const { data: existente, error: erroBusca } = await supabase
+        .from('templates')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('tipo', tipo)
+        .eq('ativo', true)
+        .maybeSingle()
+
+      if (erroBusca) {
+        console.error('Erro ao verificar template existente:', erroBusca)
+        return false
+      }
+
+      // Se já existe, não precisa criar
+      if (existente) {
+        console.log(`Template ${tipo} já existe`)
+        return true
+      }
+
+      // Criar template padrão
+      const titulos = {
+        overdue: 'Mensagem de Cobrança - Em Atraso',
+        pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
+        pre_due_5days: 'Lembrete - 5 Dias Antes do Vencimento'
+      }
+
+      const { error: erroInsert } = await supabase
+        .from('templates')
+        .insert({
+          user_id: user.id,
+          titulo: titulos[tipo],
+          mensagem: TEMPLATES_PADRAO[tipo],
+          tipo: tipo,
+          ativo: true,
+          is_padrao: true
+        })
+
+      if (erroInsert) {
+        console.error('Erro ao criar template padrão:', erroInsert)
+        return false
+      }
+
+      console.log(`✅ Template padrão ${tipo} criado com sucesso!`)
+
+      // Atualizar lista de templates
+      await carregarTemplates()
+
+      return true
+    } catch (error) {
+      console.error('Erro ao criar template padrão:', error)
+      return false
+    }
+  }
+
   // Toggle automação 3 dias
   const toggleAutomacao3Dias = async () => {
     const novoValor = !automacao3DiasAtiva
+
+    // Se está ativando, criar template padrão se não existir
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('pre_due_3days')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
     const sucesso = await salvarConfiguracaoAutomacao('automacao_3dias_ativa', novoValor)
     if (sucesso) {
       setAutomacao3DiasAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Automação Ativada',
+          message: 'Lembretes de 3 dias antes serão enviados automaticamente! O template padrão foi configurado.'
+        })
+      }
     }
   }
 
   // Toggle automação 5 dias
   const toggleAutomacao5Dias = async () => {
     const novoValor = !automacao5DiasAtiva
+
+    // Se está ativando, criar template padrão se não existir
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('pre_due_5days')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
     const sucesso = await salvarConfiguracaoAutomacao('automacao_5dias_ativa', novoValor)
     if (sucesso) {
       setAutomacao5DiasAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Automação Ativada',
+          message: 'Lembretes de 5 dias antes serão enviados automaticamente! O template padrão foi configurado.'
+        })
+      }
     }
   }
 
   // Toggle automação em atraso
   const toggleAutomacaoEmAtraso = async () => {
     const novoValor = !automacaoEmAtrasoAtiva
+
+    // Se está ativando, criar template padrão se não existir
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('overdue')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
     const sucesso = await salvarConfiguracaoAutomacao('automacao_ematraso_ativa', novoValor)
     if (sucesso) {
       setAutomacaoEmAtrasoAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Automação Ativada',
+          message: 'Cobranças de mensalidades em atraso serão enviadas automaticamente! O template padrão foi configurado.'
+        })
+      }
     }
   }
 
@@ -636,35 +812,7 @@ export default function WhatsAppConexao() {
   }
 
   const getMensagemDefault = (tipo) => {
-    if (tipo === 'overdue') {
-      return `Olá {{nomeCliente}},
-
-Identificamos que a mensalidade no valor de {{valorMensalidade}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
-
-Por favor, regularize sua situação o quanto antes.
-
-Atenciosamente,
-{{nomeEmpresa}}`
-    } else if (tipo === 'pre_due_3days') {
-      return `Olá {{nomeCliente}},
-
-Este é um lembrete de que sua mensalidade no valor de {{valorMensalidade}} vence em 3 dias ({{dataVencimento}}).
-
-Para evitar atrasos, você pode realizar o pagamento antecipadamente.
-
-Atenciosamente,
-{{nomeEmpresa}}`
-    } else if (tipo === 'pre_due_5days') {
-      return `Olá {{nomeCliente}},
-
-Lembramos que sua mensalidade no valor de {{valorMensalidade}} vence em 5 dias ({{dataVencimento}}).
-
-Fique atento ao prazo para evitar juros e multas.
-
-Atenciosamente,
-{{nomeEmpresa}}`
-    }
-    return ''
+    return TEMPLATES_PADRAO[tipo] || TEMPLATES_PADRAO.overdue
   }
 
   const restaurarMensagemPadrao = () => {
