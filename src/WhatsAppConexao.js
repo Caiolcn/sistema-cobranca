@@ -37,6 +37,8 @@ Identificamos uma pendência em seu nome:
 📅 *Vencimento:* {{dataVencimento}}
 ⏰ *Dias em atraso:* {{diasAtraso}}
 
+💳 *Meu PIX:* {{chavePix}}
+
 Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
 
 Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
@@ -53,8 +55,7 @@ Sua mensalidade vence em breve:
 📆 *Vencimento:* {{dataVencimento}}
 ⏰ *Faltam apenas 3 dias!*
 
-✅ *Formas de Pagamento:*
-Realize o pagamento para evitar juros e multas.
+💳 *Meu PIX:* {{chavePix}}
 
 Evite juros e multas, pague em dia! 💪
 
@@ -70,8 +71,7 @@ Este é um lembrete amigável sobre sua próxima mensalidade:
 📆 *Vencimento:* {{dataVencimento}}
 ⏰ *Faltam 5 dias*
 
-✅ *Formas de Pagamento:*
-Antecipe seu pagamento e fique tranquilo!
+💳 *Meu PIX:* {{chavePix}}
 
 Pague em dia e evite transtornos! 😊
 
@@ -800,6 +800,7 @@ export default function WhatsAppConexao() {
       .replace(/\{\{dataVencimento\}\}/g, '06/01/2026')
       .replace(/\{\{diasAtraso\}\}/g, '5')
       .replace(/\{\{nomeEmpresa\}\}/g, 'Minha Empresa')
+      .replace(/\{\{chavePix\}\}/g, 'minha@chave.pix')
   }
 
   const getTituloDefault = (tipo) => {
@@ -1848,6 +1849,24 @@ export default function WhatsAppConexao() {
                     }}
                   >
                     {`{{nomeEmpresa}}`}
+                  </code>
+                  <code
+                    onClick={() => {
+                      navigator.clipboard.writeText('{{chavePix}}')
+                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{chavePix}} copiado para a área de transferência' })
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#e8f5e9',
+                      border: '1px solid #81c784',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#2e7d32',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {`{{chavePix}}`}
                   </code>
                 </div>
                 {tipoTemplateSelecionado !== 'overdue' && (
