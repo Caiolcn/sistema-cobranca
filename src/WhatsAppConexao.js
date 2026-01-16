@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
+import ConfirmModal from './ConfirmModal'
+import { useUserPlan } from './hooks/useUserPlan'
 
 // Estado global do status de conexão do WhatsApp
 let globalStatus = 'disconnected'
@@ -33,7 +36,11 @@ Atenciosamente,
 {{nomeEmpresa}}`
 
 export default function WhatsAppConexao() {
+  const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
+  const { isLocked } = useUserPlan()
+  const templateEditLocked = isLocked('pro') // true se plano é starter
+  const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [activeTab, setActiveTab] = useState('conexao')
 
   // ESTADOS SIMPLIFICADOS (6 essenciais)
@@ -63,6 +70,12 @@ export default function WhatsAppConexao() {
   const [automacao3DiasAtiva, setAutomacao3DiasAtiva] = useState(false)
   const [automacao5DiasAtiva, setAutomacao5DiasAtiva] = useState(false)
   const [automacaoEmAtrasoAtiva, setAutomacaoEmAtrasoAtiva] = useState(true) // Ativo por padrão
+
+  // Estado para modal de feedback
+  const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
+
+  // Estado para modal de upgrade (recurso bloqueado)
+  const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' })
 
   // Atualizar status global quando mudar
   useEffect(() => {
@@ -229,7 +242,7 @@ export default function WhatsAppConexao() {
           nome_completo: usuarioData?.nome_completo || null,
           email: usuarioData?.email || user.email,
           telefone: usuarioData?.telefone || null,
-          plano: usuarioData?.plano || 'basico',
+          plano: usuarioData?.plano || 'starter',
           whatsapp_numero: whatsappNumero,
           instance_name: config.instanceName,
           conectado: true,
@@ -299,7 +312,7 @@ export default function WhatsAppConexao() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        alert('Usuário não autenticado')
+        setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Usuário não autenticado' })
         return
       }
 
@@ -339,7 +352,7 @@ export default function WhatsAppConexao() {
 
         if (error) {
           console.error('Erro ao atualizar configuração:', error)
-          alert('Erro ao salvar configuração: ' + error.message)
+          setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar configuração: ' + error.message })
           return false
         }
       } else {
@@ -356,7 +369,7 @@ export default function WhatsAppConexao() {
 
         if (error) {
           console.error('Erro ao inserir configuração:', error)
-          alert('Erro ao salvar configuração: ' + error.message)
+          setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar configuração: ' + error.message })
           return false
         }
       }
@@ -364,7 +377,7 @@ export default function WhatsAppConexao() {
       return true
     } catch (error) {
       console.error('Erro ao salvar configuração de automação:', error)
-      alert('Erro ao salvar configuração')
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar configuração' })
       return false
     }
   }
@@ -592,7 +605,7 @@ export default function WhatsAppConexao() {
 
       setStatus('disconnected')
       setQrCode(null)
-      alert('WhatsApp desconectado com sucesso!')
+      setFeedbackModal({ isOpen: true, type: 'success', title: 'Desconectado', message: 'WhatsApp desconectado com sucesso!' })
     } catch (error) {
       setErro('Erro ao desconectar: ' + error.message)
     } finally {
@@ -656,7 +669,7 @@ Atenciosamente,
   const restaurarMensagemPadrao = () => {
     setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
     setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
-    alert('Mensagem padrão restaurada')
+    setFeedbackModal({ isOpen: true, type: 'info', title: 'Restaurado', message: 'Mensagem padrão restaurada' })
   }
 
   const carregarTemplates = async () => {
@@ -693,13 +706,13 @@ Atenciosamente,
       }
     } catch (error) {
       console.error('Erro ao carregar templates:', error)
-      alert('Erro ao carregar templates')
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao carregar templates' })
     }
   }
 
   const salvarTemplate = async () => {
     if (!tituloTemplate.trim() || !mensagemTemplate.trim()) {
-      alert('Preencha o título e a mensagem do template')
+      setFeedbackModal({ isOpen: true, type: 'warning', title: 'Atenção', message: 'Preencha o título e a mensagem do template' })
       return
     }
 
@@ -736,11 +749,11 @@ Atenciosamente,
         if (error) throw error
       }
 
-      alert('Template salvo com sucesso!')
+      setFeedbackModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Template salvo com sucesso!' })
       await carregarTemplates()
     } catch (error) {
       console.error('Erro ao salvar template:', error)
-      alert('Erro ao salvar template: ' + error.message)
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar template: ' + error.message })
     }
   }
 
@@ -1132,7 +1145,9 @@ Atenciosamente,
                   backgroundColor: 'white',
                   borderRadius: '6px',
                   marginBottom: '8px',
-                  border: '1px solid #e0e0e0'
+                  border: '1px solid #e0e0e0',
+                  opacity: automacaoLocked ? 0.7 : 1,
+                  position: 'relative'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Icon icon="mdi:calendar-clock" width="20" style={{ color: '#2196F3' }} />
@@ -1145,32 +1160,54 @@ Atenciosamente,
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={toggleAutomacao3Dias}
-                    style={{
-                      position: 'relative',
-                      width: '50px',
-                      height: '26px',
-                      backgroundColor: automacao3DiasAtiva ? '#4CAF50' : '#ccc',
-                      borderRadius: '13px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.3s',
-                      padding: 0
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: automacao3DiasAtiva ? '26px' : '3px',
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: 'white',
-                      borderRadius: '50%',
-                      transition: 'left 0.3s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </button>
+                  {automacaoLocked ? (
+                    <button
+                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação 3 Dias Antes' })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        backgroundColor: '#fff3e0',
+                        border: '1px solid #ffcc80',
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        color: '#e65100'
+                      }}
+                    >
+                      <Icon icon="mdi:lock" width="14" />
+                      Pro
+                    </button>
+                  ) : (
+                    <button
+                      onClick={toggleAutomacao3Dias}
+                      style={{
+                        position: 'relative',
+                        width: '50px',
+                        height: '26px',
+                        backgroundColor: automacao3DiasAtiva ? '#4CAF50' : '#ccc',
+                        borderRadius: '13px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s',
+                        padding: 0
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: '3px',
+                        left: automacao3DiasAtiva ? '26px' : '3px',
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: 'white',
+                        borderRadius: '50%',
+                        transition: 'left 0.3s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Toggle 5 Dias */}
@@ -1181,7 +1218,9 @@ Atenciosamente,
                   padding: '12px',
                   backgroundColor: 'white',
                   borderRadius: '6px',
-                  border: '1px solid #e0e0e0'
+                  border: '1px solid #e0e0e0',
+                  opacity: automacaoLocked ? 0.7 : 1,
+                  position: 'relative'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Icon icon="mdi:calendar-alert" width="20" style={{ color: '#ff9800' }} />
@@ -1194,32 +1233,54 @@ Atenciosamente,
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={toggleAutomacao5Dias}
-                    style={{
-                      position: 'relative',
-                      width: '50px',
-                      height: '26px',
-                      backgroundColor: automacao5DiasAtiva ? '#4CAF50' : '#ccc',
-                      borderRadius: '13px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.3s',
-                      padding: 0
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: automacao5DiasAtiva ? '26px' : '3px',
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: 'white',
-                      borderRadius: '50%',
-                      transition: 'left 0.3s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </button>
+                  {automacaoLocked ? (
+                    <button
+                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação 5 Dias Antes' })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        backgroundColor: '#fff3e0',
+                        border: '1px solid #ffcc80',
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        color: '#e65100'
+                      }}
+                    >
+                      <Icon icon="mdi:lock" width="14" />
+                      Pro
+                    </button>
+                  ) : (
+                    <button
+                      onClick={toggleAutomacao5Dias}
+                      style={{
+                        position: 'relative',
+                        width: '50px',
+                        height: '26px',
+                        backgroundColor: automacao5DiasAtiva ? '#4CAF50' : '#ccc',
+                        borderRadius: '13px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s',
+                        padding: 0
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: '3px',
+                        left: automacao5DiasAtiva ? '26px' : '3px',
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: 'white',
+                        borderRadius: '50%',
+                        transition: 'left 0.3s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Toggle Em Atraso */}
@@ -1286,8 +1347,12 @@ Atenciosamente,
                 </label>
                 <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: isSmallScreen ? '8px' : '12px' }}>
                   <button
-                    disabled={!automacao3DiasAtiva}
+                    disabled={!automacao3DiasAtiva || automacaoLocked}
                     onClick={() => {
+                      if (automacaoLocked) {
+                        setUpgradeModal({ isOpen: true, featureName: 'Template 3 Dias Antes' })
+                        return
+                      }
                       if (!automacao3DiasAtiva) return
                       setTipoTemplateSelecionado('pre_due_3days')
                       const template = templatesAgrupados.pre_due_3days
@@ -1302,11 +1367,11 @@ Atenciosamente,
                     style={{
                       flex: 1,
                       padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'pre_due_3days' ? '#2196F3' : 'white',
-                      color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'pre_due_3days' ? 'none' : '2px solid #e0e0e0',
+                      backgroundColor: tipoTemplateSelecionado === 'pre_due_3days' && !automacaoLocked ? '#2196F3' : 'white',
+                      color: tipoTemplateSelecionado === 'pre_due_3days' && !automacaoLocked ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'pre_due_3days' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: automacao3DiasAtiva ? 'pointer' : 'not-allowed',
+                      cursor: automacaoLocked ? 'pointer' : (automacao3DiasAtiva ? 'pointer' : 'not-allowed'),
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
@@ -1314,21 +1379,28 @@ Atenciosamente,
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
-                      opacity: automacao3DiasAtiva ? 1 : 0.5,
+                      opacity: automacaoLocked ? 0.6 : (automacao3DiasAtiva ? 1 : 0.5),
                       position: 'relative'
                     }}
-                    title={!automacao3DiasAtiva ? 'Ative a automação de 3 dias para editar este template' : ''}
+                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacao3DiasAtiva ? 'Ative a automação de 3 dias para editar este template' : '')}
                   >
+                    {automacaoLocked && (
+                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
+                    )}
                     <Icon icon="mdi:calendar-clock" width="20" />
                     <span>3 Dias Antes</span>
-                    {templatesAgrupados.pre_due_3days && automacao3DiasAtiva && (
+                    {templatesAgrupados.pre_due_3days && automacao3DiasAtiva && !automacaoLocked && (
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
 
                   <button
-                    disabled={!automacao5DiasAtiva}
+                    disabled={!automacao5DiasAtiva || automacaoLocked}
                     onClick={() => {
+                      if (automacaoLocked) {
+                        setUpgradeModal({ isOpen: true, featureName: 'Template 5 Dias Antes' })
+                        return
+                      }
                       if (!automacao5DiasAtiva) return
                       setTipoTemplateSelecionado('pre_due_5days')
                       const template = templatesAgrupados.pre_due_5days
@@ -1343,11 +1415,11 @@ Atenciosamente,
                     style={{
                       flex: 1,
                       padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'pre_due_5days' ? '#ff9800' : 'white',
-                      color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'pre_due_5days' ? 'none' : '2px solid #e0e0e0',
+                      backgroundColor: tipoTemplateSelecionado === 'pre_due_5days' && !automacaoLocked ? '#ff9800' : 'white',
+                      color: tipoTemplateSelecionado === 'pre_due_5days' && !automacaoLocked ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'pre_due_5days' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: automacao5DiasAtiva ? 'pointer' : 'not-allowed',
+                      cursor: automacaoLocked ? 'pointer' : (automacao5DiasAtiva ? 'pointer' : 'not-allowed'),
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
@@ -1355,14 +1427,17 @@ Atenciosamente,
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
-                      opacity: automacao5DiasAtiva ? 1 : 0.5,
+                      opacity: automacaoLocked ? 0.6 : (automacao5DiasAtiva ? 1 : 0.5),
                       position: 'relative'
                     }}
-                    title={!automacao5DiasAtiva ? 'Ative a automação de 5 dias para editar este template' : ''}
+                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacao5DiasAtiva ? 'Ative a automação de 5 dias para editar este template' : '')}
                   >
+                    {automacaoLocked && (
+                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
+                    )}
                     <Icon icon="mdi:calendar-alert" width="20" />
                     <span>5 Dias Antes</span>
-                    {templatesAgrupados.pre_due_5days && automacao5DiasAtiva && (
+                    {templatesAgrupados.pre_due_5days && automacao5DiasAtiva && !automacaoLocked && (
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
@@ -1410,6 +1485,30 @@ Atenciosamente,
                 </div>
               </div>
 
+              {/* Aviso de bloqueio para Starter */}
+              {templateEditLocked && (
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#fff3e0',
+                  border: '1px solid #ffcc80',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <Icon icon="mdi:lock" width="20" style={{ color: '#ff9800', flexShrink: 0 }} />
+                  <div>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#e65100' }}>
+                      Personalização bloqueada
+                    </span>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+                      A edição de templates está disponível a partir do plano Pro.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
                   Título do Template
@@ -1418,6 +1517,7 @@ Atenciosamente,
                   type="text"
                   value={tituloTemplate}
                   onChange={(e) => setTituloTemplate(e.target.value)}
+                  disabled={templateEditLocked}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -1426,7 +1526,10 @@ Atenciosamente,
                     fontSize: '16px',
                     fontFamily: 'inherit',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    backgroundColor: templateEditLocked ? '#f5f5f5' : 'white',
+                    cursor: templateEditLocked ? 'not-allowed' : 'text',
+                    opacity: templateEditLocked ? 0.7 : 1
                   }}
                   placeholder="Ex: Lembrete de Cobrança"
                 />
@@ -1439,26 +1542,32 @@ Atenciosamente,
                   </label>
                   <button
                     onClick={restaurarMensagemPadrao}
+                    disabled={templateEditLocked}
                     style={{
                       padding: '6px 12px',
                       backgroundColor: 'white',
                       border: '1px solid #e0e0e0',
                       borderRadius: '6px',
                       fontSize: '12px',
-                      color: '#666',
-                      cursor: 'pointer',
+                      color: templateEditLocked ? '#aaa' : '#666',
+                      cursor: templateEditLocked ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      opacity: templateEditLocked ? 0.6 : 1
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f5f5f5'
-                      e.currentTarget.style.borderColor = '#ccc'
+                      if (!templateEditLocked) {
+                        e.currentTarget.style.backgroundColor = '#f5f5f5'
+                        e.currentTarget.style.borderColor = '#ccc'
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white'
-                      e.currentTarget.style.borderColor = '#e0e0e0'
+                      if (!templateEditLocked) {
+                        e.currentTarget.style.backgroundColor = 'white'
+                        e.currentTarget.style.borderColor = '#e0e0e0'
+                      }
                     }}
                   >
                     <Icon icon="material-symbols:refresh" width="14" />
@@ -1468,6 +1577,7 @@ Atenciosamente,
                 <textarea
                   value={mensagemTemplate}
                   onChange={(e) => setMensagemTemplate(e.target.value)}
+                  disabled={templateEditLocked}
                   style={{
                     width: '100%',
                     minHeight: isSmallScreen ? '200px' : '300px',
@@ -1477,9 +1587,12 @@ Atenciosamente,
                     fontSize: '16px',
                     fontFamily: 'inherit',
                     lineHeight: '1.6',
-                    resize: 'vertical',
+                    resize: templateEditLocked ? 'none' : 'vertical',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    backgroundColor: templateEditLocked ? '#f5f5f5' : 'white',
+                    cursor: templateEditLocked ? 'not-allowed' : 'text',
+                    opacity: templateEditLocked ? 0.7 : 1
                   }}
                   placeholder="Digite sua mensagem aqui..."
                 />
@@ -1498,7 +1611,7 @@ Atenciosamente,
                   <code
                     onClick={() => {
                       navigator.clipboard.writeText('{{nomeCliente}}')
-                      alert('{{nomeCliente}} copiado!')
+                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeCliente}} copiado para a área de transferência' })
                     }}
                     style={{
                       padding: '4px 8px',
@@ -1516,7 +1629,7 @@ Atenciosamente,
                   <code
                     onClick={() => {
                       navigator.clipboard.writeText('{{valorMensalidade}}')
-                      alert('{{valorMensalidade}} copiado!')
+                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{valorMensalidade}} copiado para a área de transferência' })
                     }}
                     style={{
                       padding: '4px 8px',
@@ -1534,7 +1647,7 @@ Atenciosamente,
                   <code
                     onClick={() => {
                       navigator.clipboard.writeText('{{dataVencimento}}')
-                      alert('{{dataVencimento}} copiado!')
+                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{dataVencimento}} copiado para a área de transferência' })
                     }}
                     style={{
                       padding: '4px 8px',
@@ -1553,7 +1666,7 @@ Atenciosamente,
                     <code
                       onClick={() => {
                         navigator.clipboard.writeText('{{diasAtraso}}')
-                        alert('{{diasAtraso}} copiado!')
+                        setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{diasAtraso}} copiado para a área de transferência' })
                       }}
                       style={{
                         padding: '4px 8px',
@@ -1572,7 +1685,7 @@ Atenciosamente,
                   <code
                     onClick={() => {
                       navigator.clipboard.writeText('{{nomeEmpresa}}')
-                      alert('{{nomeEmpresa}} copiado!')
+                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeEmpresa}} copiado para a área de transferência' })
                     }}
                     style={{
                       padding: '4px 8px',
@@ -1597,24 +1710,26 @@ Atenciosamente,
 
               <button
                 onClick={salvarTemplate}
+                disabled={templateEditLocked}
                 style={{
                   width: '100%',
                   padding: '12px',
-                  backgroundColor: '#25D366',
+                  backgroundColor: templateEditLocked ? '#ccc' : '#25D366',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: 'pointer',
+                  cursor: templateEditLocked ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px'
+                  gap: '8px',
+                  opacity: templateEditLocked ? 0.7 : 1
                 }}
               >
-                <Icon icon="mdi:content-save" width="18" />
-                Salvar Template
+                <Icon icon={templateEditLocked ? 'mdi:lock' : 'mdi:content-save'} width="18" />
+                {templateEditLocked ? 'Edição bloqueada no Starter' : 'Salvar Template'}
               </button>
             </div>
 
@@ -1699,6 +1814,161 @@ Atenciosamente,
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Feedback */}
+      <ConfirmModal
+        isOpen={feedbackModal.isOpen}
+        onClose={() => setFeedbackModal({ ...feedbackModal, isOpen: false })}
+        onConfirm={() => setFeedbackModal({ ...feedbackModal, isOpen: false })}
+        title={feedbackModal.title}
+        message={feedbackModal.message}
+        confirmText="OK"
+        cancelText=""
+        type={feedbackModal.type}
+      />
+
+      {/* Modal de Upgrade (Recurso Bloqueado) */}
+      {upgradeModal.isOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setUpgradeModal({ isOpen: false, featureName: '' })}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 10000,
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          />
+
+          {/* Modal */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              zIndex: 10001,
+              minWidth: '280px',
+              maxWidth: '90vw',
+              textAlign: 'center',
+              animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              backgroundColor: '#fff3e0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px auto'
+            }}>
+              <Icon icon="mdi:lock" width="24" height="24" style={{ color: '#ff9800' }} />
+            </div>
+
+            <h4 style={{
+              margin: '0 0 8px 0',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a'
+            }}>
+              Recurso Bloqueado
+            </h4>
+
+            <p style={{
+              margin: '0 0 20px 0',
+              fontSize: '14px',
+              color: '#666',
+              lineHeight: '1.5'
+            }}>
+              <strong>{upgradeModal.featureName}</strong> está disponível no plano <strong>Pro</strong> ou superior.
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setUpgradeModal({ isOpen: false, featureName: '' })}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'white',
+                  color: '#666',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  minWidth: '100px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5'
+                  e.currentTarget.style.borderColor = '#ccc'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.borderColor = '#e0e0e0'
+                }}
+              >
+                Fechar
+              </button>
+              <button
+                onClick={() => {
+                  setUpgradeModal({ isOpen: false, featureName: '' })
+                  navigate('/app/configuracao?aba=upgrade')
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  minWidth: '100px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f57c00'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff9800'
+                }}
+              >
+                <Icon icon="mdi:rocket-launch" width="16" height="16" />
+                Fazer Upgrade
+              </button>
+            </div>
+          </div>
+
+          <style>
+            {`
+              @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+              }
+              @keyframes slideUp {
+                from { transform: translate(-50%, -50%) translateY(20px); opacity: 0; }
+                to { transform: translate(-50%, -50%) translateY(0); opacity: 1; }
+              }
+            `}
+          </style>
+        </>
       )}
     </div>
   )

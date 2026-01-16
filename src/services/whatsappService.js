@@ -220,19 +220,28 @@ class WhatsAppService {
 
       const nomeEmpresa = usuario?.nome_fantasia || usuario?.razao_social || usuario?.nome_completo || 'Empresa'
 
-      // Buscar template padrão ou usar o primeiro template ativo
+      // Buscar template do tipo 'overdue' (em atraso) do usuário
       const { data: template } = await supabase
         .from('templates')
         .select('mensagem')
         .eq('user_id', user.id)
+        .eq('tipo', 'overdue')
         .eq('ativo', true)
-        .order('is_padrao', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
-      if (!template) {
-        throw new Error('Nenhum template de mensagem configurado')
-      }
+      // Template padrão do sistema caso o usuário não tenha configurado
+      const TEMPLATE_PADRAO_OVERDUE = `Olá {{nomeCliente}},
+
+Identificamos que a mensalidade no valor de {{valorMensalidade}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
+
+Por favor, regularize sua situação o quanto antes.
+
+Atenciosamente,
+{{nomeEmpresa}}`
+
+      // Usar template do usuário ou o padrão do sistema
+      const mensagemTemplate = template?.mensagem || TEMPLATE_PADRAO_OVERDUE
 
       // Calcular dias de atraso
       const hoje = new Date()
@@ -250,7 +259,7 @@ class WhatsAppService {
       }
 
       // Gerar mensagem final
-      const mensagemFinal = this.substituirVariaveis(template.mensagem, dadosSubstituicao)
+      const mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
 
       // Enviar via Evolution API
       const resultado = await this.enviarMensagem(mensalidade.devedor.telefone, mensagemFinal)
@@ -286,7 +295,7 @@ class WhatsAppService {
         console.log('✅ Log salvo com sucesso!', logData)
       }
 
-      // Atualizar mensalidade
+      // Atualizar mensalidade e contabilizar uso
       if (resultado.sucesso) {
         const { error: updateError } = await supabase
           .from('mensalidades')
@@ -299,6 +308,48 @@ class WhatsAppService {
 
         if (updateError) {
           console.error('Erro ao atualizar mensalidade:', updateError)
+        }
+
+        // Incrementar contador de uso no controle_planos
+        const { data: controleAtual, error: controleError } = await supabase
+          .from('controle_planos')
+          .select('usage_count')
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (controleError) {
+          console.error('Erro ao buscar controle de planos:', controleError)
+        } else if (controleAtual) {
+          // Atualizar registro existente
+          const { error: updateUsageError } = await supabase
+            .from('controle_planos')
+            .update({
+              usage_count: (controleAtual.usage_count || 0) + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+
+          if (updateUsageError) {
+            console.error('Erro ao incrementar usage_count:', updateUsageError)
+          } else {
+            console.log('✅ Usage count incrementado para:', (controleAtual.usage_count || 0) + 1)
+          }
+        } else {
+          // Criar registro se não existir
+          const { error: insertUsageError } = await supabase
+            .from('controle_planos')
+            .insert({
+              user_id: user.id,
+              usage_count: 1,
+              limite_mensal: 100,
+              updated_at: new Date().toISOString()
+            })
+
+          if (insertUsageError) {
+            console.error('Erro ao criar controle de planos:', insertUsageError)
+          } else {
+            console.log('✅ Controle de planos criado com usage_count: 1')
+          }
         }
       }
 

@@ -6,9 +6,11 @@ import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 import { exportarClientes } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
+import { useUserPlan } from './hooks/useUserPlan'
 
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
+  const { limiteClientes, plano } = useUserPlan()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
@@ -729,6 +731,13 @@ export default function Clientes() {
       return
     }
 
+    // Verificar limite de clientes do plano (apenas clientes com assinatura ativa contam)
+    const clientesAtivos = clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length
+    if (clientesAtivos >= limiteClientes) {
+      setErroModalNovoCliente(`Limite de ${limiteClientes} clientes ativos atingido no plano ${plano?.toUpperCase() || 'atual'}. Faça upgrade para adicionar mais clientes.`)
+      return
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -882,7 +891,18 @@ export default function Clientes() {
               Clientes
             </h2>
             <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              {clientesFiltrados.length} de {clientes.length} cliente(s)
+              {clientesFiltrados.length} de {clientes.filter(c => !c.deleted_at).length} cliente(s)
+              <span style={{
+                marginLeft: '10px',
+                padding: '2px 8px',
+                backgroundColor: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#ffebee' : '#e8f5e9',
+                color: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#c62828' : '#2e7d32',
+                borderRadius: '10px',
+                fontSize: '11px',
+                fontWeight: '600'
+              }}>
+                {clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length}/{limiteClientes} ativos
+              </span>
             </p>
           </div>
 

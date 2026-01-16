@@ -45,16 +45,16 @@ serve(async (req) => {
     const { plano } = await req.json()
 
     // Validar plano
-    if (!['premium', 'enterprise'].includes(plano)) {
-      throw new Error('Plano inválido. Use "premium" ou "enterprise"')
+    if (!['pro', 'premium'].includes(plano)) {
+      throw new Error('Plano inválido. Use "pro" ou "premium"')
     }
 
     console.log('📦 Criando pagamento Pix:', plano)
 
-    // Definir valores dos planos (TEMPORÁRIO: R$ 1,00 para teste)
+    // Definir valores dos planos
     const precos: Record<string, number> = {
-      premium: 1.00,  // Mudar para 49.90 em produção
-      enterprise: 1.00,  // Mudar para 149.90 em produção
+      pro: 99.90,
+      premium: 149.90,
     }
     const valor = precos[plano]
 

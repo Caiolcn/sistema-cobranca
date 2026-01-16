@@ -440,11 +440,15 @@ function Configuracao() {
 
   const carregarUsoSistema = async (userId) => {
     try {
-      // Get client count
-      const { count: clientesCount } = await supabase
+      // Get clients (mesma lógica do Clientes.js)
+      const { data: clientesData } = await supabase
         .from('devedores')
-        .select('*', { count: 'exact', head: true })
+        .select('id, assinatura_ativa')
         .eq('user_id', userId)
+        .or('lixo.is.null,lixo.eq.false')
+
+      // Filtrar: apenas clientes com assinatura ativa (igual ao Clientes.js)
+      const clientesCount = (clientesData || []).filter(c => c.assinatura_ativa).length
 
       // Get plan limits
       const { data: controle } = await supabase
@@ -453,9 +457,24 @@ function Configuracao() {
         .eq('user_id', userId)
         .maybeSingle()
 
+      // Buscar limite de clientes do plano
+      const { data: usuario } = await supabase
+        .from('usuarios')
+        .select('plano')
+        .eq('id', userId)
+        .single()
+
+      // Limites de clientes por plano
+      const limiteClientesPorPlano = {
+        'starter': 50,
+        'pro': 150,
+        'premium': 500
+      }
+      const limiteClientes = limiteClientesPorPlano[usuario?.plano] || 50
+
       setUsoSistema({
-        clientes: { usado: clientesCount || 0, limite: 100 },
-        mensagens: { usado: controle?.usage_count || 0, limite: controle?.limite_mensal || 100 }
+        clientes: { usado: clientesCount, limite: limiteClientes },
+        mensagens: { usado: controle?.usage_count || 0, limite: controle?.limite_mensal || 200 }
       })
     } catch (error) {
       console.error('Erro ao carregar uso:', error)

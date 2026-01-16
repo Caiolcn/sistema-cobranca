@@ -146,32 +146,34 @@ export default function ConfirmModal({
             justifyContent: 'flex-end',
             marginTop: '24px'
           }}>
-            {/* Cancelar */}
-            <button
-              onClick={onClose}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '6px',
-                border: '1px solid #e0e0e0',
-                backgroundColor: 'white',
-                color: '#666',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                minWidth: '100px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f5f5f5'
-                e.currentTarget.style.borderColor = '#ccc'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white'
-                e.currentTarget.style.borderColor = '#e0e0e0'
-              }}
-            >
-              {cancelText}
-            </button>
+            {/* Cancelar - só mostra se tiver texto */}
+            {cancelText && (
+              <button
+                onClick={onClose}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  color: '#666',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  minWidth: '100px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5'
+                  e.currentTarget.style.borderColor = '#ccc'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.borderColor = '#e0e0e0'
+                }}
+              >
+                {cancelText}
+              </button>
+            )}
 
             {/* Confirmar */}
             <button

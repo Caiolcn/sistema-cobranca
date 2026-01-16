@@ -13,7 +13,7 @@ export default function Signup() {
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [telefone, setTelefone] = useState('')
   const [cpfCnpj, setCpfCnpj] = useState('')
-  const [planoSelecionado, setPlanoSelecionado] = useState('basico')
+  const [planoSelecionado, setPlanoSelecionado] = useState('starter')
 
   // Estados de controle
   const [loading, setLoading] = useState(false)
@@ -76,9 +76,9 @@ export default function Signup() {
 
   const getLimitePorPlano = (plano) => {
     const limites = {
-      basico: 100,
-      premium: 500,
-      enterprise: 999999
+      starter: 100,
+      pro: 500,
+      business: 999999
     }
     return limites[plano] || 100
   }
@@ -458,25 +458,25 @@ export default function Signup() {
           <form onSubmit={handleCadastro}>
             <div style={{ marginBottom: '24px' }}>
               <PlanCard
-                plano="Básico"
+                plano="Starter"
                 limite="100"
                 preco="Grátis"
-                selected={planoSelecionado === 'basico'}
-                onClick={() => setPlanoSelecionado('basico')}
+                selected={planoSelecionado === 'starter'}
+                onClick={() => setPlanoSelecionado('starter')}
               />
               <PlanCard
-                plano="Premium"
+                plano="Pro"
                 limite="500"
                 preco="R$ 49,90/mês"
-                selected={planoSelecionado === 'premium'}
-                onClick={() => setPlanoSelecionado('premium')}
+                selected={planoSelecionado === 'pro'}
+                onClick={() => setPlanoSelecionado('pro')}
               />
               <PlanCard
-                plano="Enterprise"
+                plano="Business"
                 limite="Ilimitadas"
                 preco="R$ 149,90/mês"
-                selected={planoSelecionado === 'enterprise'}
-                onClick={() => setPlanoSelecionado('enterprise')}
+                selected={planoSelecionado === 'business'}
+                onClick={() => setPlanoSelecionado('business')}
               />
             </div>
 

@@ -44,10 +44,45 @@ export default function LandingPage() {
     }
   ]
 
+  const depoimentos = [
+    {
+      nome: 'Roberto Carlos',
+      empresa: 'Academia Força Total',
+      texto: 'Reduzi a inadimplência em 40% no primeiro mês! Os lembretes automáticos pelo WhatsApp são muito mais eficientes que ligações.'
+    },
+    {
+      nome: 'Mariana Ferreira',
+      empresa: 'Studio de Pilates Atlantys',
+      texto: 'Antes eu perdia horas ligando para cobrar. Agora o sistema faz tudo sozinho e ainda consigo acompanhar quem está em dia.'
+    },
+    {
+      nome: 'Paulo Lima',
+      empresa: 'Escola de Música Cultura Musical',
+      texto: 'O dashboard me mostra exatamente quanto vou receber no mês. Consigo planejar melhor o fluxo de caixa da minha escola.'
+    },
+    {
+      nome: 'Fernanda Santos',
+      empresa: 'CrossFit Box',
+      texto: 'Meus alunos adoram receber o lembrete pelo WhatsApp. A taxa de pagamento em dia subiu de 60% para 90%!'
+    },
+    {
+      nome: 'Carlos Eduardo',
+      empresa: 'Escola de Inglês IEV',
+      texto: 'O suporte é excelente e o sistema muito intuitivo. Em uma semana já estava com tudo funcionando perfeitamente.'
+    },
+    {
+      nome: 'Ana Paula',
+      empresa: 'Personal Trainer',
+      texto: 'Uso para cobrar os planos mensais dos meus alunos. Nunca mais tive problema com esquecimento de pagamento.'
+    }
+  ]
+
+  const [depoimentoIndex, setDepoimentoIndex] = useState(0)
+
   const faqs = [
     {
-      pergunta: 'O plano gratuito tem alguma limitação?',
-      resposta: 'O plano gratuito permite até 100 mensagens por mês, gestão ilimitada de clientes e acesso a todos os recursos básicos. Perfeito para começar!'
+      pergunta: 'Qual a diferença entre os planos?',
+      resposta: 'Os planos variam em quantidade de clientes, mensagens e funcionalidades. O Starter é ideal para começar, o Pro oferece automação completa e gráficos, e o Premium inclui consultoria e suporte prioritário.'
     },
     {
       pergunta: 'Como funciona a conexão com WhatsApp?',
@@ -60,6 +95,22 @@ export default function LandingPage() {
     {
       pergunta: 'Meus dados estão seguros?',
       resposta: 'Absolutamente. Usamos criptografia de ponta a ponta e seguimos todas as melhores práticas de segurança. Seus dados são apenas seus.'
+    },
+    {
+      pergunta: 'O WhatsApp pode banir meu número?',
+      resposta: 'O MensalliZap envia mensagens de forma natural e humanizada, respeitando os limites do WhatsApp. Não fazemos disparo em massa. As mensagens são enviadas individualmente, como se você estivesse mandando manualmente.'
+    },
+    {
+      pergunta: 'Como funciona a automação de cobranças?',
+      resposta: 'Você configura regras de disparo (ex: 5 dias antes, 3 dias antes e no dia do vencimento) e o sistema envia automaticamente. Você pode personalizar as mensagens com nome do cliente, valor e data de vencimento.'
+    },
+    {
+      pergunta: 'O que acontece se eu atingir o limite de mensagens?',
+      resposta: 'Você será notificado quando estiver próximo do limite. Ao atingir, as mensagens automáticas são pausadas até o próximo mês. Você pode fazer upgrade a qualquer momento para aumentar o limite.'
+    },
+    {
+      pergunta: 'Funciona com WhatsApp Business?',
+      resposta: 'Sim! Funciona tanto com WhatsApp pessoal quanto com WhatsApp Business. Recomendamos o Business para ter um perfil mais profissional.'
     }
   ]
 
@@ -162,7 +213,7 @@ export default function LandingPage() {
             marginBottom: '32px'
           }}>
             <Icon icon="mdi:check-circle" width="16" />
-            Grátis para começar
+            A partir de R$ 49,90/mês
           </div>
 
           <h1 style={{
@@ -231,7 +282,7 @@ export default function LandingPage() {
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              Começar agora — é grátis
+              Começar agora
               <Icon icon="mdi:arrow-right" width="20" />
             </button>
           </div>
@@ -241,7 +292,7 @@ export default function LandingPage() {
             fontSize: '13px',
             color: '#999'
           }}>
-            Sem cartão de crédito • Setup em 2 minutos
+            Setup em 2 minutos • Cancele quando quiser
           </p>
         </div>
       </section>
@@ -393,7 +444,7 @@ export default function LandingPage() {
         padding: isSmallScreen ? '60px 24px' : '100px 24px',
         backgroundColor: '#fafafa'
       }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
             <h2 style={{
               fontSize: isSmallScreen ? '28px' : '40px',
@@ -402,21 +453,19 @@ export default function LandingPage() {
               letterSpacing: '-1px',
               color: '#1a1a1a'
             }}>
-              Preços simples
+              Escolha seu plano
             </h2>
             <p style={{ fontSize: '17px', color: '#666' }}>
-              Comece grátis, faça upgrade quando precisar
+              Comece a automatizar suas cobranças hoje mesmo
             </p>
           </div>
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)',
-            gap: '24px',
-            maxWidth: '700px',
-            margin: '0 auto'
+            gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+            gap: '24px'
           }}>
-            {/* Plano Grátis */}
+            {/* Plano Starter */}
             <div style={{
               backgroundColor: 'white',
               padding: '32px',
@@ -431,20 +480,23 @@ export default function LandingPage() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
               }}>
-                Grátis
+                Starter
               </h3>
-              <div style={{ marginBottom: '24px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800', color: '#1a1a1a' }}>R$0</span>
-                <span style={{ fontSize: '16px', color: '#999' }}>/mês</span>
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{ fontSize: '42px', fontWeight: '800', color: '#1a1a1a' }}>R$49</span>
+                <span style={{ fontSize: '16px', color: '#999' }}>,90/mês</span>
               </div>
+              <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
+                50 clientes ativos • 200 mensagens/mês
+              </p>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
-                {['100 mensagens/mês', 'Clientes ilimitados', 'Templates básicos', 'Dashboard completo'].map((item, i) => (
+                {['Até 50 clientes ativos', '200 mensagens/mês', '1 template padrão', 'Automação em atraso', 'Dashboard básico'].map((item, i) => (
                   <li key={i} style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
                     marginBottom: '12px',
-                    fontSize: '15px',
+                    fontSize: '14px',
                     color: '#444'
                   }}>
                     <Icon icon="mdi:check" width="18" style={{ color: '#16a34a' }} />
@@ -475,7 +527,7 @@ export default function LandingPage() {
                   e.target.style.color = '#1a1a1a'
                 }}
               >
-                Começar grátis
+                Começar agora
               </button>
             </div>
 
@@ -485,7 +537,9 @@ export default function LandingPage() {
               padding: '32px',
               borderRadius: '16px',
               color: 'white',
-              position: 'relative'
+              position: 'relative',
+              transform: isSmallScreen ? 'none' : 'scale(1.05)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
             }}>
               <div style={{
                 position: 'absolute',
@@ -511,18 +565,21 @@ export default function LandingPage() {
               }}>
                 Pro
               </h3>
-              <div style={{ marginBottom: '24px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800' }}>R$49</span>
-                <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)' }}>/mês</span>
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{ fontSize: '42px', fontWeight: '800' }}>R$99</span>
+                <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)' }}>,90/mês</span>
               </div>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginBottom: '24px' }}>
+                150 clientes ativos • 600 mensagens/mês
+              </p>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
-                {['Mensagens ilimitadas', 'Automação completa', 'Templates avançados', 'Suporte prioritário', 'Relatórios exportáveis'].map((item, i) => (
+                {['Até 150 clientes ativos', '600 mensagens/mês', '3 templates de mensagens personalizáveis', 'Regra de cobrança (disparo de mensagens 3 dias, 5 dias e em atraso)', 'Dashboard completa com gráficos', 'Suporte via WhatsApp', 'Aging Report (status dos clientes)', 'Receita Projetada', 'Histórico Completo de Mensalidades'].map((item, i) => (
                   <li key={i} style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
                     marginBottom: '12px',
-                    fontSize: '15px',
+                    fontSize: '14px',
                     color: 'rgba(255,255,255,0.9)'
                   }}>
                     <Icon icon="mdi:check" width="18" style={{ color: '#25D366' }} />
@@ -551,9 +608,229 @@ export default function LandingPage() {
                   e.target.style.opacity = '1'
                 }}
               >
-                Começar com Pro
+                Escolher Pro
               </button>
             </div>
+
+            {/* Plano Premium */}
+            <div style={{
+              backgroundColor: 'white',
+              padding: '32px',
+              borderRadius: '16px',
+              border: '2px solid #764ba2'
+            }}>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#764ba2',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Premium
+              </h3>
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{ fontSize: '42px', fontWeight: '800', color: '#1a1a1a' }}>R$149</span>
+                <span style={{ fontSize: '16px', color: '#999' }}>,90/mês</span>
+              </div>
+              <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
+                500 clientes ativos • 3.000 mensagens/mês
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
+                {['Tudo do Pro',
+                  
+                  'Até 500 clientes ativos',
+    '3.000 mensagens/mês',
+    'Consultoria inicial (1h)',
+    'Suporte prioritário via whatsapp',
+    'Acesso antecipado a novas features'].map((item, i) => (
+                  <li key={i} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginBottom: '12px',
+                    fontSize: '14px',
+                    color: '#444'
+                  }}>
+                    <Icon icon="mdi:check" width="18" style={{ color: '#764ba2' }} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => navigate('/signup')}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: '#764ba2',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#5e3a82'
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#764ba2'
+                }}
+              >
+                Escolher Premium
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Depoimentos Section */}
+      <section style={{
+        padding: isSmallScreen ? '60px 24px' : '100px 24px',
+        backgroundColor: '#fafafa'
+      }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 style={{
+              fontSize: isSmallScreen ? '28px' : '40px',
+              fontWeight: '800',
+              marginBottom: '16px',
+              letterSpacing: '-1px',
+              color: '#1a1a1a'
+            }}>
+              O que nossos clientes dizem
+            </h2>
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            {/* Botão anterior */}
+            {!isSmallScreen && (
+              <button
+                onClick={() => setDepoimentoIndex(prev => prev === 0 ? Math.ceil(depoimentos.length / 3) - 1 : prev - 1)}
+                style={{
+                  position: 'absolute',
+                  left: '-20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'white',
+                  border: '1px solid #eee',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  zIndex: 10
+                }}
+              >
+                <Icon icon="mdi:chevron-left" width="24" style={{ color: '#333' }} />
+              </button>
+            )}
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+              gap: '24px'
+            }}>
+              {depoimentos.slice(
+                isSmallScreen ? depoimentoIndex : depoimentoIndex * 3,
+                isSmallScreen ? depoimentoIndex + 1 : depoimentoIndex * 3 + 3
+              ).map((dep, index) => (
+                <div key={index} style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '28px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+                }}>
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Icon key={star} icon="mdi:star" width="18" style={{ color: '#FFD700' }} />
+                    ))}
+                  </div>
+                  <p style={{
+                    fontSize: '15px',
+                    color: '#444',
+                    lineHeight: '1.6',
+                    marginBottom: '20px'
+                  }}>
+                    "{dep.texto}"
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}>
+                      {dep.nome.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: '600', color: '#1a1a1a', margin: 0, fontSize: '14px' }}>{dep.nome}</p>
+                      <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>{dep.empresa}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Botão próximo */}
+            {!isSmallScreen && (
+              <button
+                onClick={() => setDepoimentoIndex(prev => prev === Math.ceil(depoimentos.length / 3) - 1 ? 0 : prev + 1)}
+                style={{
+                  position: 'absolute',
+                  right: '-20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'white',
+                  border: '1px solid #eee',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  zIndex: 10
+                }}
+              >
+                <Icon icon="mdi:chevron-right" width="24" style={{ color: '#333' }} />
+              </button>
+            )}
+          </div>
+
+          {/* Indicadores do carrossel */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: '32px'
+          }}>
+            {Array.from({ length: isSmallScreen ? depoimentos.length : Math.ceil(depoimentos.length / 3) }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setDepoimentoIndex(i)}
+                style={{
+                  width: depoimentoIndex === i ? '24px' : '8px',
+                  height: '8px',
+                  borderRadius: '4px',
+                  backgroundColor: depoimentoIndex === i ? '#25D366' : '#ddd',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+            ))}
           </div>
         </div>
       </section>

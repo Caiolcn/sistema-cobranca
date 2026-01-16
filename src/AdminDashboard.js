@@ -422,14 +422,14 @@ export default function AdminDashboard() {
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{
                         padding: '4px 10px',
-                        backgroundColor: cliente.plano === 'enterprise' ? '#e3f2fd' : cliente.plano === 'premium' ? '#f3e5f5' : '#fff3e0',
-                        color: cliente.plano === 'enterprise' ? '#1976d2' : cliente.plano === 'premium' ? '#7b1fa2' : '#f57c00',
+                        backgroundColor: cliente.plano === 'business' ? '#e3f2fd' : cliente.plano === 'pro' ? '#f3e5f5' : '#fff3e0',
+                        color: cliente.plano === 'business' ? '#1976d2' : cliente.plano === 'pro' ? '#7b1fa2' : '#f57c00',
                         borderRadius: '6px',
                         fontSize: '12px',
                         fontWeight: '500',
                         textTransform: 'capitalize'
                       }}>
-                        {cliente.plano || 'básico'}
+                        {cliente.plano || 'starter'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: '14px', color: '#333', fontWeight: '500' }}>

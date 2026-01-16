@@ -177,36 +177,55 @@ export default function UpgradePage() {
 
   const planos = [
     {
-      id: 'premium',
-      nome: 'Premium',
+      id: 'starter',
+      nome: 'Starter',
       preco: 'R$ 49,90',
       periodo: '/mês',
-      limite: '500 mensagens/mês',
+      limite: '50 clientes • 200 mensagens/mês',
       features: [
-        'Até 500 mensagens por mês',
-        'Gestão de clientes ilimitada',
-        'Automação completa de cobranças',
-        'Templates personalizados',
-        'Relatórios avançados',
-        'Suporte prioritário por email'
+        'Até 50 clientes ativos',
+        '200 mensagens por mês',
+        '1 template padrão',
+        'Disparo automático em atraso',
+        'Dashboard básico',
+        'Exportação CSV',
+        'Suporte por e-mail (48h)'
+      ],
+      destaque: false,
+      cor: '#78909c'
+    },
+    {
+      id: 'pro',
+      nome: 'Pro',
+      preco: 'R$ 99,90',
+      periodo: '/mês',
+      limite: '150 clientes • 500 mensagens/mês',
+      features: [
+        'Até 150 clientes ativos',
+        '500 mensagens por mês',
+        '3 templates personalizáveis',
+        'Automação 3 e 5 dias antes',
+        'Dashboard completo com gráficos',
+        'Aging Report e Receita Projetada',
+        'Suporte WhatsApp (24h)'
       ],
       destaque: true,
       cor: '#667eea'
     },
     {
-      id: 'enterprise',
-      nome: 'Enterprise',
+      id: 'premium',
+      nome: 'Premium',
       preco: 'R$ 149,90',
       periodo: '/mês',
-      limite: 'Mensagens ilimitadas',
+      limite: '500 clientes • 3.000 mensagens/mês',
       features: [
-        'Mensagens ilimitadas',
-        'Tudo do plano Premium',
-        'API de integração',
-        'Webhooks personalizados',
-        'Suporte 24/7',
-        'Gerente de conta dedicado',
-        'Treinamento personalizado'
+        'Até 500 clientes ativos',
+        '3.000 mensagens por mês',
+        'Tudo do plano Pro',
+        'Webhooks para integração (n8n)',
+        'Consultoria inicial (1h)',
+        'Suporte prioritário (4h)',
+        'Acesso antecipado a novas features'
       ],
       destaque: false,
       cor: '#764ba2'

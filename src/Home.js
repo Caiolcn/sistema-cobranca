@@ -5,10 +5,14 @@ import { Icon } from '@iconify/react';
 import DateRangePicker from './DateRangePicker';
 import whatsappService from './services/whatsappService';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useUserPlan } from './hooks/useUserPlan';
+import FeatureLocked from './FeatureLocked';
+import ConfirmModal from './ConfirmModal';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const { isLocked, loading: loadingPlan } = useUserPlan();
   const [loading, setLoading] = useState(true);
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [periodo, setPeriodo] = useState('mes_atual');
@@ -43,6 +47,12 @@ function Home() {
 
   // Mensagens recentes
   const [mensagensRecentes, setMensagensRecentes] = useState([]);
+
+  // Estados para modais de confirmação da Fila de WhatsApp
+  const [confirmModalWhatsapp, setConfirmModalWhatsapp] = useState({ isOpen: false, item: null });
+  const [confirmModalCancelar, setConfirmModalCancelar] = useState({ isOpen: false, mensalidadeId: null });
+  const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -437,61 +447,88 @@ function Home() {
     return 'Boa noite';
   };
 
-  const handleEnviarWhatsApp = async (item) => {
+  // Abre modal de confirmação para envio de WhatsApp
+  const handleEnviarWhatsApp = (item) => {
+    setConfirmModalWhatsapp({ isOpen: true, item });
+  };
+
+  // Confirma e executa o envio de WhatsApp
+  const confirmarEnvioWhatsApp = async () => {
+    const item = confirmModalWhatsapp.item;
+    if (!item) return;
+
+    setConfirmModalWhatsapp({ isOpen: false, item: null });
+    setEnviandoWhatsapp(true);
+
     try {
-      const confirmar = window.confirm(
-        `Enviar cobrança via WhatsApp para ${item.devedores?.nome}?\n\n` +
-        `Valor: ${formatarMoeda(item.valor)}\n` +
-        `Telefone: ${item.devedores?.telefone}`
-      );
-
-      if (!confirmar) return;
-
-      // Mostrar loading
-      const loadingMsg = document.createElement('div');
-      loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;text-align:center;';
-      loadingMsg.innerHTML = '<div style="margin-bottom:10px;">Enviando mensagem...</div><div style="color:#666;font-size:14px;">Aguarde</div>';
-      document.body.appendChild(loadingMsg);
-
-      // Enviar via whatsappService
       const resultado = await whatsappService.enviarCobranca(item.id);
 
-      // Remover loading
-      document.body.removeChild(loadingMsg);
+      setEnviandoWhatsapp(false);
 
       if (resultado.sucesso) {
-        alert(`✅ Mensagem enviada com sucesso para ${item.devedores?.nome}!`);
-        // Recarregar dados após envio
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Mensagem Enviada',
+          message: `Mensagem enviada com sucesso para ${item.devedores?.nome}!`
+        });
         await carregarDados();
       } else {
-        alert(`❌ Erro ao enviar mensagem:\n${resultado.erro}`);
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro ao Enviar',
+          message: resultado.erro || 'Erro desconhecido ao enviar mensagem.'
+        });
       }
     } catch (error) {
+      setEnviandoWhatsapp(false);
       console.error('Erro ao enviar WhatsApp:', error);
-      alert('❌ Erro ao enviar WhatsApp: ' + error.message);
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro ao Enviar',
+        message: error.message || 'Erro desconhecido ao enviar WhatsApp.'
+      });
     }
   };
 
-  const handleCancelarEnvio = async (mensalidadeId) => {
-    try {
-      const confirmacao = window.confirm('Deseja realmente cancelar o envio desta mensagem?');
-      if (!confirmacao) return;
+  // Abre modal de confirmação para cancelar envio
+  const handleCancelarEnvio = (mensalidadeId) => {
+    setConfirmModalCancelar({ isOpen: true, mensalidadeId });
+  };
 
+  // Confirma e executa o cancelamento do envio
+  const confirmarCancelarEnvio = async () => {
+    const mensalidadeId = confirmModalCancelar.mensalidadeId;
+    if (!mensalidadeId) return;
+
+    setConfirmModalCancelar({ isOpen: false, mensalidadeId: null });
+
+    try {
       // Atualizar o status da mensalidade ou remover da fila
-      // Você pode implementar a lógica específica aqui
       console.log('Cancelando envio da mensalidade:', mensalidadeId);
 
-      alert('Envio cancelado com sucesso!');
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Envio Cancelado',
+        message: 'O envio da mensagem foi cancelado com sucesso.'
+      });
 
-      // Recarregar dados
       await carregarDados();
     } catch (error) {
       console.error('Erro ao cancelar envio:', error);
-      alert('Erro ao cancelar envio. Tente novamente.');
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: 'Erro ao cancelar envio. Tente novamente.'
+      });
     }
   };
 
-  if (loading) {
+  if (loading || loadingPlan) {
     return (
       <div className="home-loading">
         <Icon icon="line-md:loading-twotone-loop" width="48" />
@@ -499,6 +536,9 @@ function Home() {
       </div>
     );
   }
+
+  // Verificar se features estão bloqueadas para plano Starter
+  const proLocked = isLocked('pro');
 
   return (
     <div className="home-container">
@@ -604,132 +644,143 @@ function Home() {
       {/* Cards Secundários - Linha 2 */}
       <div className="home-cards-secondary">
         {/* 1. Receita Projetada do Mês */}
-        <div className="home-card card-receita-projetada">
-          <div className="card-header">
-            <span className="card-label">Receita Projetada do Mês</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:analytics-outline" width="20" />
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Receita Projetada">
+          <div className="home-card card-receita-projetada">
+            <div className="card-header">
+              <span className="card-label">Receita Projetada do Mês</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:analytics-outline" width="20" />
+              </div>
+            </div>
+            <div className="card-body">
+              <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
+              <span className="card-subtitle">Recebido + A receber</span>
             </div>
           </div>
-          <div className="card-body">
-            <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
-            <span className="card-subtitle">Recebido + A receber</span>
-          </div>
-        </div>
+        </FeatureLocked>
 
         {/* 2. Mensalidades a Vencer */}
-        <div className="home-card card-vencer-7-dias">
-          <div className="card-header">
-            <span className="card-label">Mensalidades a Vencer</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:calendar-clock" width="20" />
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Mensalidades a Vencer">
+          <div className="home-card card-vencer-7-dias">
+            <div className="card-header">
+              <span className="card-label">Mensalidades a Vencer</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:calendar-clock" width="20" />
+              </div>
+            </div>
+            <div className="card-body">
+              <span className="card-value">{formatarMoeda(mensalidadesVencer7Dias)}</span>
+              <span className="card-subtitle">Próximos 7 dias</span>
             </div>
           </div>
-          <div className="card-body">
-            <span className="card-value">{formatarMoeda(mensalidadesVencer7Dias)}</span>
-            <span className="card-subtitle">Próximos 7 dias</span>
-          </div>
-        </div>
+        </FeatureLocked>
 
         {/* 3. Clientes Inadimplentes */}
-        <div className="home-card card-inadimplentes">
-          <div className="card-header">
-            <span className="card-label">Clientes Inadimplentes</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:person-alert-outline" width="20" />
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Clientes Inadimplentes">
+          <div className="home-card card-inadimplentes">
+            <div className="card-header">
+              <span className="card-label">Clientes Inadimplentes</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:person-alert-outline" width="20" />
+              </div>
+            </div>
+            <div className="card-body">
+              <span className="card-value">{clientesInadimplentes}</span>
+              <span className="card-subtitle">Com mensalidades atrasadas</span>
+            </div>
+            <div className="card-footer">
+              <button className="btn-ver" onClick={() => navigate('/clientes?inadimplente=true')}>
+                Ver
+              </button>
             </div>
           </div>
-          <div className="card-body">
-            <span className="card-value">{clientesInadimplentes}</span>
-            <span className="card-subtitle">Com mensalidades atrasadas</span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/clientes?inadimplente=true')}>
-              Ver
-            </button>
-          </div>
-        </div>
+        </FeatureLocked>
 
         {/* 4. Mensagens Enviadas Automaticamente */}
-        <div className="home-card card-mensagens-auto">
-          <div className="card-header">
-            <span className="card-label">Mensagens Enviadas</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:send-outline" width="20" />
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Mensagens Enviadas">
+          <div className="home-card card-mensagens-auto">
+            <div className="card-header">
+              <span className="card-label">Mensagens Enviadas</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:send-outline" width="20" />
+              </div>
+            </div>
+            <div className="card-body">
+              <span className="card-value">{mensagensEnviadasAuto}</span>
+              <span className="card-subtitle">Automáticas pelo sistema</span>
             </div>
           </div>
-          <div className="card-body">
-            <span className="card-value">{mensagensEnviadasAuto}</span>
-            <span className="card-subtitle">Automáticas pelo sistema</span>
-          </div>
-        </div>
+        </FeatureLocked>
       </div>
 
       {/* Gráficos em 2 Colunas */}
       <div className="home-two-columns">
         {/* Gráfico: Recebimento vs Vencimento (Gráfico de Linhas) */}
-        <div className="home-section">
-          <div className="section-header">
-            <Icon icon="material-symbols:show-chart" width="24" />
-            <h2>Recebimento vs Vencimento</h2>
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Gráfico de Recebimento vs Vencimento">
+          <div className="home-section">
+            <div className="section-header">
+              <Icon icon="material-symbols:show-chart" width="24" />
+              <h2>Recebimento vs Vencimento</h2>
+            </div>
+            <div className="home-grafico-recharts">
+              {graficoRecebimentoVsVencimento.length === 0 ? (
+                <div className="empty-state">Sem dados para exibir</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={graficoRecebimentoVsVencimento} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="mes"
+                      tick={{ fill: '#666', fontSize: 12 }}
+                      stroke="#d1d5db"
+                    />
+                    <YAxis
+                      tick={{ fill: '#666', fontSize: 12 }}
+                      stroke="#d1d5db"
+                      tickFormatter={(value) => formatarMoeda(value)}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}
+                      formatter={(value) => formatarMoeda(value)}
+                      labelStyle={{ color: '#333', fontWeight: 600 }}
+                    />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '10px' }}
+                      iconType="circle"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="recebido"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ fill: '#10b981', r: 5 }}
+                      activeDot={{ r: 7 }}
+                      name="Recebido"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="vencido"
+                      stroke="#f59e0b"
+                      strokeWidth={3}
+                      dot={{ fill: '#f59e0b', r: 5 }}
+                      activeDot={{ r: 7 }}
+                      name="Vencido"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-          <div className="home-grafico-recharts">
-            {graficoRecebimentoVsVencimento.length === 0 ? (
-              <div className="empty-state">Sem dados para exibir</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={graficoRecebimentoVsVencimento} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis
-                    dataKey="mes"
-                    tick={{ fill: '#666', fontSize: 12 }}
-                    stroke="#d1d5db"
-                  />
-                  <YAxis
-                    tick={{ fill: '#666', fontSize: 12 }}
-                    stroke="#d1d5db"
-                    tickFormatter={(value) => formatarMoeda(value)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                    }}
-                    formatter={(value) => formatarMoeda(value)}
-                    labelStyle={{ color: '#333', fontWeight: 600 }}
-                  />
-                  <Legend
-                    wrapperStyle={{ paddingTop: '10px' }}
-                    iconType="circle"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="recebido"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    dot={{ fill: '#10b981', r: 5 }}
-                    activeDot={{ r: 7 }}
-                    name="Recebido"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="vencido"
-                    stroke="#f59e0b"
-                    strokeWidth={3}
-                    dot={{ fill: '#f59e0b', r: 5 }}
-                    activeDot={{ r: 7 }}
-                    name="Vencido"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
+        </FeatureLocked>
 
         {/* Gráfico: Status das Mensalidades (Donut Chart) */}
-        <div className="home-section">
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Gráfico de Status das Mensalidades">
+          <div className="home-section">
           <div className="section-header">
             <Icon icon="material-symbols:pie-chart" width="24" />
             <h2>Status das Mensalidades</h2>
@@ -816,73 +867,76 @@ function Home() {
               );
             })()}
           </div>
-        </div>
+          </div>
+        </FeatureLocked>
       </div>
 
       {/* Status Operacional de Acesso */}
-      <div className="home-section aging-section">
-        <div className="section-header">
-          <Icon icon="material-symbols:lock-person-outline" width="24" />
-          <h2>Status de Acesso dos Clientes</h2>
+      <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Status de Acesso dos Clientes">
+        <div className="home-section aging-section">
+          <div className="section-header">
+            <Icon icon="material-symbols:lock-person-outline" width="24" />
+            <h2>Status de Acesso dos Clientes</h2>
+          </div>
+          <div className="aging-container">
+            <div className="aging-card status-em-dia">
+              <div className="aging-header">
+                <span className="aging-label">Em dia</span>
+                <div className="card-icon">
+                  <Icon icon="material-symbols:check-circle-outline" width="20" />
+                </div>
+              </div>
+              <div className="aging-body">
+                <span className="aging-value">{formatarMoeda(statusAcesso.emDia.valor)}</span>
+                <span className="aging-clientes">{statusAcesso.emDia.clientes} cliente{statusAcesso.emDia.clientes !== 1 ? 's' : ''}</span>
+                <span className="aging-status-desc">Acesso liberado</span>
+              </div>
+            </div>
+
+            <div className="aging-card status-atraso-recente">
+              <div className="aging-header">
+                <span className="aging-label">Atraso recente</span>
+                <div className="card-icon">
+                  <Icon icon="material-symbols:schedule" width="20" />
+                </div>
+              </div>
+              <div className="aging-body">
+                <span className="aging-value">{formatarMoeda(statusAcesso.atrasoRecente.valor)}</span>
+                <span className="aging-clientes">{statusAcesso.atrasoRecente.clientes} cliente{statusAcesso.atrasoRecente.clientes !== 1 ? 's' : ''}</span>
+                <span className="aging-status-desc">1-7 dias • Enviar mensagem</span>
+              </div>
+            </div>
+
+            <div className="aging-card status-bloqueado">
+              <div className="aging-header">
+                <span className="aging-label">Bloqueado</span>
+                <div className="card-icon">
+                  <Icon icon="material-symbols:block" width="20" />
+                </div>
+              </div>
+              <div className="aging-body">
+                <span className="aging-value">{formatarMoeda(statusAcesso.bloqueado.valor)}</span>
+                <span className="aging-clientes">{statusAcesso.bloqueado.clientes} cliente{statusAcesso.bloqueado.clientes !== 1 ? 's' : ''}</span>
+                <span className="aging-status-desc">7-30 dias • Acesso suspenso</span>
+              </div>
+            </div>
+
+            <div className="aging-card status-inativo">
+              <div className="aging-header">
+                <span className="aging-label">Inativo</span>
+                <div className="card-icon">
+                  <Icon icon="material-symbols:person-off-outline" width="20" />
+                </div>
+              </div>
+              <div className="aging-body">
+                <span className="aging-value">{formatarMoeda(statusAcesso.inativo.valor)}</span>
+                <span className="aging-clientes">{statusAcesso.inativo.clientes} cliente{statusAcesso.inativo.clientes !== 1 ? 's' : ''}</span>
+                <span className="aging-status-desc">+30 dias • Abandono</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="aging-container">
-          <div className="aging-card status-em-dia">
-            <div className="aging-header">
-              <span className="aging-label">Em dia</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:check-circle-outline" width="20" />
-              </div>
-            </div>
-            <div className="aging-body">
-              <span className="aging-value">{formatarMoeda(statusAcesso.emDia.valor)}</span>
-              <span className="aging-clientes">{statusAcesso.emDia.clientes} cliente{statusAcesso.emDia.clientes !== 1 ? 's' : ''}</span>
-              <span className="aging-status-desc">Acesso liberado</span>
-            </div>
-          </div>
-
-          <div className="aging-card status-atraso-recente">
-            <div className="aging-header">
-              <span className="aging-label">Atraso recente</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:schedule" width="20" />
-              </div>
-            </div>
-            <div className="aging-body">
-              <span className="aging-value">{formatarMoeda(statusAcesso.atrasoRecente.valor)}</span>
-              <span className="aging-clientes">{statusAcesso.atrasoRecente.clientes} cliente{statusAcesso.atrasoRecente.clientes !== 1 ? 's' : ''}</span>
-              <span className="aging-status-desc">1-7 dias • Enviar mensagem</span>
-            </div>
-          </div>
-
-          <div className="aging-card status-bloqueado">
-            <div className="aging-header">
-              <span className="aging-label">Bloqueado</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:block" width="20" />
-              </div>
-            </div>
-            <div className="aging-body">
-              <span className="aging-value">{formatarMoeda(statusAcesso.bloqueado.valor)}</span>
-              <span className="aging-clientes">{statusAcesso.bloqueado.clientes} cliente{statusAcesso.bloqueado.clientes !== 1 ? 's' : ''}</span>
-              <span className="aging-status-desc">7-30 dias • Acesso suspenso</span>
-            </div>
-          </div>
-
-          <div className="aging-card status-inativo">
-            <div className="aging-header">
-              <span className="aging-label">Inativo</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:person-off-outline" width="20" />
-              </div>
-            </div>
-            <div className="aging-body">
-              <span className="aging-value">{formatarMoeda(statusAcesso.inativo.valor)}</span>
-              <span className="aging-clientes">{statusAcesso.inativo.clientes} cliente{statusAcesso.inativo.clientes !== 1 ? 's' : ''}</span>
-              <span className="aging-status-desc">+30 dias • Abandono</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      </FeatureLocked>
 
       {/* Layout em 2 Colunas */}
       <div className="home-two-columns">
@@ -988,6 +1042,72 @@ function Home() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmação - Enviar WhatsApp */}
+      <ConfirmModal
+        isOpen={confirmModalWhatsapp.isOpen}
+        onClose={() => setConfirmModalWhatsapp({ isOpen: false, item: null })}
+        onConfirm={confirmarEnvioWhatsApp}
+        title="Enviar Cobrança"
+        message={confirmModalWhatsapp.item ?
+          `Enviar cobrança via WhatsApp para ${confirmModalWhatsapp.item.devedores?.nome}?\n\nValor: ${formatarMoeda(confirmModalWhatsapp.item.valor)}\nTelefone: ${confirmModalWhatsapp.item.devedores?.telefone}` :
+          ''
+        }
+        confirmText="Enviar"
+        cancelText="Cancelar"
+        type="info"
+      />
+
+      {/* Modal de Confirmação - Cancelar Envio */}
+      <ConfirmModal
+        isOpen={confirmModalCancelar.isOpen}
+        onClose={() => setConfirmModalCancelar({ isOpen: false, mensalidadeId: null })}
+        onConfirm={confirmarCancelarEnvio}
+        title="Cancelar Envio"
+        message="Deseja realmente cancelar o envio desta mensagem?"
+        confirmText="Sim, Cancelar"
+        cancelText="Não"
+        type="warning"
+      />
+
+      {/* Modal de Feedback (Sucesso/Erro) */}
+      <ConfirmModal
+        isOpen={feedbackModal.isOpen}
+        onClose={() => setFeedbackModal({ ...feedbackModal, isOpen: false })}
+        onConfirm={() => setFeedbackModal({ ...feedbackModal, isOpen: false })}
+        title={feedbackModal.title}
+        message={feedbackModal.message}
+        confirmText="OK"
+        cancelText=""
+        type={feedbackModal.type}
+      />
+
+      {/* Loading overlay para envio de WhatsApp */}
+      {enviandoWhatsapp && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px 32px',
+            borderRadius: '12px',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+          }}>
+            <Icon icon="line-md:loading-twotone-loop" width="40" style={{ color: '#25D366', marginBottom: '12px' }} />
+            <p style={{ margin: 0, fontSize: '14px', color: '#333' }}>Enviando mensagem...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

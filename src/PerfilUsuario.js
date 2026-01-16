@@ -10,7 +10,7 @@ export default function PerfilUsuario({ onClose }) {
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [telefone, setTelefone] = useState('')
   const [cpfCnpj, setCpfCnpj] = useState('')
-  const [plano, setPlano] = useState('basico')
+  const [plano, setPlano] = useState('starter')
   const [statusConta, setStatusConta] = useState('ativo')
   const [limiteMe, setLimiteMensal] = useState(100)
   const [mensagensUsadas, setMensagensUsadas] = useState(0)
@@ -37,7 +37,12 @@ export default function PerfilUsuario({ onClose }) {
           setNomeCompleto(data.nome_completo || '')
           setTelefone(data.telefone || '')
           setCpfCnpj(data.cpf_cnpj || '')
-          setPlano(data.plano || 'basico')
+          // Mapear planos antigos para novos
+          let planoAtual = data.plano || 'starter'
+          if (planoAtual === 'basico') planoAtual = 'starter'
+          if (planoAtual === 'enterprise') planoAtual = 'premium'
+          if (planoAtual === 'business') planoAtual = 'premium'
+          setPlano(planoAtual)
           setStatusConta(data.status_conta || 'ativo')
           setLimiteMensal(data.limite_mensal || 100)
         } else if (error && error.code === 'PGRST116') {
@@ -286,9 +291,9 @@ export default function PerfilUsuario({ onClose }) {
                 boxSizing: 'border-box'
               }}
             >
-              <option value="basico">Básico (100 mensagens/mês)</option>
-              <option value="premium">Premium (500 mensagens/mês)</option>
-              <option value="enterprise">Enterprise (Ilimitado)</option>
+              <option value="starter">Starter (200 mensagens/mês)</option>
+              <option value="pro">Pro (500 mensagens/mês)</option>
+              <option value="premium">Premium (3.000 mensagens/mês)</option>
             </select>
             <p style={{ fontSize: '11px', color: '#666', marginTop: '3px' }}>
               Entre em contato para alterar seu plano

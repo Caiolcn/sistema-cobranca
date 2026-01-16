@@ -8,12 +8,12 @@ const FUNCTIONS_URL = 'https://zvlnkkmcytjtridiojxx.supabase.co/functions/v1'
 export const mercadoPagoService = {
   /**
    * Cria uma assinatura recorrente no Mercado Pago
-   * @param {string} plano - 'premium' ou 'enterprise'
+   * @param {string} plano - 'pro' ou 'business'
    * @returns {Promise<{init_point: string, subscription_id: string}>}
    */
   /**
    * Cria um pagamento único via Pix
-   * @param {string} plano - 'premium' ou 'enterprise'
+   * @param {string} plano - 'pro' ou 'business'
    * @returns {Promise<{pix: {qr_code, qr_code_base64}, payment_id, valor}>}
    */
   async criarPagamentoPix(plano) {
