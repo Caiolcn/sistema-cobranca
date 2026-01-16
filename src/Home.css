@@ -991,6 +991,53 @@
   .grafico-barra-container {
     height: 120px;
   }
+
+  /* Fila e Mensagens responsivos */
+  .fila-item,
+  .mensagem-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .fila-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .fila-info,
+  .mensagem-info {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .fila-detalhes,
+  .mensagem-detalhes {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .fila-acoes {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+  }
+
+  .fila-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .home-grafico-recharts {
+    padding: 12px;
+    min-height: 280px;
+  }
+
+  .aging-value {
+    font-size: 22px;
+  }
 }
 
 /* Gráfico de Distribuição de Status */

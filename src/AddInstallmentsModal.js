@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
 import { showToast } from './Toast'
 import useWindowSize from './hooks/useWindowSize'
 
 function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdicionado }) {
-  const { isMobile } = useWindowSize()
+  const { isSmallScreen } = useWindowSize()
   const [selectedClient, setSelectedClient] = useState('')
   const [totalValue, setTotalValue] = useState('')
   const [firstDueDate, setFirstDueDate] = useState('')
@@ -234,21 +234,21 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
-      alignItems: isMobile ? 'stretch' : 'center',
+      alignItems: isSmallScreen ? 'stretch' : 'center',
       justifyContent: 'center',
       zIndex: 1000
     }}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: isMobile ? 0 : '8px',
-        width: isMobile ? '100%' : '90%',
-        maxWidth: isMobile ? '100%' : '600px',
-        height: isMobile ? '100%' : 'auto',
-        maxHeight: isMobile ? '100%' : '90vh',
+        borderRadius: isSmallScreen ? 0 : '8px',
+        width: isSmallScreen ? '100%' : '90%',
+        maxWidth: isSmallScreen ? '100%' : '600px',
+        height: isSmallScreen ? '100%' : 'auto',
+        maxHeight: isSmallScreen ? '100%' : '90vh',
         overflow: 'auto',
-        boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+        boxShadow: isSmallScreen ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
         display: 'flex',
         flexDirection: 'column'
       }}>
@@ -279,7 +279,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
         </div>
 
         {/* Body */}
-        <div style={{ padding: isMobile ? '16px' : '20px', flex: 1, overflow: 'auto' }}>
+        <div style={{ padding: isSmallScreen ? '16px' : '20px', flex: 1, overflow: 'auto' }}>
           {/* Client Selection */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
@@ -297,11 +297,12 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
               style={{
                 width: '100%',
                 padding: '10px',
-                fontSize: '14px',
+                fontSize: '16px',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
                 backgroundColor: 'white',
-                color: '#344848'
+                color: '#344848',
+                boxSizing: 'border-box'
               }}
             >
               <option value="">Selecione um cliente</option>
@@ -332,9 +333,10 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
               style={{
                 width: '100%',
                 padding: '10px',
-                fontSize: '14px',
+                fontSize: '16px',
                 border: '1px solid #ddd',
-                borderRadius: '4px'
+                borderRadius: '4px',
+                boxSizing: 'border-box'
               }}
             />
           </div>
@@ -352,10 +354,11 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
               style={{
                 width: '100%',
                 padding: '10px',
-                fontSize: '14px',
+                fontSize: '16px',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxSizing: 'border-box'
               }}
             />
             <span style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
@@ -460,19 +463,19 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.6)',
+          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.6)',
           display: 'flex',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: isSmallScreen ? 'stretch' : 'center',
           justifyContent: 'center',
           zIndex: 2000
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: isMobile ? 0 : '8px',
-            width: isMobile ? '100%' : '90%',
-            maxWidth: isMobile ? '100%' : '450px',
-            height: isMobile ? '100%' : 'auto',
-            boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            borderRadius: isSmallScreen ? 0 : '8px',
+            width: isSmallScreen ? '100%' : '90%',
+            maxWidth: isSmallScreen ? '100%' : '450px',
+            height: isSmallScreen ? '100%' : 'auto',
+            boxShadow: isSmallScreen ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             flexDirection: 'column'
           }}>
@@ -509,7 +512,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
             </div>
 
             {/* Body */}
-            <div style={{ padding: isMobile ? '16px' : '20px', flex: 1 }}>
+            <div style={{ padding: isSmallScreen ? '16px' : '20px', flex: 1 }}>
               {/* Nome */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
@@ -526,10 +529,11 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
                   style={{
                     width: '100%',
                     padding: '10px',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     border: erroNome ? '2px solid #f44336' : '1px solid #ddd',
                     borderRadius: '4px',
-                    backgroundColor: erroNome ? '#ffebee' : 'white'
+                    backgroundColor: erroNome ? '#ffebee' : 'white',
+                    boxSizing: 'border-box'
                   }}
                 />
                 {erroNome && (
@@ -560,10 +564,11 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
                   style={{
                     width: '100%',
                     padding: '10px',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     border: erroTelefone ? '2px solid #f44336' : '1px solid #ddd',
                     borderRadius: '4px',
-                    backgroundColor: erroTelefone ? '#ffebee' : 'white'
+                    backgroundColor: erroTelefone ? '#ffebee' : 'white',
+                    boxSizing: 'border-box'
                   }}
                 />
                 {erroTelefone && (

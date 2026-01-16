@@ -797,11 +797,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                         style={{
                           width: '100%',
                           padding: '10px 12px 10px 36px',
-                          fontSize: '14px',
+                          fontSize: '16px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           backgroundColor: 'white',
-                          outline: 'none'
+                          outline: 'none',
+                          boxSizing: 'border-box'
                         }}
                       />
                       {filtroNome && (
@@ -875,10 +876,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                         padding: '10px 12px',
                         borderRadius: '6px',
                         border: '1px solid #ddd',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="">Todos</option>
@@ -910,9 +912,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                           padding: '10px 12px',
                           borderRadius: '6px',
                           border: '1px solid #ddd',
-                          fontSize: '14px',
+                          fontSize: '16px',
                           outline: 'none',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          boxSizing: 'border-box'
                         }}
                       />
                       <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
@@ -928,9 +931,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                           padding: '10px 12px',
                           borderRadius: '6px',
                           border: '1px solid #ddd',
-                          fontSize: '14px',
+                          fontSize: '16px',
                           outline: 'none',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          boxSizing: 'border-box'
                         }}
                       />
                     </div>
@@ -1619,12 +1623,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     style={{
                       width: '100%',
                       padding: '10px',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       border: '1px solid #ddd',
                       borderRadius: '4px',
                       backgroundColor: 'white',
                       color: '#344848',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      boxSizing: 'border-box'
                     }}
                   >
                     <option value="">Selecione a forma de pagamento</option>

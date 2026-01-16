@@ -8,7 +8,7 @@ import { exportarClientes } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
 
 export default function Clientes() {
-  const { isMobile, isTablet } = useWindowSize()
+  const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
@@ -656,21 +656,21 @@ export default function Clientes() {
                            filtroAssinatura !== 'todos' || filtroInadimplente
 
   return (
-    <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: isMobile ? '16px' : '20px',
-        marginBottom: isMobile ? '16px' : '25px',
+        padding: isSmallScreen ? '16px' : '20px',
+        marginBottom: isSmallScreen ? '16px' : '25px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
       }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isMobile ? '16px' : '0' }}>
+        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isSmallScreen ? '16px' : '0' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
               Clientes
             </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
+            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
               {clientesFiltrados.length} de {clientes.length} cliente(s)
             </p>
           </div>
@@ -680,7 +680,7 @@ export default function Clientes() {
             <button
               onClick={() => exportarClientes(clientesFiltrados)}
               style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: 'white',
                 color: '#333',
                 border: '1px solid #ddd',
@@ -693,7 +693,7 @@ export default function Clientes() {
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'all 0.2s',
-                flex: isMobile ? 1 : 'none'
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = '#344848'
@@ -711,7 +711,7 @@ export default function Clientes() {
               className="btn-filtrar"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
               style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
                 color: temFiltrosAtivos ? 'white' : '#333',
                 border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
@@ -725,7 +725,7 @@ export default function Clientes() {
                 gap: '8px',
                 position: 'relative',
                 transition: 'all 0.2s',
-                flex: isMobile ? 1 : 'none'
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => {
                 if (!temFiltrosAtivos) {
@@ -741,7 +741,7 @@ export default function Clientes() {
               }}
             >
               <Icon icon="mdi:filter-outline" width="18" height="18" />
-              {!isMobile && 'Filtrar'}
+              {!isSmallScreen && 'Filtrar'}
               {temFiltrosAtivos && (
                 <span style={{
                   position: 'absolute',
@@ -768,7 +768,7 @@ export default function Clientes() {
             <button
               onClick={() => setMostrarModalNovoCliente(true)}
               style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: '#333',
                 color: 'white',
                 border: 'none',
@@ -781,13 +781,13 @@ export default function Clientes() {
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'background-color 0.2s',
-                flex: isMobile ? 1 : 'none'
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
             >
               <Icon icon="mdi:plus" width="18" height="18" />
-              {!isMobile && 'Adicionar'}
+              {!isSmallScreen && 'Adicionar'}
             </button>
 
             {/* Popover de filtros */}
@@ -795,19 +795,19 @@ export default function Clientes() {
               <div
                 className="popover-filtros"
                 style={{
-                  position: isMobile ? 'fixed' : 'absolute',
-                  top: isMobile ? 0 : '50px',
-                  right: isMobile ? 0 : '0',
-                  left: isMobile ? 0 : 'auto',
-                  bottom: isMobile ? 0 : 'auto',
-                  width: isMobile ? '100%' : '340px',
-                  height: isMobile ? '100vh' : 'auto',
+                  position: isSmallScreen ? 'fixed' : 'absolute',
+                  top: isSmallScreen ? 0 : '50px',
+                  right: isSmallScreen ? 0 : '0',
+                  left: isSmallScreen ? 0 : 'auto',
+                  bottom: isSmallScreen ? 0 : 'auto',
+                  width: isSmallScreen ? '100%' : '340px',
+                  height: isSmallScreen ? '100vh' : 'auto',
                   backgroundColor: 'white',
-                  borderRadius: isMobile ? 0 : '8px',
-                  boxShadow: isMobile ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-                  border: isMobile ? 'none' : '1px solid #e0e0e0',
+                  borderRadius: isSmallScreen ? 0 : '8px',
+                  boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+                  border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
                   zIndex: 1001,
-                  overflow: isMobile ? 'auto' : 'hidden',
+                  overflow: isSmallScreen ? 'auto' : 'hidden',
                   display: 'flex',
                   flexDirection: 'column'
                 }}
@@ -819,7 +819,7 @@ export default function Clientes() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  position: isMobile ? 'sticky' : 'relative',
+                  position: isSmallScreen ? 'sticky' : 'relative',
                   top: 0,
                   backgroundColor: 'white',
                   zIndex: 1
@@ -871,11 +871,12 @@ export default function Clientes() {
                         style={{
                           width: '100%',
                           padding: '8px 12px 8px 36px',
-                          fontSize: '14px',
+                          fontSize: '16px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           backgroundColor: 'white',
-                          outline: 'none'
+                          outline: 'none',
+                          boxSizing: 'border-box'
                         }}
                       />
                       {busca && (
@@ -912,12 +913,13 @@ export default function Clientes() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="todos">Todos</option>
@@ -938,12 +940,13 @@ export default function Clientes() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="todos">Todos os planos</option>
@@ -964,12 +967,13 @@ export default function Clientes() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="todos">Todas</option>
@@ -1040,7 +1044,7 @@ export default function Clientes() {
             style={{
               width: '100%',
               padding: '10px 12px 10px 40px',
-              fontSize: '14px',
+              fontSize: '16px',
               border: '1px solid #ddd',
               borderRadius: '6px',
               outline: 'none',
@@ -1075,9 +1079,9 @@ export default function Clientes() {
 
       {/* Lista de Clientes */}
       <div style={{
-        backgroundColor: isMobile ? 'transparent' : 'white',
-        borderRadius: isMobile ? 0 : '8px',
-        boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+        backgroundColor: isSmallScreen ? 'transparent' : 'white',
+        borderRadius: isSmallScreen ? 0 : '8px',
+        boxShadow: isSmallScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
         overflow: 'hidden'
       }}>
         {clientes.length === 0 ? (
@@ -1100,7 +1104,7 @@ export default function Clientes() {
               Tente buscar por outro nome ou telefone
             </p>
           </div>
-        ) : isMobile ? (
+        ) : isSmallScreen ? (
           /* Cards para Mobile */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {clientesFiltrados.map((cliente) => (
@@ -1332,22 +1336,22 @@ export default function Clientes() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: isSmallScreen ? 'stretch' : 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: isMobile ? 0 : '20px'
+          padding: isSmallScreen ? 0 : '20px'
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: isMobile ? 0 : '12px',
+            borderRadius: isSmallScreen ? 0 : '12px',
             width: '100%',
-            maxWidth: isMobile ? '100%' : '800px',
-            height: isMobile ? '100%' : 'auto',
-            maxHeight: isMobile ? '100%' : '90vh',
+            maxWidth: isSmallScreen ? '100%' : '800px',
+            height: isSmallScreen ? '100%' : 'auto',
+            maxHeight: isSmallScreen ? '100%' : '90vh',
             overflow: 'auto',
-            boxShadow: isMobile ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
+            boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
             display: 'flex',
             flexDirection: 'column'
           }}>
@@ -1817,10 +1821,10 @@ export default function Clientes() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
             zIndex: 10000,
             display: 'flex',
-            alignItems: isMobile ? 'stretch' : 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center'
           }}
         >
@@ -1828,12 +1832,12 @@ export default function Clientes() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: isMobile ? 0 : '12px',
-              padding: isMobile ? '20px' : '28px',
-              maxWidth: isMobile ? '100%' : '500px',
-              width: isMobile ? '100%' : '90%',
-              height: isMobile ? '100%' : 'auto',
-              boxShadow: isMobile ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              padding: isSmallScreen ? '20px' : '28px',
+              maxWidth: isSmallScreen ? '100%' : '500px',
+              width: isSmallScreen ? '100%' : '90%',
+              height: isSmallScreen ? '100%' : 'auto',
+              boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
               overflow: 'auto',
               display: 'flex',
               flexDirection: 'column'
@@ -1847,27 +1851,25 @@ export default function Clientes() {
             }}>
               <h3 style={{
                 margin: 0,
-                fontSize: isMobile ? '18px' : '20px',
+                fontSize: isSmallScreen ? '18px' : '20px',
                 fontWeight: '600',
                 color: '#1a1a1a'
               }}>
                 Adicionar Novo Cliente
               </h3>
-              {isMobile && (
-                <button
-                  onClick={() => setMostrarModalNovoCliente(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
-                </button>
-              )}
+              <button
+                onClick={() => setMostrarModalNovoCliente(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
+              </button>
             </div>
 
             {/* Nome */}
@@ -1891,9 +1893,10 @@ export default function Clientes() {
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
-                  transition: 'border-color 0.2s'
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#333'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
@@ -1922,9 +1925,10 @@ export default function Clientes() {
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
-                  transition: 'border-color 0.2s'
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#333'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
@@ -1952,9 +1956,10 @@ export default function Clientes() {
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
-                  transition: 'border-color 0.2s'
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#333'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
@@ -2037,10 +2042,11 @@ export default function Clientes() {
                       padding: '12px',
                       border: '1px solid #ddd',
                       borderRadius: '6px',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       outline: 'none',
                       transition: 'border-color 0.2s',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      boxSizing: 'border-box'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -2066,11 +2072,12 @@ export default function Clientes() {
                       padding: '12px',
                       border: '1px solid #ddd',
                       borderRadius: '6px',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       outline: 'none',
                       transition: 'border-color 0.2s',
                       cursor: 'pointer',
-                      backgroundColor: 'white'
+                      backgroundColor: 'white',
+                      boxSizing: 'border-box'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -2208,12 +2215,12 @@ export default function Clientes() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            alignItems: isMobile ? 'stretch' : 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center',
             zIndex: 2000,
-            padding: isMobile ? 0 : '20px'
+            padding: isSmallScreen ? 0 : '20px'
           }}
           onClick={() => {
             setMostrarModalMensalidade(false)
@@ -2225,12 +2232,12 @@ export default function Clientes() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: isMobile ? 0 : '12px',
-              padding: isMobile ? '20px' : '24px',
-              maxWidth: isMobile ? '100%' : '400px',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              padding: isSmallScreen ? '20px' : '24px',
+              maxWidth: isSmallScreen ? '100%' : '400px',
               width: '100%',
-              height: isMobile ? '100%' : 'auto',
-              boxShadow: isMobile ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
+              height: isSmallScreen ? '100%' : 'auto',
+              boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
               display: 'flex',
               flexDirection: 'column'
             }}
@@ -2417,12 +2424,12 @@ export default function Clientes() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: isMobile ? 'white' : 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.6)',
             display: 'flex',
-            alignItems: isMobile ? 'stretch' : 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center',
             zIndex: 15000,
-            padding: isMobile ? 0 : '20px'
+            padding: isSmallScreen ? 0 : '20px'
           }}
           onClick={() => {
             setMostrarModalCriarPlano(false)
@@ -2436,12 +2443,12 @@ export default function Clientes() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: isMobile ? 0 : '12px',
-              padding: isMobile ? '20px' : '24px',
-              maxWidth: isMobile ? '100%' : '400px',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              padding: isSmallScreen ? '20px' : '24px',
+              maxWidth: isSmallScreen ? '100%' : '400px',
               width: '100%',
-              height: isMobile ? '100%' : 'auto',
-              boxShadow: isMobile ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
+              height: isSmallScreen ? '100%' : 'auto',
+              boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'auto'
