@@ -261,11 +261,17 @@ export default function WhatsAppConexao() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // Chaves únicas por usuário (prefixadas com user_id)
+      const chaves = [
+        `${user.id}_automacao_3dias_ativa`,
+        `${user.id}_automacao_5dias_ativa`,
+        `${user.id}_automacao_ematraso_ativa`
+      ]
+
       const { data, error } = await supabase
         .from('config')
         .select('chave, valor')
-        .eq('user_id', user.id)
-        .in('chave', ['automacao_3dias_ativa', 'automacao_5dias_ativa', 'automacao_ematraso_ativa'])
+        .in('chave', chaves)
 
       if (error) {
         console.error('Erro ao carregar configurações de automação:', error)
@@ -273,7 +279,11 @@ export default function WhatsAppConexao() {
       }
 
       const configMap = {}
-      data?.forEach(item => { configMap[item.chave] = item.valor })
+      data?.forEach(item => {
+        // Remover o prefixo do user_id para facilitar o acesso
+        const chaveSimples = item.chave.replace(`${user.id}_`, '')
+        configMap[chaveSimples] = item.valor
+      })
 
       setAutomacao3DiasAtiva(configMap['automacao_3dias_ativa'] === 'true')
       setAutomacao5DiasAtiva(configMap['automacao_5dias_ativa'] === 'true')
@@ -302,22 +312,53 @@ export default function WhatsAppConexao() {
         descricao = 'Automação de mensagens para mensalidades em atraso'
       }
 
-      const { error } = await supabase
-        .from('config')
-        .upsert({
-          user_id: user.id,
-          chave: chave,
-          valor: valor.toString(),
-          descricao: descricao,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,chave'
-        })
+      // Chave única por usuário: prefixar com user_id
+      const chaveUnica = `${user.id}_${chave}`
 
-      if (error) {
-        console.error('Erro ao salvar configuração:', error)
-        alert('Erro ao salvar configuração: ' + error.message)
-        return false
+      // Primeiro tentar atualizar
+      const { data: existing, error: selectError } = await supabase
+        .from('config')
+        .select('id')
+        .eq('chave', chaveUnica)
+        .maybeSingle()
+
+      if (selectError) {
+        console.error('Erro ao verificar configuração:', selectError)
+      }
+
+      if (existing) {
+        // Atualizar registro existente
+        const { error } = await supabase
+          .from('config')
+          .update({
+            valor: valor.toString(),
+            descricao: descricao,
+            updated_at: new Date().toISOString()
+          })
+          .eq('chave', chaveUnica)
+
+        if (error) {
+          console.error('Erro ao atualizar configuração:', error)
+          alert('Erro ao salvar configuração: ' + error.message)
+          return false
+        }
+      } else {
+        // Inserir novo registro
+        const { error } = await supabase
+          .from('config')
+          .insert({
+            user_id: user.id,
+            chave: chaveUnica,
+            valor: valor.toString(),
+            descricao: descricao,
+            updated_at: new Date().toISOString()
+          })
+
+        if (error) {
+          console.error('Erro ao inserir configuração:', error)
+          alert('Erro ao salvar configuração: ' + error.message)
+          return false
+        }
       }
 
       return true
