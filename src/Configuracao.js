@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
 import { showToast } from './Toast'
@@ -11,8 +12,9 @@ import {
 import useWindowSize from './hooks/useWindowSize'
 
 function Configuracao() {
+  const [searchParams] = useSearchParams()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
-  const [abaAtiva, setAbaAtiva] = useState('empresa')
+  const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'empresa')
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
 
@@ -66,6 +68,14 @@ function Configuracao() {
   useEffect(() => {
     carregarDados()
   }, [])
+
+  // Atualizar aba quando URL mudar (vindo do menu mobile)
+  useEffect(() => {
+    const abaUrl = searchParams.get('aba')
+    if (abaUrl && ['empresa', 'cobranca', 'planos', 'uso', 'upgrade'].includes(abaUrl)) {
+      setAbaAtiva(abaUrl)
+    }
+  }, [searchParams])
 
   const carregarDados = async () => {
     setLoading(true)
@@ -1505,14 +1515,30 @@ function Configuracao() {
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
   ]
 
+  // Encontrar a aba atual para mostrar no header mobile
+  const abaAtual = tabs.find(t => t.id === abaAtiva)
+
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      <h2 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '18px' : '24px', fontWeight: '600', color: '#333' }}>
-        Configurações
-      </h2>
+      {/* Header - No mobile mostra a aba atual, no desktop mostra "Configurações" */}
+      {isMobile ? (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Configurações
+          </p>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icon icon={abaAtual?.icon} width="22" />
+            {abaAtual?.label}
+          </h2>
+        </div>
+      ) : (
+        <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', fontWeight: '600', color: '#333' }}>
+          Configurações
+        </h2>
+      )}
 
-      {/* Tabs - horizontal scroll em mobile/tablet */}
-      {isSmallScreen && (
+      {/* Tabs horizontais - apenas para tablet (não mobile, não desktop) */}
+      {isSmallScreen && !isMobile && (
         <div style={{
           display: 'flex',
           gap: '8px',

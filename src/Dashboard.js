@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [whatsappStatus, setWhatsappStatus] = useState(getWhatsAppStatus())
   const [mostrarModalTrial, setMostrarModalTrial] = useState(false)
   const [menuAberto, setMenuAberto] = useState(false)
+  const [configSubmenuAberto, setConfigSubmenuAberto] = useState(false)
 
   const { isMobile, isTablet } = useWindowSize()
 
@@ -276,33 +277,109 @@ export default function Dashboard() {
           </div>
 
           {/* Configuração */}
-          <div
-            onClick={() => { navigate('/app/configuracao'); if (isMobile) setMenuAberto(false) }}
-            style={{
-              width: isMobile ? '100%' : '40px',
-              height: '40px',
-              backgroundColor: telaAtiva === 'configuracao' ? '#333' : 'transparent',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isMobile ? 'flex-start' : 'center',
-              gap: isMobile ? '12px' : '0',
-              paddingLeft: isMobile ? '12px' : '0',
-              color: telaAtiva === 'configuracao' ? 'white' : '#666',
-              fontSize: '20px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = '#f5f5f5'
-            }}
-            onMouseLeave={(e) => {
-              if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = 'transparent'
-            }}
-          >
-            <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
-            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Configurações</span>}
-          </div>
+          {isMobile ? (
+            /* Mobile: Menu com submenu expansível */
+            <div style={{ width: '100%' }}>
+              <div
+                onClick={() => setConfigSubmenuAberto(!configSubmenuAberto)}
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  backgroundColor: telaAtiva === 'configuracao' ? '#333' : 'transparent',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingLeft: '12px',
+                  paddingRight: '12px',
+                  color: telaAtiva === 'configuracao' ? 'white' : '#666',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
+                  <span style={{ fontSize: '14px', fontWeight: '500' }}>Configurações</span>
+                </div>
+                <Icon
+                  icon={configSubmenuAberto ? "mdi:chevron-up" : "mdi:chevron-down"}
+                  width="20"
+                  height="20"
+                />
+              </div>
+
+              {/* Submenu de Configurações */}
+              {configSubmenuAberto && (
+                <div style={{
+                  marginTop: '4px',
+                  marginLeft: '12px',
+                  paddingLeft: '12px',
+                  borderLeft: '2px solid #e0e0e0'
+                }}>
+                  {[
+                    { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
+                    { id: 'cobranca', label: 'Config. de Cobrança', icon: 'mdi:credit-card-settings-outline' },
+                    { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
+                    { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
+                    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
+                  ].map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        navigate(`/app/configuracao?aba=${item.id}`);
+                        setMenuAberto(false);
+                        setConfigSubmenuAberto(false);
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        color: '#666',
+                        fontSize: '13px',
+                        marginBottom: '2px',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <Icon icon={item.icon} width="18" height="18" />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Desktop: Item simples */
+            <div
+              onClick={() => navigate('/app/configuracao')}
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: telaAtiva === 'configuracao' ? '#333' : 'transparent',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: telaAtiva === 'configuracao' ? 'white' : '#666',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = '#f5f5f5'
+              }}
+              onMouseLeave={(e) => {
+                if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+            >
+              <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
+            </div>
+          )}
         </div>
 
         {/* Ícones de perfil e sair (fixos na parte inferior) */}
