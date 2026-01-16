@@ -5,8 +5,10 @@ import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 import { exportarClientes } from './utils/exportUtils'
+import useWindowSize from './hooks/useWindowSize'
 
 export default function Clientes() {
+  const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
@@ -50,6 +52,11 @@ export default function Clientes() {
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
   const [dataInicioAssinaturaModal, setDataInicioAssinaturaModal] = useState('')
   const [erroModalNovoCliente, setErroModalNovoCliente] = useState('')
+
+  // Modal de Mensalidade
+  const [mostrarModalMensalidade, setMostrarModalMensalidade] = useState(false)
+  const [mensalidadeSelecionada, setMensalidadeSelecionada] = useState(null)
+  const [clienteMensalidade, setClienteMensalidade] = useState(null)
 
   useEffect(() => {
     carregarClientes()
@@ -607,6 +614,70 @@ export default function Clientes() {
     }
   }
 
+  const handleMensalidadeClick = async (cliente, event) => {
+    event.stopPropagation()
+
+    if (!cliente.proxima_mensalidade) return
+
+    try {
+      // Buscar a mensalidade do cliente
+      const { data: mensalidade, error } = await supabase
+        .from('mensalidades')
+        .select('*')
+        .eq('devedor_id', cliente.id)
+        .eq('data_vencimento', cliente.proxima_mensalidade)
+        .single()
+
+      if (error) throw error
+
+      // Calcular status
+      let statusCalculado = mensalidade.status
+      if (statusCalculado === 'pendente') {
+        const hoje = new Date()
+        hoje.setHours(0, 0, 0, 0)
+        const vencimento = new Date(mensalidade.data_vencimento)
+        vencimento.setHours(0, 0, 0, 0)
+        statusCalculado = vencimento < hoje ? 'atrasado' : 'aberto'
+      }
+
+      setMensalidadeSelecionada({ ...mensalidade, statusCalculado })
+      setClienteMensalidade(cliente)
+      setMostrarModalMensalidade(true)
+    } catch (error) {
+      console.error('Erro ao carregar mensalidade:', error)
+      showToast('Erro ao carregar detalhes da mensalidade', 'error')
+    }
+  }
+
+  const handleMarcarMensalidadePaga = async () => {
+    if (!mensalidadeSelecionada) return
+
+    const novoPago = mensalidadeSelecionada.status !== 'pago'
+    const confirmar = window.confirm(
+      novoPago
+        ? `Confirmar pagamento de R$ ${parseFloat(mensalidadeSelecionada.valor).toFixed(2)}?`
+        : 'Desfazer o pagamento desta mensalidade?'
+    )
+
+    if (!confirmar) return
+
+    try {
+      const { error } = await supabase
+        .from('mensalidades')
+        .update({ status: novoPago ? 'pago' : 'pendente' })
+        .eq('id', mensalidadeSelecionada.id)
+
+      if (error) throw error
+
+      showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
+      setMostrarModalMensalidade(false)
+      setMensalidadeSelecionada(null)
+      carregarClientes()
+    } catch (error) {
+      showToast('Erro ao atualizar: ' + error.message, 'error')
+    }
+  }
+
   const handleCriarPlanoRapido = async () => {
     if (!novoPlanoNome.trim() || !novoPlanoValor || parseFloat(novoPlanoValor) <= 0) {
       showToast('Preencha o nome e valor do plano', 'warning')
@@ -796,21 +867,21 @@ export default function Clientes() {
                            filtroAssinatura !== 'todos' || filtroInadimplente
 
   return (
-    <div style={{ flex: 1, padding: '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '25px',
+        padding: isSmallScreen ? '16px' : '20px',
+        marginBottom: isSmallScreen ? '16px' : '25px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isSmallScreen ? '16px' : '0' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
               Clientes
             </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
+            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
               {clientesFiltrados.length} de {clientes.length} cliente(s)
             </p>
           </div>
@@ -820,7 +891,7 @@ export default function Clientes() {
             <button
               onClick={() => exportarClientes(clientesFiltrados)}
               style={{
-                padding: '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: 'white',
                 color: '#333',
                 border: '1px solid #ddd',
@@ -830,8 +901,10 @@ export default function Clientes() {
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = '#344848'
@@ -849,7 +922,7 @@ export default function Clientes() {
               className="btn-filtrar"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
               style={{
-                padding: '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
                 color: temFiltrosAtivos ? 'white' : '#333',
                 border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
@@ -859,9 +932,11 @@ export default function Clientes() {
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
                 position: 'relative',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => {
                 if (!temFiltrosAtivos) {
@@ -877,7 +952,7 @@ export default function Clientes() {
               }}
             >
               <Icon icon="mdi:filter-outline" width="18" height="18" />
-              Filtrar
+              {!isSmallScreen && 'Filtrar'}
               {temFiltrosAtivos && (
                 <span style={{
                   position: 'absolute',
@@ -907,7 +982,7 @@ export default function Clientes() {
                 setMostrarModalNovoCliente(true)
               }}
               style={{
-                padding: '10px 20px',
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
                 backgroundColor: '#333',
                 color: 'white',
                 border: 'none',
@@ -917,14 +992,16 @@ export default function Clientes() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
-                transition: 'background-color 0.2s'
+                transition: 'background-color 0.2s',
+                flex: isSmallScreen ? 1 : 'none'
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
             >
               <Icon icon="mdi:plus" width="18" height="18" />
-              Adicionar
+              {!isSmallScreen && 'Adicionar'}
             </button>
 
             {/* Popover de filtros */}
@@ -932,16 +1009,21 @@ export default function Clientes() {
               <div
                 className="popover-filtros"
                 style={{
-                  position: 'absolute',
-                  top: '50px',
-                  right: '0',
-                  width: '340px',
+                  position: isSmallScreen ? 'fixed' : 'absolute',
+                  top: isSmallScreen ? 0 : '50px',
+                  right: isSmallScreen ? 0 : '0',
+                  left: isSmallScreen ? 0 : 'auto',
+                  bottom: isSmallScreen ? 0 : 'auto',
+                  width: isSmallScreen ? '100%' : '340px',
+                  height: isSmallScreen ? '100vh' : 'auto',
                   backgroundColor: 'white',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  border: '1px solid #e0e0e0',
-                  zIndex: 1000,
-                  overflow: 'hidden'
+                  borderRadius: isSmallScreen ? 0 : '8px',
+                  boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+                  border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
+                  zIndex: 1001,
+                  overflow: isSmallScreen ? 'auto' : 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column'
                 }}
               >
                 {/* Header do popover */}
@@ -950,7 +1032,11 @@ export default function Clientes() {
                   borderBottom: '1px solid #f0f0f0',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  position: isSmallScreen ? 'sticky' : 'relative',
+                  top: 0,
+                  backgroundColor: 'white',
+                  zIndex: 1
                 }}>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#333' }}>
                     Filtros
@@ -973,6 +1059,63 @@ export default function Clientes() {
 
                 {/* Conteúdo dos filtros */}
                 <div style={{ padding: '16px' }}>
+                  {/* Filtro por Nome */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                      Nome do Cliente
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <Icon
+                        icon="mdi:magnify"
+                        width="18"
+                        height="18"
+                        style={{
+                          position: 'absolute',
+                          left: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: '#999'
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={busca}
+                        onChange={(e) => setBusca(e.target.value)}
+                        placeholder="Buscar por nome..."
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px 8px 36px',
+                          fontSize: '16px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      {busca && (
+                        <button
+                          onClick={() => setBusca('')}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: '#999'
+                          }}
+                        >
+                          <Icon icon="mdi:close-circle" width="16" height="16" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Filtro Status */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
@@ -984,12 +1127,13 @@ export default function Clientes() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="todos">Todos</option>
@@ -1010,12 +1154,13 @@ export default function Clientes() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="todos">Todos os planos</option>
@@ -1036,12 +1181,13 @@ export default function Clientes() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        fontSize: '14px',
+                        fontSize: '16px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: 'white',
                         cursor: 'pointer',
-                        outline: 'none'
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="todos">Todas</option>
@@ -1112,7 +1258,7 @@ export default function Clientes() {
             style={{
               width: '100%',
               padding: '10px 12px 10px 40px',
-              fontSize: '14px',
+              fontSize: '16px',
               border: '1px solid #ddd',
               borderRadius: '6px',
               outline: 'none',
@@ -1147,13 +1293,13 @@ export default function Clientes() {
 
       {/* Lista de Clientes */}
       <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        backgroundColor: isSmallScreen ? 'transparent' : 'white',
+        borderRadius: isSmallScreen ? 0 : '8px',
+        boxShadow: isSmallScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
         overflow: 'hidden'
       }}>
         {clientes.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px' }}>
             <Icon icon="mdi:account-off-outline" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
             <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
               Nenhum cliente cadastrado ainda
@@ -1163,7 +1309,7 @@ export default function Clientes() {
             </p>
           </div>
         ) : clientesFiltrados.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px' }}>
             <Icon icon="material-symbols:search-off" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
             <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
               Nenhum cliente encontrado
@@ -1172,7 +1318,86 @@ export default function Clientes() {
               Tente buscar por outro nome ou telefone
             </p>
           </div>
+        ) : isSmallScreen ? (
+          /* Cards para Mobile */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {clientesFiltrados.map((cliente) => (
+              <div
+                key={cliente.id}
+                onClick={() => handleClienteClick(cliente)}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  cursor: 'pointer'
+                }}
+              >
+                {/* Header do card */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: '#344848',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      fontWeight: '600'
+                    }}>
+                      {cliente.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 2px 0' }}>
+                        {cliente.nome}
+                      </p>
+                      <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
+                        {cliente.telefone}
+                      </p>
+                    </div>
+                  </div>
+                  <span style={{
+                    backgroundColor: cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
+                    color: cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: '600'
+                  }}>
+                    {cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
+                  </span>
+                </div>
+
+                {/* Info do card */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '12px', color: '#888', margin: '0 0 2px 0' }}>Plano</p>
+                    <p style={{ fontSize: '14px', fontWeight: '500', color: '#333', margin: 0 }}>
+                      {cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: '12px', color: '#888', margin: '0 0 2px 0' }}>Próx. Venc.</p>
+                    <p style={{
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: cliente.proxima_mensalidade && new Date(cliente.proxima_mensalidade) < new Date() ? '#f44336' : '#333',
+                      margin: 0
+                    }}>
+                      {cliente.proxima_mensalidade
+                        ? new Date(cliente.proxima_mensalidade + 'T00:00:00').toLocaleDateString('pt-BR')
+                        : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
+          /* Tabela para Desktop */
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -1248,9 +1473,21 @@ export default function Clientes() {
                     <td style={{ padding: '16px 24px', fontSize: '14px', color: '#333', textAlign: 'center' }}>
                       {cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
                     </td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
+                    <td
+                      style={{ padding: '16px 24px', fontSize: '14px', color: '#666', textAlign: 'center' }}
+                      onClick={(e) => handleMensalidadeClick(cliente, e)}
+                    >
                       {cliente.proxima_mensalidade ? (
-                        <span style={{ color: new Date(cliente.proxima_mensalidade) < new Date() ? '#f44336' : '#333' }}>
+                        <span style={{
+                          color: new Date(cliente.proxima_mensalidade) < new Date() ? '#f44336' : '#333',
+                          cursor: 'pointer',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
                           {new Date(cliente.proxima_mensalidade + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </span>
                       ) : (
@@ -1313,21 +1550,24 @@ export default function Clientes() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: isSmallScreen ? 'stretch' : 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: '20px'
+          padding: isSmallScreen ? 0 : '20px'
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '12px',
+            borderRadius: isSmallScreen ? 0 : '12px',
             width: '100%',
-            maxWidth: '800px',
-            maxHeight: '90vh',
+            maxWidth: isSmallScreen ? '100%' : '800px',
+            height: isSmallScreen ? '100%' : 'auto',
+            maxHeight: isSmallScreen ? '100%' : '90vh',
             overflow: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             {/* Header do Modal */}
             <div style={{
@@ -2217,10 +2457,10 @@ export default function Clientes() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
             zIndex: 10000,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center'
           }}
         >
@@ -2228,21 +2468,45 @@ export default function Clientes() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '28px',
-              maxWidth: '500px',
-              width: '90%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+              borderRadius: isSmallScreen ? 0 : '12px',
+              padding: isSmallScreen ? '20px' : '28px',
+              maxWidth: isSmallScreen ? '100%' : '500px',
+              width: isSmallScreen ? '100%' : '90%',
+              height: isSmallScreen ? '100%' : 'auto',
+              boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
+              overflow: 'auto',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
-            <h3 style={{
-              margin: '0 0 24px 0',
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#1a1a1a'
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
             }}>
-              Adicionar Novo Cliente
-            </h3>
+              <h3 style={{
+                margin: 0,
+                fontSize: isSmallScreen ? '18px' : '20px',
+                fontWeight: '600',
+                color: '#1a1a1a'
+              }}>
+                Adicionar Novo Cliente
+              </h3>
+              <button
+                onClick={() => setMostrarModalNovoCliente(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
+              </button>
+            </div>
 
             {/* Mensagem de erro */}
             {erroModalNovoCliente && (
@@ -2284,9 +2548,10 @@ export default function Clientes() {
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
-                  transition: 'border-color 0.2s'
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#333'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
@@ -2315,9 +2580,10 @@ export default function Clientes() {
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
-                  transition: 'border-color 0.2s'
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#333'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
@@ -2345,9 +2611,10 @@ export default function Clientes() {
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
-                  transition: 'border-color 0.2s'
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#333'}
                 onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
@@ -2459,10 +2726,11 @@ export default function Clientes() {
                       padding: '12px',
                       border: '1px solid #ddd',
                       borderRadius: '6px',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       outline: 'none',
                       transition: 'border-color 0.2s',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      boxSizing: 'border-box'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -2488,11 +2756,12 @@ export default function Clientes() {
                       padding: '12px',
                       border: '1px solid #ddd',
                       borderRadius: '6px',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       outline: 'none',
                       transition: 'border-color 0.2s',
                       cursor: 'pointer',
-                      backgroundColor: 'white'
+                      backgroundColor: 'white',
+                      boxSizing: 'border-box'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
@@ -2623,6 +2892,215 @@ export default function Clientes() {
         </div>
       )}
 
+      {/* Modal de Detalhes da Mensalidade */}
+      {mostrarModalMensalidade && mensalidadeSelecionada && clienteMensalidade && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: isSmallScreen ? 0 : '20px'
+          }}
+          onClick={() => {
+            setMostrarModalMensalidade(false)
+            setMensalidadeSelecionada(null)
+            setClienteMensalidade(null)
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              padding: isSmallScreen ? '20px' : '24px',
+              maxWidth: isSmallScreen ? '100%' : '400px',
+              width: '100%',
+              height: isSmallScreen ? '100%' : 'auto',
+              boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px',
+              paddingBottom: '16px',
+              borderBottom: '1px solid #e8e8e8'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+                  Detalhes da Mensalidade
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>
+                  {clienteMensalidade.nome}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setMostrarModalMensalidade(false)
+                  setMensalidadeSelecionada(null)
+                  setClienteMensalidade(null)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px'
+                }}
+              >
+                <Icon icon="mdi:close" width="20" height="20" style={{ color: '#666' }} />
+              </button>
+            </div>
+
+            {/* Status Badge */}
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                fontSize: '13px',
+                fontWeight: '600',
+                backgroundColor: mensalidadeSelecionada.statusCalculado === 'pago'
+                  ? '#e8f5e9'
+                  : mensalidadeSelecionada.statusCalculado === 'atrasado'
+                    ? '#ffebee'
+                    : '#fff3e0',
+                color: mensalidadeSelecionada.statusCalculado === 'pago'
+                  ? '#2e7d32'
+                  : mensalidadeSelecionada.statusCalculado === 'atrasado'
+                    ? '#c62828'
+                    : '#e65100'
+              }}>
+                <Icon
+                  icon={
+                    mensalidadeSelecionada.statusCalculado === 'pago'
+                      ? 'mdi:check-circle'
+                      : mensalidadeSelecionada.statusCalculado === 'atrasado'
+                        ? 'mdi:alert-circle'
+                        : 'mdi:clock-outline'
+                  }
+                  width="18"
+                />
+                {mensalidadeSelecionada.statusCalculado === 'pago'
+                  ? 'Pago'
+                  : mensalidadeSelecionada.statusCalculado === 'atrasado'
+                    ? 'Atrasado'
+                    : 'Em Aberto'}
+              </span>
+            </div>
+
+            {/* Informações */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px',
+                backgroundColor: '#f9f9f9',
+                borderRadius: '8px'
+              }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>Valor</span>
+                <span style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                  R$ {parseFloat(mensalidadeSelecionada.valor).toFixed(2)}
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px',
+                backgroundColor: '#f9f9f9',
+                borderRadius: '8px'
+              }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>Vencimento</span>
+                <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                  {new Date(mensalidadeSelecionada.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+
+              {mensalidadeSelecionada.data_inicio && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '8px'
+                }}>
+                  <span style={{ fontSize: '13px', color: '#666' }}>Início da Assinatura</span>
+                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                    {new Date(mensalidadeSelecionada.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              )}
+
+              {mensalidadeSelecionada.statusCalculado === 'atrasado' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: '#ffebee',
+                  borderRadius: '8px'
+                }}>
+                  <span style={{ fontSize: '13px', color: '#c62828' }}>Dias em Atraso</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#c62828' }}>
+                    {Math.floor((new Date() - new Date(mensalidadeSelecionada.data_vencimento + 'T00:00:00')) / (1000 * 60 * 60 * 24))} dias
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Botão de Ação */}
+            <button
+              onClick={handleMarcarMensalidadePaga}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: mensalidadeSelecionada.status === 'pago' ? '#ff9800' : '#4CAF50',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = mensalidadeSelecionada.status === 'pago' ? '#f57c00' : '#43a047'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = mensalidadeSelecionada.status === 'pago' ? '#ff9800' : '#4CAF50'
+              }}
+            >
+              <Icon
+                icon={mensalidadeSelecionada.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle'}
+                width="20"
+              />
+              {mensalidadeSelecionada.status === 'pago' ? 'Desfazer Pagamento' : 'Marcar como Pago'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Mini-modal para criar plano rápido */}
       {mostrarModalCriarPlano && (
         <div
@@ -2632,12 +3110,12 @@ export default function Clientes() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.6)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center',
             zIndex: 15000,
-            padding: '20px'
+            padding: isSmallScreen ? 0 : '20px'
           }}
           onClick={() => {
             setMostrarModalCriarPlano(false)
@@ -2651,25 +3129,57 @@ export default function Clientes() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              maxWidth: '400px',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              padding: isSmallScreen ? '20px' : '24px',
+              maxWidth: isSmallScreen ? '100%' : '400px',
               width: '100%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+              height: isSmallScreen ? '100%' : 'auto',
+              boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto'
             }}
           >
-            <h3 style={{
-              margin: '0 0 20px 0',
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#1a1a1a',
+            <div style={{
               display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              gap: '8px'
+              marginBottom: '20px'
             }}>
-              <Icon icon="material-symbols:add-circle-outline" width="24" style={{ color: '#2196F3' }} />
-              Criar Novo Plano
-            </h3>
+              <h3 style={{
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1a1a1a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Icon icon="material-symbols:add-circle-outline" width="24" style={{ color: '#2196F3' }} />
+                Criar Novo Plano
+              </h3>
+              {isMobile && (
+                <button
+                  onClick={() => {
+                    setMostrarModalCriarPlano(false)
+                    setNovoPlanoNome('')
+                    setNovoPlanoValor('')
+                    setNovoPlanoCiclo('mensal')
+                    setNovoPlanoDescricao('')
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
+                </button>
+              )}
+            </div>
 
             {/* Nome do plano */}
             <div style={{ marginBottom: '16px' }}>

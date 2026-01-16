@@ -844,6 +844,8 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
   }
 
   .card-value {
@@ -851,12 +853,18 @@
   }
 
   .home-welcome h1 {
-    font-size: 24px;
+    font-size: 20px;
+  }
+
+  .home-welcome p {
+    font-size: 14px;
   }
 
   .home-filtro-periodo {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
+    min-width: unset;
   }
 
   .home-datas-personalizadas {
@@ -866,25 +874,169 @@
   .grafico-valor {
     font-size: 9px;
   }
+
+  .home-cards-grid,
+  .home-cards-secondary,
+  .home-cards-tertiary {
+    gap: 12px;
+  }
+
+  .section-header h2 {
+    font-size: 16px;
+  }
+
+  .badge-count {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .home-container {
+    padding: 12px;
+  }
+
+  .home-header {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .home-welcome h1 {
+    font-size: 18px;
+  }
+
   .home-section {
-    padding: 16px;
+    padding: 14px;
+    margin-bottom: 16px;
   }
 
   .home-card {
-    padding: 16px;
+    padding: 14px;
     gap: 12px;
   }
 
   .card-icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .card-value {
+    font-size: 22px;
+  }
+
+  .card-label {
+    font-size: 13px;
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+  }
+
+  .fila-item,
+  .mensagem-item {
+    padding: 12px;
+  }
+
+  .fila-nome,
+  .mensagem-nome {
+    font-size: 13px;
+  }
+
+  .fila-valor,
+  .mensagem-valor {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-container {
+    padding: 10px;
+  }
+
+  .home-section {
+    padding: 12px;
+  }
+
+  .home-card {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .card-icon {
+    width: 36px;
+    height: 36px;
   }
 
   .card-value {
     font-size: 20px;
+  }
+
+  .card-label {
+    font-size: 12px;
+  }
+
+  .section-header {
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  .section-header h2 {
+    font-size: 15px;
+  }
+
+  .home-grafico {
+    height: 160px;
+  }
+
+  .grafico-barra-container {
+    height: 120px;
+  }
+
+  /* Fila e Mensagens responsivos */
+  .fila-item,
+  .mensagem-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .fila-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .fila-info,
+  .mensagem-info {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .fila-detalhes,
+  .mensagem-detalhes {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .fila-acoes {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+  }
+
+  .fila-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .home-grafico-recharts {
+    padding: 12px;
+    min-height: 280px;
+  }
+
+  .aging-value {
+    font-size: 22px;
   }
 }
 
@@ -1028,6 +1180,19 @@
 @media (max-width: 768px) {
   .aging-container {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .aging-card {
+    padding: 16px;
+  }
+
+  .aging-value {
+    font-size: 26px;
+  }
+
+  .aging-label {
+    font-size: 13px;
   }
 }
 

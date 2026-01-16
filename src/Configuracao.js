@@ -8,8 +8,10 @@ import {
   atualizarConfiguracao,
   executarAutomacoes
 } from './services/automacaoService'
+import useWindowSize from './hooks/useWindowSize'
 
 function Configuracao() {
+  const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [abaAtiva, setAbaAtiva] = useState('empresa')
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
@@ -468,12 +470,12 @@ function Configuracao() {
   // ==========================================
 
   const renderDadosEmpresa = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <h3 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
         Dados da Empresa
       </h3>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
         <div>
           <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
             Nome da Empresa *
@@ -488,7 +490,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -508,7 +511,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -584,7 +588,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -603,7 +608,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -623,8 +629,9 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px',
-              textTransform: 'uppercase'
+              fontSize: '16px',
+              textTransform: 'uppercase',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -644,7 +651,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -664,7 +672,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -683,7 +692,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -702,7 +712,8 @@ function Configuracao() {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '6px',
-              fontSize: '14px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -729,8 +740,8 @@ function Configuracao() {
   )
 
   const renderConfigCobranca = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <h3 style={{ margin: '0 0 8px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
         Configurações de Cobrança
       </h3>
       <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
@@ -905,9 +916,9 @@ function Configuracao() {
 
   const renderPlanos = () => (
     <div>
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0', marginBottom: '24px' }}>
+          <h3 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
             Planos de Mensalidade
           </h3>
           <button
@@ -923,6 +934,7 @@ function Configuracao() {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px'
             }}
           >
@@ -941,7 +953,90 @@ function Configuracao() {
               Clique em "Adicionar Plano" para começar
             </p>
           </div>
+        ) : isSmallScreen ? (
+          /* Cards para Mobile/Tablet */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {planos.map((plano) => (
+              <div
+                key={plano.id}
+                style={{
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  borderLeft: `4px solid ${plano.ativo ? '#4CAF50' : '#ccc'}`
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div>
+                    <p style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 4px 0' }}>
+                      {plano.nome}
+                    </p>
+                    <p style={{ fontSize: '18px', fontWeight: '700', color: '#333', margin: 0 }}>
+                      R$ {parseFloat(plano.valor).toFixed(2)}
+                    </p>
+                  </div>
+                  <span style={{
+                    backgroundColor: plano.ativo ? '#e8f5e9' : '#ffebee',
+                    color: plano.ativo ? '#2e7d32' : '#c62828',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: '600'
+                  }}>
+                    {plano.ativo ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p style={{ fontSize: '13px', color: '#666', margin: 0, textTransform: 'capitalize' }}>
+                    Ciclo: {plano.ciclo_cobranca || 'mensal'}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => abrirModalEditarPlano(plano)}
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #ddd',
+                        color: '#2196F3',
+                        cursor: 'pointer',
+                        padding: '8px',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <Icon icon="material-symbols:edit-outline" width="18" />
+                    </button>
+                    <button
+                      onClick={() => togglePlanoAtivo(plano.id, !plano.ativo)}
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #ddd',
+                        color: plano.ativo ? '#ff9800' : '#4CAF50',
+                        cursor: 'pointer',
+                        padding: '8px',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <Icon icon={plano.ativo ? 'material-symbols:toggle-on' : 'material-symbols:toggle-off'} width="18" />
+                    </button>
+                    <button
+                      onClick={() => excluirPlano(plano)}
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #ddd',
+                        color: '#f44336',
+                        cursor: 'pointer',
+                        padding: '8px',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <Icon icon="material-symbols:delete-outline" width="18" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
+          /* Tabela para Desktop */
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '2px solid #e0e0e0' }}>
@@ -1053,9 +1148,9 @@ function Configuracao() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: isSmallScreen ? 'stretch' : 'center',
             justifyContent: 'center',
             zIndex: 1000
           }}
@@ -1065,12 +1160,15 @@ function Configuracao() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: '12px',
-              width: '90%',
-              maxWidth: '500px',
-              maxHeight: '90vh',
+              borderRadius: isSmallScreen ? 0 : '12px',
+              width: isSmallScreen ? '100%' : '90%',
+              maxWidth: isSmallScreen ? '100%' : '450px',
+              height: isSmallScreen ? '100%' : 'auto',
+              maxHeight: isSmallScreen ? '100%' : 'calc(100vh - 40px)',
               overflow: 'auto',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+              boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             {/* Header */}
@@ -1116,7 +1214,8 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px'
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -1137,7 +1236,8 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px'
+                    fontSize: '16px',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -1154,8 +1254,10 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px',
-                    cursor: 'pointer'
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'white'
                   }}
                 >
                   <option value="mensal">Mensal</option>
@@ -1178,9 +1280,10 @@ function Configuracao() {
                     padding: '10px',
                     border: '1px solid #ddd',
                     borderRadius: '6px',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     fontFamily: 'inherit',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -1265,13 +1368,13 @@ function Configuracao() {
 
     return (
       <div>
-        <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: '600', color: '#333' }}>
+        <h3 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
           Uso do Sistema
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Card Clientes */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '48px',
@@ -1307,7 +1410,7 @@ function Configuracao() {
           </div>
 
           {/* Card Mensagens */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '48px',
@@ -1347,7 +1450,7 @@ function Configuracao() {
   }
 
   const renderUpgrade = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '40px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', textAlign: 'center' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '24px 16px' : '40px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', textAlign: 'center' }}>
       <div style={{
         width: '80px',
         height: '80px',
@@ -1403,54 +1506,93 @@ function Configuracao() {
   ]
 
   return (
-    <div style={{ flex: 1, padding: '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', fontWeight: '600', color: '#333' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <h2 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '18px' : '24px', fontWeight: '600', color: '#333' }}>
         Configurações
       </h2>
 
-      <div style={{ display: 'flex', gap: '24px' }}>
-        {/* Tabs Sidebar */}
-        <div style={{ width: '240px', flexShrink: 0 }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                onClick={() => setAbaAtiva(tab.id)}
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  backgroundColor: abaAtiva === tab.id ? '#f9f9f9' : 'transparent',
-                  borderLeft: abaAtiva === tab.id ? '3px solid #333' : '3px solid transparent',
-                  marginBottom: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  if (abaAtiva !== tab.id) e.currentTarget.style.backgroundColor = '#f5f5f5'
-                }}
-                onMouseLeave={(e) => {
-                  if (abaAtiva !== tab.id) e.currentTarget.style.backgroundColor = 'transparent'
-                }}
-              >
-                <Icon
-                  icon={tab.icon}
-                  width="20"
-                  style={{ color: abaAtiva === tab.id ? '#333' : '#666' }}
-                />
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: abaAtiva === tab.id ? '600' : '400',
-                  color: abaAtiva === tab.id ? '#333' : '#666'
-                }}>
-                  {tab.label}
-                </span>
-              </div>
-            ))}
-          </div>
+      {/* Tabs - horizontal scroll em mobile/tablet */}
+      {isSmallScreen && (
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          paddingBottom: '12px',
+          marginBottom: '16px',
+          WebkitOverflowScrolling: 'touch'
+        }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setAbaAtiva(tab.id)}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                backgroundColor: abaAtiva === tab.id ? '#333' : 'white',
+                color: abaAtiva === tab.id ? 'white' : '#666',
+                border: abaAtiva === tab.id ? 'none' : '1px solid #e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                whiteSpace: 'nowrap',
+                fontSize: '13px',
+                fontWeight: '500',
+                flexShrink: 0
+              }}
+            >
+              <Icon icon={tab.icon} width="18" />
+              {tab.label}
+            </button>
+          ))}
         </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '24px', flexDirection: isSmallScreen ? 'column' : 'row' }}>
+        {/* Tabs Sidebar - só para desktop/laptop */}
+        {!isSmallScreen && (
+          <div style={{ width: '220px', flexShrink: 0 }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              {tabs.map((tab) => (
+                <div
+                  key={tab.id}
+                  onClick={() => setAbaAtiva(tab.id)}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    backgroundColor: abaAtiva === tab.id ? '#f9f9f9' : 'transparent',
+                    borderLeft: abaAtiva === tab.id ? '3px solid #333' : '3px solid transparent',
+                    marginBottom: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (abaAtiva !== tab.id) e.currentTarget.style.backgroundColor = '#f5f5f5'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (abaAtiva !== tab.id) e.currentTarget.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  <Icon
+                    icon={tab.icon}
+                    width="20"
+                    style={{ color: abaAtiva === tab.id ? '#333' : '#666' }}
+                  />
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: abaAtiva === tab.id ? '600' : '400',
+                    color: abaAtiva === tab.id ? '#333' : '#666'
+                  }}>
+                    {tab.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Content Area */}
         <div style={{ flex: 1 }}>
