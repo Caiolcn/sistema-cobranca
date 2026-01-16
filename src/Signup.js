@@ -76,11 +76,11 @@ export default function Signup() {
 
   const getLimitePorPlano = (plano) => {
     const limites = {
-      starter: 100,
-      pro: 500,
-      business: 999999
+      starter: 200,
+      pro: 600,
+      premium: 3000
     }
-    return limites[plano] || 100
+    return limites[plano] || 200
   }
 
   const validarFormulario = () => {
@@ -280,10 +280,10 @@ export default function Signup() {
         width: '100%'
       }}>
         <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
-          Criar Conta
+          {etapa === 1 ? 'Criar Conta' : 'Escolha seu plano'}
         </h2>
         <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666', fontSize: '14px' }}>
-          {etapa === 1 ? 'Preencha os dados abaixo para começar' : 'Escolha seu plano'}
+          {etapa === 1 ? 'Preencha os dados abaixo para começar' : 'Teste grátis por 3 dias, sem compromisso'}
         </p>
 
         {erro && (
@@ -459,25 +459,51 @@ export default function Signup() {
             <div style={{ marginBottom: '24px' }}>
               <PlanCard
                 plano="Starter"
-                limite="100"
-                preco="Grátis"
+                limite="200"
+                preco="R$ 49,90/mês"
+                descricao="50 clientes ativos"
                 selected={planoSelecionado === 'starter'}
                 onClick={() => setPlanoSelecionado('starter')}
               />
               <PlanCard
                 plano="Pro"
-                limite="500"
-                preco="R$ 49,90/mês"
+                limite="600"
+                preco="R$ 99,90/mês"
+                descricao="150 clientes ativos"
+                popular={true}
                 selected={planoSelecionado === 'pro'}
                 onClick={() => setPlanoSelecionado('pro')}
               />
               <PlanCard
-                plano="Business"
-                limite="Ilimitadas"
+                plano="Premium"
+                limite="3.000"
                 preco="R$ 149,90/mês"
-                selected={planoSelecionado === 'business'}
-                onClick={() => setPlanoSelecionado('business')}
+                descricao="500 clientes ativos"
+                selected={planoSelecionado === 'premium'}
+                onClick={() => setPlanoSelecionado('premium')}
               />
+            </div>
+
+            {/* Info do trial */}
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '20px' }}>🎁</span>
+              <div>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#166534' }}>
+                  3 dias grátis para testar
+                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>
+                  Você só será cobrado após o período de teste
+                </p>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -507,7 +533,7 @@ export default function Signup() {
                 style={{
                   flex: 2,
                   padding: '14px',
-                  backgroundColor: loading ? '#ccc' : '#667eea',
+                  backgroundColor: loading ? '#ccc' : '#22c55e',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
@@ -517,13 +543,13 @@ export default function Signup() {
                   transition: 'background-color 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  if (!loading) e.target.style.backgroundColor = '#5568d3'
+                  if (!loading) e.target.style.backgroundColor = '#16a34a'
                 }}
                 onMouseOut={(e) => {
-                  if (!loading) e.target.style.backgroundColor = '#667eea'
+                  if (!loading) e.target.style.backgroundColor = '#22c55e'
                 }}
               >
-                {loading ? 'Criando conta...' : 'Criar Conta'}
+                {loading ? 'Criando conta...' : 'Iniciar Teste Grátis'}
               </button>
             </div>
           </form>

@@ -564,8 +564,6 @@ export default function WhatsAppConexao() {
 
   // Desconectar
   const desconectar = async () => {
-    if (!window.confirm('Tem certeza que deseja desconectar o WhatsApp?')) return
-
     setLoading(true)
     try {
       await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
@@ -870,7 +868,7 @@ Atenciosamente,
             </div>
             {status === 'connected' && (
               <button
-                onClick={desconectar}
+                onClick={() => setConfirmDesconexaoModal(true)}
                 disabled={loading}
                 style={{
                   padding: '8px 16px',
@@ -1829,6 +1827,21 @@ Atenciosamente,
         confirmText="OK"
         cancelText=""
         type={feedbackModal.type}
+      />
+
+      {/* Modal de Confirmação de Desconexão */}
+      <ConfirmModal
+        isOpen={confirmDesconexaoModal}
+        onClose={() => setConfirmDesconexaoModal(false)}
+        onConfirm={() => {
+          setConfirmDesconexaoModal(false)
+          desconectar()
+        }}
+        title="Desconectar WhatsApp"
+        message="Tem certeza que deseja desconectar o WhatsApp? As mensagens automáticas deixarão de ser enviadas."
+        confirmText="Desconectar"
+        cancelText="Cancelar"
+        type="danger"
       />
 
       {/* Modal de Upgrade (Recurso Bloqueado) */}
