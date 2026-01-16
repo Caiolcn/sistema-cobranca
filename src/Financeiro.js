@@ -587,19 +587,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     )
   }
 
+  // Detectar se é tela pequena (mobile ou tablet ou notebook pequeno)
+  const isSmallScreen = isMobile || isTablet
+
   return (
     <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header - tudo em uma linha */}
+      {/* Header - Título e Botões */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: isMobile ? '16px' : '20px',
-        marginBottom: isMobile ? '16px' : '20px',
+        marginBottom: isMobile ? '12px' : '16px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
       }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '16px' : '0' }}>
           {/* Título */}
-          <div style={{ minWidth: isMobile ? 'auto' : '150px' }}>
+          <div>
             <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
               Mensalidades
             </h2>
@@ -608,188 +611,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             </p>
           </div>
 
-          {/* Indicadores */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            gap: isMobile ? '12px' : '16px',
-            flex: isMobile ? 'none' : 1,
-            marginLeft: isMobile ? '0' : '40px'
-          }}>
-            {/* Card 1: Em Atraso */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #f44336',
-              backgroundColor: '#fff5f5',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Em Atraso</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Icon icon="solar:danger-triangle-linear" width="18" height="18" style={{ color: '#f44336' }} />
-                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                      R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                    {quantidadeEmAtraso} mensalidade{quantidadeEmAtraso !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {percentualAtrasado}%
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('atrasado')}
-                style={{
-                  background: 'none',
-                  color: '#f44336',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  fontWeight: '600',
-                  textAlign: 'left'
-                }}
-              >
-                Ver detalhes →
-              </button>
-            </div>
-
-            {/* Card 2: Próximos Vencimentos */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #ff9800',
-              backgroundColor: '#fff8f0',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Próximos Vencimentos</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    <Icon icon="tabler:clock" width="18" height="18" style={{ color: '#ff9800' }} />
-                    <span style={{ fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-                      {vencemHoje} vencem hoje
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '0' }}>
-                    {vencemProximos7} nos próximos 7 dias
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#ff9800',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '600'
-                }}>
-                  R$ {totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-
-            {/* Card 3: Recebido */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #4CAF50',
-              backgroundColor: '#f1f8f4',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Recebido</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Icon icon="fluent-emoji-high-contrast:money-bag" width="18" height="18" style={{ color: '#4CAF50' }} />
-                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                      R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                    {quantidadeRecebido} mensalidade{quantidadeRecebido !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {percentualRecebido}%
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('pago')}
-                style={{
-                  background: 'none',
-                  color: '#4CAF50',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  fontWeight: '600',
-                  textAlign: 'left'
-                }}
-              >
-                Ver detalhes →
-              </button>
-            </div>
-
-            {/* Card 4: MRR */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #2196F3',
-              backgroundColor: '#f0f7ff',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div>
-                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>MRR</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="mdi:chart-line" width="18" height="18" style={{ color: '#2196F3' }} />
-                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                    R$ {mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <p style={{ fontSize: '11px', color: '#888', margin: '4px 0 0 0' }}>
-                  Receita mensal esperada
-                </p>
-                <p style={{ fontSize: '12px', color: '#2196F3', margin: '8px 0 0 0', fontWeight: '600' }}>
-                  {assinaturasAtivas} assinatura{assinaturasAtivas !== 1 ? 's' : ''} ativa{assinaturasAtivas !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Botões */}
-          <div style={{ display: 'flex', gap: '8px', position: 'relative', marginLeft: isMobile ? '0' : '40px', justifyContent: isMobile ? 'stretch' : 'flex-start' }}>
+          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
             <button
               onClick={() => exportarMensalidades(mensalidadesFiltradas)}
               style={{
@@ -1147,6 +970,185 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
       </div>
+
+      {/* Cards de Indicadores - em seção separada */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: isMobile ? '12px' : '16px',
+        marginBottom: isMobile ? '16px' : '20px'
+      }}>
+            {/* Card 1: Em Atraso */}
+            <div style={{
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #f44336',
+              backgroundColor: '#fff5f5',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Em Atraso</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon icon="solar:danger-triangle-linear" width="18" height="18" style={{ color: '#f44336' }} />
+                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                      R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
+                    {quantidadeEmAtraso} mensalidade{quantidadeEmAtraso !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span style={{
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {percentualAtrasado}%
+                </span>
+              </div>
+              <button
+                onClick={() => toggleFiltroStatus('atrasado')}
+                style={{
+                  background: 'none',
+                  color: '#f44336',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontWeight: '600',
+                  textAlign: 'left'
+                }}
+              >
+                Ver detalhes →
+              </button>
+            </div>
+
+            {/* Card 2: Próximos Vencimentos */}
+            <div style={{
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #ff9800',
+              backgroundColor: '#fff8f0',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Próximos Vencimentos</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <Icon icon="tabler:clock" width="18" height="18" style={{ color: '#ff9800' }} />
+                    <span style={{ fontSize: '16px', fontWeight: '600', color: '#344848' }}>
+                      {vencemHoje} vencem hoje
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '0' }}>
+                    {vencemProximos7} nos próximos 7 dias
+                  </p>
+                </div>
+                <span style={{
+                  backgroundColor: '#ff9800',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  R$ {totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3: Recebido */}
+            <div style={{
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #4CAF50',
+              backgroundColor: '#f1f8f4',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Recebido</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon icon="fluent-emoji-high-contrast:money-bag" width="18" height="18" style={{ color: '#4CAF50' }} />
+                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                      R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
+                    {quantidadeRecebido} mensalidade{quantidadeRecebido !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {percentualRecebido}%
+                </span>
+              </div>
+              <button
+                onClick={() => toggleFiltroStatus('pago')}
+                style={{
+                  background: 'none',
+                  color: '#4CAF50',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontWeight: '600',
+                  textAlign: 'left'
+                }}
+              >
+                Ver detalhes →
+              </button>
+            </div>
+
+            {/* Card 4: MRR */}
+            <div style={{
+              flex: 1,
+              padding: '14px 18px',
+              borderLeft: '3px solid #2196F3',
+              backgroundColor: '#f0f7ff',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div>
+                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>MRR</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Icon icon="mdi:chart-line" width="18" height="18" style={{ color: '#2196F3' }} />
+                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                    R$ {mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <p style={{ fontSize: '11px', color: '#888', margin: '4px 0 0 0' }}>
+                  Receita mensal esperada
+                </p>
+                <p style={{ fontSize: '12px', color: '#2196F3', margin: '8px 0 0 0', fontWeight: '600' }}>
+                  {assinaturasAtivas} assinatura{assinaturasAtivas !== 1 ? 's' : ''} ativa{assinaturasAtivas !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          </div>
 
       {/* Tabela/Cards de Mensalidades */}
       <div style={{
