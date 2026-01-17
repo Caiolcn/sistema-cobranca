@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
@@ -6,47 +6,40 @@ import DateRangePicker from './DateRangePicker';
 import whatsappService from './services/whatsappService';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useUserPlan } from './hooks/useUserPlan';
+import { useUser } from './contexts/UserContext';
 import FeatureLocked from './FeatureLocked';
 import ConfirmModal from './ConfirmModal';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const { userId, nomeEmpresa: nomeEmpresaContext, loading: loadingUser } = useUser();
   const { isLocked, loading: loadingPlan } = useUserPlan();
   const [loading, setLoading] = useState(true);
-  const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [periodo, setPeriodo] = useState('mes_atual');
 
-  // Dashboard focado em Mensalidades
-  const [mrr, setMrr] = useState(0);
-  const [assinaturasAtivas, setAssinaturasAtivas] = useState(0);
-  const [recebimentosMes, setRecebimentosMes] = useState(0);
-  const [valorEmAtraso, setValorEmAtraso] = useState(0);
-  const [clientesInadimplentes, setClientesInadimplentes] = useState(0);
-  const [receitaProjetadaMes, setReceitaProjetadaMes] = useState(0);
-  const [taxaCancelamento, setTaxaCancelamento] = useState(0);
-  const [mensalidadesVencer7Dias, setMensalidadesVencer7Dias] = useState(0);
-  const [mensagensEnviadasAuto, setMensagensEnviadasAuto] = useState(0);
-
-  // Status Operacional de Acesso
-  const [statusAcesso, setStatusAcesso] = useState({
-    emDia: { valor: 0, clientes: 0 },
-    atrasoRecente: { valor: 0, clientes: 0 },
-    bloqueado: { valor: 0, clientes: 0 },
-    inativo: { valor: 0, clientes: 0 }
+  // Estado unificado para todos os dados do dashboard
+  const [dashboardData, setDashboardData] = useState({
+    mrr: 0,
+    assinaturasAtivas: 0,
+    recebimentosMes: 0,
+    valorEmAtraso: 0,
+    clientesInadimplentes: 0,
+    receitaProjetadaMes: 0,
+    taxaCancelamento: 0,
+    mensalidadesVencer7Dias: 0,
+    mensagensEnviadasAuto: 0,
+    statusAcesso: {
+      emDia: { valor: 0, clientes: 0 },
+      atrasoRecente: { valor: 0, clientes: 0 },
+      bloqueado: { valor: 0, clientes: 0 },
+      inativo: { valor: 0, clientes: 0 }
+    },
+    graficoRecebimentoVsVencimento: [],
+    distribuicaoStatus: { emDia: 0, aVencer: 0, atrasadas: 0, canceladas: 0 },
+    filaWhatsapp: [],
+    mensagensRecentes: []
   });
-
-  // Recebimento vs Vencimento (últimos 3 meses)
-  const [graficoRecebimentoVsVencimento, setGraficoRecebimentoVsVencimento] = useState([]);
-
-  // Distribuição de Status - Saúde da Base
-  const [distribuicaoStatus, setDistribuicaoStatus] = useState({ emDia: 0, aVencer: 0, atrasadas: 0, canceladas: 0 });
-
-  // Fila de WhatsApp
-  const [filaWhatsapp, setFilaWhatsapp] = useState([]);
-
-  // Mensagens recentes
-  const [mensagensRecentes, setMensagensRecentes] = useState([]);
 
   // Estados para modais de confirmação da Fila de WhatsApp
   const [confirmModalWhatsapp, setConfirmModalWhatsapp] = useState({ isOpen: false, item: null });
@@ -54,15 +47,13 @@ function Home() {
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
 
+  // Um único useEffect para carregar dados quando userId ou periodo mudam
   useEffect(() => {
-    carregarDados();
+    if (userId) {
+      carregarDados();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    carregarDados();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo]);
+  }, [userId, periodo]);
 
   const obterDatasPeriodo = () => {
     const hoje = new Date();
@@ -92,11 +83,11 @@ function Home() {
     return { inicio, fim };
   };
 
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
+    if (!userId) return;
+
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       const { inicio, fim } = obterDatasPeriodo();
       const hoje = new Date().toISOString().split('T')[0];
@@ -111,264 +102,162 @@ function Home() {
       const tresMesesAtrasInicio = new Date(tresMesesAtras.getFullYear(), tresMesesAtras.getMonth(), 1).toISOString().split('T')[0];
       const mesAtualFim = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
 
-      // OTIMIZAÇÃO: Executar TODAS as queries em paralelo com Promise.all
+      // OTIMIZAÇÃO: Reduzido de 15 para 8 queries essenciais
+      // Consolidamos queries que buscavam dados similares
       const [
-        { data: usuario },
-        { data: mensalidadesAtivasList },
-        { data: mensalidadesPagasMes },
-        { data: mensalidadesAtrasadas },
-        { data: mensalidadesPendenteMes },
-        { data: todosClientes },
-        { data: todosRecebidos },
-        { data: todosVencidos },
-        { data: fila },
-        { data: mensagens },
-        { data: todasParcelas },
-        { data: mensalidadesVencer7DiasList },
-        { data: mensagensAutomaticas },
-        { data: assinaturasAtivasList },
-        { data: mensalidadesAtrasadasAging }
+        { data: todasMensalidades },      // Query única para todas as métricas de mensalidades
+        { data: todosClientes },          // Clientes e assinaturas
+        { data: fila },                   // Fila WhatsApp
+        { data: mensagens },              // Mensagens recentes
+        { data: mensagensAutomaticas }    // Count de mensagens
       ] = await Promise.all([
-        // 0. Nome da empresa
-        supabase
-          .from('usuarios')
-          .select('nome_completo, nome_fantasia, razao_social')
-          .eq('id', user.id)
-          .single(),
-
-        // 1. Mensalidades ativas
+        // 1. TODAS as mensalidades - processamos tudo no cliente
         supabase
           .from('mensalidades')
-          .select('devedor_id')
-          .eq('user_id', user.id)
-          .eq('is_mensalidade', true)
-          .in('status', ['pendente', 'atrasado', 'pago']),
+          .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at')
+          .eq('user_id', userId),
 
-        // 2. Parcelas pagas no mês
-        supabase
-          .from('mensalidades')
-          .select('valor')
-          .eq('user_id', user.id)
-          .eq('status', 'pago')
-          .gte('updated_at', `${inicio}T00:00:00`)
-          .lte('updated_at', `${fim}T23:59:59`),
-
-        // 3. Parcelas atrasadas
-        supabase
-          .from('mensalidades')
-          .select('valor, devedor_id')
-          .eq('user_id', user.id)
-          .eq('status', 'pendente')
-          .lt('data_vencimento', hoje),
-
-        // 4. Parcelas pendentes no mês
-        supabase
-          .from('mensalidades')
-          .select('valor')
-          .eq('user_id', user.id)
-          .in('status', ['pendente', 'atrasado'])
-          .gte('data_vencimento', inicio)
-          .lte('data_vencimento', fim),
-
-        // 5. Total de clientes
+        // 2. Todos os clientes com assinaturas e planos
         supabase
           .from('devedores')
-          .select('id')
-          .eq('user_id', user.id),
+          .select('id, assinatura_ativa, plano:planos(valor)')
+          .eq('user_id', userId),
 
-        // 6. Recebimentos últimos 3 meses
-        supabase
-          .from('mensalidades')
-          .select('valor, updated_at')
-          .eq('user_id', user.id)
-          .eq('status', 'pago')
-          .gte('updated_at', `${tresMesesAtrasInicio}T00:00:00`)
-          .lte('updated_at', `${mesAtualFim}T23:59:59`),
-
-        // 8. Vencimentos últimos 3 meses
-        supabase
-          .from('mensalidades')
-          .select('valor, data_vencimento')
-          .eq('user_id', user.id)
-          .gte('data_vencimento', tresMesesAtrasInicio)
-          .lte('data_vencimento', mesAtualFim),
-
-        // 9. Fila de WhatsApp
+        // 3. Fila de WhatsApp (precisa de join com devedores)
         supabase
           .from('mensalidades')
           .select(`
-            id,
-            valor,
-            data_vencimento,
-            numero_mensalidade,
-            enviado_hoje,
+            id, valor, data_vencimento, numero_mensalidade, enviado_hoje,
             devedores (nome, telefone)
           `)
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('status', 'pendente')
           .eq('enviado_hoje', false)
           .lte('data_vencimento', hoje)
           .order('data_vencimento', { ascending: true })
           .limit(10),
 
-        // 10. Mensagens recentes
+        // 4. Mensagens recentes (precisa de join com devedores)
         supabase
           .from('logs_mensagens')
           .select(`
-            id,
-            telefone,
-            valor_mensalidade,
-            status,
-            enviado_em,
+            id, telefone, valor_mensalidade, status, enviado_em,
             devedores (nome)
           `)
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .order('enviado_em', { ascending: false })
           .limit(8),
 
-        // 11. Todas as mensalidades para distribuição de status
-        supabase
-          .from('mensalidades')
-          .select('status, data_vencimento')
-          .eq('user_id', user.id),
-
-        // 12. Mensalidades a vencer nos próximos 7 dias
-        supabase
-          .from('mensalidades')
-          .select('valor')
-          .eq('user_id', user.id)
-          .in('status', ['pendente', 'atrasado'])
-          .gte('data_vencimento', hoje)
-          .lte('data_vencimento', seteDiasFrenteStr),
-
-        // 13. Mensagens enviadas automaticamente
+        // 5. Count de mensagens enviadas
         supabase
           .from('logs_mensagens')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('status', 'enviado'),
-
-        // 14. Assinaturas ativas com planos para calcular MRR
-        supabase
-          .from('devedores')
-          .select(`
-            id,
-            assinatura_ativa,
-            plano:planos(valor)
-          `)
-          .eq('user_id', user.id)
-          .eq('assinatura_ativa', true)
-          .not('plano_id', 'is', null),
-
-        // 15. Todas as mensalidades para calcular Status de Acesso
-        supabase
-          .from('mensalidades')
-          .select('valor, data_vencimento, status, devedor_id')
-          .eq('user_id', user.id)
-          .eq('is_mensalidade', true)
+          .eq('user_id', userId)
+          .eq('status', 'enviado')
       ]);
 
-      // Processar resultados
-      if (usuario) {
-        setNomeEmpresa(usuario.nome_fantasia || usuario.razao_social || usuario.nome_completo || 'Empresa');
-      }
+      // ========== PROCESSAMENTO LOCAL (mais eficiente) ==========
 
-      // 1. Recebimentos do mês
-      const recebidoMes = mensalidadesPagasMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-      setRecebimentosMes(recebidoMes);
-
-      // 2. Valor em atraso
-      const valorAtraso = mensalidadesAtrasadas?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-      setValorEmAtraso(valorAtraso);
-
-      // 3. Clientes inadimplentes
-      const clientesInad = new Set(mensalidadesAtrasadas?.map(p => p.devedor_id)).size;
-      setClientesInadimplentes(clientesInad);
-
-      // 4. Receita projetada
-      const aReceberMes = mensalidadesPendenteMes?.reduce((sum, p) => sum + parseFloat(p.valor || 0), 0) || 0;
-      setReceitaProjetadaMes(recebidoMes + aReceberMes);
-
-      // 5. Taxa de cancelamento
-      const totalClientesGeral = todosClientes?.length || 0;
-      const clientesComMensalidade = new Set(mensalidadesAtivasList?.map(p => p.devedor_id));
-      const clientesCancelados = totalClientesGeral - clientesComMensalidade.size;
-      const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
-      setTaxaCancelamento(taxaCancel);
-
-      // 6. Mensalidades a vencer 7 dias
-      const vencer7Dias = mensalidadesVencer7DiasList?.reduce((sum, m) => sum + parseFloat(m.valor || 0), 0) || 0;
-      setMensalidadesVencer7Dias(vencer7Dias);
-
-      // 8. Mensagens enviadas automaticamente
-      const totalMensagensAuto = mensagensAutomaticas?.count || 0;
-      setMensagensEnviadasAuto(totalMensagensAuto);
-
-      // 9. Calcular MRR (Receita Mensal Recorrente)
-      const ativas = assinaturasAtivasList?.length || 0;
-      const mrrCalculado = assinaturasAtivasList?.reduce((sum, assin) => {
-        return sum + (parseFloat(assin.plano?.valor) || 0);
-      }, 0) || 0;
-      setAssinaturasAtivas(ativas);
-      setMrr(mrrCalculado);
-
-      // 10. Gráfico: Recebimento vs Vencimento (últimos 3 meses)
+      // Métricas de mensalidades - tudo processado de uma vez
+      let recebidoMes = 0;
+      let valorAtraso = 0;
+      const clientesAtrasadosSet = new Set();
+      let aReceberMes = 0;
+      const clientesComMensalidadeSet = new Set();
+      let vencer7Dias = 0;
       const recebidosPorMes = {};
       const vencidosPorMes = {};
+      let emDia = 0, aVencer = 0, atrasadas = 0, canceladas = 0;
+      const mensalidadesPorCliente = {};
 
-      todosRecebidos?.forEach(p => {
-        const mesAno = p.updated_at.substring(0, 7);
-        if (!recebidosPorMes[mesAno]) recebidosPorMes[mesAno] = 0;
-        recebidosPorMes[mesAno] += parseFloat(p.valor || 0);
+      todasMensalidades?.forEach(p => {
+        const valor = parseFloat(p.valor || 0);
+        const dataVenc = p.data_vencimento;
+        const mesAnoVenc = dataVenc?.substring(0, 7);
+        const mesAnoUpdate = p.updated_at?.substring(0, 7);
+
+        // Recebimentos do mês (status pago, updated_at no período)
+        if (p.status === 'pago' && p.updated_at >= `${inicio}T00:00:00` && p.updated_at <= `${fim}T23:59:59`) {
+          recebidoMes += valor;
+        }
+
+        // Valor em atraso (pendente com vencimento < hoje)
+        if (p.status === 'pendente' && dataVenc < hoje) {
+          valorAtraso += valor;
+          clientesAtrasadosSet.add(p.devedor_id);
+        }
+
+        // Pendentes no mês para receita projetada
+        if (['pendente', 'atrasado'].includes(p.status) && dataVenc >= inicio && dataVenc <= fim) {
+          aReceberMes += valor;
+        }
+
+        // Clientes com mensalidades ativas
+        if (p.is_mensalidade && ['pendente', 'atrasado', 'pago'].includes(p.status)) {
+          clientesComMensalidadeSet.add(p.devedor_id);
+        }
+
+        // Mensalidades a vencer 7 dias
+        if (['pendente', 'atrasado'].includes(p.status) && dataVenc >= hoje && dataVenc <= seteDiasFrenteStr) {
+          vencer7Dias += valor;
+        }
+
+        // Gráfico recebidos (últimos 3 meses)
+        if (p.status === 'pago' && p.updated_at >= `${tresMesesAtrasInicio}T00:00:00` && p.updated_at <= `${mesAtualFim}T23:59:59`) {
+          if (!recebidosPorMes[mesAnoUpdate]) recebidosPorMes[mesAnoUpdate] = 0;
+          recebidosPorMes[mesAnoUpdate] += valor;
+        }
+
+        // Gráfico vencidos (últimos 3 meses)
+        if (dataVenc >= tresMesesAtrasInicio && dataVenc <= mesAtualFim) {
+          if (!vencidosPorMes[mesAnoVenc]) vencidosPorMes[mesAnoVenc] = 0;
+          vencidosPorMes[mesAnoVenc] += valor;
+        }
+
+        // Distribuição de status
+        if (p.status === 'pago') {
+          emDia++;
+        } else if (p.status === 'cancelado') {
+          canceladas++;
+        } else if (p.status === 'pendente' && dataVenc < hoje) {
+          atrasadas++;
+        } else if (p.status === 'pendente') {
+          aVencer++;
+        }
+
+        // Status de acesso (mensalidades mais recentes por cliente)
+        if (p.is_mensalidade) {
+          if (!mensalidadesPorCliente[p.devedor_id] ||
+              new Date(dataVenc) > new Date(mensalidadesPorCliente[p.devedor_id].data_vencimento)) {
+            mensalidadesPorCliente[p.devedor_id] = p;
+          }
+        }
       });
 
-      todosVencidos?.forEach(p => {
-        const mesAno = p.data_vencimento.substring(0, 7);
-        if (!vencidosPorMes[mesAno]) vencidosPorMes[mesAno] = 0;
-        vencidosPorMes[mesAno] += parseFloat(p.valor || 0);
-      });
-
+      // Calcular gráfico dos últimos 3 meses
       const graficoMeses = [];
       for (let i = 2; i >= 0; i--) {
         const mesData = new Date();
         mesData.setMonth(mesData.getMonth() - i);
         const mesAno = `${mesData.getFullYear()}-${String(mesData.getMonth() + 1).padStart(2, '0')}`;
-
         graficoMeses.push({
           mes: mesData.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
           recebido: recebidosPorMes[mesAno] || 0,
           vencido: vencidosPorMes[mesAno] || 0
         });
       }
-      setGraficoRecebimentoVsVencimento(graficoMeses);
 
-      // 9. Fila de WhatsApp
-      setFilaWhatsapp(fila || []);
+      // Taxa de cancelamento
+      const totalClientesGeral = todosClientes?.length || 0;
+      const clientesCancelados = totalClientesGeral - clientesComMensalidadeSet.size;
+      const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
 
-      // 10. Mensagens recentes
-      setMensagensRecentes(mensagens || []);
+      // MRR
+      const assinaturasAtivasList = todosClientes?.filter(c => c.assinatura_ativa && c.plano?.valor) || [];
+      const ativas = assinaturasAtivasList.length;
+      const mrrCalculado = assinaturasAtivasList.reduce((sum, assin) => sum + (parseFloat(assin.plano?.valor) || 0), 0);
 
-      // 11. Distribuição de Status - Saúde da Base
-      let emDia = 0;          // Pagas
-      let aVencer = 0;        // Pendentes com vencimento >= hoje
-      let atrasadas = 0;      // Pendentes com vencimento < hoje
-      let canceladas = 0;     // Canceladas
-
-      todasParcelas?.forEach(p => {
-        if (p.status === 'pago') {
-          emDia++;
-        } else if (p.status === 'cancelado') {
-          canceladas++;
-        } else if (p.status === 'pendente' && p.data_vencimento < hoje) {
-          atrasadas++;
-        } else if (p.status === 'pendente') {
-          aVencer++;
-        }
-      });
-
-      setDistribuicaoStatus({ emDia, aVencer, atrasadas, canceladas });
-
-      // 12. Calcular Status Operacional de Acesso
+      // Status Operacional de Acesso
       const statusData = {
         emDia: { valor: 0, clientes: new Set() },
         atrasoRecente: { valor: 0, clientes: new Set() },
@@ -376,47 +265,49 @@ function Home() {
         inativo: { valor: 0, clientes: new Set() }
       };
 
-      // Agrupar por devedor para pegar a mensalidade mais recente
-      const mensalidadesPorCliente = {};
-      mensalidadesAtrasadasAging?.forEach(m => {
-        if (!mensalidadesPorCliente[m.devedor_id] ||
-            new Date(m.data_vencimento) > new Date(mensalidadesPorCliente[m.devedor_id].data_vencimento)) {
-          mensalidadesPorCliente[m.devedor_id] = m;
-        }
-      });
-
-      // Classificar cada cliente pelo status da mensalidade mais recente
       Object.values(mensalidadesPorCliente).forEach(m => {
         const valor = parseFloat(m.valor || 0);
 
         if (m.status === 'pago') {
-          // 🟢 Em dia - Pagamento ok
           statusData.emDia.valor += valor;
           statusData.emDia.clientes.add(m.devedor_id);
         } else {
           const diasAtraso = calcularDiasAtraso(m.data_vencimento);
 
           if (diasAtraso >= 1 && diasAtraso <= 7) {
-            // 🟡 Atraso recente (1-7 dias)
             statusData.atrasoRecente.valor += valor;
             statusData.atrasoRecente.clientes.add(m.devedor_id);
           } else if (diasAtraso > 7 && diasAtraso <= 30) {
-            // 🔴 Bloqueado (7-30 dias)
             statusData.bloqueado.valor += valor;
             statusData.bloqueado.clientes.add(m.devedor_id);
           } else if (diasAtraso > 30) {
-            // ⚫ Inativo (+30 dias)
             statusData.inativo.valor += valor;
             statusData.inativo.clientes.add(m.devedor_id);
           }
         }
       });
 
-      setStatusAcesso({
-        emDia: { valor: statusData.emDia.valor, clientes: statusData.emDia.clientes.size },
-        atrasoRecente: { valor: statusData.atrasoRecente.valor, clientes: statusData.atrasoRecente.clientes.size },
-        bloqueado: { valor: statusData.bloqueado.valor, clientes: statusData.bloqueado.clientes.size },
-        inativo: { valor: statusData.inativo.valor, clientes: statusData.inativo.clientes.size }
+      // UM ÚNICO setState com todos os dados
+      setDashboardData({
+        mrr: mrrCalculado,
+        assinaturasAtivas: ativas,
+        recebimentosMes: recebidoMes,
+        valorEmAtraso: valorAtraso,
+        clientesInadimplentes: clientesAtrasadosSet.size,
+        receitaProjetadaMes: recebidoMes + aReceberMes,
+        taxaCancelamento: taxaCancel,
+        mensalidadesVencer7Dias: vencer7Dias,
+        mensagensEnviadasAuto: mensagensAutomaticas?.count || 0,
+        statusAcesso: {
+          emDia: { valor: statusData.emDia.valor, clientes: statusData.emDia.clientes.size },
+          atrasoRecente: { valor: statusData.atrasoRecente.valor, clientes: statusData.atrasoRecente.clientes.size },
+          bloqueado: { valor: statusData.bloqueado.valor, clientes: statusData.bloqueado.clientes.size },
+          inativo: { valor: statusData.inativo.valor, clientes: statusData.inativo.clientes.size }
+        },
+        graficoRecebimentoVsVencimento: graficoMeses,
+        distribuicaoStatus: { emDia, aVencer, atrasadas, canceladas },
+        filaWhatsapp: fila || [],
+        mensagensRecentes: mensagens || []
       });
 
     } catch (error) {
@@ -424,7 +315,8 @@ function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, periodo]);
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -528,7 +420,7 @@ function Home() {
     }
   };
 
-  if (loading || loadingPlan) {
+  if (loading || loadingPlan || loadingUser) {
     return (
       <div className="home-loading">
         <Icon icon="line-md:loading-twotone-loop" width="48" />
@@ -536,6 +428,16 @@ function Home() {
       </div>
     );
   }
+
+  // Desestruturar dados do dashboard para uso no JSX
+  const {
+    mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, clientesInadimplentes,
+    receitaProjetadaMes, taxaCancelamento, mensalidadesVencer7Dias, mensagensEnviadasAuto,
+    statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus, filaWhatsapp, mensagensRecentes
+  } = dashboardData;
+
+  // Usar nome da empresa do contexto
+  const nomeEmpresa = nomeEmpresaContext || 'Empresa';
 
   // Verificar se features estão bloqueadas para plano Starter
   const proLocked = isLocked('pro');

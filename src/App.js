@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+import { UserProvider } from './contexts/UserContext'
 import LandingPage from './LandingPage'
 import Login from './Login'
 import Signup from './Signup'
@@ -41,34 +42,36 @@ function App() {
 
   return (
     <Router>
-      <div className="App">
-        <Routes>
-          {/* Rotas públicas */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+      <UserProvider>
+        <div className="App">
+          <Routes>
+            {/* Rotas públicas */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Rotas protegidas (sistema) */}
-          {session ? (
-            <>
-              <Route path="/app/upgrade" element={<UpgradePage />} />
-              <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
-              <Route path="/app" element={<Dashboard />}>
-                <Route index element={<Navigate to="/app/home" replace />} />
-                <Route path="home" element={<Home />} />
-                <Route path="financeiro" element={<Financeiro />} />
-                <Route path="clientes" element={<Clientes />} />
-                <Route path="whatsapp" element={<WhatsAppConexao />} />
-                <Route path="configuracao" element={<Configuracao />} />
-              </Route>
-            </>
-          ) : (
-            <Route path="/app/*" element={<Navigate to="/login" replace />} />
-          )}
-        </Routes>
-        <Toast />
-      </div>
+            {/* Rotas protegidas (sistema) */}
+            {session ? (
+              <>
+                <Route path="/app/upgrade" element={<UpgradePage />} />
+                <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
+                <Route path="/app" element={<Dashboard />}>
+                  <Route index element={<Navigate to="/app/home" replace />} />
+                  <Route path="home" element={<Home />} />
+                  <Route path="financeiro" element={<Financeiro />} />
+                  <Route path="clientes" element={<Clientes />} />
+                  <Route path="whatsapp" element={<WhatsAppConexao />} />
+                  <Route path="configuracao" element={<Configuracao />} />
+                </Route>
+              </>
+            ) : (
+              <Route path="/app/*" element={<Navigate to="/login" replace />} />
+            )}
+          </Routes>
+          <Toast />
+        </div>
+      </UserProvider>
     </Router>
   )
 }

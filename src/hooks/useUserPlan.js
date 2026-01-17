@@ -1,25 +1,15 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../supabaseClient'
+import { useMemo } from 'react'
+import { useUser } from '../contexts/UserContext'
 
 /**
  * Hook para verificar o plano do usuário
- * Retorna informações sobre o plano e helpers para verificar features
+ * OTIMIZADO: Agora usa o UserContext para evitar chamadas duplicadas getUser()
  *
  * Planos: 'starter' | 'pro' | 'premium'
  * Hierarquia: starter (1) < pro (2) < premium (3)
  */
 export function useUserPlan() {
-  const [planData, setPlanData] = useState({
-    loading: true,
-    plano: null, // 'starter', 'pro', 'premium'
-    planoPago: false,
-    limiteMensal: 200,
-    limiteClientes: 50
-  })
-
-  useEffect(() => {
-    fetchUserPlan()
-  }, [])
+  const { userData, loading, plano: planoFromContext } = useUser()
 
   // Limites de clientes por plano
   const limiteClientesPorPlano = {
@@ -28,48 +18,39 @@ export function useUserPlan() {
     'premium': 500
   }
 
-  const fetchUserPlan = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setPlanData({ loading: false, plano: null, planoPago: false, limiteMensal: 0, limiteClientes: 0 })
-        return
-      }
-
-      const { data: usuario, error } = await supabase
-        .from('usuarios')
-        .select('plano, plano_pago, limite_mensal')
-        .eq('id', user.id)
-        .single()
-
-      if (error) throw error
-
-      // Mapear planos antigos para novos (caso ainda não migrado)
-      let planoAtual = usuario.plano || 'starter'
-      if (planoAtual === 'basico') planoAtual = 'starter'
-      if (planoAtual === 'enterprise') planoAtual = 'premium'
-      if (planoAtual === 'business') planoAtual = 'premium'
-
-      setPlanData({
-        loading: false,
-        plano: planoAtual,
-        planoPago: usuario.plano_pago || false,
-        limiteMensal: usuario.limite_mensal || 200,
-        limiteClientes: limiteClientesPorPlano[planoAtual] || 50
-      })
-
-    } catch (error) {
-      console.error('Erro ao buscar plano do usuário:', error)
-      setPlanData({ loading: false, plano: 'starter', planoPago: false, limiteMensal: 200, limiteClientes: 50 })
-    }
-  }
-
   // Hierarquia de planos: starter < pro < premium
   const planLevel = {
     'starter': 1,
     'pro': 2,
     'premium': 3
   }
+
+  // Calcular dados do plano usando useMemo para evitar recálculos
+  const planData = useMemo(() => {
+    if (loading || !userData) {
+      return {
+        loading: true,
+        plano: null,
+        planoPago: false,
+        limiteMensal: 200,
+        limiteClientes: 50
+      }
+    }
+
+    // Mapear planos antigos para novos (caso ainda não migrado)
+    let planoAtual = userData.plano || planoFromContext || 'starter'
+    if (planoAtual === 'basico') planoAtual = 'starter'
+    if (planoAtual === 'enterprise') planoAtual = 'premium'
+    if (planoAtual === 'business') planoAtual = 'premium'
+
+    return {
+      loading: false,
+      plano: planoAtual,
+      planoPago: userData.plano_pago || false,
+      limiteMensal: userData.limite_mensal || 200,
+      limiteClientes: limiteClientesPorPlano[planoAtual] || 50
+    }
+  }, [userData, loading, planoFromContext])
 
   /**
    * Verifica se uma feature está disponível para o plano atual
@@ -111,7 +92,6 @@ export function useUserPlan() {
     isPremiumOrAbove,
     // Aliases para compatibilidade (código antigo usava 'business')
     isBusiness: isPremium,
-    isBusinessOrAbove: isPremiumOrAbove,
-    refresh: fetchUserPlan
+    isBusinessOrAbove: isPremiumOrAbove
   }
 }

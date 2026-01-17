@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import AddInstallmentsModal from './AddInstallmentsModal'
@@ -6,9 +6,11 @@ import { showToast } from './Toast'
 import whatsappService from './services/whatsappService'
 import { exportarMensalidades } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
+import { useUser } from './contexts/UserContext'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
+  const { userId, loading: loadingUser } = useUser()
   const [mensalidades, setMensalidades] = useState([])
   const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -44,75 +46,88 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [assinaturasAtivas, setAssinaturasAtivas] = useState(0)
 
   useEffect(() => {
-    carregarMensalidades()
-    carregarClientes()
-    calcularMRR()
-  }, [])
+    if (userId) {
+      carregarDados()
+    }
+  }, [userId])
 
   useEffect(() => {
     aplicarFiltros()
   }, [mensalidades, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim, filtroNome])
 
-  const carregarMensalidades = async () => {
+  // OTIMIZAÇÃO: Consolidar carregarMensalidades, carregarClientes e calcularMRR em uma única função
+  const carregarDados = useCallback(async () => {
+    if (!userId) return
+
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      // Executar todas as queries em paralelo
+      const [
+        { data: mensalidadesData, error: mensalidadesError },
+        { data: clientesData, error: clientesError }
+      ] = await Promise.all([
+        // 1. Mensalidades com dados do devedor
+        supabase
+          .from('mensalidades')
+          .select(`
+            *,
+            devedor:devedores(
+              nome,
+              plano:planos(nome)
+            )
+          `)
+          .eq('user_id', userId)
+          .order('data_vencimento', { ascending: true }),
 
-      const { data, error } = await supabase
-        .from('mensalidades')
-        .select(`
-          *,
-          devedor:devedores(
-            nome,
-            plano:planos(nome)
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('data_vencimento', { ascending: true })
+        // 2. Clientes com assinaturas para MRR (consolidado)
+        supabase
+          .from('devedores')
+          .select('id, nome, assinatura_ativa, plano:planos(valor)')
+          .eq('user_id', userId)
+          .order('nome', { ascending: true })
+      ])
 
-      if (error) throw error
+      if (mensalidadesError) throw mensalidadesError
+      if (clientesError) throw clientesError
 
-      const mensalidadesComStatus = data.map(p => ({
+      // Processar mensalidades
+      const mensalidadesComStatus = (mensalidadesData || []).map(p => ({
         ...p,
         statusCalculado: calcularStatus(p)
       }))
 
       setMensalidades(mensalidadesComStatus)
       calcularTotais(mensalidadesComStatus)
+
+      // Processar clientes
+      setClientes(clientesData || [])
+
+      // Calcular MRR a partir dos clientes já carregados
+      const assinaturasAtivasList = clientesData?.filter(c => c.assinatura_ativa && c.plano?.valor) || []
+      const ativas = assinaturasAtivasList.length
+      const mrrCalculado = assinaturasAtivasList.reduce((sum, assin) => {
+        return sum + (parseFloat(assin.plano?.valor) || 0)
+      }, 0)
+
+      setAssinaturasAtivas(ativas)
+      setMrr(mrrCalculado)
+
     } catch (error) {
-      console.error('Erro ao carregar mensalidades:', error)
-      showToast('Erro ao carregar mensalidades: ' + error.message, 'error')
+      console.error('Erro ao carregar dados:', error)
+      showToast('Erro ao carregar dados: ' + error.message, 'error')
     } finally {
       setLoading(false)
     }
-  }
-
-  const carregarClientes = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      const { data, error } = await supabase
-        .from('devedores')
-        .select('id, nome')
-        .eq('user_id', user.id)
-        .order('nome', { ascending: true })
-
-      if (error) throw error
-
-      setClientes(data || [])
-    } catch (error) {
-      console.error('Erro ao carregar clientes:', error)
-    }
-  }
+  }, [userId])
 
   const salvarMensalidades = async (dataToSave) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
+    if (!userId) return
 
+    try {
       // Criar mensalidades no banco de dados
       const mensalidadesParaInserir = dataToSave.mensalidades.map(mensalidade => {
         const mensalidadeBase = {
-          user_id: user.id,
+          user_id: userId,
           devedor_id: dataToSave.devedor_id,
           valor: mensalidade.valor,
           data_vencimento: mensalidade.vencimento,
@@ -139,7 +154,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       showToast(dataToSave.is_mensalidade
         ? 'Mensalidade criada com sucesso!'
         : 'Mensalidades criadas com sucesso!', 'success')
-      carregarMensalidades()
+      carregarDados()
     } catch (error) {
       console.error('Erro ao salvar mensalidades:', error)
       showToast('Erro ao salvar mensalidades: ' + error.message, 'error')
@@ -209,36 +224,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setVencemHoje(qtdHoje)
     setVencemProximos7(qtd7Dias)
     setTotalProximosVencimentos(totalProx)
-  }
-
-  const calcularMRR = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      // Buscar assinaturas ativas com seus planos
-      const { data: assinaturas, error } = await supabase
-        .from('devedores')
-        .select(`
-          id,
-          assinatura_ativa,
-          plano:planos(valor)
-        `)
-        .eq('user_id', user.id)
-        .eq('assinatura_ativa', true)
-        .not('plano_id', 'is', null)
-
-      if (error) throw error
-
-      const ativas = assinaturas?.length || 0
-      const mrrCalculado = assinaturas?.reduce((sum, assin) => {
-        return sum + (parseFloat(assin.plano?.valor) || 0)
-      }, 0) || 0
-
-      setAssinaturasAtivas(ativas)
-      setMrr(mrrCalculado)
-    } catch (error) {
-      console.error('Erro ao calcular MRR:', error)
-    }
   }
 
   const aplicarFiltros = () => {
@@ -465,7 +450,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       if (novoStatusPagamento && mensalidadeAtualizada) {
         await criarProximaMensalidade(mensalidadeAtualizada)
         // Recarregar lista para mostrar nova mensalidade
-        carregarMensalidades()
+        carregarDados()
       }
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
@@ -500,7 +485,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       if (resultado.sucesso) {
         showToast('Cobrança enviada com sucesso!', 'success')
-        carregarMensalidades() // Reload to update sent status
+        carregarDados() // Reload to update sent status
       } else {
         showToast('Erro ao enviar: ' + resultado.erro, 'error')
       }
@@ -1361,7 +1346,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         onClose={() => setMostrarModalAdicionar(false)}
         clientes={clientes}
         onSave={salvarMensalidades}
-        onClienteAdicionado={carregarClientes}
+        onClienteAdicionado={carregarDados}
       />
 
       {/* Modal de Confirmação de Pagamento */}

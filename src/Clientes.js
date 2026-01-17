@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -7,10 +7,12 @@ import ConfirmModal from './ConfirmModal'
 import { exportarClientes } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
+import { useUser } from './contexts/UserContext'
 
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { limiteClientes, plano } = useUserPlan()
+  const { userId, loading: loadingUser } = useUser()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
@@ -61,9 +63,11 @@ export default function Clientes() {
   const [clienteMensalidade, setClienteMensalidade] = useState(null)
 
   useEffect(() => {
-    carregarClientes()
-    carregarPlanos()
-  }, [])
+    if (userId) {
+      carregarClientes()
+      carregarPlanos()
+    }
+  }, [userId])
 
   // Fechar popover ao clicar fora
   useEffect(() => {
@@ -123,14 +127,14 @@ export default function Clientes() {
     setClientesFiltrados(filtrados)
   }, [busca, clientes, filtroStatus, filtroPlano, filtroAssinatura, filtroInadimplente])
 
-  const carregarPlanos = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
+  const carregarPlanos = useCallback(async () => {
+    if (!userId) return
 
+    try {
       const { data, error } = await supabase
         .from('planos')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('ativo', true)
         .order('nome', { ascending: true })
 
@@ -140,47 +144,61 @@ export default function Clientes() {
     } catch (error) {
       console.error('Erro ao carregar planos:', error)
     }
-  }
+  }, [userId])
 
-  const carregarClientes = async () => {
+  const carregarClientes = useCallback(async () => {
+    if (!userId) return
+
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      // OTIMIZAÇÃO: Executar queries em paralelo
+      const [
+        { data: clientesData, error: clientesError },
+        { data: mensalidadesData, error: mensalidadesError }
+      ] = await Promise.all([
+        // Buscar clientes com dados do plano (apenas ativos, lixo = false)
+        supabase
+          .from('devedores')
+          .select(`
+            id,
+            nome,
+            telefone,
+            cpf,
+            assinatura_ativa,
+            plano_id,
+            created_at,
+            planos:plano_id (nome)
+          `)
+          .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false')
+          .order('nome', { ascending: true }),
 
-      // Buscar clientes com dados do plano (apenas ativos, lixo = false)
-      const { data: clientesData, error: clientesError } = await supabase
-        .from('devedores')
-        .select(`
-          id,
-          nome,
-          telefone,
-          cpf,
-          assinatura_ativa,
-          plano_id,
-          created_at,
-          planos:plano_id (nome)
-        `)
-        .eq('user_id', user.id)
-        .or('lixo.is.null,lixo.eq.false')
-        .order('nome', { ascending: true })
+        // Buscar próximas mensalidades (apenas futuras ou pendentes)
+        supabase
+          .from('mensalidades')
+          .select('devedor_id, data_vencimento, status, is_mensalidade')
+          .eq('user_id', userId)
+          .eq('is_mensalidade', true)
+          .in('status', ['pendente', 'atrasado'])
+          .order('data_vencimento', { ascending: true })
+      ])
 
       if (clientesError) throw clientesError
-
-      // Buscar próximas mensalidades (apenas futuras ou pendentes)
-      const { data: mensalidadesData, error: mensalidadesError } = await supabase
-        .from('mensalidades')
-        .select('devedor_id, data_vencimento, status, is_mensalidade')
-        .eq('user_id', user.id)
-        .eq('is_mensalidade', true)
-        .in('status', ['pendente', 'atrasado'])
-        .order('data_vencimento', { ascending: true })
-
       if (mensalidadesError) throw mensalidadesError
 
-      // Processar dados dos clientes
+      // OTIMIZAÇÃO: Usar Map para lookup O(1) ao invés de .find() O(N)
+      // Isso elimina o padrão N+1 de busca
+      const mensalidadesMap = new Map()
+      mensalidadesData?.forEach(m => {
+        // Só guarda a primeira (mais próxima) mensalidade por cliente
+        if (!mensalidadesMap.has(m.devedor_id)) {
+          mensalidadesMap.set(m.devedor_id, m)
+        }
+      })
+
+      // Processar dados dos clientes - agora O(N) ao invés de O(N²)
       const clientesComDados = clientesData.map(cliente => {
-        // Buscar próxima mensalidade do cliente
-        const proximaMensalidade = mensalidadesData.find(p => p.devedor_id === cliente.id)
+        const proximaMensalidade = mensalidadesMap.get(cliente.id)
 
         return {
           ...cliente,
@@ -196,7 +214,7 @@ export default function Clientes() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
 
   const carregarMensalidadesCliente = async (clienteId) => {
     try {
@@ -355,15 +373,15 @@ export default function Clientes() {
       return
     }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
+    if (!userId) return
 
+    try {
       // Verificar se já existe outro cliente com o mesmo telefone
       const telefoneFormatado = telefoneEdit.trim().replace(/\D/g, '')
       const { data: clienteExistente } = await supabase
         .from('devedores')
         .select('id, nome')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .neq('id', clienteSelecionado.id)
 
       const duplicado = clienteExistente?.find(c =>
@@ -490,8 +508,9 @@ export default function Clientes() {
       return
     }
 
+    if (!userId) return
+
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const plano = planos.find(p => p.id === planoParaAtivar)
 
       if (!plano) {
@@ -518,7 +537,7 @@ export default function Clientes() {
       const { error: mensalidadeError } = await supabase
         .from('mensalidades')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           devedor_id: clienteId,
           valor: parseFloat(plano.valor),
           data_vencimento: dataVencimento.toISOString().split('T')[0],
@@ -686,11 +705,11 @@ export default function Clientes() {
       return
     }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
+    if (!userId) return
 
+    try {
       const { data, error } = await supabase.from('planos').insert({
-        user_id: user.id,
+        user_id: userId,
         nome: novoPlanoNome.trim(),
         valor: parseFloat(novoPlanoValor),
         ciclo_cobranca: novoPlanoCiclo,
@@ -738,9 +757,9 @@ export default function Clientes() {
       return
     }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
+    if (!userId) return
 
+    try {
       // Verificar se já existe cliente com o mesmo telefone
       const telefoneFormatado = novoClienteTelefone.trim().replace(/\D/g, '')
       const duplicado = clientes.find(c =>
@@ -756,7 +775,7 @@ export default function Clientes() {
       const { data: clienteData, error: clienteError } = await supabase
         .from('devedores')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           nome: novoClienteNome.trim(),
           telefone: novoClienteTelefone.trim(),
           cpf: novoClienteCpf.trim() || null,
@@ -773,8 +792,8 @@ export default function Clientes() {
 
       // Se criar assinatura, criar primeira mensalidade
       if (criarAssinatura && clienteData && clienteData.length > 0) {
-        const plano = planos.find(p => p.id === planoSelecionado)
-        if (!plano) {
+        const planoEncontrado = planos.find(p => p.id === planoSelecionado)
+        if (!planoEncontrado) {
           showToast('Plano não encontrado', 'error')
           return
         }
@@ -787,9 +806,9 @@ export default function Clientes() {
         const { error: mensalidadeError } = await supabase
           .from('mensalidades')
           .insert({
-            user_id: user.id,
+            user_id: userId,
             devedor_id: clienteData[0].id,
-            valor: plano.valor,
+            valor: planoEncontrado.valor,
             data_vencimento: dataVencimento.toISOString().split('T')[0],
             status: 'pendente',
             is_mensalidade: true,
