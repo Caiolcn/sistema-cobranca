@@ -2644,9 +2644,9 @@ export default function Clientes() {
               padding: isSmallScreen ? '20px' : '28px',
               maxWidth: isSmallScreen ? '100%' : '500px',
               width: isSmallScreen ? '100%' : '90%',
-              height: isSmallScreen ? '100%' : 'auto',
+              maxHeight: isSmallScreen ? '100%' : '90vh',
               boxShadow: isSmallScreen ? 'none' : '0 8px 32px rgba(0,0,0,0.2)',
-              overflow: 'auto',
+              overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column'
             }}
