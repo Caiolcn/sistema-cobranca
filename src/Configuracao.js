@@ -39,9 +39,9 @@ function Configuracao() {
   // Billing config
   const [configCobranca, setConfigCobranca] = useState({
     enviarAntes: false,
-    diasAntes: 3,
     enviar3DiasAntes: false,
-    enviar5DiasAntes: false
+    enviarNoDia: false,
+    enviar3DiasDepois: false
   })
 
   // Plans
@@ -227,9 +227,9 @@ function Configuracao() {
     if (data) {
       setConfigCobranca({
         enviarAntes: data.enviar_antes_vencimento,
-        diasAntes: data.dias_antes_vencimento,
         enviar3DiasAntes: data.enviar_3_dias_antes || false,
-        enviar5DiasAntes: data.enviar_5_dias_antes || false
+        enviarNoDia: data.enviar_no_dia || false,
+        enviar3DiasDepois: data.enviar_3_dias_depois || false
       })
     }
   }
@@ -241,9 +241,9 @@ function Configuracao() {
         .upsert({
           user_id: user.id,
           enviar_antes_vencimento: configCobranca.enviarAntes,
-          dias_antes_vencimento: configCobranca.diasAntes,
           enviar_3_dias_antes: configCobranca.enviar3DiasAntes,
-          enviar_5_dias_antes: configCobranca.enviar5DiasAntes,
+          enviar_no_dia: configCobranca.enviarNoDia,
+          enviar_3_dias_depois: configCobranca.enviar3DiasDepois,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' })
 
@@ -872,47 +872,10 @@ function Configuracao() {
           border: '1px solid #e0e0e0'
         }}>
           <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: '600', color: '#555' }}>
-            Quando enviar mensagens de lembrete?
+            Quando enviar mensagens?
           </label>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Checkbox 5 dias antes */}
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
-              cursor: 'pointer',
-              padding: '12px',
-              backgroundColor: 'white',
-              borderRadius: '6px',
-              border: configCobranca.enviar5DiasAntes ? '2px solid #ff9800' : '2px solid #e0e0e0',
-              transition: 'all 0.2s'
-            }}>
-              <input
-                type="checkbox"
-                checked={configCobranca.enviar5DiasAntes}
-                onChange={(e) => setConfigCobranca({ ...configCobranca, enviar5DiasAntes: e.target.checked })}
-                style={{
-                  width: '18px',
-                  height: '18px',
-                  cursor: 'pointer',
-                  marginTop: '2px',
-                  accentColor: '#ff9800'
-                }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <Icon icon="mdi:calendar-alert" width="20" style={{ color: '#ff9800' }} />
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
-                    5 dias antes do vencimento
-                  </span>
-                </div>
-                <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
-                  Envia um lembrete com antecedência para dar mais tempo ao cliente
-                </p>
-              </div>
-            </label>
-
             {/* Checkbox 3 dias antes */}
             <label style={{
               display: 'flex',
@@ -945,13 +908,87 @@ function Configuracao() {
                   </span>
                 </div>
                 <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
-                  Lembrete mais próximo da data de vencimento, reforçando o prazo
+                  Lembrete antecipado para o cliente se preparar
+                </p>
+              </div>
+            </label>
+
+            {/* Checkbox no dia do vencimento */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: 'white',
+              borderRadius: '6px',
+              border: configCobranca.enviarNoDia ? '2px solid #ff9800' : '2px solid #e0e0e0',
+              transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={configCobranca.enviarNoDia}
+                onChange={(e) => setConfigCobranca({ ...configCobranca, enviarNoDia: e.target.checked })}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                  accentColor: '#ff9800'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon icon="mdi:calendar-today" width="20" style={{ color: '#ff9800' }} />
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    No dia do vencimento
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  Aviso no dia exato do vencimento da mensalidade
+                </p>
+              </div>
+            </label>
+
+            {/* Checkbox 3 dias depois */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: 'white',
+              borderRadius: '6px',
+              border: configCobranca.enviar3DiasDepois ? '2px solid #f44336' : '2px solid #e0e0e0',
+              transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={configCobranca.enviar3DiasDepois}
+                onChange={(e) => setConfigCobranca({ ...configCobranca, enviar3DiasDepois: e.target.checked })}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                  accentColor: '#f44336'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon icon="mdi:calendar-alert" width="20" style={{ color: '#f44336' }} />
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    3 dias após o vencimento
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  Cobrança para mensalidades em atraso
                 </p>
               </div>
             </label>
           </div>
 
-          {!configCobranca.enviar3DiasAntes && !configCobranca.enviar5DiasAntes && (
+          {!configCobranca.enviar3DiasAntes && !configCobranca.enviarNoDia && !configCobranca.enviar3DiasDepois && (
             <div style={{
               marginTop: '16px',
               padding: '12px',
@@ -963,7 +1000,7 @@ function Configuracao() {
             }}>
               <Icon icon="mdi:information" width="20" style={{ color: '#856404' }} />
               <span style={{ fontSize: '13px', color: '#856404' }}>
-                Selecione pelo menos uma opção para ativar os lembretes
+                Selecione pelo menos uma opção para ativar as mensagens
               </span>
             </div>
           )}
