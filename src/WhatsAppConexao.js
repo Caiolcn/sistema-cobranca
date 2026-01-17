@@ -131,37 +131,88 @@ export default function WhatsAppConexao() {
     updateGlobalStatus(status)
   }, [status])
 
-  // Carregar configurações da Evolution API e verificar status inicial
+  // Carregar tudo em paralelo para melhorar performance
   useEffect(() => {
-    const init = async () => {
+    const carregarTudo = async () => {
       try {
-        // 1. Buscar config do Supabase
-        const { data, error } = await supabase
-          .from('config')
-          .select('chave, valor')
-          .in('chave', ['evolution_api_key', 'evolution_api_url'])
-
-        if (error) throw error
-
-        const configMap = {}
-        data.forEach(item => { configMap[item.chave] = item.valor })
-
-        // 2. Gerar instanceName baseado no user ID
+        // 1. Pegar user UMA vez só
         const { data: { user } } = await supabase.auth.getUser()
-        const instanceName = user ? `instance_${user.id.substring(0, 8)}` : ''
+        if (!user) return
 
-        setConfig({
-          apiKey: configMap.evolution_api_key || '',
-          apiUrl: configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host',
-          instanceName
+        const instanceName = `instance_${user.id.substring(0, 8)}`
+
+        // 2. Fazer TODAS as queries em paralelo
+        const [configResult, templatesResult, automacoesResult] = await Promise.all([
+          // Config da Evolution API
+          supabase
+            .from('config')
+            .select('chave, valor')
+            .in('chave', ['evolution_api_key', 'evolution_api_url']),
+
+          // Templates do usuário
+          supabase
+            .from('templates')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('ativo', true)
+            .order('created_at', { ascending: false }),
+
+          // Configurações de automação do usuário
+          supabase
+            .from('config')
+            .select('chave, valor')
+            .in('chave', [
+              `${user.id}_automacao_3dias_ativa`,
+              `${user.id}_automacao_5dias_ativa`,
+              `${user.id}_automacao_ematraso_ativa`
+            ])
+        ])
+
+        // 3. Processar Config Evolution API
+        const configMap = {}
+        configResult.data?.forEach(item => { configMap[item.chave] = item.valor })
+
+        const apiKey = configMap.evolution_api_key || ''
+        const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
+
+        setConfig({ apiKey, apiUrl, instanceName })
+
+        // 4. Processar Templates
+        const templates = templatesResult.data || []
+        const agrupados = {
+          overdue: templates.find(t => t.tipo === 'overdue') || null,
+          pre_due_3days: templates.find(t => t.tipo === 'pre_due_3days') || null,
+          pre_due_5days: templates.find(t => t.tipo === 'pre_due_5days') || null
+        }
+        setTemplatesAgrupados(agrupados)
+
+        // Carregar template atual
+        const templateAtual = agrupados['overdue'] // Default é overdue
+        if (templateAtual) {
+          setTituloTemplate(templateAtual.titulo)
+          setMensagemTemplate(templateAtual.mensagem)
+        } else {
+          setTituloTemplate(getTituloDefault('overdue'))
+          setMensagemTemplate(getMensagemDefault('overdue'))
+        }
+
+        // 5. Processar Automações
+        const automacoesMap = {}
+        automacoesResult.data?.forEach(item => {
+          const chaveSimples = item.chave.replace(`${user.id}_`, '')
+          automacoesMap[chaveSimples] = item.valor
         })
 
-        // 3. Verificar status inicial (se já está conectado)
-        if (configMap.evolution_api_key && instanceName) {
+        setAutomacao3DiasAtiva(automacoesMap['automacao_3dias_ativa'] === 'true')
+        setAutomacao5DiasAtiva(automacoesMap['automacao_5dias_ativa'] === 'true')
+        setAutomacaoEmAtrasoAtiva(automacoesMap['automacao_ematraso_ativa'] !== 'false')
+
+        // 6. Verificar status WhatsApp (pode ser em paralelo com os outros)
+        if (apiKey && instanceName) {
           try {
             const response = await fetch(
-              `${configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'}/instance/connectionState/${instanceName}`,
-              { headers: { 'apikey': configMap.evolution_api_key } }
+              `${apiUrl}/instance/connectionState/${instanceName}`,
+              { headers: { 'apikey': apiKey } }
             )
 
             if (response.ok) {
@@ -177,13 +228,11 @@ export default function WhatsAppConexao() {
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error)
-        setErro('Erro ao carregar configurações da Evolution API')
+        setErro('Erro ao carregar configurações')
       }
     }
 
-    init()
-    carregarTemplates()
-    carregarConfiguracoesAutomacao()
+    carregarTudo()
   }, [])
 
   // Salvar conexão WhatsApp no banco de dados (na tabela config E mensallizap)
@@ -816,10 +865,53 @@ export default function WhatsAppConexao() {
     return TEMPLATES_PADRAO[tipo] || TEMPLATES_PADRAO.overdue
   }
 
-  const restaurarMensagemPadrao = () => {
-    setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
-    setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
-    setFeedbackModal({ isOpen: true, type: 'info', title: 'Restaurado', message: 'Mensagem padrão restaurada' })
+  const restaurarMensagemPadrao = async () => {
+    const novoTitulo = getTituloDefault(tipoTemplateSelecionado)
+    const novaMensagem = getMensagemDefault(tipoTemplateSelecionado)
+
+    setTituloTemplate(novoTitulo)
+    setMensagemTemplate(novaMensagem)
+
+    // Salvar no banco automaticamente
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
+
+      if (templateExistente) {
+        // Atualizar template existente
+        const { error } = await supabase
+          .from('templates')
+          .update({
+            titulo: novoTitulo,
+            mensagem: novaMensagem,
+            is_padrao: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', templateExistente.id)
+
+        if (error) throw error
+      } else {
+        // Criar novo template com o padrão
+        const { error } = await supabase
+          .from('templates')
+          .insert({
+            user_id: user.id,
+            titulo: novoTitulo,
+            mensagem: novaMensagem,
+            tipo: tipoTemplateSelecionado,
+            ativo: true,
+            is_padrao: true
+          })
+
+        if (error) throw error
+      }
+
+      await carregarTemplates()
+      setFeedbackModal({ isOpen: true, type: 'success', title: 'Restaurado', message: 'Mensagem padrão restaurada e salva!' })
+    } catch (error) {
+      console.error('Erro ao restaurar padrão:', error)
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar template padrão' })
+    }
   }
 
   const carregarTemplates = async () => {

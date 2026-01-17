@@ -9,6 +9,7 @@ import {
   atualizarConfiguracao,
   executarAutomacoes
 } from './services/automacaoService'
+import { validarCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 
 function Configuracao() {
@@ -31,7 +32,8 @@ function Configuracao() {
     cep: '',
     telefone: '',
     email: '',
-    site: ''
+    site: '',
+    chavePix: ''
   })
 
   // Billing config
@@ -127,7 +129,8 @@ function Configuracao() {
         cep: data.cep || '',
         telefone: data.telefone || '',
         email: data.email_empresa || data.email || '',
-        site: data.site || ''
+        site: data.site || '',
+        chavePix: data.chave_pix || ''
       })
     }
   }
@@ -140,6 +143,18 @@ function Configuracao() {
 
     if (dadosEmpresa.email && !validarEmail(dadosEmpresa.email)) {
       showToast('Email inválido', 'warning')
+      return
+    }
+
+    // Validar CNPJ se preenchido
+    if (dadosEmpresa.cnpj?.trim() && !validarCNPJ(dadosEmpresa.cnpj)) {
+      showToast('CNPJ inválido', 'warning')
+      return
+    }
+
+    // Validar telefone se preenchido
+    if (dadosEmpresa.telefone?.trim() && !validarTelefone(dadosEmpresa.telefone)) {
+      showToast('Telefone inválido. Use o formato (XX) XXXXX-XXXX', 'warning')
       return
     }
 
@@ -159,6 +174,7 @@ function Configuracao() {
           telefone: dadosEmpresa.telefone,
           email_empresa: dadosEmpresa.email,
           site: dadosEmpresa.site,
+          chave_pix: dadosEmpresa.chavePix,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -749,6 +765,33 @@ function Configuracao() {
               boxSizing: 'border-box'
             }}
           />
+        </div>
+
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:pix" width="18" style={{ color: '#32BCAD' }} />
+              Chave PIX
+            </span>
+          </label>
+          <input
+            type="text"
+            value={dadosEmpresa.chavePix}
+            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, chavePix: e.target.value })}
+            placeholder="CPF, CNPJ, E-mail, Telefone ou Chave Aleatória"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #32BCAD',
+              borderRadius: '6px',
+              fontSize: '16px',
+              boxSizing: 'border-box',
+              backgroundColor: '#f0faf9'
+            }}
+          />
+          <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#666' }}>
+            Esta chave será usada nas mensagens automáticas de cobrança (variável {`{{chavePix}}`})
+          </p>
         </div>
       </div>
 

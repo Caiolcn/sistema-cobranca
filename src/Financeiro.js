@@ -7,10 +7,12 @@ import whatsappService from './services/whatsappService'
 import { exportarMensalidades } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
+import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
+import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
-  const { userId, loading: loadingUser } = useUser()
+  const { userId, nomeEmpresa, chavePix, loading: loadingUser } = useUser()
   const [mensalidades, setMensalidades] = useState([])
   const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,6 +32,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mensalidadeParaAtualizar, setMensalidadeParaAtualizar] = useState(null)
   const [novoStatusPagamento, setNovoStatusPagamento] = useState(false)
   const [formaPagamento, setFormaPagamento] = useState('')
+
+  // Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1)
+  const itensPorPagina = 20
+
+  // Modal de recibo após pagamento
+  const [mostrarModalRecibo, setMostrarModalRecibo] = useState(false)
+  const [mensalidadePaga, setMensalidadePaga] = useState(null)
 
   // Cards de resumo
   const [totalEmAtraso, setTotalEmAtraso] = useState(0)
@@ -290,7 +300,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     })
 
     setMensalidadesFiltradas(resultado)
+    setPaginaAtual(1) // Resetar para primeira página quando filtros mudam
   }
+
+  // Calcular dados de paginação
+  const totalPaginas = Math.ceil(mensalidadesFiltradas.length / itensPorPagina)
+  const indiceInicio = (paginaAtual - 1) * itensPorPagina
+  const indiceFim = indiceInicio + itensPorPagina
+  const mensalidadesPaginadas = mensalidadesFiltradas.slice(indiceInicio, indiceFim)
 
   /**
    * Cria automaticamente a próxima mensalidade quando a atual for paga
@@ -441,22 +458,59 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       setMensalidades(novasMensalidades)
       calcularTotais(novasMensalidades)
-      showToast(novoStatusPagamento ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
       setMostrarModalConfirmacao(false)
       setMensalidadeParaAtualizar(null)
-      setFormaPagamento('')
 
       // 🆕 CRIAR PRÓXIMA MENSALIDADE AUTOMATICAMENTE (apenas se estiver marcando como pago)
       if (novoStatusPagamento && mensalidadeAtualizada) {
         await criarProximaMensalidade(mensalidadeAtualizada)
         // Recarregar lista para mostrar nova mensalidade
         carregarDados()
+
+        // Mostrar modal para gerar recibo
+        setMensalidadePaga({
+          ...mensalidadeAtualizada,
+          forma_pagamento: formaPagamento,
+          data_pagamento: updateData.data_pagamento
+        })
+        setMostrarModalRecibo(true)
+      } else {
+        showToast('Pagamento desfeito!', 'success')
       }
+
+      setFormaPagamento('')
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
       setMostrarModalConfirmacao(false)
       setMensalidadeParaAtualizar(null)
       setFormaPagamento('')
+    }
+  }
+
+  const handleGerarRecibo = async (tipo) => {
+    if (!mensalidadePaga) return
+
+    const dadosRecibo = {
+      nomeCliente: mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Cliente',
+      telefoneCliente: mensalidadePaga.devedor?.telefone || mensalidadePaga.devedores?.telefone || '',
+      valor: mensalidadePaga.valor,
+      dataVencimento: mensalidadePaga.data_vencimento,
+      dataPagamento: mensalidadePaga.data_pagamento,
+      formaPagamento: mensalidadePaga.forma_pagamento,
+      nomeEmpresa: nomeEmpresa || 'Empresa',
+      chavePix: chavePix || '',
+      descricao: mensalidadePaga.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidadePaga.numero_mensalidade || 1}`
+    }
+
+    try {
+      if (tipo === 'baixar') {
+        await baixarRecibo(dadosRecibo)
+        showToast('Recibo baixado com sucesso!', 'success')
+      } else if (tipo === 'imprimir') {
+        await imprimirRecibo(dadosRecibo)
+      }
+    } catch (error) {
+      showToast('Erro ao gerar recibo: ' + error.message, 'error')
     }
   }
 
@@ -566,8 +620,24 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <p>Carregando...</p>
+      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        {/* Cards skeleton */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+        {/* List/Table skeleton */}
+        {isSmallScreen ? (
+          <SkeletonList count={8} />
+        ) : (
+          <SkeletonTable rows={10} columns={6} />
+        )}
       </div>
     )
   }
@@ -1156,7 +1226,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         ) : isSmallScreen ? (
           /* Cards para Mobile/Tablet */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {mensalidadesFiltradas.map(mensalidade => (
+            {mensalidadesPaginadas.map(mensalidade => (
               <div
                 key={mensalidade.id}
                 onClick={() => abrirDetalhesMensalidade(mensalidade)}
@@ -1267,7 +1337,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 </tr>
               </thead>
               <tbody>
-                {mensalidadesFiltradas.map(mensalidade => (
+                {mensalidadesPaginadas.map(mensalidade => (
                   <tr
                     key={mensalidade.id}
                     onClick={() => abrirDetalhesMensalidade(mensalidade)}
@@ -1336,6 +1406,98 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Paginação */}
+        {totalPaginas > 1 && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px',
+            marginTop: '24px',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+              disabled={paginaAtual === 1}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                backgroundColor: paginaAtual === 1 ? '#f5f5f5' : 'white',
+                cursor: paginaAtual === 1 ? 'not-allowed' : 'pointer',
+                color: paginaAtual === 1 ? '#999' : '#344848',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Icon icon="mdi:chevron-left" width="20" height="20" />
+              {!isMobile && 'Anterior'}
+            </button>
+
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                let pagina
+                if (totalPaginas <= 5) {
+                  pagina = i + 1
+                } else if (paginaAtual <= 3) {
+                  pagina = i + 1
+                } else if (paginaAtual >= totalPaginas - 2) {
+                  pagina = totalPaginas - 4 + i
+                } else {
+                  pagina = paginaAtual - 2 + i
+                }
+                return (
+                  <button
+                    key={pagina}
+                    onClick={() => setPaginaAtual(pagina)}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      border: paginaAtual === pagina ? 'none' : '1px solid #e0e0e0',
+                      borderRadius: '6px',
+                      backgroundColor: paginaAtual === pagina ? '#344848' : 'white',
+                      color: paginaAtual === pagina ? 'white' : '#344848',
+                      cursor: 'pointer',
+                      fontWeight: paginaAtual === pagina ? '600' : '400',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {pagina}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+              disabled={paginaAtual === totalPaginas}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                backgroundColor: paginaAtual === totalPaginas ? '#f5f5f5' : 'white',
+                cursor: paginaAtual === totalPaginas ? 'not-allowed' : 'pointer',
+                color: paginaAtual === totalPaginas ? '#999' : '#344848',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {!isMobile && 'Próxima'}
+              <Icon icon="mdi:chevron-right" width="20" height="20" />
+            </button>
+
+            <span style={{
+              marginLeft: '16px',
+              fontSize: '14px',
+              color: '#666'
+            }}>
+              {mensalidadesFiltradas.length} mensalidade{mensalidadesFiltradas.length !== 1 ? 's' : ''}
+            </span>
           </div>
         )}
       </div>
@@ -1674,6 +1836,124 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 {novoStatusPagamento ? 'Confirmar' : 'Desfazer'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Sucesso de Pagamento com Opção de Recibo */}
+      {mostrarModalRecibo && mensalidadePaga && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '400px',
+            textAlign: 'center'
+          }}>
+            {/* Ícone de sucesso */}
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: '#e8f5e9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <Icon icon="mdi:check-circle" width="40" height="40" style={{ color: '#4CAF50' }} />
+            </div>
+
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+              Pagamento Confirmado!
+            </h3>
+
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
+              {mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Cliente'} -{' '}
+              <strong>
+                R$ {parseFloat(mensalidadePaga.valor || 0).toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </strong>
+            </p>
+
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#888' }}>
+              Deseja gerar o recibo de pagamento?
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleGerarRecibo('baixar')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#344848',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Icon icon="mdi:download" width="18" />
+                Baixar Recibo
+              </button>
+
+              <button
+                onClick={() => handleGerarRecibo('imprimir')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'white',
+                  color: '#344848',
+                  border: '1px solid #344848',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Icon icon="mdi:printer" width="18" />
+                Imprimir
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                setMostrarModalRecibo(false)
+                setMensalidadePaga(null)
+              }}
+              style={{
+                marginTop: '16px',
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: '#666',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '13px'
+              }}
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}

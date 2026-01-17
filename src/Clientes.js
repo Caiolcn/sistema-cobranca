@@ -5,6 +5,8 @@ import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 import { exportarClientes } from './utils/exportUtils'
+import { validarTelefone, validarCPF } from './utils/validators'
+import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
@@ -61,6 +63,10 @@ export default function Clientes() {
   const [mostrarModalMensalidade, setMostrarModalMensalidade] = useState(false)
   const [mensalidadeSelecionada, setMensalidadeSelecionada] = useState(null)
   const [clienteMensalidade, setClienteMensalidade] = useState(null)
+
+  // Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1)
+  const itensPorPagina = 20
 
   useEffect(() => {
     if (userId) {
@@ -125,7 +131,14 @@ export default function Clientes() {
     }
 
     setClientesFiltrados(filtrados)
+    setPaginaAtual(1) // Resetar para primeira página quando filtros mudam
   }, [busca, clientes, filtroStatus, filtroPlano, filtroAssinatura, filtroInadimplente])
+
+  // Calcular dados de paginação
+  const totalPaginas = Math.ceil(clientesFiltrados.length / itensPorPagina)
+  const indiceInicio = (paginaAtual - 1) * itensPorPagina
+  const indiceFim = indiceInicio + itensPorPagina
+  const clientesPaginados = clientesFiltrados.slice(indiceInicio, indiceFim)
 
   const carregarPlanos = useCallback(async () => {
     if (!userId) return
@@ -370,6 +383,18 @@ export default function Clientes() {
   const handleSalvarEdicao = async () => {
     if (!nomeEdit.trim() || !telefoneEdit.trim()) {
       showToast('Preencha nome e telefone', 'warning')
+      return
+    }
+
+    // Validar telefone
+    if (!validarTelefone(telefoneEdit)) {
+      showToast('Telefone inválido. Use o formato (XX) XXXXX-XXXX', 'warning')
+      return
+    }
+
+    // Validar CPF se preenchido
+    if (cpfEdit.trim() && !validarCPF(cpfEdit)) {
+      showToast('CPF inválido', 'warning')
       return
     }
 
@@ -745,6 +770,18 @@ export default function Clientes() {
       return
     }
 
+    // Validar telefone
+    if (!validarTelefone(novoClienteTelefone)) {
+      setErroModalNovoCliente('Telefone inválido. Use o formato (XX) XXXXX-XXXX')
+      return
+    }
+
+    // Validar CPF se preenchido
+    if (novoClienteCpf.trim() && !validarCPF(novoClienteCpf)) {
+      setErroModalNovoCliente('CPF inválido')
+      return
+    }
+
     if (criarAssinatura && (!dataInicioAssinatura || !planoSelecionado)) {
       setErroModalNovoCliente('Preencha a data de início e selecione um plano')
       return
@@ -884,8 +921,12 @@ export default function Clientes() {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <p>Carregando clientes...</p>
+      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        {isSmallScreen ? (
+          <SkeletonList count={8} />
+        ) : (
+          <SkeletonTable rows={10} columns={5} />
+        )}
       </div>
     )
   }
@@ -1360,7 +1401,7 @@ export default function Clientes() {
         ) : isSmallScreen ? (
           /* Cards para Mobile */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {clientesFiltrados.map((cliente) => (
+            {clientesPaginados.map((cliente) => (
               <div
                 key={cliente.id}
                 onClick={() => handleClienteClick(cliente)}
@@ -1462,7 +1503,7 @@ export default function Clientes() {
                 </tr>
               </thead>
               <tbody>
-                {clientesFiltrados.map((cliente) => (
+                {clientesPaginados.map((cliente) => (
                   <tr
                     key={cliente.id}
                     onClick={() => handleClienteClick(cliente)}
@@ -1577,6 +1618,98 @@ export default function Clientes() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Paginação */}
+        {totalPaginas > 1 && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px',
+            marginTop: '24px',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+              disabled={paginaAtual === 1}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                backgroundColor: paginaAtual === 1 ? '#f5f5f5' : 'white',
+                cursor: paginaAtual === 1 ? 'not-allowed' : 'pointer',
+                color: paginaAtual === 1 ? '#999' : '#344848',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Icon icon="mdi:chevron-left" width="20" height="20" />
+              {!isMobile && 'Anterior'}
+            </button>
+
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                let pagina
+                if (totalPaginas <= 5) {
+                  pagina = i + 1
+                } else if (paginaAtual <= 3) {
+                  pagina = i + 1
+                } else if (paginaAtual >= totalPaginas - 2) {
+                  pagina = totalPaginas - 4 + i
+                } else {
+                  pagina = paginaAtual - 2 + i
+                }
+                return (
+                  <button
+                    key={pagina}
+                    onClick={() => setPaginaAtual(pagina)}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      border: paginaAtual === pagina ? 'none' : '1px solid #e0e0e0',
+                      borderRadius: '6px',
+                      backgroundColor: paginaAtual === pagina ? '#344848' : 'white',
+                      color: paginaAtual === pagina ? 'white' : '#344848',
+                      cursor: 'pointer',
+                      fontWeight: paginaAtual === pagina ? '600' : '400',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {pagina}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+              disabled={paginaAtual === totalPaginas}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                backgroundColor: paginaAtual === totalPaginas ? '#f5f5f5' : 'white',
+                cursor: paginaAtual === totalPaginas ? 'not-allowed' : 'pointer',
+                color: paginaAtual === totalPaginas ? '#999' : '#344848',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {!isMobile && 'Próxima'}
+              <Icon icon="mdi:chevron-right" width="20" height="20" />
+            </button>
+
+            <span style={{
+              marginLeft: '16px',
+              fontSize: '14px',
+              color: '#666'
+            }}>
+              {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
+            </span>
           </div>
         )}
       </div>

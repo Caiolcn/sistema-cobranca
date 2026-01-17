@@ -9,6 +9,7 @@ import { useUserPlan } from './hooks/useUserPlan';
 import { useUser } from './contexts/UserContext';
 import FeatureLocked from './FeatureLocked';
 import ConfirmModal from './ConfirmModal';
+import { SkeletonDashboard } from './components/Skeleton';
 import './Home.css';
 
 function Home() {
@@ -422,9 +423,8 @@ function Home() {
 
   if (loading || loadingPlan || loadingUser) {
     return (
-      <div className="home-loading">
-        <Icon icon="line-md:loading-twotone-loop" width="48" />
-        <p>Carregando dashboard...</p>
+      <div className="home-container" style={{ padding: '24px' }}>
+        <SkeletonDashboard />
       </div>
     );
   }
