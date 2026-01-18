@@ -12,6 +12,58 @@ import {
 import { validarCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 
+// Templates padrão para criação automática
+const TEMPLATES_PADRAO = {
+  pre_due_3days: `*⚠️ Lembrete Importante*
+
+Olá, *{{nomeCliente}}*! 👋
+
+Sua mensalidade vence em breve:
+
+💰 *Valor:* {{valorMensalidade}}
+📆 *Vencimento:* {{dataVencimento}}
+⏰ *Faltam apenas 3 dias!*
+
+💳 *Meu PIX:* {{chavePix}}
+
+Evite juros e multas, pague em dia! 💪
+
+_{{nomeEmpresa}}_`,
+
+  due_day: `*📅 Vencimento Hoje*
+
+Olá, *{{nomeCliente}}*! 👋
+
+Sua mensalidade vence hoje:
+
+💰 *Valor:* {{valorMensalidade}}
+📆 *Vencimento:* {{dataVencimento}} (HOJE)
+
+💳 *Meu PIX:* {{chavePix}}
+
+Pague em dia e evite juros! 😊
+
+_{{nomeEmpresa}}_`,
+
+  overdue: `*🚨 Aviso de Cobrança*
+
+Olá, *{{nomeCliente}}*! 👋
+
+Identificamos uma pendência em seu nome:
+
+💰 *Valor:* {{valorMensalidade}}
+📅 *Vencimento:* {{dataVencimento}}
+⏰ *Dias em atraso:* {{diasAtraso}}
+
+💳 *Meu PIX:* {{chavePix}}
+
+Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
+
+Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
+
+_{{nomeEmpresa}}_`
+}
+
 function Configuracao() {
   const [searchParams] = useSearchParams()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -234,6 +286,62 @@ function Configuracao() {
     }
   }
 
+  // Função para criar template padrão se não existir
+  const criarTemplatePadraoSeNaoExiste = async (tipo) => {
+    try {
+      // Verificar se já existe template deste tipo
+      const { data: existente } = await supabase
+        .from('templates')
+        .select('id, ativo, mensagem')
+        .eq('user_id', user.id)
+        .eq('tipo', tipo)
+        .maybeSingle()
+
+      const titulos = {
+        pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
+        due_day: 'Lembrete - Vencimento Hoje',
+        overdue: 'Cobrança - 3 Dias Após o Vencimento'
+      }
+
+      // Se já existe, atualizar se necessário
+      if (existente) {
+        if (existente.ativo && existente.mensagem && existente.mensagem.trim() !== '') {
+          return true
+        }
+        // Atualizar template existente
+        await supabase
+          .from('templates')
+          .update({
+            ativo: true,
+            mensagem: existente.mensagem && existente.mensagem.trim() !== ''
+              ? existente.mensagem
+              : TEMPLATES_PADRAO[tipo],
+            titulo: titulos[tipo],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existente.id)
+        return true
+      }
+
+      // Criar novo template
+      await supabase
+        .from('templates')
+        .insert({
+          user_id: user.id,
+          titulo: titulos[tipo],
+          mensagem: TEMPLATES_PADRAO[tipo],
+          tipo: tipo,
+          ativo: true,
+          is_padrao: true
+        })
+
+      return true
+    } catch (error) {
+      console.error('Erro ao criar template padrão:', error)
+      return false
+    }
+  }
+
   const salvarConfigCobranca = async () => {
     try {
       const { error } = await supabase
@@ -248,6 +356,18 @@ function Configuracao() {
         }, { onConflict: 'user_id' })
 
       if (error) throw error
+
+      // Criar templates padrão para cada automação ativada
+      if (configCobranca.enviar3DiasAntes) {
+        await criarTemplatePadraoSeNaoExiste('pre_due_3days')
+      }
+      if (configCobranca.enviarNoDia) {
+        await criarTemplatePadraoSeNaoExiste('due_day')
+      }
+      if (configCobranca.enviar3DiasDepois) {
+        await criarTemplatePadraoSeNaoExiste('overdue')
+      }
+
       showToast('Configurações salvas!', 'success')
     } catch (error) {
       console.error('Erro ao salvar:', error)

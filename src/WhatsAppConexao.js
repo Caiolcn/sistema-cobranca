@@ -27,24 +27,6 @@ export const getWhatsAppStatus = () => globalStatus
 
 // Templates padrão bonitos com emojis
 const TEMPLATES_PADRAO = {
-  overdue: `*🚨 Aviso de Cobrança*
-
-Olá, *{{nomeCliente}}*! 👋
-
-Identificamos uma pendência em seu nome:
-
-💰 *Valor:* {{valorMensalidade}}
-📅 *Vencimento:* {{dataVencimento}}
-⏰ *Dias em atraso:* {{diasAtraso}}
-
-💳 *Meu PIX:* {{chavePix}}
-
-Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
-
-Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
-
-_{{nomeEmpresa}}_`,
-
   pre_due_3days: `*⚠️ Lembrete Importante*
 
 Olá, *{{nomeCliente}}*! 👋
@@ -61,19 +43,36 @@ Evite juros e multas, pague em dia! 💪
 
 _{{nomeEmpresa}}_`,
 
-  pre_due_5days: `*📅 Lembrete de Pagamento*
+  due_day: `*📅 Vencimento Hoje*
 
 Olá, *{{nomeCliente}}*! 👋
 
-Este é um lembrete amigável sobre sua próxima mensalidade:
+Sua mensalidade vence hoje:
 
 💰 *Valor:* {{valorMensalidade}}
-📆 *Vencimento:* {{dataVencimento}}
-⏰ *Faltam 5 dias*
+📆 *Vencimento:* {{dataVencimento}} (HOJE)
 
 💳 *Meu PIX:* {{chavePix}}
 
-Pague em dia e evite transtornos! 😊
+Pague em dia e evite juros! 😊
+
+_{{nomeEmpresa}}_`,
+
+  overdue: `*🚨 Aviso de Cobrança*
+
+Olá, *{{nomeCliente}}*! 👋
+
+Identificamos uma pendência em seu nome:
+
+💰 *Valor:* {{valorMensalidade}}
+📅 *Vencimento:* {{dataVencimento}}
+⏰ *Dias em atraso:* {{diasAtraso}}
+
+💳 *Meu PIX:* {{chavePix}}
+
+Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
+
+Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
 
 _{{nomeEmpresa}}_`
 }
@@ -105,17 +104,17 @@ export default function WhatsAppConexao() {
   })
   const [tipoTemplateSelecionado, setTipoTemplateSelecionado] = useState('overdue')
   const [templatesAgrupados, setTemplatesAgrupados] = useState({
-    overdue: null,
     pre_due_3days: null,
-    pre_due_5days: null
+    due_day: null,
+    overdue: null
   })
   const [tituloTemplate, setTituloTemplate] = useState('Mensagem de Cobrança - Em Atraso')
   const [mensagemTemplate, setMensagemTemplate] = useState(MENSAGEM_PADRAO)
 
-  // Estados para automação
+  // Estados para automação (novo fluxo: 3 dias antes, no dia, 3 dias depois)
   const [automacao3DiasAtiva, setAutomacao3DiasAtiva] = useState(false)
-  const [automacao5DiasAtiva, setAutomacao5DiasAtiva] = useState(false)
-  const [automacaoEmAtrasoAtiva, setAutomacaoEmAtrasoAtiva] = useState(true) // Ativo por padrão
+  const [automacaoNoDiaAtiva, setAutomacaoNoDiaAtiva] = useState(true) // Ativo por padrão
+  const [automacao3DiasDepoisAtiva, setAutomacao3DiasDepoisAtiva] = useState(false)
 
   // Estado para modal de feedback
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
@@ -163,8 +162,8 @@ export default function WhatsAppConexao() {
             .select('chave, valor')
             .in('chave', [
               `${user.id}_automacao_3dias_ativa`,
-              `${user.id}_automacao_5dias_ativa`,
-              `${user.id}_automacao_ematraso_ativa`
+              `${user.id}_automacao_nodia_ativa`,
+              `${user.id}_automacao_3diasdepois_ativa`
             ])
         ])
 
@@ -179,15 +178,37 @@ export default function WhatsAppConexao() {
 
         // 4. Processar Templates
         const templates = templatesResult.data || []
-        const agrupados = {
-          overdue: templates.find(t => t.tipo === 'overdue') || null,
+        let agrupados = {
           pre_due_3days: templates.find(t => t.tipo === 'pre_due_3days') || null,
-          pre_due_5days: templates.find(t => t.tipo === 'pre_due_5days') || null
+          due_day: templates.find(t => t.tipo === 'due_day') || null,
+          overdue: templates.find(t => t.tipo === 'overdue') || null
         }
+
+        // 4.1 Criar template "No Dia" (due_day) se não existir - é o único ativo por padrão
+        if (!agrupados.due_day) {
+          const { data: novoTemplate, error: erroInsert } = await supabase
+            .from('templates')
+            .insert({
+              user_id: user.id,
+              titulo: 'Lembrete - Vencimento Hoje',
+              mensagem: TEMPLATES_PADRAO.due_day,
+              tipo: 'due_day',
+              ativo: true,
+              is_padrao: true
+            })
+            .select()
+            .single()
+
+          if (!erroInsert && novoTemplate) {
+            agrupados.due_day = novoTemplate
+            console.log('✅ Template "No Dia" criado automaticamente')
+          }
+        }
+
         setTemplatesAgrupados(agrupados)
 
         // Carregar template atual
-        const templateAtual = agrupados['overdue'] // Default é overdue
+        const templateAtual = agrupados['overdue'] // Default é overdue (3 dias depois)
         if (templateAtual) {
           setTituloTemplate(templateAtual.titulo)
           setMensagemTemplate(templateAtual.mensagem)
@@ -196,7 +217,7 @@ export default function WhatsAppConexao() {
           setMensagemTemplate(getMensagemDefault('overdue'))
         }
 
-        // 5. Processar Automações
+        // 5. Processar Automações (novo fluxo: 3 dias antes, no dia, 3 dias depois)
         const automacoesMap = {}
         automacoesResult.data?.forEach(item => {
           const chaveSimples = item.chave.replace(`${user.id}_`, '')
@@ -204,8 +225,9 @@ export default function WhatsAppConexao() {
         })
 
         setAutomacao3DiasAtiva(automacoesMap['automacao_3dias_ativa'] === 'true')
-        setAutomacao5DiasAtiva(automacoesMap['automacao_5dias_ativa'] === 'true')
-        setAutomacaoEmAtrasoAtiva(automacoesMap['automacao_ematraso_ativa'] !== 'false')
+        // No Dia vem ativo por padrão se não houver configuração
+        setAutomacaoNoDiaAtiva(automacoesMap['automacao_nodia_ativa'] !== 'false')
+        setAutomacao3DiasDepoisAtiva(automacoesMap['automacao_3diasdepois_ativa'] === 'true')
 
         // 6. Verificar status WhatsApp (pode ser em paralelo com os outros)
         if (apiKey && instanceName) {
@@ -263,8 +285,8 @@ export default function WhatsAppConexao() {
         .select()
 
       if (errorInstanceName) {
-        console.error('❌ Erro ao salvar instance name:', errorInstanceName)
-        return
+        console.warn('⚠️ Erro ao salvar instance name (não crítico):', errorInstanceName)
+        // Continua execução - não é fatal
       }
 
       console.log('✅ Instance name salvo:', dataInstanceName)
@@ -313,6 +335,7 @@ export default function WhatsAppConexao() {
 
       if (usuarioError) {
         console.error('❌ Erro ao buscar dados do usuário:', usuarioError)
+        return
       }
 
       // Buscar número do WhatsApp conectado (tentativa via Evolution API)
@@ -347,8 +370,7 @@ export default function WhatsAppConexao() {
           ultima_conexao: agora,
           updated_at: agora
         }, {
-          onConflict: 'user_id',
-          ignoreDuplicates: false
+          onConflict: 'user_id'
         })
         .select()
 
@@ -397,9 +419,9 @@ export default function WhatsAppConexao() {
       })
 
       setAutomacao3DiasAtiva(configMap['automacao_3dias_ativa'] === 'true')
-      setAutomacao5DiasAtiva(configMap['automacao_5dias_ativa'] === 'true')
-      // Em Atraso vem ativo por padrão se não houver configuração
-      setAutomacaoEmAtrasoAtiva(configMap['automacao_ematraso_ativa'] !== 'false')
+      // No Dia vem ativo por padrão se não houver configuração
+      setAutomacaoNoDiaAtiva(configMap['automacao_nodia_ativa'] !== 'false')
+      setAutomacao3DiasDepoisAtiva(configMap['automacao_3diasdepois_ativa'] === 'true')
     } catch (error) {
       console.error('Erro ao carregar configurações de automação:', error)
     }
@@ -480,19 +502,18 @@ export default function WhatsAppConexao() {
     }
   }
 
-  // Função para criar template padrão automaticamente ao ativar toggle
+  // Função para criar ou atualizar template padrão automaticamente ao ativar toggle
   const criarTemplatePadraoSeNaoExiste = async (tipo) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return false
 
-      // Verificar se já existe template deste tipo
+      // Verificar se já existe template deste tipo (ativo ou inativo)
       const { data: existente, error: erroBusca } = await supabase
         .from('templates')
-        .select('id')
+        .select('id, ativo, mensagem')
         .eq('user_id', user.id)
         .eq('tipo', tipo)
-        .eq('ativo', true)
         .maybeSingle()
 
       if (erroBusca) {
@@ -500,19 +521,45 @@ export default function WhatsAppConexao() {
         return false
       }
 
-      // Se já existe, não precisa criar
+      // Criar template padrão
+      const titulos = {
+        pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
+        due_day: 'Lembrete - Vencimento Hoje',
+        overdue: 'Cobrança - 3 Dias Após o Vencimento'
+      }
+
+      // Se já existe, verificar se precisa atualizar
       if (existente) {
-        console.log(`Template ${tipo} já existe`)
+        // Se já está ativo e tem mensagem, não precisa fazer nada
+        if (existente.ativo && existente.mensagem && existente.mensagem.trim() !== '') {
+          console.log(`Template ${tipo} já existe e está ativo`)
+          return true
+        }
+
+        // Atualizar template existente (ativar e/ou preencher mensagem)
+        const { error: erroUpdate } = await supabase
+          .from('templates')
+          .update({
+            ativo: true,
+            mensagem: existente.mensagem && existente.mensagem.trim() !== ''
+              ? existente.mensagem
+              : TEMPLATES_PADRAO[tipo],
+            titulo: titulos[tipo],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existente.id)
+
+        if (erroUpdate) {
+          console.error('Erro ao atualizar template:', erroUpdate)
+          return false
+        }
+
+        console.log(`✅ Template ${tipo} atualizado com sucesso!`)
+        await carregarTemplates()
         return true
       }
 
-      // Criar template padrão
-      const titulos = {
-        overdue: 'Mensagem de Cobrança - Em Atraso',
-        pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
-        pre_due_5days: 'Lembrete - 5 Dias Antes do Vencimento'
-      }
-
+      // Criar novo template
       const { error: erroInsert } = await supabase
         .from('templates')
         .insert({
@@ -573,13 +620,13 @@ export default function WhatsAppConexao() {
     }
   }
 
-  // Toggle automação 5 dias
-  const toggleAutomacao5Dias = async () => {
-    const novoValor = !automacao5DiasAtiva
+  // Toggle automação no dia
+  const toggleAutomacaoNoDia = async () => {
+    const novoValor = !automacaoNoDiaAtiva
 
     // Se está ativando, criar template padrão se não existir
     if (novoValor) {
-      const templateCriado = await criarTemplatePadraoSeNaoExiste('pre_due_5days')
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('due_day')
       if (!templateCriado) {
         setFeedbackModal({
           isOpen: true,
@@ -591,23 +638,23 @@ export default function WhatsAppConexao() {
       }
     }
 
-    const sucesso = await salvarConfiguracaoAutomacao('automacao_5dias_ativa', novoValor)
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_nodia_ativa', novoValor)
     if (sucesso) {
-      setAutomacao5DiasAtiva(novoValor)
+      setAutomacaoNoDiaAtiva(novoValor)
       if (novoValor) {
         setFeedbackModal({
           isOpen: true,
           type: 'success',
           title: 'Automação Ativada',
-          message: 'Lembretes de 5 dias antes serão enviados automaticamente! O template padrão foi configurado.'
+          message: 'Lembretes no dia do vencimento serão enviados automaticamente! O template padrão foi configurado.'
         })
       }
     }
   }
 
-  // Toggle automação em atraso
-  const toggleAutomacaoEmAtraso = async () => {
-    const novoValor = !automacaoEmAtrasoAtiva
+  // Toggle automação 3 dias depois
+  const toggleAutomacao3DiasDepois = async () => {
+    const novoValor = !automacao3DiasDepoisAtiva
 
     // Se está ativando, criar template padrão se não existir
     if (novoValor) {
@@ -623,15 +670,15 @@ export default function WhatsAppConexao() {
       }
     }
 
-    const sucesso = await salvarConfiguracaoAutomacao('automacao_ematraso_ativa', novoValor)
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_3diasdepois_ativa', novoValor)
     if (sucesso) {
-      setAutomacaoEmAtrasoAtiva(novoValor)
+      setAutomacao3DiasDepoisAtiva(novoValor)
       if (novoValor) {
         setFeedbackModal({
           isOpen: true,
           type: 'success',
           title: 'Automação Ativada',
-          message: 'Cobranças de mensalidades em atraso serão enviadas automaticamente! O template padrão foi configurado.'
+          message: 'Cobranças de 3 dias após o vencimento serão enviadas automaticamente! O template padrão foi configurado.'
         })
       }
     }
@@ -751,7 +798,7 @@ export default function WhatsAppConexao() {
             setQrCode(null)
 
             // Salvar conexão no banco de dados
-            salvarConexaoNoBanco()
+            await salvarConexaoNoBanco()
           }
         }
       } catch (error) {
@@ -854,9 +901,9 @@ export default function WhatsAppConexao() {
 
   const getTituloDefault = (tipo) => {
     const titulos = {
-      overdue: 'Mensagem de Cobrança - Em Atraso',
       pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
-      pre_due_5days: 'Lembrete - 5 Dias Antes do Vencimento'
+      due_day: 'Lembrete - Vencimento Hoje',
+      overdue: 'Cobrança - 3 Dias Após o Vencimento'
     }
     return titulos[tipo] || ''
   }
@@ -929,9 +976,9 @@ export default function WhatsAppConexao() {
 
       // Group templates by type
       const agrupados = {
-        overdue: templates?.find(t => t.tipo === 'overdue') || null,
         pre_due_3days: templates?.find(t => t.tipo === 'pre_due_3days') || null,
-        pre_due_5days: templates?.find(t => t.tipo === 'pre_due_5days') || null
+        due_day: templates?.find(t => t.tipo === 'due_day') || null,
+        overdue: templates?.find(t => t.tipo === 'overdue') || null
       }
 
       setTemplatesAgrupados(agrupados)
@@ -1452,7 +1499,7 @@ export default function WhatsAppConexao() {
                   )}
                 </div>
 
-                {/* Toggle 5 Dias */}
+                {/* Toggle No Dia */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1465,19 +1512,19 @@ export default function WhatsAppConexao() {
                   position: 'relative'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:calendar-alert" width="20" style={{ color: '#ff9800' }} />
+                    <Icon icon="mdi:calendar-today" width="20" style={{ color: '#ff9800' }} />
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        5 Dias Antes
+                        No Dia
                       </div>
                       <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar lembretes 5 dias antes do vencimento
+                        Enviar lembrete no dia do vencimento
                       </div>
                     </div>
                   </div>
                   {automacaoLocked ? (
                     <button
-                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação 5 Dias Antes' })}
+                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação No Dia' })}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1497,12 +1544,12 @@ export default function WhatsAppConexao() {
                     </button>
                   ) : (
                     <button
-                      onClick={toggleAutomacao5Dias}
+                      onClick={toggleAutomacaoNoDia}
                       style={{
                         position: 'relative',
                         width: '50px',
                         height: '26px',
-                        backgroundColor: automacao5DiasAtiva ? '#4CAF50' : '#ccc',
+                        backgroundColor: automacaoNoDiaAtiva ? '#4CAF50' : '#ccc',
                         borderRadius: '13px',
                         border: 'none',
                         cursor: 'pointer',
@@ -1513,7 +1560,7 @@ export default function WhatsAppConexao() {
                       <div style={{
                         position: 'absolute',
                         top: '3px',
-                        left: automacao5DiasAtiva ? '26px' : '3px',
+                        left: automacaoNoDiaAtiva ? '26px' : '3px',
                         width: '20px',
                         height: '20px',
                         backgroundColor: 'white',
@@ -1525,7 +1572,7 @@ export default function WhatsAppConexao() {
                   )}
                 </div>
 
-                {/* Toggle Em Atraso */}
+                {/* Toggle 3 Dias Depois */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1540,20 +1587,20 @@ export default function WhatsAppConexao() {
                     <Icon icon="mdi:alert-circle" width="20" style={{ color: '#f44336' }} />
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        Em Atraso
+                        3 Dias Depois
                       </div>
                       <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar cobranças para mensalidades vencidas
+                        Enviar cobrança 3 dias após o vencimento
                       </div>
                     </div>
                   </div>
                   <button
-                    onClick={toggleAutomacaoEmAtraso}
+                    onClick={toggleAutomacao3DiasDepois}
                     style={{
                       position: 'relative',
                       width: '50px',
                       height: '26px',
-                      backgroundColor: automacaoEmAtrasoAtiva ? '#4CAF50' : '#ccc',
+                      backgroundColor: automacao3DiasDepoisAtiva ? '#4CAF50' : '#ccc',
                       borderRadius: '13px',
                       border: 'none',
                       cursor: 'pointer',
@@ -1564,7 +1611,7 @@ export default function WhatsAppConexao() {
                     <div style={{
                       position: 'absolute',
                       top: '3px',
-                      left: automacaoEmAtrasoAtiva ? '26px' : '3px',
+                      left: automacao3DiasDepoisAtiva ? '26px' : '3px',
                       width: '20px',
                       height: '20px',
                       backgroundColor: 'white',
@@ -1637,31 +1684,31 @@ export default function WhatsAppConexao() {
                   </button>
 
                   <button
-                    disabled={!automacao5DiasAtiva || automacaoLocked}
+                    disabled={!automacaoNoDiaAtiva || automacaoLocked}
                     onClick={() => {
                       if (automacaoLocked) {
-                        setUpgradeModal({ isOpen: true, featureName: 'Template 5 Dias Antes' })
+                        setUpgradeModal({ isOpen: true, featureName: 'Template No Dia' })
                         return
                       }
-                      if (!automacao5DiasAtiva) return
-                      setTipoTemplateSelecionado('pre_due_5days')
-                      const template = templatesAgrupados.pre_due_5days
+                      if (!automacaoNoDiaAtiva) return
+                      setTipoTemplateSelecionado('due_day')
+                      const template = templatesAgrupados.due_day
                       if (template) {
                         setTituloTemplate(template.titulo)
                         setMensagemTemplate(template.mensagem)
                       } else {
-                        setTituloTemplate(getTituloDefault('pre_due_5days'))
-                        setMensagemTemplate(getMensagemDefault('pre_due_5days'))
+                        setTituloTemplate(getTituloDefault('due_day'))
+                        setMensagemTemplate(getMensagemDefault('due_day'))
                       }
                     }}
                     style={{
                       flex: 1,
                       padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'pre_due_5days' && !automacaoLocked ? '#ff9800' : 'white',
-                      color: tipoTemplateSelecionado === 'pre_due_5days' && !automacaoLocked ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'pre_due_5days' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
+                      backgroundColor: tipoTemplateSelecionado === 'due_day' && !automacaoLocked ? '#ff9800' : 'white',
+                      color: tipoTemplateSelecionado === 'due_day' && !automacaoLocked ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'due_day' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: automacaoLocked ? 'pointer' : (automacao5DiasAtiva ? 'pointer' : 'not-allowed'),
+                      cursor: automacaoLocked ? 'pointer' : (automacaoNoDiaAtiva ? 'pointer' : 'not-allowed'),
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
@@ -1669,25 +1716,25 @@ export default function WhatsAppConexao() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
-                      opacity: automacaoLocked ? 0.6 : (automacao5DiasAtiva ? 1 : 0.5),
+                      opacity: automacaoLocked ? 0.6 : (automacaoNoDiaAtiva ? 1 : 0.5),
                       position: 'relative'
                     }}
-                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacao5DiasAtiva ? 'Ative a automação de 5 dias para editar este template' : '')}
+                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacaoNoDiaAtiva ? 'Ative a automação No Dia para editar este template' : '')}
                   >
                     {automacaoLocked && (
                       <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
                     )}
-                    <Icon icon="mdi:calendar-alert" width="20" />
-                    <span>5 Dias Antes</span>
-                    {templatesAgrupados.pre_due_5days && automacao5DiasAtiva && !automacaoLocked && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_5days' ? 'white' : '#4CAF50' }} />
+                    <Icon icon="mdi:calendar-today" width="20" />
+                    <span>No Dia</span>
+                    {templatesAgrupados.due_day && automacaoNoDiaAtiva && !automacaoLocked && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'due_day' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
 
                   <button
-                    disabled={!automacaoEmAtrasoAtiva}
+                    disabled={!automacao3DiasDepoisAtiva}
                     onClick={() => {
-                      if (!automacaoEmAtrasoAtiva) return
+                      if (!automacao3DiasDepoisAtiva) return
                       setTipoTemplateSelecionado('overdue')
                       const template = templatesAgrupados.overdue
                       if (template) {
@@ -1705,7 +1752,7 @@ export default function WhatsAppConexao() {
                       color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#666',
                       border: tipoTemplateSelecionado === 'overdue' ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: automacaoEmAtrasoAtiva ? 'pointer' : 'not-allowed',
+                      cursor: automacao3DiasDepoisAtiva ? 'pointer' : 'not-allowed',
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
@@ -1713,14 +1760,14 @@ export default function WhatsAppConexao() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
-                      opacity: automacaoEmAtrasoAtiva ? 1 : 0.5,
+                      opacity: automacao3DiasDepoisAtiva ? 1 : 0.5,
                       position: 'relative'
                     }}
-                    title={!automacaoEmAtrasoAtiva ? 'Ative a automação de Em Atraso para editar este template' : ''}
+                    title={!automacao3DiasDepoisAtiva ? 'Ative a automação 3 Dias Depois para editar este template' : ''}
                   >
                     <Icon icon="mdi:alert-circle" width="20" />
-                    <span>Em Atraso</span>
-                    {templatesAgrupados.overdue && automacaoEmAtrasoAtiva && (
+                    <span>3 Dias Depois</span>
+                    {templatesAgrupados.overdue && automacao3DiasDepoisAtiva && (
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
