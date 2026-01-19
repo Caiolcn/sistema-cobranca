@@ -1,5 +1,5 @@
 {
-  "name": "MensalliZap - Lembretes (3 dias antes + No dia)",
+  "name": "MensalliZap - Cobranças Automatizadas (3 em 1)",
   "nodes": [
     {
       "parameters": {
@@ -13,10 +13,10 @@
         }
       },
       "id": "schedule-trigger",
-      "name": "Schedule (9h)",
+      "name": "Disparo Diário (9h)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 300]
+      "position": [250, 400]
     },
     {
       "parameters": {
@@ -38,10 +38,10 @@
         "options": {}
       },
       "id": "buscar-3dias",
-      "name": "Buscar 3 Dias Antes",
+      "name": "1. Buscar 3 Dias Antes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [450, 200]
+      "position": [500, 200]
     },
     {
       "parameters": {
@@ -63,30 +63,65 @@
         "options": {}
       },
       "id": "buscar-no-dia",
-      "name": "Buscar No Dia",
+      "name": "2. Buscar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [450, 400]
+      "position": [500, 400]
     },
     {
       "parameters": {
-        "jsCode": "// Processar parcelas com vencimento em 3 dias - USA APENAS TEMPLATE DO BANCO\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // OBRIGATÓRIO: Só envia se tiver template configurado no banco\n  if (!data.template_mensagem || data.template_mensagem.trim() === '') {\n    console.log(`Pulando ${data.nome_cliente}: sem template de 3 dias configurado`);\n    continue;\n  }\n\n  let mensagem = data.template_mensagem;\n\n  // Substituir variáveis no template\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasRestantes}}': data.dias_restantes || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  // Formatar telefone\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) {\n    telefone = '55' + telefone;\n  }\n\n  results.push({\n    json: {\n      ...data,\n      mensagem: mensagem,\n      telefone: telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: '3dias_antes',\n      flag_campo: 'enviado_3dias'\n    }\n  });\n}\n\nreturn results;"
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_em_atraso",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-atraso",
+      "name": "3. Buscar 3 Dias Depois",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// FLUXO 1: Parcelas com vencimento em 3 dias - Template pre_due_3days\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  if (!data.template_mensagem || data.template_mensagem.trim() === '') {\n    console.log(`Pulando ${data.nome_cliente}: sem template pre_due_3days`);\n    continue;\n  }\n\n  let mensagem = data.template_mensagem;\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasRestantes}}': data.dias_restantes || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: '3dias_antes',\n      flag_campo: 'enviado_3dias'\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "criar-msg-3dias",
       "name": "Criar Msg 3 Dias",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [650, 200]
+      "position": [750, 200]
     },
     {
       "parameters": {
-        "jsCode": "// Processar parcelas com vencimento HOJE - USA APENAS TEMPLATE DO BANCO\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // OBRIGATÓRIO: Só envia se tiver template configurado no banco\n  if (!data.template_mensagem || data.template_mensagem.trim() === '') {\n    console.log(`Pulando ${data.nome_cliente}: sem template do dia configurado`);\n    continue;\n  }\n\n  let mensagem = data.template_mensagem;\n\n  // Substituir variáveis no template\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  // Formatar telefone\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) {\n    telefone = '55' + telefone;\n  }\n\n  results.push({\n    json: {\n      ...data,\n      mensagem: mensagem,\n      telefone: telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'no_dia',\n      flag_campo: 'enviado_no_dia'\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "// FLUXO 2: Parcelas com vencimento HOJE - Template due_day\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  if (!data.template_mensagem || data.template_mensagem.trim() === '') {\n    console.log(`Pulando ${data.nome_cliente}: sem template due_day`);\n    continue;\n  }\n\n  let mensagem = data.template_mensagem;\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'no_dia',\n      flag_campo: 'enviado_no_dia'\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "criar-msg-no-dia",
       "name": "Criar Msg No Dia",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [650, 400]
+      "position": [750, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// FLUXO 3: Parcelas vencidas há 3 dias - Template overdue\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  if (!data.template_mensagem || data.template_mensagem.trim() === '') {\n    console.log(`Pulando ${data.nome_cliente}: sem template overdue`);\n    continue;\n  }\n\n  let mensagem = data.template_mensagem;\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasAtraso}}': data.dias_atraso || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'atraso',\n      flag_campo: 'enviado_vencimento'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "criar-msg-atraso",
+      "name": "Criar Msg Atraso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 600]
     },
     {
       "parameters": {
@@ -114,10 +149,10 @@
         }
       },
       "id": "enviar-whatsapp-3dias",
-      "name": "Enviar WhatsApp 3d",
+      "name": "Enviar 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [850, 200]
+      "position": [1000, 200]
     },
     {
       "parameters": {
@@ -145,10 +180,41 @@
         }
       },
       "id": "enviar-whatsapp-no-dia",
-      "name": "Enviar WhatsApp Hoje",
+      "name": "Enviar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [850, 400]
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "includeInputFields": true
+        }
+      },
+      "id": "enviar-whatsapp-atraso",
+      "name": "Enviar Atraso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 600]
     },
     {
       "parameters": {
@@ -184,7 +250,7 @@
       "name": "Marcar 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 200]
+      "position": [1250, 200]
     },
     {
       "parameters": {
@@ -220,7 +286,43 @@
       "name": "Marcar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 400]
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Msg Atraso').item.json.parcela_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"enviado_vencimento\": true,\n  \"total_envios\": {{ ($('Criar Msg Atraso').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "marcar-atraso",
+      "name": "Marcar Atraso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 600]
     },
     {
       "parameters": {
@@ -249,14 +351,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg 3 Dias').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg 3 Dias').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg 3 Dias').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg 3 Dias').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg 3 Dias').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg 3 Dias').item.json.valor_em_aberto }},\n  \"status\": \"enviado\",\n  \"tipo\": \"lembrete_3dias\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg 3 Dias').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg 3 Dias').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg 3 Dias').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg 3 Dias').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg 3 Dias').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg 3 Dias').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
       "id": "log-3dias",
       "name": "Log 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 200]
+      "position": [1500, 200]
     },
     {
       "parameters": {
@@ -285,14 +387,50 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg No Dia').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg No Dia').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg No Dia').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg No Dia').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg No Dia').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg No Dia').item.json.valor_em_aberto }},\n  \"status\": \"enviado\",\n  \"tipo\": \"vencimento_hoje\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg No Dia').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg No Dia').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg No Dia').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg No Dia').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg No Dia').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg No Dia').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
       "id": "log-no-dia",
       "name": "Log No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 400]
+      "position": [1500, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg Atraso').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg Atraso').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg Atraso').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg Atraso').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg Atraso').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg Atraso').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "options": {}
+      },
+      "id": "log-atraso",
+      "name": "Log Atraso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 600]
     },
     {
       "parameters": {
@@ -324,7 +462,7 @@
       "name": "Incrementar 3d",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1450, 200]
+      "position": [1750, 200]
     },
     {
       "parameters": {
@@ -353,30 +491,67 @@
         "options": {}
       },
       "id": "incrementar-no-dia",
-      "name": "Incrementar Hoje",
+      "name": "Incrementar Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1450, 400]
+      "position": [1750, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/rpc/incrementar_uso",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Msg Atraso').item.json.user_id }}\"\n}",
+        "options": {}
+      },
+      "id": "incrementar-atraso",
+      "name": "Incrementar Atraso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 600]
     }
   ],
   "connections": {
-    "Schedule (9h)": {
+    "Disparo Diário (9h)": {
       "main": [
         [
           {
-            "node": "Buscar 3 Dias Antes",
+            "node": "1. Buscar 3 Dias Antes",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Buscar No Dia",
+            "node": "2. Buscar No Dia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "3. Buscar 3 Dias Depois",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Buscar 3 Dias Antes": {
+    "1. Buscar 3 Dias Antes": {
       "main": [
         [
           {
@@ -387,7 +562,7 @@
         ]
       ]
     },
-    "Buscar No Dia": {
+    "2. Buscar No Dia": {
       "main": [
         [
           {
@@ -398,11 +573,22 @@
         ]
       ]
     },
+    "3. Buscar 3 Dias Depois": {
+      "main": [
+        [
+          {
+            "node": "Criar Msg Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Criar Msg 3 Dias": {
       "main": [
         [
           {
-            "node": "Enviar WhatsApp 3d",
+            "node": "Enviar 3 Dias",
             "type": "main",
             "index": 0
           }
@@ -413,14 +599,25 @@
       "main": [
         [
           {
-            "node": "Enviar WhatsApp Hoje",
+            "node": "Enviar No Dia",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enviar WhatsApp 3d": {
+    "Criar Msg Atraso": {
+      "main": [
+        [
+          {
+            "node": "Enviar Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar 3 Dias": {
       "main": [
         [
           {
@@ -431,11 +628,22 @@
         ]
       ]
     },
-    "Enviar WhatsApp Hoje": {
+    "Enviar No Dia": {
       "main": [
         [
           {
             "node": "Marcar No Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Atraso": {
+      "main": [
+        [
+          {
+            "node": "Marcar Atraso",
             "type": "main",
             "index": 0
           }
@@ -464,6 +672,17 @@
         ]
       ]
     },
+    "Marcar Atraso": {
+      "main": [
+        [
+          {
+            "node": "Log Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Log 3 Dias": {
       "main": [
         [
@@ -479,7 +698,18 @@
       "main": [
         [
           {
-            "node": "Incrementar Hoje",
+            "node": "Incrementar Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Atraso": {
+      "main": [
+        [
+          {
+            "node": "Incrementar Atraso",
             "type": "main",
             "index": 0
           }
@@ -500,5 +730,5 @@
   ],
   "triggerCount": 1,
   "updatedAt": "2026-01-19T00:00:00.000Z",
-  "versionId": "2"
+  "versionId": "1"
 }
