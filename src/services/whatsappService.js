@@ -238,11 +238,13 @@ class WhatsAppService {
     const usageCount = controle?.usage_count || 0
     const limiteMensal = controle?.limite_mensal || 200
 
-    // 3. Verificar se plano Starter tentando enviar mensagem antecipada
-    if (plano === 'starter' && (tipoMensagem === 'pre_due' || tipoMensagem === 'due_day')) {
+    // 3. Verificar se plano Starter tentando enviar mensagem bloqueada
+    // Starter só pode enviar "No Dia" (due_day)
+    // Pro/Premium pode enviar: 3 dias antes (pre_due), no dia (due_day), 3 dias depois (overdue)
+    if (plano === 'starter' && (tipoMensagem === 'pre_due' || tipoMensagem === 'overdue')) {
       return {
         permitido: false,
-        erro: 'Mensagens antes do vencimento estão disponíveis apenas para planos Pro e Premium'
+        erro: 'Este tipo de mensagem está disponível apenas para planos Pro e Premium. Faça upgrade para desbloquear.'
       }
     }
 

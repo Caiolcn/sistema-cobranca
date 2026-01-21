@@ -27,54 +27,38 @@ export const getWhatsAppStatus = () => globalStatus
 
 // Templates padrão bonitos com emojis
 const TEMPLATES_PADRAO = {
-  pre_due_3days: `*⚠️ Lembrete Importante*
+  pre_due_3days: `Olá, {{nomeCliente}}! 👋
 
-Olá, *{{nomeCliente}}*! 👋
+Passando para te ajudar na organização da semana: sua mensalidade vence em 3 dias. 😃
 
-Sua mensalidade vence em breve:
+💰 Valor: {{valorMensalidade}}
+📆 Vencimento: {{dataVencimento}}
 
-💰 *Valor:* {{valorMensalidade}}
-📆 *Vencimento:* {{dataVencimento}}
-⏰ *Faltam apenas 3 dias!*
+🔑 Chave Pix: {{chavePix}}
 
-💳 *Meu PIX:* {{chavePix}}
+Adiantar o pagamento garante sua tranquilidade e a continuidade dos seus planos sem correria! 💪`,
 
-Evite juros e multas, pague em dia! 💪
+  due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃
 
-_{{nomeEmpresa}}_`,
+Hoje é o dia do vencimento da sua mensalidade.
 
-  due_day: `*📅 Vencimento Hoje*
+💰 Valor: {{valorMensalidade}}
+💳 Pix para pagamento: {{chavePix}}
 
-Olá, *{{nomeCliente}}*! 👋
+Manter seu plano em dia garante que você continue aproveitando todos os nossos benefícios sem interrupções! 🚀
 
-Sua mensalidade vence hoje:
+Qualquer dúvida, estou à disposição.`,
 
-💰 *Valor:* {{valorMensalidade}}
-📆 *Vencimento:* {{dataVencimento}} (HOJE)
+  overdue: `Olá, {{nomeCliente}}, como vai?
 
-💳 *Meu PIX:* {{chavePix}}
+Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
 
-Pague em dia e evite juros! 😊
+Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:
 
-_{{nomeEmpresa}}_`,
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
 
-  overdue: `*🚨 Aviso de Cobrança*
-
-Olá, *{{nomeCliente}}*! 👋
-
-Identificamos uma pendência em seu nome:
-
-💰 *Valor:* {{valorMensalidade}}
-📅 *Vencimento:* {{dataVencimento}}
-⏰ *Dias em atraso:* {{diasAtraso}}
-
-💳 *Meu PIX:* {{chavePix}}
-
-Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
-
-Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
-
-_{{nomeEmpresa}}_`
+Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -1499,7 +1483,7 @@ export default function WhatsAppConexao() {
                   )}
                 </div>
 
-                {/* Toggle No Dia */}
+                {/* Toggle No Dia - LIBERADO para todos os planos (Starter incluso) */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1508,7 +1492,6 @@ export default function WhatsAppConexao() {
                   backgroundColor: 'white',
                   borderRadius: '6px',
                   border: '1px solid #e0e0e0',
-                  opacity: automacaoLocked ? 0.7 : 1,
                   position: 'relative'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1522,9 +1505,61 @@ export default function WhatsAppConexao() {
                       </div>
                     </div>
                   </div>
+                  <button
+                    onClick={toggleAutomacaoNoDia}
+                    style={{
+                      position: 'relative',
+                      width: '50px',
+                      height: '26px',
+                      backgroundColor: automacaoNoDiaAtiva ? '#4CAF50' : '#ccc',
+                      borderRadius: '13px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.3s',
+                      padding: 0
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: automacaoNoDiaAtiva ? '26px' : '3px',
+                      width: '20px',
+                      height: '20px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </button>
+                </div>
+
+                {/* Toggle 3 Dias Depois - BLOQUEADO para Starter */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  marginTop: '8px',
+                  border: '1px solid #e0e0e0',
+                  opacity: automacaoLocked ? 0.7 : 1,
+                  position: 'relative'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:alert-circle" width="20" style={{ color: '#f44336' }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
+                        3 Dias Depois
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999' }}>
+                        Enviar cobrança 3 dias após o vencimento
+                      </div>
+                    </div>
+                  </div>
                   {automacaoLocked ? (
                     <button
-                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação No Dia' })}
+                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação 3 Dias Depois' })}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1544,12 +1579,12 @@ export default function WhatsAppConexao() {
                     </button>
                   ) : (
                     <button
-                      onClick={toggleAutomacaoNoDia}
+                      onClick={toggleAutomacao3DiasDepois}
                       style={{
                         position: 'relative',
                         width: '50px',
                         height: '26px',
-                        backgroundColor: automacaoNoDiaAtiva ? '#4CAF50' : '#ccc',
+                        backgroundColor: automacao3DiasDepoisAtiva ? '#4CAF50' : '#ccc',
                         borderRadius: '13px',
                         border: 'none',
                         cursor: 'pointer',
@@ -1560,7 +1595,7 @@ export default function WhatsAppConexao() {
                       <div style={{
                         position: 'absolute',
                         top: '3px',
-                        left: automacaoNoDiaAtiva ? '26px' : '3px',
+                        left: automacao3DiasDepoisAtiva ? '26px' : '3px',
                         width: '20px',
                         height: '20px',
                         backgroundColor: 'white',
@@ -1570,56 +1605,6 @@ export default function WhatsAppConexao() {
                       }} />
                     </button>
                   )}
-                </div>
-
-                {/* Toggle 3 Dias Depois */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  marginTop: '8px',
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:alert-circle" width="20" style={{ color: '#f44336' }} />
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        3 Dias Depois
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar cobrança 3 dias após o vencimento
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={toggleAutomacao3DiasDepois}
-                    style={{
-                      position: 'relative',
-                      width: '50px',
-                      height: '26px',
-                      backgroundColor: automacao3DiasDepoisAtiva ? '#4CAF50' : '#ccc',
-                      borderRadius: '13px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.3s',
-                      padding: 0
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: automacao3DiasDepoisAtiva ? '26px' : '3px',
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: 'white',
-                      borderRadius: '50%',
-                      transition: 'left 0.3s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </button>
                 </div>
               </div>
 
@@ -1683,13 +1668,10 @@ export default function WhatsAppConexao() {
                     )}
                   </button>
 
+                  {/* Botão No Dia - LIBERADO para todos os planos */}
                   <button
-                    disabled={!automacaoNoDiaAtiva || automacaoLocked}
+                    disabled={!automacaoNoDiaAtiva}
                     onClick={() => {
-                      if (automacaoLocked) {
-                        setUpgradeModal({ isOpen: true, featureName: 'Template No Dia' })
-                        return
-                      }
                       if (!automacaoNoDiaAtiva) return
                       setTipoTemplateSelecionado('due_day')
                       const template = templatesAgrupados.due_day
@@ -1704,11 +1686,11 @@ export default function WhatsAppConexao() {
                     style={{
                       flex: 1,
                       padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'due_day' && !automacaoLocked ? '#ff9800' : 'white',
-                      color: tipoTemplateSelecionado === 'due_day' && !automacaoLocked ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'due_day' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
+                      backgroundColor: tipoTemplateSelecionado === 'due_day' ? '#ff9800' : 'white',
+                      color: tipoTemplateSelecionado === 'due_day' ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'due_day' ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: automacaoLocked ? 'pointer' : (automacaoNoDiaAtiva ? 'pointer' : 'not-allowed'),
+                      cursor: automacaoNoDiaAtiva ? 'pointer' : 'not-allowed',
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
@@ -1716,24 +1698,26 @@ export default function WhatsAppConexao() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
-                      opacity: automacaoLocked ? 0.6 : (automacaoNoDiaAtiva ? 1 : 0.5),
+                      opacity: automacaoNoDiaAtiva ? 1 : 0.5,
                       position: 'relative'
                     }}
-                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacaoNoDiaAtiva ? 'Ative a automação No Dia para editar este template' : '')}
+                    title={!automacaoNoDiaAtiva ? 'Ative a automação No Dia para editar este template' : ''}
                   >
-                    {automacaoLocked && (
-                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
-                    )}
                     <Icon icon="mdi:calendar-today" width="20" />
                     <span>No Dia</span>
-                    {templatesAgrupados.due_day && automacaoNoDiaAtiva && !automacaoLocked && (
+                    {templatesAgrupados.due_day && automacaoNoDiaAtiva && (
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'due_day' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
 
+                  {/* Botão 3 Dias Depois - BLOQUEADO para Starter */}
                   <button
-                    disabled={!automacao3DiasDepoisAtiva}
+                    disabled={!automacao3DiasDepoisAtiva || automacaoLocked}
                     onClick={() => {
+                      if (automacaoLocked) {
+                        setUpgradeModal({ isOpen: true, featureName: 'Template 3 Dias Depois' })
+                        return
+                      }
                       if (!automacao3DiasDepoisAtiva) return
                       setTipoTemplateSelecionado('overdue')
                       const template = templatesAgrupados.overdue
@@ -1748,11 +1732,11 @@ export default function WhatsAppConexao() {
                     style={{
                       flex: 1,
                       padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'overdue' ? '#f44336' : 'white',
-                      color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'overdue' ? 'none' : '2px solid #e0e0e0',
+                      backgroundColor: tipoTemplateSelecionado === 'overdue' && !automacaoLocked ? '#f44336' : 'white',
+                      color: tipoTemplateSelecionado === 'overdue' && !automacaoLocked ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'overdue' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      cursor: automacao3DiasDepoisAtiva ? 'pointer' : 'not-allowed',
+                      cursor: automacaoLocked ? 'pointer' : (automacao3DiasDepoisAtiva ? 'pointer' : 'not-allowed'),
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s',
@@ -1760,14 +1744,17 @@ export default function WhatsAppConexao() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: '4px',
-                      opacity: automacao3DiasDepoisAtiva ? 1 : 0.5,
+                      opacity: automacaoLocked ? 0.6 : (automacao3DiasDepoisAtiva ? 1 : 0.5),
                       position: 'relative'
                     }}
-                    title={!automacao3DiasDepoisAtiva ? 'Ative a automação 3 Dias Depois para editar este template' : ''}
+                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacao3DiasDepoisAtiva ? 'Ative a automação 3 Dias Depois para editar este template' : '')}
                   >
+                    {automacaoLocked && (
+                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
+                    )}
                     <Icon icon="mdi:alert-circle" width="20" />
                     <span>3 Dias Depois</span>
-                    {templatesAgrupados.overdue && automacao3DiasDepoisAtiva && (
+                    {templatesAgrupados.overdue && automacao3DiasDepoisAtiva && !automacaoLocked && (
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
