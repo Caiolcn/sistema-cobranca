@@ -309,16 +309,13 @@ class WhatsAppService {
       // Buscar dados do usuário/empresa incluindo chave PIX
       const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
-        .select('nome_fantasia, razao_social, nome_completo, nome_empresa, chave_pix')
+        .select('nome_empresa, chave_pix')
         .eq('id', user.id)
         .maybeSingle()
 
-      console.log('📋 Dados do usuário carregados:', usuario)
-      console.log('🔑 Chave PIX encontrada:', usuario?.chave_pix)
-      console.log('🆔 User ID usado na query:', user.id)
       if (usuarioError) console.error('❌ Erro ao buscar usuário:', usuarioError)
 
-      const nomeEmpresa = usuario?.nome_empresa || usuario?.nome_fantasia || usuario?.razao_social || usuario?.nome_completo || 'Empresa'
+      const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
       const chavePix = usuario?.chave_pix || ''
 
       // Buscar template do tipo 'overdue' (em atraso) do usuário
