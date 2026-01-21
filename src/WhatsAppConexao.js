@@ -68,7 +68,7 @@ export default function WhatsAppConexao() {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked } = useUserPlan()
-  const templateEditLocked = isLocked('pro') // true se plano é starter
+  const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [activeTab, setActiveTab] = useState('conexao')
 
@@ -86,14 +86,18 @@ export default function WhatsAppConexao() {
     titulo: 'Lembrete de Cobrança',
     mensagem: MENSAGEM_PADRAO
   })
-  const [tipoTemplateSelecionado, setTipoTemplateSelecionado] = useState('overdue')
+  const [tipoTemplateSelecionado, setTipoTemplateSelecionado] = useState('due_day') // Starter começa em "No Dia"
   const [templatesAgrupados, setTemplatesAgrupados] = useState({
     pre_due_3days: null,
     due_day: null,
     overdue: null
   })
-  const [tituloTemplate, setTituloTemplate] = useState('Mensagem de Cobrança - Em Atraso')
-  const [mensagemTemplate, setMensagemTemplate] = useState(MENSAGEM_PADRAO)
+  const [tituloTemplate, setTituloTemplate] = useState('Lembrete - Vencimento Hoje')
+  const [mensagemTemplate, setMensagemTemplate] = useState(TEMPLATES_PADRAO.due_day)
+
+  // Starter só pode editar template "No Dia" (due_day)
+  // Pro/Premium podem editar todos os templates
+  const templateEditLocked = isStarter && tipoTemplateSelecionado !== 'due_day'
 
   // Estados para automação (novo fluxo: 3 dias antes, no dia, 3 dias depois)
   const [automacao3DiasAtiva, setAutomacao3DiasAtiva] = useState(false)
@@ -1776,10 +1780,10 @@ export default function WhatsAppConexao() {
                   <Icon icon="mdi:lock" width="20" style={{ color: '#ff9800', flexShrink: 0 }} />
                   <div>
                     <span style={{ fontSize: '13px', fontWeight: '600', color: '#e65100' }}>
-                      Personalização bloqueada
+                      Template bloqueado para edição
                     </span>
                     <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
-                      A edição de templates está disponível a partir do plano Pro.
+                      Este template está disponível apenas para planos Pro e Premium. Selecione "No Dia" para personalizar.
                     </p>
                   </div>
                 </div>
@@ -2023,7 +2027,7 @@ export default function WhatsAppConexao() {
                 }}
               >
                 <Icon icon={templateEditLocked ? 'mdi:lock' : 'mdi:content-save'} width="18" />
-                {templateEditLocked ? 'Edição bloqueada no Starter' : 'Salvar Template'}
+                {templateEditLocked ? 'Template disponível no Pro+' : 'Salvar Template'}
               </button>
             </div>
 
