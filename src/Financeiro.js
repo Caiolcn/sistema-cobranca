@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import AddInstallmentsModal from './AddInstallmentsModal'
@@ -13,11 +14,15 @@ import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { userId, nomeEmpresa, chavePix, loading: loadingUser } = useUser()
+  const [searchParams] = useSearchParams()
   const [mensalidades, setMensalidades] = useState([])
   const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
-  const [filtroStatus, setFiltroStatus] = useState([])
+
+  // Inicializa filtroStatus com o valor da URL, se existir
+  const statusFromUrl = searchParams.get('status')
+  const [filtroStatus, setFiltroStatus] = useState(statusFromUrl ? [statusFromUrl] : [])
   const [filtroVencimento, setFiltroVencimento] = useState(null)
   const [filtroDataInicio, setFiltroDataInicio] = useState('')
   const [filtroDataFim, setFiltroDataFim] = useState('')
@@ -60,6 +65,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       carregarDados()
     }
   }, [userId])
+
+  // Atualizar filtro quando a URL mudar (navegação da dashboard)
+  useEffect(() => {
+    const statusFromUrl = searchParams.get('status')
+    if (statusFromUrl) {
+      setFiltroStatus([statusFromUrl])
+    }
+  }, [searchParams])
 
   useEffect(() => {
     aplicarFiltros()
@@ -144,7 +157,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           status: 'pendente',
           numero_mensalidade: mensalidade.numero,
           total_mensalidades: dataToSave.is_mensalidade ? null : dataToSave.numero_mensalidades,
-          is_mensalidade: dataToSave.is_mensalidade
+          is_mensalidade: dataToSave.is_mensalidade,
+          enviado_hoje: false,
+          total_mensagens_enviadas: 0
         }
 
         // Adicionar dados de recorrência se for mensalidade
