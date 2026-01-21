@@ -266,11 +266,19 @@ export default function Signup() {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      backgroundColor: '#F2F6FF',
       padding: '20px'
     }}>
+      {/* Logo acima do card */}
+      <img
+        src="/Logo-Full.png"
+        alt="Mensalli"
+        style={{ height: '48px', width: 'auto', marginBottom: '24px' }}
+      />
+
       <div style={{
         backgroundColor: 'white',
         padding: '40px',
@@ -436,7 +444,7 @@ export default function Signup() {
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: '#667eea',
+                backgroundColor: '#29BF68',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -445,8 +453,8 @@ export default function Signup() {
                 cursor: 'pointer',
                 transition: 'background-color 0.2s'
               }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#5568d3'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#667eea'}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#22a559'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#29BF68'}
             >
               Próximo: Escolher Plano →
             </button>
@@ -560,7 +568,7 @@ export default function Signup() {
           <a
             href="/login"
             style={{
-              color: '#667eea',
+              color: '#1A1A1A',
               marginLeft: '5px',
               textDecoration: 'none',
               fontWeight: '500'

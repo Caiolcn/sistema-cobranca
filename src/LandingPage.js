@@ -8,72 +8,66 @@ export default function LandingPage() {
   const { isMobile, isSmallScreen } = useWindowSize()
   const [faqAberto, setFaqAberto] = useState(null)
 
-  const features = [
-    {
-      icon: 'mdi:whatsapp',
-      titulo: 'WhatsApp Conectado',
-      descricao: 'Conecte via QR Code e envie cobranças automáticas direto do seu navegador.',
-    },
-    {
-      icon: 'mdi:robot-outline',
-      titulo: 'Automação Inteligente',
-      descricao: 'Lembretes automáticos antes do vencimento e para mensalidades atrasadas.',
-    },
-    {
-      icon: 'mdi:chart-timeline-variant',
-      titulo: 'Dashboard Completo',
-      descricao: 'Visualize receitas, inadimplência e métricas em tempo real.',
-    }
-  ]
-
   const comoFunciona = [
     {
       numero: '01',
       titulo: 'Conecte seu WhatsApp',
-      descricao: 'Escaneie o QR Code para vincular seu WhatsApp ao sistema.'
+      descricao: 'Escaneie o QR Code e vincule seu número ao sistema. Leva menos de 1 minuto.'
     },
     {
       numero: '02',
       titulo: 'Cadastre seus clientes',
-      descricao: 'Adicione clientes e configure planos de mensalidade.'
+      descricao: 'Adicione seus clientes. Configure planos de mensalidade e datas de vencimento.'
     },
     {
       numero: '03',
-      titulo: 'Automatize as cobranças',
-      descricao: 'Configure mensagens e deixe o sistema cobrar automaticamente.'
+      titulo: 'Ative a automação',
+      descricao: 'Personalize suas mensagens. Pronto! Sistema cobra automaticamente.'
     }
   ]
 
   const depoimentos = [
     {
       nome: 'Roberto Carlos',
-      empresa: 'Academia Força Total',
-      texto: 'Reduzi a inadimplência em 40% no primeiro mês! Os lembretes automáticos pelo WhatsApp são muito mais eficientes que ligações.'
+      empresa: 'Escola de Música Crescendo',
+      cargo: 'Fundador',
+      texto: 'Reduzi a inadimplência em 40% no primeiro mês! Os lembretes automáticos pelo WhatsApp são mais eficientes que ligações.',
+      foto: 'https://randomuser.me/api/portraits/men/32.jpg'
     },
     {
       nome: 'Mariana Ferreira',
-      empresa: 'Studio de Pilates Atlantys',
-      texto: 'Antes eu perdia horas ligando para cobrar. Agora o sistema faz tudo sozinho e ainda consigo acompanhar quem está em dia.'
+      empresa: 'Studio de Pilates Renascer',
+      cargo: 'Dona',
+      texto: 'Antes eu perdia horas ligando para cobrar. Agora o sistema faz tudo sozinho e ainda consigo acompanhar quem está em dia pelo dashboard.',
+      foto: 'https://randomuser.me/api/portraits/women/44.jpg'
     },
     {
       nome: 'Paulo Lima',
       empresa: 'Escola de Música Cultura Musical',
-      texto: 'O dashboard me mostra exatamente quanto vou receber no mês. Consigo planejar melhor o fluxo de caixa da minha escola.'
+      cargo: 'Diretor',
+      texto: 'O dashboard me mostra exatamente quanto vou receber no mês. Consegui planejar melhor o fluxo de caixa da minha escola.',
+      foto: 'https://randomuser.me/api/portraits/men/67.jpg'
     },
     {
       nome: 'Fernanda Santos',
-      empresa: 'CrossFit Box',
-      texto: 'Meus alunos adoram receber o lembrete pelo WhatsApp. A taxa de pagamento em dia subiu de 60% para 90%!'
+      empresa: 'Academia Vida Ativa',
+      cargo: 'Proprietária',
+      texto: 'Meus alunos adoram receber o lembrete pelo WhatsApp. A taxa de pagamento em dia subiu de 60% para 90%!',
+      foto: 'https://randomuser.me/api/portraits/women/68.jpg'
     },
     {
       nome: 'Carlos Eduardo',
-      empresa: 'Escola de Inglês IEV',
-      texto: 'O suporte é excelente e o sistema muito intuitivo. Em uma semana já estava com tudo funcionando perfeitamente.'
+      empresa: 'Escola de Inglês GlobalSpeak',
+      cargo: 'Diretor Administrativo',
+      texto: 'O suporte é excelente e o sistema muito intuitivo. Em uma semana já estava com tudo funcionando perfeitamente.',
+      foto: 'https://randomuser.me/api/portraits/men/45.jpg'
     },
     {
       nome: 'Ana Paula',
       empresa: 'Personal Trainer',
-      texto: 'Uso para cobrar os planos mensais dos meus alunos. Nunca mais tive problema com esquecimento de pagamento.'
+      cargo: 'Autônoma',
+      texto: 'Uso para cobrar os planos mensais dos meus alunos. Nunca mais tive problema com esquecimento de pagamento.',
+      foto: 'https://randomuser.me/api/portraits/women/33.jpg'
     }
   ]
 
@@ -82,35 +76,35 @@ export default function LandingPage() {
   const faqs = [
     {
       pergunta: 'Qual a diferença entre os planos?',
-      resposta: 'Os planos variam em quantidade de clientes, mensagens e funcionalidades. O Starter é ideal para começar, o Pro oferece automação completa e gráficos, e o Premium inclui consultoria e suporte prioritário.'
+      resposta: 'A diferença está no número de clientes ativos, mensagens mensais e recursos avançados. O Starter é ideal para testar, o Pro para a maioria dos negócios, e o Premium para quem tem volume alto ou quer consultoria.'
     },
     {
       pergunta: 'Como funciona a conexão com WhatsApp?',
-      resposta: 'Você escaneia um QR Code, igual ao WhatsApp Web. Não precisa instalar nada no celular, apenas manter o app conectado à internet.'
+      resposta: 'Você escaneia um QR Code que vincula seu número WhatsApp Business ao sistema. As mensagens saem do SEU número, mantendo o relacionamento direto com clientes.'
     },
     {
       pergunta: 'Posso cancelar a qualquer momento?',
-      resposta: 'Sim! Você pode cancelar, fazer upgrade ou downgrade quando quiser. Sem multas, sem burocracia.'
+      resposta: 'Sim! Sem multa, sem burocracia. Você pode cancelar direto no painel e o sistema para de cobrar no próximo ciclo.'
     },
     {
       pergunta: 'Meus dados estão seguros?',
-      resposta: 'Absolutamente. Usamos criptografia de ponta a ponta e seguimos todas as melhores práticas de segurança. Seus dados são apenas seus.'
+      resposta: 'Sim. Usamos criptografia de ponta e nunca compartilhamos dados de clientes. Seus dados financeiros ficam apenas no seu painel.'
     },
     {
       pergunta: 'O WhatsApp pode banir meu número?',
-      resposta: 'O MensalliZap envia mensagens de forma natural e humanizada, respeitando os limites do WhatsApp. Não fazemos disparo em massa. As mensagens são enviadas individualmente, como se você estivesse mandando manualmente.'
+      resposta: 'Não, se você usar corretamente. O Mensalli envia mensagens apenas para clientes que VOCÊ cadastrou (com consentimento implícito). Não fazemos spam.'
     },
     {
       pergunta: 'Como funciona a automação de cobranças?',
-      resposta: 'Você configura regras de disparo (ex: 5 dias antes, 3 dias antes e no dia do vencimento) e o sistema envia automaticamente. Você pode personalizar as mensagens com nome do cliente, valor e data de vencimento.'
+      resposta: 'Você define regras (ex: lembrete 3 dias antes do vencimento). O sistema envia automaticamente a mensagem personalizada via seu WhatsApp.'
     },
     {
       pergunta: 'O que acontece se eu atingir o limite de mensagens?',
-      resposta: 'Você será notificado quando estiver próximo do limite. Ao atingir, as mensagens automáticas são pausadas até o próximo mês. Você pode fazer upgrade a qualquer momento para aumentar o limite.'
+      resposta: 'Você recebe um aviso quando chegar perto do limite. Pode fazer upgrade de plano ou comprar pacotes adicionais de mensagens avulsas.'
     },
     {
       pergunta: 'Funciona com WhatsApp Business?',
-      resposta: 'Sim! Funciona tanto com WhatsApp pessoal quanto com WhatsApp Business. Recomendamos o Business para ter um perfil mais profissional.'
+      resposta: 'Sim! Recomendamos WhatsApp Business para separar uso pessoal do profissional, mas funciona com WhatsApp comum também.'
     }
   ]
 
@@ -137,13 +131,13 @@ export default function LandingPage() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <a href="https://www.mensalli.com.br" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <img
               src="/Logo-Full.png"
-              alt="MensalliZap"
-              style={{ height: '40px', width: 'auto' }}
+              alt="Mensalli"
+              style={{ height: '40px', width: 'auto', cursor: 'pointer' }}
             />
-          </div>
+          </a>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             {!isMobile && (
@@ -208,14 +202,14 @@ export default function LandingPage() {
           </div>
 
           <h1 style={{
-            fontSize: isSmallScreen ? '36px' : '56px',
+            fontSize: isSmallScreen ? '32px' : '52px',
             fontWeight: '800',
             lineHeight: '1.1',
             marginBottom: '24px',
             letterSpacing: '-1.5px',
             color: '#1a1a1a'
           }}>
-            Suas cobranças
+            Mensalidades em dia,
             <br />
             <span style={{
               background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
@@ -223,7 +217,7 @@ export default function LandingPage() {
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text'
             }}>
-              no piloto automático
+              automaticamente
             </span>
           </h1>
 
@@ -232,11 +226,10 @@ export default function LandingPage() {
             color: '#666',
             marginBottom: '40px',
             lineHeight: '1.6',
-            maxWidth: '600px',
+            maxWidth: '650px',
             margin: '0 auto 40px'
           }}>
-            Conecte seu WhatsApp e automatize cobranças de mensalidades.
-            Menos inadimplência, mais tempo para o que importa.
+            Deixe o Mensalli cobrar por você via WhatsApp. Configure uma vez, receba em dia sempre.
           </p>
 
           <div style={{
@@ -283,18 +276,93 @@ export default function LandingPage() {
             fontSize: '13px',
             color: '#999'
           }}>
-            Setup em 2 minutos • Cancele quando quiser
+            Sem cartão • 3 dias grátis • Cancele quando quiser
           </p>
+
+          {/* Hero Image Placeholder */}
+          <div style={{
+            marginTop: '48px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '16px',
+            padding: '40px',
+            border: '2px dashed #ddd',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '300px'
+          }}>
+            <Icon icon="mdi:image-outline" width="48" style={{ color: '#bbb', marginBottom: '16px' }} />
+            <p style={{ color: '#999', fontSize: '14px', margin: 0 }}>
+              Screenshot do dashboard mostrando inadimplência caindo
+            </p>
+            <p style={{ color: '#bbb', fontSize: '12px', margin: '8px 0 0' }}>
+              ou vídeo mostrando mensagem sendo enviada automaticamente
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Social Proof Section */}
+      <section style={{
+        padding: isSmallScreen ? '40px 24px' : '60px 24px',
+        backgroundColor: '#fafafa',
+        borderTop: '1px solid #eee',
+        borderBottom: '1px solid #eee'
+      }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
+          <p style={{
+            fontSize: '15px',
+            color: '#888',
+            marginBottom: '32px',
+            fontWeight: '500'
+          }}>
+            Mais de 500 negócios já automatizaram suas cobranças
+          </p>
+
+          {/* Métricas */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+            gap: '32px',
+            marginBottom: '40px'
+          }}>
+            <div>
+              <p style={{ fontSize: isSmallScreen ? '36px' : '48px', fontWeight: '800', color: '#1a1a1a', margin: '0 0 8px' }}>
+                2.400+
+              </p>
+              <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
+                Mensalidades cobradas este mês
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: isSmallScreen ? '36px' : '48px', fontWeight: '800', color: '#25D366', margin: '0 0 8px' }}>
+                40%
+              </p>
+              <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
+                Redução média em inadimplência
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: isSmallScreen ? '36px' : '48px', fontWeight: '800', color: '#1a1a1a', margin: '0 0 8px' }}>
+                98%
+              </p>
+              <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
+                Taxa de abertura das mensagens
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Produto vs Alternativas - Tabela Comparativa */}
       <section style={{
         padding: isSmallScreen ? '60px 24px' : '100px 24px',
-        backgroundColor: '#fafafa'
+        backgroundColor: 'white'
       }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <h2 style={{
               fontSize: isSmallScreen ? '28px' : '40px',
               fontWeight: '800',
@@ -302,66 +370,306 @@ export default function LandingPage() {
               letterSpacing: '-1px',
               color: '#1a1a1a'
             }}>
-              Tudo que você precisa
+              Por que Mensalli em vez de...
             </h2>
-            <p style={{ fontSize: '17px', color: '#666', maxWidth: '500px', margin: '0 auto' }}>
-              Funcionalidades pensadas para simplificar sua gestão de cobranças
-            </p>
           </div>
 
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
-            gap: '24px'
+            backgroundColor: '#fafafa',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '1px solid #eee'
           }}>
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: 'white',
-                  padding: '32px',
-                  borderRadius: '16px',
-                  border: '1px solid #eee',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = '#ddd'
-                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.06)'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = '#eee'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <Icon icon={feature.icon} width="24" style={{ color: '#1a1a1a' }} />
+            {/* Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isSmallScreen ? '1fr' : '1.5fr 1fr 1fr 1fr',
+              backgroundColor: '#f5f5f5',
+              padding: '16px 24px',
+              fontWeight: '600',
+              fontSize: '14px',
+              color: '#666'
+            }}>
+              <div></div>
+              {!isSmallScreen && (
+                <>
+                  <div style={{ textAlign: 'center' }}>Cobrar manualmente</div>
+                  <div style={{ textAlign: 'center' }}>Sistemas bancários</div>
+                  <div style={{ textAlign: 'center', color: '#25D366' }}>Mensalli</div>
+                </>
+              )}
+            </div>
+
+            {/* Rows */}
+            {[
+              { label: 'Tempo gasto', manual: '2-5h/semana', banco: 'Setup complexo', mensallizap: '5 min/mês' },
+              { label: 'Relacionamento', manual: 'Constrangedor', banco: 'Impessoal', mensallizap: 'Tom amigável' },
+              { label: 'Custo', manual: 'Seu tempo vale mais', banco: 'R$ 200-500/mês', mensallizap: 'A partir de R$ 49' },
+              { label: 'Automação', manual: 'Zero', banco: 'Emails ignorados', mensallizap: 'WhatsApp (98% abertura)', icons: { manual: 'mdi:close', banco: 'mdi:alert', mensallizap: 'mdi:check' } },
+              { label: 'Dashboard', manual: 'Planilhas manuais', banco: 'Complexo', mensallizap: 'Visual e simples', icons: { manual: 'mdi:close', banco: 'mdi:alert', mensallizap: 'mdi:check' } }
+            ].map((row, i) => (
+              <div key={i} style={{
+                display: 'grid',
+                gridTemplateColumns: isSmallScreen ? '1fr' : '1.5fr 1fr 1fr 1fr',
+                padding: '16px 24px',
+                borderTop: '1px solid #eee',
+                fontSize: '14px'
+              }}>
+                <div style={{ fontWeight: '600', color: '#1a1a1a', marginBottom: isSmallScreen ? '12px' : 0 }}>
+                  {row.label}
                 </div>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  marginBottom: '10px',
-                  color: '#1a1a1a'
-                }}>
-                  {feature.titulo}
-                </h3>
-                <p style={{
-                  color: '#666',
-                  lineHeight: '1.6',
-                  fontSize: '15px'
-                }}>
-                  {feature.descricao}
-                </p>
+                {isSmallScreen ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#999', fontSize: '12px' }}>Manual:</span>
+                      <span style={{ color: '#666' }}>{row.manual}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#999', fontSize: '12px' }}>Bancos:</span>
+                      <span style={{ color: '#666' }}>{row.banco}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#999', fontSize: '12px' }}>Mensalli:</span>
+                      <span style={{ color: '#25D366', fontWeight: '600' }}>{row.mensallizap}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ textAlign: 'center', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      {row.icons && <Icon icon={row.icons.manual} width="16" />}
+                      {row.manual}
+                    </div>
+                    <div style={{ textAlign: 'center', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      {row.icons && <Icon icon={row.icons.banco} width="16" />}
+                      {row.banco}
+                    </div>
+                    <div style={{ textAlign: 'center', color: '#25D366', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      {row.icons && <Icon icon={row.icons.mensallizap} width="16" />}
+                      {row.mensallizap}
+                    </div>
+                  </>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Detalhadas */}
+      <section style={{
+        padding: isSmallScreen ? '60px 24px' : '100px 24px',
+        backgroundColor: '#fafafa'
+      }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          {/* Feature 1 - Automação WhatsApp */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
+            gap: '48px',
+            alignItems: 'center',
+            marginBottom: '80px'
+          }}>
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#dcfce7',
+                color: '#16a34a',
+                padding: '6px 12px',
+                borderRadius: '100px',
+                fontSize: '12px',
+                fontWeight: '600',
+                marginBottom: '16px'
+              }}>
+                <Icon icon="mdi:whatsapp" width="14" />
+                Automação Inteligente
+              </div>
+              <h3 style={{
+                fontSize: isSmallScreen ? '24px' : '32px',
+                fontWeight: '800',
+                marginBottom: '16px',
+                color: '#1a1a1a',
+                lineHeight: '1.2'
+              }}>
+                Configure lembretes automáticos e esqueça a inadimplência
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.7',
+                marginBottom: '24px'
+              }}>
+               O sistema envia automaticamente via WhatsApp - o canal que eles já usam todo dia. Sem apps novos, sem emails ignorados.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
+                  <Icon icon="mdi:check-circle" width="20" style={{ color: '#25D366' }} />
+                  Taxa de abertura de 98% (vs. 20% do email)
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
+                  <Icon icon="mdi:check-circle" width="20" style={{ color: '#25D366' }} />
+                  Resposta em minutos, não dias
+                </div>
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: '#f0f0f0',
+              borderRadius: '16px',
+              padding: '40px',
+              border: '2px dashed #ddd',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '280px',
+              order: isSmallScreen ? -1 : 0
+            }}>
+              <Icon icon="mdi:image-outline" width="40" style={{ color: '#bbb', marginBottom: '12px' }} />
+              <p style={{ color: '#999', fontSize: '13px', margin: 0, textAlign: 'center' }}>
+                Screenshot: Dashboard de regras de cobrança
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 2 - Dashboard */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
+            gap: '48px',
+            alignItems: 'center',
+            marginBottom: '80px'
+          }}>
+            <div style={{
+              backgroundColor: '#f0f0f0',
+              borderRadius: '16px',
+              padding: '40px',
+              border: '2px dashed #ddd',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '280px'
+            }}>
+              <Icon icon="mdi:image-outline" width="40" style={{ color: '#bbb', marginBottom: '12px' }} />
+              <p style={{ color: '#999', fontSize: '13px', margin: 0, textAlign: 'center' }}>
+                Screenshot: Dashboard com gráficos de pagamentos
+              </p>
+            </div>
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#dbeafe',
+                color: '#2563eb',
+                padding: '6px 12px',
+                borderRadius: '100px',
+                fontSize: '12px',
+                fontWeight: '600',
+                marginBottom: '16px'
+              }}>
+                <Icon icon="mdi:chart-line" width="14" />
+                Dashboard em Tempo Real
+              </div>
+              <h3 style={{
+                fontSize: isSmallScreen ? '24px' : '32px',
+                fontWeight: '800',
+                marginBottom: '16px',
+                color: '#1a1a1a',
+                lineHeight: '1.2'
+              }}>
+                Veja quem está devendo (e por quanto tempo) em segundos
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.7',
+                marginBottom: '24px'
+              }}>
+                Acabou a bagunça de planilhas. Dashboard visual mostra inadimplência por período, histórico de cada cliente e tendências. Você sabe exatamente a saúde financeira do seu negócio.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
+                  <Icon icon="mdi:chart-timeline-variant" width="20" style={{ color: '#2563eb' }} />
+                  Métricas atualizadas em tempo real
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
+                  <Icon icon="mdi:trending-up" width="20" style={{ color: '#2563eb' }} />
+                  Identifique padrões antes de virar bola de neve
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 3 - Templates */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
+            gap: '48px',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#fef3c7',
+                color: '#d97706',
+                padding: '6px 12px',
+                borderRadius: '100px',
+                fontSize: '12px',
+                fontWeight: '600',
+                marginBottom: '16px'
+              }}>
+                <Icon icon="mdi:message-text-outline" width="14" />
+                Templates Personalizáveis
+              </div>
+              <h3 style={{
+                fontSize: isSmallScreen ? '24px' : '32px',
+                fontWeight: '800',
+                marginBottom: '16px',
+                color: '#1a1a1a',
+                lineHeight: '1.2'
+              }}>
+                Mensagens automáticas, mas que parecem feitas por você
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#666',
+                lineHeight: '1.7',
+                marginBottom: '24px'
+              }}>
+                Personalize o tom das mensagens para combinar com seu negócio. Seja formal ou amigável, use emojis ou não - a automação se adapta ao seu estilo. Seus clientes nunca vão sentir que estão falando com um robô.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
+                  <Icon icon="mdi:code-braces" width="20" style={{ color: '#d97706' }} />
+                  Variáveis dinâmicas (nome, valor, data)
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
+                  <Icon icon="mdi:file-document-multiple" width="20" style={{ color: '#d97706' }} />
+                  3 templates prontos + crie os seus
+                </div>
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: '#f0f0f0',
+              borderRadius: '16px',
+              padding: '40px',
+              border: '2px dashed #ddd',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '280px',
+              order: isSmallScreen ? -1 : 0
+            }}>
+              <Icon icon="mdi:image-outline" width="40" style={{ color: '#bbb', marginBottom: '12px' }} />
+              <p style={{ color: '#999', fontSize: '13px', margin: 0, textAlign: 'center' }}>
+                Screenshot: Editor de templates com variáveis
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -380,10 +688,10 @@ export default function LandingPage() {
               letterSpacing: '-1px',
               color: '#1a1a1a'
             }}>
-              Como funciona
+              3 passos para automatizar suas cobranças
             </h2>
             <p style={{ fontSize: '17px', color: '#666' }}>
-              Três passos simples para automatizar suas cobranças
+              Configure uma vez e deixe o sistema trabalhar por você
             </p>
           </div>
 
@@ -433,7 +741,7 @@ export default function LandingPage() {
       {/* Pricing Section */}
       <section id="precos" style={{
         padding: isSmallScreen ? '60px 24px' : '100px 24px',
-        backgroundColor: '#fafafa'
+        backgroundColor: 'white'
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
@@ -458,39 +766,50 @@ export default function LandingPage() {
           }}>
             {/* Plano Starter */}
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: '#fafafa',
               padding: '32px',
               borderRadius: '16px',
               border: '1px solid #eee'
             }}>
-              <h3 style={{
-                fontSize: '16px',
+              <p style={{
+                fontSize: '12px',
                 fontWeight: '600',
-                color: '#666',
-                marginBottom: '8px',
+                color: '#888',
+                marginBottom: '4px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
               }}>
+                Ideal para começar
+              </p>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#1a1a1a',
+                marginBottom: '16px'
+              }}>
                 Starter
               </h3>
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '24px' }}>
                 <span style={{ fontSize: '42px', fontWeight: '800', color: '#1a1a1a' }}>R$49</span>
-                <span style={{ fontSize: '16px', color: '#999' }}>,90/mês</span>
+                <span style={{ fontSize: '16px', color: '#999' }}>/mês</span>
               </div>
-              <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
-                50 clientes ativos • 200 mensagens/mês
-              </p>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
-                {['Até 50 clientes ativos', '200 mensagens/mês', '1 template padrão', 'Automação em atraso', 'Dashboard básico'].map((item, i) => (
+                {[
+                  'Até 50 clientes ativos',
+                  '200 mensagens/mês',
+                  '1 template de mensagem personalizado',
+                  'Automação via WhatsApp',
+                  'Dashboard básico'
+                ].map((item, i) => (
                   <li key={i} style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '10px',
                     marginBottom: '12px',
                     fontSize: '14px',
                     color: '#444'
                   }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: '#16a34a' }} />
+                    <Icon icon="mdi:check" width="18" style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
                     {item}
                   </li>
                 ))}
@@ -500,7 +819,7 @@ export default function LandingPage() {
                 style={{
                   width: '100%',
                   padding: '14px',
-                  backgroundColor: 'white',
+                  backgroundColor: 'transparent',
                   color: '#1a1a1a',
                   border: '2px solid #1a1a1a',
                   borderRadius: '10px',
@@ -510,34 +829,34 @@ export default function LandingPage() {
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.target.style.backgroundColor = '#1a1a1a'
-                  e.target.style.color = 'white'
+                  e.currentTarget.style.backgroundColor = '#1a1a1a'
+                  e.currentTarget.style.color = 'white'
                 }}
                 onMouseOut={(e) => {
-                  e.target.style.backgroundColor = 'white'
-                  e.target.style.color = '#1a1a1a'
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = '#1a1a1a'
                 }}
               >
-                Começar agora
+                Escolher Starter
               </button>
             </div>
 
             {/* Plano Pro */}
             <div style={{
-              backgroundColor: '#1a1a1a',
+              backgroundColor: '#25D366',
               padding: '32px',
               borderRadius: '16px',
               color: 'white',
               position: 'relative',
               transform: isSmallScreen ? 'none' : 'scale(1.05)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
+              boxShadow: '0 8px 32px rgba(37,211,102,0.3)'
             }}>
               <div style={{
                 position: 'absolute',
                 top: '-12px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                backgroundColor: '#25D366',
+                backgroundColor: '#1a1a1a',
                 color: 'white',
                 padding: '6px 16px',
                 borderRadius: '100px',
@@ -546,34 +865,47 @@ export default function LandingPage() {
               }}>
                 Mais popular
               </div>
-              <h3 style={{
-                fontSize: '16px',
+              <p style={{
+                fontSize: '12px',
                 fontWeight: '600',
                 color: 'rgba(255,255,255,0.7)',
-                marginBottom: '8px',
+                marginBottom: '4px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
               }}>
+                Para negócios em crescimento
+              </p>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: 'white',
+                marginBottom: '16px'
+              }}>
                 Pro
               </h3>
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '24px' }}>
                 <span style={{ fontSize: '42px', fontWeight: '800' }}>R$99</span>
-                <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)' }}>,90/mês</span>
+                <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.7)' }}>/mês</span>
               </div>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginBottom: '24px' }}>
-                150 clientes ativos • 600 mensagens/mês
-              </p>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
-                {['Até 150 clientes ativos', '600 mensagens/mês', '3 templates de mensagens personalizáveis', 'Regra de cobrança (disparo de mensagens 3 dias, 5 dias e em atraso)', 'Dashboard completa com gráficos', 'Suporte via WhatsApp', 'Aging Report (status dos clientes)', 'Receita Projetada', 'Histórico Completo de Mensalidades'].map((item, i) => (
+                {[
+                  'Até 150 clientes ativos',
+                  '600 mensagens/mês',
+                  '3 templates personalizados',
+                  'Regras de cobrança (3 dias, 5 dias, no vencimento)',
+                  'Dashboard completo com gráficos',
+                  'Suporte via WhatsApp',
+                  'Aging Report (relatório de atrasos)'
+                ].map((item, i) => (
                   <li key={i} style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '10px',
                     marginBottom: '12px',
                     fontSize: '14px',
-                    color: 'rgba(255,255,255,0.9)'
+                    color: 'rgba(255,255,255,0.95)'
                   }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: '#25D366' }} />
+                    <Icon icon="mdi:check" width="18" style={{ color: 'white', flexShrink: 0, marginTop: '2px' }} />
                     {item}
                   </li>
                 ))}
@@ -584,7 +916,7 @@ export default function LandingPage() {
                   width: '100%',
                   padding: '14px',
                   backgroundColor: 'white',
-                  color: '#1a1a1a',
+                  color: '#25D366',
                   border: 'none',
                   borderRadius: '10px',
                   fontSize: '15px',
@@ -605,45 +937,52 @@ export default function LandingPage() {
 
             {/* Plano Premium */}
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: '#fafafa',
               padding: '32px',
               borderRadius: '16px',
-              border: '2px solid #764ba2'
+              border: '1px solid #eee'
             }}>
-              <h3 style={{
-                fontSize: '16px',
+              <p style={{
+                fontSize: '12px',
                 fontWeight: '600',
-                color: '#764ba2',
-                marginBottom: '8px',
+                color: '#888',
+                marginBottom: '4px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
               }}>
+                Gestão profissional
+              </p>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#1a1a1a',
+                marginBottom: '16px'
+              }}>
                 Premium
               </h3>
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '24px' }}>
                 <span style={{ fontSize: '42px', fontWeight: '800', color: '#1a1a1a' }}>R$149</span>
-                <span style={{ fontSize: '16px', color: '#999' }}>,90/mês</span>
+                <span style={{ fontSize: '16px', color: '#999' }}>/mês</span>
               </div>
-              <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
-                500 clientes ativos • 3.000 mensagens/mês
-              </p>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
-                {['Tudo do Pro',
-                  
+                {[
                   'Até 500 clientes ativos',
-    '3.000 mensagens/mês',
-    'Consultoria inicial (1h)',
-    'Suporte prioritário via whatsapp',
-    'Acesso antecipado a novas features'].map((item, i) => (
+                  '3.000 mensagens/mês',
+                  'Templates ilimitados',
+                  'Consultoria inicial (1h)',
+                  'Suporte prioritário via WhatsApp',
+                  'Acesso antecipado a novas features',
+                  'Histórico completo de mensalidades'
+                ].map((item, i) => (
                   <li key={i} style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '10px',
                     marginBottom: '12px',
                     fontSize: '14px',
                     color: '#444'
                   }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: '#764ba2' }} />
+                    <Icon icon="mdi:check" width="18" style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
                     {item}
                   </li>
                 ))}
@@ -653,9 +992,9 @@ export default function LandingPage() {
                 style={{
                   width: '100%',
                   padding: '14px',
-                  backgroundColor: '#764ba2',
-                  color: 'white',
-                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: '#1a1a1a',
+                  border: '2px solid #1a1a1a',
                   borderRadius: '10px',
                   fontSize: '15px',
                   fontWeight: '600',
@@ -663,10 +1002,12 @@ export default function LandingPage() {
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.target.style.backgroundColor = '#5e3a82'
+                  e.currentTarget.style.backgroundColor = '#1a1a1a'
+                  e.currentTarget.style.color = 'white'
                 }}
                 onMouseOut={(e) => {
-                  e.target.style.backgroundColor = '#764ba2'
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = '#1a1a1a'
                 }}
               >
                 Escolher Premium
@@ -750,23 +1091,19 @@ export default function LandingPage() {
                     "{dep.texto}"
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: '600',
-                      fontSize: '14px'
-                    }}>
-                      {dep.nome.split(' ').map(n => n[0]).join('')}
-                    </div>
+                    <img
+                      src={dep.foto}
+                      alt={dep.nome}
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        objectFit: 'cover'
+                      }}
+                    />
                     <div>
                       <p style={{ fontWeight: '600', color: '#1a1a1a', margin: 0, fontSize: '14px' }}>{dep.nome}</p>
-                      <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>{dep.empresa}</p>
+                      <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>{dep.cargo}, {dep.empresa}</p>
                     </div>
                   </div>
                 </div>
@@ -821,6 +1158,109 @@ export default function LandingPage() {
                   transition: 'all 0.3s ease'
                 }}
               />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Target Customers */}
+      <section style={{
+        padding: isSmallScreen ? '60px 24px' : '100px 24px',
+        backgroundColor: 'white'
+      }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 style={{
+              fontSize: isSmallScreen ? '28px' : '40px',
+              fontWeight: '800',
+              marginBottom: '16px',
+              letterSpacing: '-1px',
+              color: '#1a1a1a'
+            }}>
+              Para quem é o Mensalli?
+            </h2>
+            <p style={{ fontSize: '17px', color: '#666' }}>
+              Ideal para qualquer negócio que cobra mensalidades
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)',
+            gap: '20px'
+          }}>
+            {[
+              {
+                icon: 'mdi:music',
+                titulo: 'Escolas de Música/Idiomas',
+                descricao: 'Automatize lembretes para dezenas de alunos. Pais recebem mensagens 3 dias antes, você não perde tempo cobrando um por um.'
+              },
+              {
+                icon: 'mdi:dumbbell',
+                titulo: 'Academias & Box de CrossFit',
+                descricao: 'Chega de constrangimento ao cobrar aluno. Mensalidades automáticas via WhatsApp preservam o relacionamento e garantem pagamento.'
+              },
+              {
+                icon: 'healthicons:exercise-yoga',
+                titulo: 'Studios de Pilates & Yoga',
+                descricao: 'Seus alunos esquecem de pagar e você fica sem jeito de cobrar? Lembretes automáticos fazem isso por você, sem desconforto.'
+              },
+              {
+                icon: 'mdi:palette',
+                titulo: 'Estúdios & Consultórios',
+                descricao: 'Qualquer negócio com mensalidades pode usar. Se cobra todo mês, Mensalli é pra você.'
+              }
+            ].map((perfil, i) => (
+              <div key={i} style={{
+                backgroundColor: '#fafafa',
+                padding: '28px',
+                borderRadius: '16px',
+                display: 'flex',
+                gap: '16px',
+                alignItems: 'flex-start',
+                border: '1px solid #eee',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#25D366'
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(37,211,102,0.1)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = '#eee'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+              >
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  backgroundColor: '#dcfce7',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Icon icon={perfil.icon} width="24" style={{ color: '#25D366' }} />
+                </div>
+                <div>
+                  <h3 style={{
+                    fontSize: '17px',
+                    fontWeight: '700',
+                    marginBottom: '8px',
+                    color: '#1a1a1a'
+                  }}>
+                    {perfil.titulo}
+                  </h3>
+                  <p style={{
+                    color: '#666',
+                    lineHeight: '1.6',
+                    fontSize: '14px',
+                    margin: 0
+                  }}>
+                    {perfil.descricao}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -905,7 +1345,7 @@ export default function LandingPage() {
             color: 'white',
             letterSpacing: '-1px'
           }}>
-            Pronto para automatizar?
+            Pronto para automatizar suas cobranças?
           </h2>
           <p style={{
             fontSize: '17px',
@@ -913,8 +1353,7 @@ export default function LandingPage() {
             marginBottom: '32px',
             lineHeight: '1.6'
           }}>
-            Comece hoje mesmo, sem compromisso.
-            Sua primeira cobrança automática em minutos.
+            Comece hoje mesmo. Sem compromisso. Configure sua primeira cobrança automática em minutos.
           </p>
           <button
             onClick={() => navigate('/signup')}
@@ -927,19 +1366,45 @@ export default function LandingPage() {
               fontSize: '16px',
               fontWeight: '600',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
             onMouseOver={(e) => {
-              e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = '0 8px 24px rgba(255,255,255,0.2)'
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,255,255,0.2)'
             }}
             onMouseOut={(e) => {
-              e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = 'none'
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = 'none'
             }}
           >
-            Criar conta grátis
+            Começar grátis por 3 dias
+            <Icon icon="mdi:arrow-right" width="20" />
           </button>
+          <div style={{
+            marginTop: '24px',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '24px',
+            flexWrap: 'wrap',
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.6)'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:check" width="16" style={{ color: '#25D366' }} />
+              Sem cartão de crédito
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:check" width="16" style={{ color: '#25D366' }} />
+              Cancele quando quiser
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:check" width="16" style={{ color: '#25D366' }} />
+              Suporte em português
+            </span>
+          </div>
         </div>
       </section>
 
@@ -951,18 +1416,19 @@ export default function LandingPage() {
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{
+          <a href="https://www.mensalli.com.br" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '24px'
+            marginBottom: '24px',
+            textDecoration: 'none'
           }}>
             <img
               src="/Logo-Full.png"
-              alt="MensalliZap"
-              style={{ height: '36px', width: 'auto', filter: 'brightness(0) invert(1)' }}
+              alt="Mensalli"
+              style={{ height: '36px', width: 'auto', filter: 'brightness(0) invert(1)', cursor: 'pointer' }}
             />
-          </div>
+          </a>
 
           <div style={{
             display: 'flex',
@@ -984,7 +1450,7 @@ export default function LandingPage() {
           </div>
 
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
-            © 2026 MensalliZap. Todos os direitos reservados.
+            © 2026 Mensalli. Todos os direitos reservados.
           </p>
         </div>
       </footer>

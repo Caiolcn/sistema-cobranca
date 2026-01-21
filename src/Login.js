@@ -65,7 +65,7 @@ export default function Login({ onLogin }) {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password'
+        redirectTo: 'https://www.mensalli.com.br/reset-password'
       })
 
       if (error) throw error
@@ -79,11 +79,18 @@ export default function Login({ onLogin }) {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#344848',
+      backgroundColor: '#F2F6FF',
       padding: '20px'
     }}>
+      {/* Logo acima do card */}
+      <img
+        src="/Logo-Full.png"
+        alt="Mensalli"
+        style={{ height: '48px', width: 'auto', marginBottom: '24px' }}
+      />
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -252,12 +259,18 @@ export default function Login({ onLogin }) {
           <button
             type="submit"
             disabled={!isFormValid || loading}
+            onMouseOver={(e) => {
+              if (isFormValid && !loading) e.target.style.backgroundColor = '#22a559'
+            }}
+            onMouseOut={(e) => {
+              if (isFormValid && !loading) e.target.style.backgroundColor = '#29BF68'
+            }}
             style={{
               width: '100%',
               padding: '14px',
               fontSize: '15px',
               fontWeight: '500',
-              backgroundColor: isFormValid && !loading ? '#4285F4' : '#E8EAED',
+              backgroundColor: isFormValid && !loading ? '#29BF68' : '#E8EAED',
               color: isFormValid && !loading ? 'white' : '#B0B0B0',
               border: 'none',
               borderRadius: '6px',
@@ -276,7 +289,7 @@ export default function Login({ onLogin }) {
           <a
             href="/signup"
             style={{
-              color: '#667eea',
+              color: '#1A1A1A',
               marginLeft: '5px',
               textDecoration: 'none',
               fontWeight: '500'

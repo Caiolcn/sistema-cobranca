@@ -74,6 +74,12 @@ function ResetPassword() {
 
   return (
     <div style={styles.container}>
+      {/* Logo acima do card */}
+      <img
+        src="/Logo-Full.png"
+        alt="Mensalli"
+        style={{ height: '48px', width: 'auto', marginBottom: '24px' }}
+      />
       <div style={styles.card}>
         <h1 style={styles.title}>Redefinir Senha</h1>
         <p style={styles.subtitle}>Digite sua nova senha abaixo</p>
@@ -118,18 +124,26 @@ function ResetPassword() {
               type="submit"
               style={styles.button}
               disabled={loading}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#22a559'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#29BF68'}
             >
               {loading ? 'Alterando...' : 'Alterar Senha'}
             </button>
           </form>
         )}
 
-        <button
-          onClick={() => navigate('/login')}
-          style={styles.backButton}
-        >
-          Voltar para o Login
-        </button>
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+          <a
+            href="/login"
+            style={{
+              color: '#1A1A1A',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Voltar para o Login
+          </a>
+        </p>
       </div>
     </div>
   )
@@ -139,18 +153,19 @@ const styles = {
   container: {
     minHeight: '100vh',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#F2F6FF',
     padding: '20px',
   },
   card: {
     background: 'white',
-    borderRadius: '16px',
+    borderRadius: '12px',
     padding: '40px',
     maxWidth: '400px',
     width: '100%',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
   },
   title: {
     fontSize: '28px',
@@ -175,39 +190,32 @@ const styles = {
     gap: '8px',
   },
   label: {
-    fontWeight: '600',
-    color: '#333',
-    fontSize: '14px',
+    fontSize: '12px',
+    color: '#999',
+    marginBottom: '6px',
   },
   input: {
-    padding: '14px 16px',
-    borderRadius: '10px',
-    border: '2px solid #e0e0e0',
-    fontSize: '16px',
+    padding: '12px 14px',
+    borderRadius: '6px',
+    border: '1px solid #e0e0e0',
+    fontSize: '14px',
     transition: 'border-color 0.2s',
     outline: 'none',
+    backgroundColor: '#f8f8f8',
+    boxSizing: 'border-box',
+    width: '100%',
   },
   button: {
     padding: '14px',
-    borderRadius: '10px',
+    borderRadius: '6px',
     border: 'none',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#29BF68',
     color: 'white',
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
     marginTop: '10px',
-  },
-  backButton: {
-    padding: '12px',
-    borderRadius: '10px',
-    border: '2px solid #e0e0e0',
-    background: 'transparent',
-    color: '#666',
-    fontSize: '14px',
-    cursor: 'pointer',
-    marginTop: '15px',
-    width: '100%',
+    transition: 'background-color 0.2s',
   },
   error: {
     color: '#e74c3c',
