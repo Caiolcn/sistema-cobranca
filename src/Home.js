@@ -490,7 +490,7 @@ function Home() {
             <span className="card-subtitle">{assinaturasAtivas} assinaturas ativas</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/clientes?status=ativo')}>
+            <button className="btn-ver" onClick={() => navigate('/app/clientes?status=ativo')}>
               Ver
             </button>
           </div>
@@ -509,7 +509,7 @@ function Home() {
             <span className="card-subtitle">&nbsp;</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/financeiro?status=pago')}>
+            <button className="btn-ver" onClick={() => navigate('/app/financeiro?status=pago')}>
               Ver
             </button>
           </div>
@@ -530,7 +530,7 @@ function Home() {
             <span className="card-subtitle">&nbsp;</span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/financeiro?status=atrasado')}>
+            <button className="btn-ver" onClick={() => navigate('/app/financeiro?status=atrasado')}>
               Ver
             </button>
           </div>
@@ -553,7 +553,7 @@ function Home() {
             </span>
           </div>
           <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/clientes?assinatura=desativada')}>
+            <button className="btn-ver" onClick={() => navigate('/app/clientes?assinatura=desativada')}>
               Ver
             </button>
           </div>
@@ -608,7 +608,7 @@ function Home() {
               <span className="card-subtitle">Com mensalidades atrasadas</span>
             </div>
             <div className="card-footer">
-              <button className="btn-ver" onClick={() => navigate('/clientes?inadimplente=true')}>
+              <button className="btn-ver" onClick={() => navigate('/app/clientes?inadimplente=true')}>
                 Ver
               </button>
             </div>
