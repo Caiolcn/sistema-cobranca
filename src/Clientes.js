@@ -99,11 +99,12 @@ export default function Clientes() {
       )
     }
 
-    // Filtro de Status (baseado em mensalidades)
+    // Filtro de Status (baseado em mensalidades e assinatura)
     if (filtroStatus !== 'todos') {
       filtrados = filtrados.filter(cliente => {
         if (filtroStatus === 'ativo') {
-          return cliente.status === 'Em dia' || cliente.status === 'A vencer'
+          // Cliente ativo = assinatura ativa OU status Em dia/Sem mensalidade (não atrasado)
+          return cliente.assinatura_ativa || cliente.status === 'Em dia' || cliente.status === 'Sem mensalidade'
         } else if (filtroStatus === 'inadimplente') {
           return cliente.status === 'Atrasado'
         } else if (filtroStatus === 'cancelado') {
