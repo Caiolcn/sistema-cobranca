@@ -665,7 +665,8 @@ export default function UpgradePage() {
       padding: '40px 24px',
       maxWidth: '1200px',
       margin: '0 auto',
-      minHeight: '100vh'
+      minHeight: '100vh',
+      backgroundColor: 'white'
     }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
@@ -688,13 +689,6 @@ export default function UpgradePage() {
           </span>
         </div>
 
-        <p style={{
-          fontSize: '16px',
-          color: '#666',
-          marginBottom: '16px'
-        }}>
-          Escolha um plano para continuar recebendo suas mensalidades em dia
-        </p>
 
         <h1 style={{
           fontSize: '40px',
@@ -778,142 +772,146 @@ export default function UpgradePage() {
         gap: '24px',
         marginBottom: '60px'
       }}>
-        {planos.map((plano, index) => (
-          <div
-            key={index}
-            style={{
-              backgroundColor: 'white',
-              padding: '32px',
-              borderRadius: '16px',
-              border: plano.destaque ? `3px solid ${plano.cor}` : '2px solid #e0e0e0',
-              boxShadow: plano.destaque ? `0 8px 32px ${plano.cor}40` : '0 4px 12px rgba(0,0,0,0.08)',
-              transform: plano.destaque ? 'scale(1.02)' : 'scale(1)',
-              position: 'relative'
-            }}
-          >
-            {plano.destaque && (
-              <div style={{
-                position: 'absolute',
-                top: '-14px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: plano.cor,
-                color: 'white',
-                padding: '8px 20px',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: '700',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                🏆 Mais Popular
-              </div>
-            )}
+        {planos.map((plano, index) => {
+          const isPro = plano.destaque;
 
-            <h3 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              marginBottom: '8px',
-              color: '#333',
-              marginTop: plano.destaque ? '8px' : '0'
-            }}>
-              {plano.nome}
-            </h3>
-
-            <div style={{ marginBottom: '16px' }}>
-              <span style={{ fontSize: '40px', fontWeight: 'bold', color: '#333' }}>
-                {plano.preco}
-              </span>
-              <span style={{ fontSize: '16px', color: '#666' }}>
-                {plano.periodo}
-              </span>
-            </div>
-
-            <p style={{
-              fontSize: '14px',
-              color: '#888',
-              marginBottom: '24px',
-              paddingBottom: '20px',
-              borderBottom: '1px solid #e0e0e0',
-              fontStyle: 'italic'
-            }}>
-              {plano.paraQuem}
-            </p>
-
-            <ul style={{
-              listStyle: 'none',
-              padding: 0,
-              marginBottom: '24px'
-            }}>
-              {plano.features.map((feature, i) => (
-                <li key={i} style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                  marginBottom: '12px',
-                  fontSize: '14px',
-                  color: '#555'
-                }}>
-                  <Icon
-                    icon="mdi:check-circle"
-                    width="18"
-                    style={{ color: '#4CAF50', flexShrink: 0, marginTop: '2px' }}
-                  />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            {/* Dica de economia */}
-            <div style={{
-              backgroundColor: '#f5f5f5',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              fontSize: '13px',
-              color: '#666'
-            }}>
-              {plano.dica}
-            </div>
-
-            <button
-              onClick={() => handleSelecionarPlano(plano.id)}
-              disabled={loading || assinaturaAtiva}
+          return (
+            <div
+              key={index}
               style={{
-                display: 'block',
-                width: '100%',
-                padding: '16px',
-                backgroundColor: (loading || assinaturaAtiva) ? '#ccc' : plano.cor,
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                textAlign: 'center',
-                cursor: (loading || assinaturaAtiva) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                opacity: (loading || assinaturaAtiva) ? 0.6 : 1
-              }}
-              onMouseOver={(e) => {
-                if (!loading && !assinaturaAtiva) {
-                  e.target.style.transform = 'translateY(-2px)'
-                  e.target.style.boxShadow = `0 4px 12px ${plano.cor}80`
-                }
-              }}
-              onMouseOut={(e) => {
-                if (!loading && !assinaturaAtiva) {
-                  e.target.style.transform = 'translateY(0)'
-                  e.target.style.boxShadow = 'none'
-                }
+                backgroundColor: isPro ? '#25D366' : '#fafafa',
+                padding: '32px',
+                borderRadius: '16px',
+                border: isPro ? 'none' : '1px solid #eee',
+                boxShadow: isPro ? '0 8px 32px rgba(37,211,102,0.3)' : 'none',
+                transform: isPro ? 'scale(1.02)' : 'scale(1)',
+                position: 'relative'
               }}
             >
-              {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : plano.cta}
-            </button>
-          </div>
-        ))}
+              {isPro && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: '#1a1a1a',
+                  color: 'white',
+                  padding: '6px 16px',
+                  borderRadius: '100px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  Mais popular
+                </div>
+              )}
+
+              <p style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                color: isPro ? 'rgba(255,255,255,0.7)' : '#888',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '4px',
+                marginTop: isPro ? '8px' : '0'
+              }}>
+                {plano.id === 'starter' ? 'Ideal para começar' : plano.id === 'pro' ? 'Para negócios em crescimento' : 'Gestão profissional'}
+              </p>
+
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                marginBottom: '16px',
+                color: isPro ? 'white' : '#1a1a1a'
+              }}>
+                {plano.nome}
+              </h3>
+
+              <div style={{ marginBottom: '24px' }}>
+                <span style={{ fontSize: '42px', fontWeight: '800', color: isPro ? 'white' : '#1a1a1a' }}>
+                  R${plano.id === 'starter' ? '49' : plano.id === 'pro' ? '99' : '149'}
+                </span>
+                <span style={{ fontSize: '16px', color: isPro ? 'rgba(255,255,255,0.7)' : '#999' }}>
+                  /mês
+                </span>
+              </div>
+
+              <ul style={{
+                listStyle: 'none',
+                padding: 0,
+                marginBottom: '32px'
+              }}>
+                {plano.features.map((feature, i) => (
+                  <li key={i} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    marginBottom: '12px',
+                    fontSize: '14px',
+                    color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
+                  }}>
+                    <Icon
+                      icon="mdi:check"
+                      width="18"
+                      style={{ color: isPro ? 'white' : '#16a34a', flexShrink: 0, marginTop: '2px' }}
+                    />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => handleSelecionarPlano(plano.id)}
+                disabled={loading || assinaturaAtiva}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: (loading || assinaturaAtiva) ? '#ccc' : (isPro ? 'white' : 'transparent'),
+                  color: (loading || assinaturaAtiva) ? 'white' : (isPro ? '#25D366' : '#1a1a1a'),
+                  border: isPro ? 'none' : '1px solid #1a1a1a',
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  cursor: (loading || assinaturaAtiva) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: (loading || assinaturaAtiva) ? 0.6 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (!loading && !assinaturaAtiva && !isPro) {
+                    e.currentTarget.style.backgroundColor = '#1a1a1a'
+                    e.currentTarget.style.color = 'white'
+                  }
+                  if (!loading && !assinaturaAtiva && isPro) {
+                    e.currentTarget.style.opacity = '0.9'
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!loading && !assinaturaAtiva && !isPro) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#1a1a1a'
+                  }
+                  if (!loading && !assinaturaAtiva && isPro) {
+                    e.currentTarget.style.opacity = '1'
+                  }
+                }}
+              >
+                {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : `Escolher ${plano.nome}`}
+              </button>
+
+              {isPro && (
+                <p style={{
+                  textAlign: 'center',
+                  marginTop: '16px',
+                  fontSize: '13px',
+                  color: 'rgba(255,255,255,0.8)'
+                }}>
+                  Economize R$ 150/mês vs. sistemas tradicionais
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Garantias e Benefícios */}
@@ -991,7 +989,7 @@ export default function UpgradePage() {
           }}
         >
           <Icon icon="mdi:whatsapp" width="22" />
-          Precisa de ajuda? Fale conosco
+          Dúvidas? Chama no WhatsApp
         </button>
       </div>
 
