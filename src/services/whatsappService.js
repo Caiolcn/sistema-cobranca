@@ -311,10 +311,11 @@ class WhatsAppService {
         .from('usuarios')
         .select('nome_fantasia, razao_social, nome_completo, nome_empresa, chave_pix')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
       console.log('📋 Dados do usuário carregados:', usuario)
       console.log('🔑 Chave PIX encontrada:', usuario?.chave_pix)
+      console.log('🆔 User ID usado na query:', user.id)
       if (usuarioError) console.error('❌ Erro ao buscar usuário:', usuarioError)
 
       const nomeEmpresa = usuario?.nome_empresa || usuario?.nome_fantasia || usuario?.razao_social || usuario?.nome_completo || 'Empresa'
