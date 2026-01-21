@@ -137,21 +137,12 @@ export default function LandingPage() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Icon icon="mdi:whatsapp" width="22" style={{ color: 'white' }} />
-            </div>
-            <span style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-0.5px' }}>
-              MensalliZap
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <img
+              src="/Logo-Full.png"
+              alt="MensalliZap"
+              style={{ height: '40px', width: 'auto' }}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -964,23 +955,13 @@ export default function LandingPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '10px',
             marginBottom: '24px'
           }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Icon icon="mdi:whatsapp" width="18" style={{ color: 'white' }} />
-            </div>
-            <span style={{ fontSize: '18px', fontWeight: '700', color: 'white' }}>
-              MensalliZap
-            </span>
+            <img
+              src="/Logo-Full.png"
+              alt="MensalliZap"
+              style={{ height: '36px', width: 'auto', filter: 'brightness(0) invert(1)' }}
+            />
           </div>
 
           <div style={{

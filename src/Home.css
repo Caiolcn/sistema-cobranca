@@ -608,9 +608,14 @@
 }
 
 /* Fila de WhatsApp */
-.home-fila-whatsapp,
-.home-mensagens-recentes {
+.home-fila-whatsapp {
   max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Mensagens Recentes - altura fixa para ~4 itens visíveis */
+.home-mensagens-recentes {
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -689,6 +694,24 @@
   font-size: 11px;
   color: white;
   background: #f44336;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.fila-hoje {
+  font-size: 11px;
+  color: white;
+  background: #ff9800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.fila-amanha {
+  font-size: 11px;
+  color: white;
+  background: #2196F3;
   padding: 3px 8px;
   border-radius: 4px;
   font-weight: 600;
