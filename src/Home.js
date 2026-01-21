@@ -115,7 +115,7 @@ function Home() {
         { data: todosClientes },          // Clientes e assinaturas
         { data: fila },                   // Fila WhatsApp
         { data: mensagens },              // Mensagens recentes
-        { data: mensagensAutomaticas }    // Count de mensagens
+        { count: countMensagensEnviadas } // Count de mensagens (count vem direto, não em data)
       ] = await Promise.all([
         // 1. TODAS as mensalidades - processamos tudo no cliente
         supabase
@@ -123,11 +123,12 @@ function Home() {
           .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at')
           .eq('user_id', userId),
 
-        // 2. Todos os clientes com assinaturas e planos
+        // 2. Todos os clientes com assinaturas e planos (excluindo deletados)
         supabase
           .from('devedores')
-          .select('id, assinatura_ativa, plano:planos(valor)')
-          .eq('user_id', userId),
+          .select('id, assinatura_ativa, lixo, plano:planos(valor)')
+          .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false'),
 
         // 3. Fila de WhatsApp (inclui vencidas + vencendo hoje + vencendo amanhã)
         supabase
@@ -165,6 +166,9 @@ function Home() {
 
       // ========== PROCESSAMENTO LOCAL (mais eficiente) ==========
 
+      // Criar Set de IDs de clientes ativos (não deletados) para filtrar métricas
+      const clientesAtivosSet = new Set(todosClientes?.map(c => c.id) || []);
+
       // Métricas de mensalidades - tudo processado de uma vez
       let recebidoMes = 0;
       let valorAtraso = 0;
@@ -188,8 +192,8 @@ function Home() {
           recebidoMes += valor;
         }
 
-        // Valor em atraso (pendente com vencimento < hoje)
-        if (p.status === 'pendente' && dataVenc < hoje) {
+        // Valor em atraso (pendente com vencimento < hoje) - apenas clientes ativos
+        if (p.status === 'pendente' && dataVenc < hoje && clientesAtivosSet.has(p.devedor_id)) {
           valorAtraso += valor;
           clientesAtrasadosSet.add(p.devedor_id);
         }
@@ -254,9 +258,9 @@ function Home() {
         });
       }
 
-      // Taxa de cancelamento
+      // Taxa de cancelamento (clientes com assinatura desativada)
       const totalClientesGeral = todosClientes?.length || 0;
-      const clientesCancelados = totalClientesGeral - clientesComMensalidadeSet.size;
+      const clientesCancelados = todosClientes?.filter(c => c.assinatura_ativa === false).length || 0;
       const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
 
       // MRR
@@ -304,7 +308,7 @@ function Home() {
         receitaProjetadaMes: recebidoMes + aReceberMes,
         taxaCancelamento: taxaCancel,
         mensalidadesVencer7Dias: vencer7Dias,
-        mensagensEnviadasAuto: mensagensAutomaticas?.count || 0,
+        mensagensEnviadasAuto: countMensagensEnviadas || 0,
         statusAcesso: {
           emDia: { valor: statusData.emDia.valor, clientes: statusData.emDia.clientes.size },
           atrasoRecente: { valor: statusData.atrasoRecente.valor, clientes: statusData.atrasoRecente.clientes.size },

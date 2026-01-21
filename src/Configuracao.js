@@ -14,54 +14,38 @@ import useWindowSize from './hooks/useWindowSize'
 
 // Templates padrão para criação automática
 const TEMPLATES_PADRAO = {
-  pre_due_3days: `*⚠️ Lembrete Importante*
+  pre_due_3days: `Olá, {{nomeCliente}}! 👋
 
-Olá, *{{nomeCliente}}*! 👋
+Passando para te ajudar na organização da semana: sua mensalidade vence em 3 dias. 😃
 
-Sua mensalidade vence em breve:
+💰 Valor: {{valorMensalidade}}
+📆 Vencimento: {{dataVencimento}}
 
-💰 *Valor:* {{valorMensalidade}}
-📆 *Vencimento:* {{dataVencimento}}
-⏰ *Faltam apenas 3 dias!*
+🔑 Chave Pix: {{chavePix}}
 
-💳 *Meu PIX:* {{chavePix}}
+Adiantar o pagamento garante sua tranquilidade e a continuidade dos seus planos sem correria! 💪`,
 
-Evite juros e multas, pague em dia! 💪
+  due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃
 
-_{{nomeEmpresa}}_`,
+Hoje é o dia do vencimento da sua mensalidade.
 
-  due_day: `*📅 Vencimento Hoje*
+💰 Valor: {{valorMensalidade}}
+💳 Pix para pagamento: {{chavePix}}
 
-Olá, *{{nomeCliente}}*! 👋
+Manter seu plano em dia garante que você continue aproveitando todos os nossos benefícios sem interrupções! 🚀
 
-Sua mensalidade vence hoje:
+Qualquer dúvida, estou à disposição.`,
 
-💰 *Valor:* {{valorMensalidade}}
-📆 *Vencimento:* {{dataVencimento}} (HOJE)
+  overdue: `Olá, {{nomeCliente}}, como vai?
 
-💳 *Meu PIX:* {{chavePix}}
+Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
 
-Pague em dia e evite juros! 😊
+Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:
 
-_{{nomeEmpresa}}_`,
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
 
-  overdue: `*🚨 Aviso de Cobrança*
-
-Olá, *{{nomeCliente}}*! 👋
-
-Identificamos uma pendência em seu nome:
-
-💰 *Valor:* {{valorMensalidade}}
-📅 *Vencimento:* {{dataVencimento}}
-⏰ *Dias em atraso:* {{diasAtraso}}
-
-💳 *Meu PIX:* {{chavePix}}
-
-Por favor, regularize sua situação o quanto antes para evitar maiores transtornos.
-
-Caso já tenha efetuado o pagamento, por favor desconsidere esta mensagem. 🙏
-
-_{{nomeEmpresa}}_`
+Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
 }
 
 function Configuracao() {

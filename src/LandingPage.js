@@ -279,26 +279,18 @@ export default function LandingPage() {
             Sem cartão • 3 dias grátis • Cancele quando quiser
           </p>
 
-          {/* Hero Image Placeholder */}
+          {/* Hero Image */}
           <div style={{
             marginTop: '48px',
-            backgroundColor: '#f5f5f5',
             borderRadius: '16px',
-            padding: '40px',
-            border: '2px dashed #ddd',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '300px'
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
           }}>
-            <Icon icon="mdi:image-outline" width="48" style={{ color: '#bbb', marginBottom: '16px' }} />
-            <p style={{ color: '#999', fontSize: '14px', margin: 0 }}>
-              Screenshot do dashboard mostrando inadimplência caindo
-            </p>
-            <p style={{ color: '#bbb', fontSize: '12px', margin: '8px 0 0' }}>
-              ou vídeo mostrando mensagem sendo enviada automaticamente
-            </p>
+            <img
+              src="/dashboard.png"
+              alt="Dashboard do Mensalli"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
           </div>
         </div>
       </section>
@@ -337,7 +329,7 @@ export default function LandingPage() {
             </div>
             <div>
               <p style={{ fontSize: isSmallScreen ? '36px' : '48px', fontWeight: '800', color: '#25D366', margin: '0 0 8px' }}>
-                40%
+                70%
               </p>
               <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
                 Redução média em inadimplência
@@ -514,21 +506,16 @@ export default function LandingPage() {
               </div>
             </div>
             <div style={{
-              backgroundColor: '#f0f0f0',
               borderRadius: '16px',
-              padding: '40px',
-              border: '2px dashed #ddd',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '280px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
               order: isSmallScreen ? -1 : 0
             }}>
-              <Icon icon="mdi:image-outline" width="40" style={{ color: '#bbb', marginBottom: '12px' }} />
-              <p style={{ color: '#999', fontSize: '13px', margin: 0, textAlign: 'center' }}>
-                Screenshot: Dashboard de regras de cobrança
-              </p>
+              <img
+                src="/fila-whatsapp.png"
+                alt="Fila de WhatsApp com lembretes automáticos"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
             </div>
           </div>
 
@@ -541,20 +528,15 @@ export default function LandingPage() {
             marginBottom: '80px'
           }}>
             <div style={{
-              backgroundColor: '#f0f0f0',
               borderRadius: '16px',
-              padding: '40px',
-              border: '2px dashed #ddd',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '280px'
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
             }}>
-              <Icon icon="mdi:image-outline" width="40" style={{ color: '#bbb', marginBottom: '12px' }} />
-              <p style={{ color: '#999', fontSize: '13px', margin: 0, textAlign: 'center' }}>
-                Screenshot: Dashboard com gráficos de pagamentos
-              </p>
+              <img
+                src="/mensalidades.png"
+                alt="Dashboard de mensalidades e pagamentos"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
             </div>
             <div>
               <div style={{
@@ -654,21 +636,16 @@ export default function LandingPage() {
               </div>
             </div>
             <div style={{
-              backgroundColor: '#f0f0f0',
               borderRadius: '16px',
-              padding: '40px',
-              border: '2px dashed #ddd',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '280px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
               order: isSmallScreen ? -1 : 0
             }}>
-              <Icon icon="mdi:image-outline" width="40" style={{ color: '#bbb', marginBottom: '12px' }} />
-              <p style={{ color: '#999', fontSize: '13px', margin: 0, textAlign: 'center' }}>
-                Screenshot: Editor de templates com variáveis
-              </p>
+              <img
+                src="/templates.png"
+                alt="Editor de templates de mensagens"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
             </div>
           </div>
         </div>
@@ -933,6 +910,14 @@ export default function LandingPage() {
               >
                 Escolher Pro
               </button>
+              <p style={{
+                marginTop: '16px',
+                fontSize: '13px',
+                color: 'rgba(255,255,255,0.8)',
+                textAlign: 'center'
+              }}>
+                Economize R$ 150/mês vs. sistemas tradicionais
+              </p>
             </div>
 
             {/* Plano Premium */}
@@ -1338,6 +1323,21 @@ export default function LandingPage() {
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <p style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'rgba(37,211,102,0.15)',
+            color: '#25D366',
+            padding: '8px 16px',
+            borderRadius: '100px',
+            fontSize: '14px',
+            fontWeight: '600',
+            marginBottom: '24px'
+          }}>
+            <Icon icon="mdi:fire" width="18" />
+            234 negócios começaram esta semana
+          </p>
           <h2 style={{
             fontSize: isSmallScreen ? '28px' : '40px',
             fontWeight: '800',
@@ -1380,7 +1380,7 @@ export default function LandingPage() {
               e.currentTarget.style.boxShadow = 'none'
             }}
           >
-            Começar grátis por 3 dias
+            Começar teste grátis
             <Icon icon="mdi:arrow-right" width="20" />
           </button>
           <div style={{
