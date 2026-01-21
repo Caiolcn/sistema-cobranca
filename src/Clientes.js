@@ -210,13 +210,33 @@ export default function Clientes() {
       })
 
       // Processar dados dos clientes - agora O(N) ao invés de O(N²)
+      const hoje = new Date()
+      hoje.setHours(0, 0, 0, 0)
+
       const clientesComDados = clientesData.map(cliente => {
         const proximaMensalidade = mensalidadesMap.get(cliente.id)
+
+        // Calcular status baseado na próxima mensalidade
+        let status = 'Sem mensalidade'
+        if (proximaMensalidade) {
+          const dataVenc = new Date(proximaMensalidade.data_vencimento)
+          dataVenc.setHours(0, 0, 0, 0)
+
+          if (proximaMensalidade.status === 'atrasado' || dataVenc < hoje) {
+            status = 'Atrasado'
+          } else {
+            status = 'Em dia'
+          }
+        } else if (cliente.assinatura_ativa) {
+          // Cliente com assinatura ativa mas sem mensalidade pendente = Em dia
+          status = 'Em dia'
+        }
 
         return {
           ...cliente,
           plano_nome: cliente.planos?.nome || null,
-          proxima_mensalidade: proximaMensalidade?.data_vencimento || null
+          proxima_mensalidade: proximaMensalidade?.data_vencimento || null,
+          status
         }
       })
 
