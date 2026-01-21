@@ -185,60 +185,46 @@ export default function UpgradePage() {
       nome: 'Starter',
       preco: 'R$ 49,90',
       periodo: '/mês',
-      paraQuem: 'Ideal para studios e escolas com até 50 alunos',
       features: [
-        'Até 50 clientes ativos',
-        '200 mensagens automáticas por mês',
-        '1 template de cobrança personalizável',
-        'Lembretes 3 dias antes do vencimento',
-        'Dashboard com visão geral',
-        'Exportação de relatórios (CSV)',
-        'Suporte por e-mail (48h)'
+        'Lembretes automáticos 3 dias antes',
+        '1 template personalizável',
+        'Dashboard básico',
+        'Exportação CSV',
+        'Suporte'
       ],
       destaque: false,
-      cor: '#78909c',
-      dica: '💡 Você economiza ~2h/semana em cobranças manuais',
-      cta: 'Começar com Starter'
+      dica: '💡 Economize ~2h/semana em cobranças',
+      cta: 'Começar no Starter'
     },
     {
       id: 'pro',
       nome: 'Pro',
       preco: 'R$ 99,90',
       periodo: '/mês',
-      paraQuem: 'Ideal para academias e escolas com 50-150 alunos',
       features: [
-        'Até 150 clientes ativos',
-        '500 mensagens automáticas por mês',
+        'Lembretes em 3 dias antes, no dia do vencimento e 3 dias depois',
         '3 templates personalizáveis',
-        'Lembretes inteligentes (3 e 5 dias antes)',
-        'Dashboard completo com gráficos',
-        'Aging Report e Receita Projetada',
-        'Suporte via WhatsApp (24h)'
+        'Dashboard com gráficos completos',
+        'Aging Report + Receita Projetada',
+        'Suporte WhatsApp'
       ],
       destaque: true,
-      cor: '#667eea',
-      dica: '💡 Você economiza ~5h/semana + Reduz inadimplência em 40%',
-      cta: 'Assinar mais popular'
+      dica: '💡 Economize ~5h/semana + Reduza 70% inadimplência',
+      cta: 'Escolher mais popular'
     },
     {
       id: 'premium',
       nome: 'Premium',
       preco: 'R$ 149,90',
       periodo: '/mês',
-      paraQuem: 'Ideal para redes e grandes negócios com 150+ alunos',
       features: [
-        'Até 500 clientes ativos',
-        '3.000 mensagens automáticas por mês',
-        'Templates ilimitados',
-        'Tudo do plano Pro incluído',
-        'Webhooks para integração (n8n)',
-        'Consultoria inicial de setup (1h)',
+        'Tudo do plano Pro',
+        'Consultoria inicial (1h)',
         'Suporte prioritário (4h)',
-        'Acesso antecipado a novos recursos'
+        'Acesso antecipado a features'
       ],
       destaque: false,
-      cor: '#764ba2',
-      dica: '💡 Você economiza ~10h/semana + Suporte VIP',
+      dica: '💡 Economize ~10h/semana + Suporte VIP',
       cta: 'Ativar Premium'
     }
   ]
@@ -662,11 +648,14 @@ export default function UpgradePage() {
   // Tela principal - Seleção de Plano
   return (
     <div style={{
+      backgroundColor: 'white',
+      minHeight: '100vh',
+      width: '100%'
+    }}>
+    <div style={{
       padding: '40px 24px',
       maxWidth: '1200px',
-      margin: '0 auto',
-      minHeight: '100vh',
-      backgroundColor: 'white'
+      margin: '0 auto'
     }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
@@ -857,6 +846,16 @@ export default function UpgradePage() {
                     <span>{feature}</span>
                   </li>
                 ))}
+                <li style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
+                }}>
+                  <span>{plano.dica}</span>
+                </li>
               </ul>
 
               <button
@@ -896,7 +895,7 @@ export default function UpgradePage() {
                   }
                 }}
               >
-                {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : `Escolher ${plano.nome}`}
+                {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : plano.cta}
               </button>
 
               {isPro && (
@@ -1027,6 +1026,7 @@ export default function UpgradePage() {
           to { transform: rotate(360deg); }
         }
       `}</style>
+    </div>
     </div>
   )
 }

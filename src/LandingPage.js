@@ -774,6 +774,7 @@ export default function LandingPage() {
                 {[
                   'Até 50 clientes ativos',
                   '200 mensagens/mês',
+                  'Mensagem automática no vencimento',
                   '1 template de mensagem personalizado',
                   'Automação via WhatsApp',
                   'Dashboard básico'
@@ -814,7 +815,7 @@ export default function LandingPage() {
                   e.currentTarget.style.color = '#1a1a1a'
                 }}
               >
-                Escolher Starter
+                Começar no Starter
               </button>
             </div>
 
@@ -869,7 +870,7 @@ export default function LandingPage() {
                   'Até 150 clientes ativos',
                   '600 mensagens/mês',
                   '3 templates personalizados',
-                  'Regras de cobrança (3 dias, 5 dias, no vencimento)',
+                  'Regras de cobrança (3 dias, no vencimento e 3 dias depois)',
                   'Dashboard completo com gráficos',
                   'Suporte via WhatsApp',
                   'Aging Report (relatório de atrasos)'
@@ -908,7 +909,7 @@ export default function LandingPage() {
                   e.target.style.opacity = '1'
                 }}
               >
-                Escolher Pro
+                Escolher mais popular
               </button>
               <p style={{
                 marginTop: '16px',
@@ -953,11 +954,11 @@ export default function LandingPage() {
                 {[
                   'Até 500 clientes ativos',
                   '3.000 mensagens/mês',
+                  'Tudo do plano Pro',
                   'Templates ilimitados',
                   'Consultoria inicial (1h)',
                   'Suporte prioritário via WhatsApp',
                   'Acesso antecipado a novas features',
-                  'Histórico completo de mensalidades'
                 ].map((item, i) => (
                   <li key={i} style={{
                     display: 'flex',
@@ -995,7 +996,7 @@ export default function LandingPage() {
                   e.currentTarget.style.color = '#1a1a1a'
                 }}
               >
-                Escolher Premium
+                Ativar Premium
               </button>
             </div>
           </div>

@@ -149,13 +149,15 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
     }
 
     // Determinar plano baseado no valor
-    let plano = 'basico'
+    let plano = 'starter'
     const valor = parseFloat(subscription.transaction_amount || subscription.auto_recurring?.transaction_amount || 0)
 
     if (valor >= 149) {
-      plano = 'enterprise'
-    } else if (valor >= 49) {
       plano = 'premium'
+    } else if (valor >= 99) {
+      plano = 'pro'
+    } else {
+      plano = 'starter'
     }
 
     // Atualizar ou criar registro de assinatura
@@ -326,10 +328,10 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
     if (payment.status === 'approved') {
       // Pagamento Pix aprovado - ativar usuário por 30 dias
       if (isPix && planoFromRef) {
-        // Determinar limite mensal
-        let limiteMensal = 100
-        if (planoFromRef === 'premium') limiteMensal = 500
-        if (planoFromRef === 'enterprise') limiteMensal = -1 // ilimitado
+        // Determinar limite mensal baseado no plano
+        let limiteMensal = 200 // starter
+        if (planoFromRef === 'pro') limiteMensal = 600
+        if (planoFromRef === 'premium') limiteMensal = 3000
 
         // Calcular data de expiração (30 dias)
         const dataExpiracao = new Date()
