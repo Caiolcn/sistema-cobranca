@@ -104,6 +104,10 @@ export default function WhatsAppConexao() {
   const [automacaoNoDiaAtiva, setAutomacaoNoDiaAtiva] = useState(true) // Ativo por padrão
   const [automacao3DiasDepoisAtiva, setAutomacao3DiasDepoisAtiva] = useState(false)
 
+  // Estado para Chave PIX
+  const [chavePix, setChavePix] = useState('')
+  const [salvandoPix, setSalvandoPix] = useState(false)
+
   // Estado para modal de feedback
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
 
@@ -129,7 +133,7 @@ export default function WhatsAppConexao() {
         const instanceName = `instance_${user.id.substring(0, 8)}`
 
         // 2. Fazer TODAS as queries em paralelo
-        const [configResult, templatesResult, automacoesResult] = await Promise.all([
+        const [configResult, templatesResult, automacoesResult, usuarioResult] = await Promise.all([
           // Config da Evolution API
           supabase
             .from('config')
@@ -152,7 +156,14 @@ export default function WhatsAppConexao() {
               `${user.id}_automacao_3dias_ativa`,
               `${user.id}_automacao_nodia_ativa`,
               `${user.id}_automacao_3diasdepois_ativa`
-            ])
+            ]),
+
+          // Dados do usuário (chave PIX)
+          supabase
+            .from('usuarios')
+            .select('chave_pix')
+            .eq('id', user.id)
+            .single()
         ])
 
         // 3. Processar Config Evolution API
@@ -163,6 +174,11 @@ export default function WhatsAppConexao() {
         const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
 
         setConfig({ apiKey, apiUrl, instanceName })
+
+        // 3.1 Processar Chave PIX
+        if (usuarioResult.data?.chave_pix) {
+          setChavePix(usuarioResult.data.chave_pix)
+        }
 
         // 4. Processar Templates
         const templates = templatesResult.data || []
@@ -987,6 +1003,28 @@ export default function WhatsAppConexao() {
     }
   }
 
+  const salvarChavePix = async () => {
+    try {
+      setSalvandoPix(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ chave_pix: chavePix })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setFeedbackModal({ isOpen: true, type: 'success', title: 'Salvo!', message: 'Chave PIX atualizada com sucesso' })
+    } catch (error) {
+      console.error('Erro ao salvar chave PIX:', error)
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar chave PIX' })
+    } finally {
+      setSalvandoPix(false)
+    }
+  }
+
   const salvarTemplate = async () => {
     if (!tituloTemplate.trim() || !mensagemTemplate.trim()) {
       setFeedbackModal({ isOpen: true, type: 'warning', title: 'Atenção', message: 'Preencha o título e a mensagem do template' })
@@ -1385,6 +1423,71 @@ export default function WhatsAppConexao() {
             </h3>
             <p style={{ margin: 0, fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
               Crie e gerencie templates de mensagens personalizadas para enviar aos seus clientes
+            </p>
+          </div>
+
+          {/* Campo Chave PIX */}
+          <div style={{
+            backgroundColor: '#f0faf9',
+            border: '1px solid #32BCAD',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: isSmallScreen ? '20px' : '30px'
+          }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#344848' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon icon="mdi:pix" width="20" style={{ color: '#32BCAD' }} />
+                Chave PIX
+              </span>
+            </label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={chavePix}
+                onChange={(e) => setChavePix(e.target.value)}
+                placeholder="CPF, CNPJ, E-mail, Telefone ou Chave Aleatória"
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: '1px solid #32BCAD',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  backgroundColor: 'white'
+                }}
+              />
+              <button
+                onClick={salvarChavePix}
+                disabled={salvandoPix}
+                style={{
+                  padding: '10px 16px',
+                  backgroundColor: '#32BCAD',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: salvandoPix ? 'not-allowed' : 'pointer',
+                  opacity: salvandoPix ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {salvandoPix ? (
+                  <>
+                    <Icon icon="mdi:loading" width="16" className="spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:content-save" width="16" />
+                    Salvar
+                  </>
+                )}
+              </button>
+            </div>
+            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#666' }}>
+              Esta chave será usada nas mensagens automáticas (variável {`{{chavePix}}`})
             </p>
           </div>
 

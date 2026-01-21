@@ -161,6 +161,11 @@ class WhatsAppService {
           // Não é JSON válido
         }
 
+        // Verificar se é erro de conexão fechada (WhatsApp desconectado)
+        if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
+          throw new Error('📱 Seu WhatsApp está desconectado. Vá em WhatsApp → Conexão e escaneie o QR Code para reconectar.')
+        }
+
         // Verificar se é erro de número não existe
         if (errorData.response?.message && Array.isArray(errorData.response.message)) {
           const numeroNaoExiste = errorData.response.message.some(msg => msg.exists === false)
@@ -227,14 +232,22 @@ class WhatsAppService {
       }
     }
 
-    // 2. Buscar plano do usuário
+    // 2. Buscar plano do usuário (da tabela usuarios, que é a fonte correta)
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('plano')
+      .eq('id', userId)
+      .maybeSingle()
+
+    const plano = usuario?.plano || 'starter'
+
+    // Buscar controle de uso mensal
     const { data: controle } = await supabase
       .from('controle_planos')
-      .select('plano, usage_count, limite_mensal')
+      .select('usage_count, limite_mensal')
       .eq('user_id', userId)
       .maybeSingle()
 
-    const plano = controle?.plano || 'starter'
     const usageCount = controle?.usage_count || 0
     const limiteMensal = controle?.limite_mensal || 200
 

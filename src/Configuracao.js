@@ -9,7 +9,7 @@ import {
   atualizarConfiguracao,
   executarAutomacoes
 } from './services/automacaoService'
-import { validarCNPJ, validarTelefone } from './utils/validators'
+import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 
 // Templates padrão para criação automática
@@ -182,9 +182,9 @@ function Configuracao() {
       return
     }
 
-    // Validar CNPJ se preenchido
-    if (dadosEmpresa.cnpj?.trim() && !validarCNPJ(dadosEmpresa.cnpj)) {
-      showToast('CNPJ inválido', 'warning')
+    // Validar CPF/CNPJ se preenchido
+    if (dadosEmpresa.cnpj?.trim() && !validarCPFouCNPJ(dadosEmpresa.cnpj)) {
+      showToast('CPF/CNPJ inválido', 'warning')
       return
     }
 
@@ -223,8 +223,16 @@ function Configuracao() {
     }
   }
 
-  const formatarCNPJ = (value) => {
+  const formatarCPFouCNPJ = (value) => {
     const numbers = value.replace(/\D/g, '')
+    // CPF: 11 dígitos
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+    }
+    // CNPJ: 14 dígitos
     if (numbers.length <= 14) {
       return numbers
         .replace(/^(\d{2})(\d)/, '$1.$2')
@@ -651,13 +659,13 @@ function Configuracao() {
 
         <div>
           <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            CNPJ
+            CPF/CNPJ
           </label>
           <input
             type="text"
             value={dadosEmpresa.cnpj}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, cnpj: formatarCNPJ(e.target.value) })}
-            placeholder="00.000.000/0000-00"
+            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, cnpj: formatarCPFouCNPJ(e.target.value) })}
+            placeholder="000.000.000-00 ou 00.000.000/0000-00"
             maxLength="18"
             style={{
               width: '100%',
@@ -869,33 +877,6 @@ function Configuracao() {
               boxSizing: 'border-box'
             }}
           />
-        </div>
-
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:pix" width="18" style={{ color: '#32BCAD' }} />
-              Chave PIX
-            </span>
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.chavePix}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, chavePix: e.target.value })}
-            placeholder="CPF, CNPJ, E-mail, Telefone ou Chave Aleatória"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #32BCAD',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box',
-              backgroundColor: '#f0faf9'
-            }}
-          />
-          <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#666' }}>
-            Esta chave será usada nas mensagens automáticas de cobrança (variável {`{{chavePix}}`})
-          </p>
         </div>
       </div>
 
