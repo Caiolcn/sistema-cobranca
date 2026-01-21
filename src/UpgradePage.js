@@ -175,60 +175,71 @@ export default function UpgradePage() {
     }
   }
 
+  const handleSuporteWhatsApp = () => {
+    window.open('https://wa.me/5562999999999?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
+  }
+
   const planos = [
     {
       id: 'starter',
       nome: 'Starter',
       preco: 'R$ 49,90',
       periodo: '/mês',
-      limite: '50 clientes • 200 mensagens/mês',
+      paraQuem: 'Ideal para studios e escolas com até 50 alunos',
       features: [
         'Até 50 clientes ativos',
-        '200 mensagens por mês',
-        '1 template padrão',
-        'Disparo automático em atraso',
-        'Dashboard básico',
-        'Exportação CSV',
+        '200 mensagens automáticas por mês',
+        '1 template de cobrança personalizável',
+        'Lembretes 3 dias antes do vencimento',
+        'Dashboard com visão geral',
+        'Exportação de relatórios (CSV)',
         'Suporte por e-mail (48h)'
       ],
       destaque: false,
-      cor: '#78909c'
+      cor: '#78909c',
+      dica: '💡 Você economiza ~2h/semana em cobranças manuais',
+      cta: 'Começar com Starter'
     },
     {
       id: 'pro',
       nome: 'Pro',
       preco: 'R$ 99,90',
       periodo: '/mês',
-      limite: '150 clientes • 500 mensagens/mês',
+      paraQuem: 'Ideal para academias e escolas com 50-150 alunos',
       features: [
         'Até 150 clientes ativos',
-        '500 mensagens por mês',
+        '500 mensagens automáticas por mês',
         '3 templates personalizáveis',
-        'Automação 3 e 5 dias antes',
+        'Lembretes inteligentes (3 e 5 dias antes)',
         'Dashboard completo com gráficos',
         'Aging Report e Receita Projetada',
-        'Suporte WhatsApp (24h)'
+        'Suporte via WhatsApp (24h)'
       ],
       destaque: true,
-      cor: '#667eea'
+      cor: '#667eea',
+      dica: '💡 Você economiza ~5h/semana + Reduz inadimplência em 40%',
+      cta: 'Assinar mais popular'
     },
     {
       id: 'premium',
       nome: 'Premium',
       preco: 'R$ 149,90',
       periodo: '/mês',
-      limite: '500 clientes • 3.000 mensagens/mês',
+      paraQuem: 'Ideal para redes e grandes negócios com 150+ alunos',
       features: [
         'Até 500 clientes ativos',
-        '3.000 mensagens por mês',
-        'Tudo do plano Pro',
+        '3.000 mensagens automáticas por mês',
+        'Templates ilimitados',
+        'Tudo do plano Pro incluído',
         'Webhooks para integração (n8n)',
-        'Consultoria inicial (1h)',
+        'Consultoria inicial de setup (1h)',
         'Suporte prioritário (4h)',
-        'Acesso antecipado a novas features'
+        'Acesso antecipado a novos recursos'
       ],
       destaque: false,
-      cor: '#764ba2'
+      cor: '#764ba2',
+      dica: '💡 Você economiza ~10h/semana + Suporte VIP',
+      cta: 'Ativar Premium'
     }
   ]
 
@@ -660,27 +671,38 @@ export default function UpgradePage() {
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
         <div style={{
           display: 'inline-block',
-          padding: '8px 20px',
-          backgroundColor: isExpired ? '#ffebee' : '#fff3e0',
-          borderRadius: '20px',
-          marginBottom: '20px'
+          padding: '12px 24px',
+          backgroundColor: '#ffebee',
+          borderRadius: '12px',
+          marginBottom: '24px'
         }}>
           <span style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: isExpired ? '#f44336' : '#ff9800'
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#d32f2f',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
-            {isExpired ? '⚠️ Trial Expirado' : `⏰ ${diasRestantes} ${diasRestantes === 1 ? 'dia' : 'dias'} restantes`}
+            🔒 Seu plano expirou
           </span>
         </div>
+
+        <p style={{
+          fontSize: '16px',
+          color: '#666',
+          marginBottom: '16px'
+        }}>
+          Escolha um plano para continuar recebendo suas mensalidades em dia
+        </p>
 
         <h1 style={{
           fontSize: '40px',
           fontWeight: 'bold',
-          marginBottom: '16px',
+          marginBottom: '12px',
           color: '#333'
         }}>
-          Faça Upgrade e Continue Usando
+          Continue recebendo em dia
         </h1>
         <p style={{
           fontSize: '18px',
@@ -688,7 +710,7 @@ export default function UpgradePage() {
           maxWidth: '600px',
           margin: '0 auto'
         }}>
-          Escolha o plano ideal para o seu negócio e automatize suas cobranças sem limites
+          Escolha seu plano e volte a automatizar cobranças imediatamente
         </p>
       </div>
 
@@ -752,8 +774,8 @@ export default function UpgradePage() {
       {/* Cards de Planos */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-        gap: '32px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: '24px',
         marginBottom: '60px'
       }}>
         {planos.map((plano, index) => (
@@ -761,84 +783,101 @@ export default function UpgradePage() {
             key={index}
             style={{
               backgroundColor: 'white',
-              padding: '40px',
+              padding: '32px',
               borderRadius: '16px',
               border: plano.destaque ? `3px solid ${plano.cor}` : '2px solid #e0e0e0',
               boxShadow: plano.destaque ? `0 8px 32px ${plano.cor}40` : '0 4px 12px rgba(0,0,0,0.08)',
-              transform: plano.destaque ? 'scale(1.05)' : 'scale(1)',
+              transform: plano.destaque ? 'scale(1.02)' : 'scale(1)',
               position: 'relative'
             }}
           >
             {plano.destaque && (
               <div style={{
                 position: 'absolute',
-                top: '-12px',
+                top: '-14px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 backgroundColor: plano.cor,
                 color: 'white',
-                padding: '6px 20px',
+                padding: '8px 20px',
                 borderRadius: '20px',
                 fontSize: '12px',
-                fontWeight: '600',
+                fontWeight: '700',
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}>
-                Mais Popular
+                🏆 Mais Popular
               </div>
             )}
 
             <h3 style={{
-              fontSize: '28px',
-              fontWeight: '600',
-              marginBottom: '12px',
-              color: '#333'
+              fontSize: '24px',
+              fontWeight: '700',
+              marginBottom: '8px',
+              color: '#333',
+              marginTop: plano.destaque ? '8px' : '0'
             }}>
               {plano.nome}
             </h3>
 
-            <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#333' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{ fontSize: '40px', fontWeight: 'bold', color: '#333' }}>
                 {plano.preco}
               </span>
-              <span style={{ fontSize: '18px', color: '#666' }}>
+              <span style={{ fontSize: '16px', color: '#666' }}>
                 {plano.periodo}
               </span>
             </div>
 
             <p style={{
-              fontSize: '16px',
-              color: '#666',
-              marginBottom: '32px',
-              paddingBottom: '24px',
-              borderBottom: '1px solid #e0e0e0'
+              fontSize: '14px',
+              color: '#888',
+              marginBottom: '24px',
+              paddingBottom: '20px',
+              borderBottom: '1px solid #e0e0e0',
+              fontStyle: 'italic'
             }}>
-              {plano.limite}
+              {plano.paraQuem}
             </p>
 
             <ul style={{
               listStyle: 'none',
               padding: 0,
-              marginBottom: '32px'
+              marginBottom: '24px'
             }}>
               {plano.features.map((feature, i) => (
                 <li key={i} style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '16px',
-                  fontSize: '15px',
-                  color: '#666'
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  color: '#555'
                 }}>
                   <Icon
                     icon="mdi:check-circle"
-                    width="20"
-                    style={{ color: '#4CAF50', flexShrink: 0 }}
+                    width="18"
+                    style={{ color: '#4CAF50', flexShrink: 0, marginTop: '2px' }}
                   />
                   <span>{feature}</span>
                 </li>
               ))}
             </ul>
+
+            {/* Dica de economia */}
+            <div style={{
+              backgroundColor: '#f5f5f5',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              color: '#666'
+            }}>
+              {plano.dica}
+            </div>
 
             <button
               onClick={() => handleSelecionarPlano(plano.id)}
@@ -871,13 +910,13 @@ export default function UpgradePage() {
                 }
               }}
             >
-              {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : 'Escolher Plano'}
+              {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : plano.cta}
             </button>
           </div>
         ))}
       </div>
 
-      {/* Informações adicionais */}
+      {/* Garantias e Benefícios */}
       <div style={{
         backgroundColor: 'white',
         padding: '40px',
@@ -885,84 +924,75 @@ export default function UpgradePage() {
         border: '1px solid #e0e0e0',
         marginBottom: '40px'
       }}>
-        <h3 style={{
-          fontSize: '24px',
-          fontWeight: '600',
-          marginBottom: '24px',
-          color: '#333',
-          textAlign: 'center'
-        }}>
-          Pagamento Seguro via Mercado Pago
-        </h3>
-
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '32px'
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '32px',
+          marginBottom: '32px'
         }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: '#e3f2fd',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px'
-            }}>
-              <Icon icon="mdi:shield-check" width="32" style={{ color: '#2196F3' }} />
-            </div>
-            <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              100% Seguro
-            </h4>
-            <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Pagamentos processados pelo Mercado Pago com criptografia SSL
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '15px', color: '#333' }}>Cancele quando quiser, sem multa</span>
           </div>
-
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: '#e8f5e9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px'
-            }}>
-              <Icon icon="mdi:qrcode" width="32" style={{ color: '#00b894' }} />
-            </div>
-            <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              Pix Disponível
-            </h4>
-            <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Pague instantaneamente com Pix ou escolha cartão de crédito
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '15px', color: '#333' }}>Seus dados continuam salvos por 30 dias</span>
           </div>
-
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: '#f3e5f5',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px'
-            }}>
-              <Icon icon="mdi:autorenew" width="32" style={{ color: '#9C27B0' }} />
-            </div>
-            <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-              Cancele Quando Quiser
-            </h4>
-            <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-              Sem fidelidade. Cancele sua assinatura a qualquer momento
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '15px', color: '#333' }}>Upgrade ou downgrade a qualquer momento</span>
           </div>
         </div>
+
+        <div style={{
+          textAlign: 'center',
+          paddingTop: '24px',
+          borderTop: '1px solid #e0e0e0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Icon icon="mdi:shield-check" width="24" style={{ color: '#2196F3' }} />
+            <span style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+              Pagamento 100% seguro via Mercado Pago
+            </span>
+          </div>
+          <p style={{ fontSize: '14px', color: '#666' }}>
+            Seus dados financeiros estão protegidos com criptografia SSL
+          </p>
+        </div>
+      </div>
+
+      {/* Botão de Suporte */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <button
+          onClick={handleSuporteWhatsApp}
+          style={{
+            padding: '14px 28px',
+            backgroundColor: '#25D366',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50px',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.transform = 'translateY(-2px)'
+            e.target.style.boxShadow = '0 6px 16px rgba(37, 211, 102, 0.4)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.transform = 'translateY(0)'
+            e.target.style.boxShadow = '0 4px 12px rgba(37, 211, 102, 0.3)'
+          }}
+        >
+          <Icon icon="mdi:whatsapp" width="22" />
+          Precisa de ajuda? Fale conosco
+        </button>
       </div>
 
       {/* Botão Voltar */}
