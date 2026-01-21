@@ -93,6 +93,11 @@ function Home() {
       const { inicio, fim } = obterDatasPeriodo();
       const hoje = new Date().toISOString().split('T')[0];
 
+      // Data de amanhã para incluir na fila de WhatsApp
+      const amanha = new Date();
+      amanha.setDate(amanha.getDate() + 1);
+      const amanhaStr = amanha.toISOString().split('T')[0];
+
       // Calcular datas para queries
       const seteDiasFrente = new Date();
       seteDiasFrente.setDate(seteDiasFrente.getDate() + 7);
@@ -124,7 +129,7 @@ function Home() {
           .select('id, assinatura_ativa, plano:planos(valor)')
           .eq('user_id', userId),
 
-        // 3. Fila de WhatsApp (precisa de join com devedores)
+        // 3. Fila de WhatsApp (inclui vencidas + vencendo hoje + vencendo amanhã)
         supabase
           .from('mensalidades')
           .select(`
@@ -134,9 +139,10 @@ function Home() {
           .eq('user_id', userId)
           .eq('status', 'pendente')
           .eq('enviado_hoje', false)
-          .lte('data_vencimento', hoje)
+          .neq('cancelado_envio', true)
+          .lte('data_vencimento', amanhaStr)
           .order('data_vencimento', { ascending: true })
-          .limit(10),
+          .limit(15),
 
         // 4. Mensagens recentes (precisa de join com devedores)
         supabase
@@ -367,10 +373,12 @@ function Home() {
         });
         await carregarDados();
       } else {
+        // Verifica se é bloqueio (config desativada ou plano) ou erro técnico
+        const isBloqueio = resultado.bloqueado === true;
         setFeedbackModal({
           isOpen: true,
-          type: 'danger',
-          title: 'Erro ao Enviar',
+          type: isBloqueio ? 'warning' : 'danger',
+          title: isBloqueio ? 'Envio Bloqueado' : 'Erro ao Enviar',
           message: resultado.erro || 'Erro desconhecido ao enviar mensagem.'
         });
       }
@@ -399,17 +407,26 @@ function Home() {
     setConfirmModalCancelar({ isOpen: false, mensalidadeId: null });
 
     try {
-      // Atualizar o status da mensalidade ou remover da fila
-      console.log('Cancelando envio da mensalidade:', mensalidadeId);
+      // Marcar cancelado_envio = true para remover permanentemente da fila
+      const { error } = await supabase
+        .from('mensalidades')
+        .update({ cancelado_envio: true })
+        .eq('id', mensalidadeId);
+
+      if (error) throw error;
+
+      // Atualizar lista local removendo o item
+      setDashboardData(prev => ({
+        ...prev,
+        filaWhatsapp: prev.filaWhatsapp.filter(item => item.id !== mensalidadeId)
+      }));
 
       setFeedbackModal({
         isOpen: true,
         type: 'success',
         title: 'Envio Cancelado',
-        message: 'O envio da mensagem foi cancelado com sucesso.'
+        message: 'Esta cobrança não será mais enviada automaticamente.'
       });
-
-      await carregarDados();
     } catch (error) {
       console.error('Erro ao cancelar envio:', error);
       setFeedbackModal({
@@ -859,6 +876,25 @@ function Home() {
               <div className="fila-lista">
                 {filaWhatsapp.map((item) => {
                   const diasAtraso = calcularDiasAtraso(item.data_vencimento);
+                  const hoje = new Date().toISOString().split('T')[0];
+                  const amanha = new Date();
+                  amanha.setDate(amanha.getDate() + 1);
+                  const amanhaStr = amanha.toISOString().split('T')[0];
+
+                  // Determinar status do vencimento
+                  let statusVencimento = null;
+                  let statusClass = '';
+                  if (item.data_vencimento === amanhaStr) {
+                    statusVencimento = 'Amanhã';
+                    statusClass = 'fila-amanha';
+                  } else if (item.data_vencimento === hoje) {
+                    statusVencimento = 'Hoje';
+                    statusClass = 'fila-hoje';
+                  } else if (diasAtraso > 0) {
+                    statusVencimento = `${diasAtraso} dia${diasAtraso > 1 ? 's' : ''} atraso`;
+                    statusClass = 'fila-atraso';
+                  }
+
                   return (
                     <div key={item.id} className="fila-item">
                       <div className="fila-icon">
@@ -870,8 +906,8 @@ function Home() {
                       </div>
                       <div className="fila-detalhes">
                         <span className="fila-valor">{formatarMoeda(item.valor)}</span>
-                        {diasAtraso > 0 && (
-                          <span className="fila-atraso">{diasAtraso} dia{diasAtraso > 1 ? 's' : ''} atraso</span>
+                        {statusVencimento && (
+                          <span className={statusClass}>{statusVencimento}</span>
                         )}
                       </div>
                       <div className="fila-acoes">

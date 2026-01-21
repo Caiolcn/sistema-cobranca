@@ -73,7 +73,8 @@ class WhatsAppService {
       '{{valorParcela}}': dados.valorMensalidade || '', // Alias para valorMensalidade
       '{{dataVencimento}}': dados.dataVencimento || '',
       '{{diasAtraso}}': dados.diasAtraso || '0',
-      '{{nomeEmpresa}}': dados.nomeEmpresa || ''
+      '{{nomeEmpresa}}': dados.nomeEmpresa || '',
+      '{{chavePix}}': dados.chavePix || ''
     }
 
     // Aplicar todas as substituições
@@ -190,6 +191,73 @@ class WhatsAppService {
   }
 
   /**
+   * Calcula o tipo de mensagem baseado na data de vencimento
+   */
+  calcularTipoMensagem(dataVencimento) {
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+    const vencimento = new Date(dataVencimento + 'T00:00:00')
+    const diffDias = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24))
+
+    if (diffDias > 0) {
+      return 'pre_due' // Antes do vencimento
+    } else if (diffDias === 0) {
+      return 'due_day' // No dia
+    } else {
+      return 'overdue' // Em atraso
+    }
+  }
+
+  /**
+   * Valida se o envio pode ser realizado
+   */
+  async validarEnvio(userId, tipoMensagem) {
+    // 1. Buscar configuração de envio
+    const { data: config } = await supabase
+      .from('configuracoes_cobranca')
+      .select('envio_habilitado, enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    // Se configuração existe e envio está desabilitado
+    if (config && config.envio_habilitado === false) {
+      return {
+        permitido: false,
+        erro: 'Envio de mensagens está desativado nas configurações'
+      }
+    }
+
+    // 2. Buscar plano do usuário
+    const { data: controle } = await supabase
+      .from('controle_planos')
+      .select('plano, usage_count, limite_mensal')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const plano = controle?.plano || 'starter'
+    const usageCount = controle?.usage_count || 0
+    const limiteMensal = controle?.limite_mensal || 200
+
+    // 3. Verificar se plano Starter tentando enviar mensagem antecipada
+    if (plano === 'starter' && (tipoMensagem === 'pre_due' || tipoMensagem === 'due_day')) {
+      return {
+        permitido: false,
+        erro: 'Mensagens antes do vencimento estão disponíveis apenas para planos Pro e Premium'
+      }
+    }
+
+    // 4. Verificar limite mensal
+    if (usageCount >= limiteMensal) {
+      return {
+        permitido: false,
+        erro: `Limite mensal de ${limiteMensal} mensagens atingido. Faça upgrade do plano para continuar.`
+      }
+    }
+
+    return { permitido: true }
+  }
+
+  /**
    * Envia cobrança para uma mensalidade específica
    */
   async enviarCobranca(mensalidadeId) {
@@ -211,14 +279,31 @@ class WhatsAppService {
       if (mensalidadeError) throw mensalidadeError
       if (!mensalidade) throw new Error('Mensalidade não encontrada')
 
-      // Buscar dados do usuário/empresa
-      const { data: usuario } = await supabase
+      // VALIDAÇÕES DE ENVIO
+      const tipoMensagem = this.calcularTipoMensagem(mensalidade.data_vencimento)
+      const validacao = await this.validarEnvio(user.id, tipoMensagem)
+
+      if (!validacao.permitido) {
+        return {
+          sucesso: false,
+          erro: validacao.erro,
+          bloqueado: true
+        }
+      }
+
+      // Buscar dados do usuário/empresa incluindo chave PIX
+      const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
-        .select('nome_fantasia, razao_social, nome_completo')
+        .select('nome_fantasia, razao_social, nome_completo, nome_empresa, chave_pix')
         .eq('id', user.id)
         .single()
 
-      const nomeEmpresa = usuario?.nome_fantasia || usuario?.razao_social || usuario?.nome_completo || 'Empresa'
+      console.log('📋 Dados do usuário carregados:', usuario)
+      console.log('🔑 Chave PIX encontrada:', usuario?.chave_pix)
+      if (usuarioError) console.error('❌ Erro ao buscar usuário:', usuarioError)
+
+      const nomeEmpresa = usuario?.nome_empresa || usuario?.nome_fantasia || usuario?.razao_social || usuario?.nome_completo || 'Empresa'
+      const chavePix = usuario?.chave_pix || ''
 
       // Buscar template do tipo 'overdue' (em atraso) do usuário
       const { data: template } = await supabase
@@ -231,14 +316,16 @@ class WhatsAppService {
         .maybeSingle()
 
       // Template padrão do sistema caso o usuário não tenha configurado
-      const TEMPLATE_PADRAO_OVERDUE = `Olá {{nomeCliente}},
+      const TEMPLATE_PADRAO_OVERDUE = `Olá, {{nomeCliente}}, como vai?
 
-Identificamos que a mensalidade no valor de {{valorMensalidade}} com vencimento em {{dataVencimento}} está em atraso há {{diasAtraso}} dias.
+Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
 
-Por favor, regularize sua situação o quanto antes.
+Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:
 
-Atenciosamente,
-{{nomeEmpresa}}`
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
+
+Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
 
       // Usar template do usuário ou o padrão do sistema
       const mensagemTemplate = template?.mensagem || TEMPLATE_PADRAO_OVERDUE
@@ -255,11 +342,17 @@ Atenciosamente,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         diasAtraso: diasAtraso.toString(),
-        nomeEmpresa: nomeEmpresa
+        nomeEmpresa: nomeEmpresa,
+        chavePix: chavePix
       }
+
+      console.log('📝 Template usado:', mensagemTemplate)
+      console.log('📊 Dados para substituição:', dadosSubstituicao)
+      console.log('🔑 chavePix no dadosSubstituicao:', dadosSubstituicao.chavePix)
 
       // Gerar mensagem final
       const mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
+      console.log('📨 Mensagem final após substituição:', mensagemFinal)
 
       // Enviar via Evolution API
       const resultado = await this.enviarMensagem(mensalidade.devedor.telefone, mensagemFinal)
