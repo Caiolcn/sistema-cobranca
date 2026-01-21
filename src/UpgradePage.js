@@ -72,64 +72,20 @@ export default function UpgradePage() {
     setAssinaturaAtiva(assinatura)
   }
 
-  const handleSelecionarPlano = (planoId) => {
+  const handleSelecionarPlano = async (planoId) => {
     setPlanoSelecionado(planoId)
-    setMetodoPagamento(null)
+    setMetodoPagamento('pix') // Vai direto para Pix
     setPixData(null)
     setErro(null)
-  }
 
-  const handleSelecionarMetodo = async (metodo) => {
-    setMetodoPagamento(metodo)
-    setErro(null)
-
-    if (metodo === 'cartao') {
-      // Redirecionar para checkout do MP
-      await handlePagarCartao()
-    } else if (metodo === 'pix') {
-      // Gerar QR Code Pix
-      await handleGerarPix()
-    }
-  }
-
-  const handlePagarCartao = async () => {
+    // Gerar Pix automaticamente
     try {
       setLoading(true)
-      setErro(null)
-
-      console.log('🚀 Criando assinatura para plano:', planoSelecionado)
-
-      // Criar assinatura via Edge Function
-      const { init_point, subscription_id } = await mercadoPagoService.criarAssinatura(planoSelecionado)
-
-      console.log('✅ Assinatura criada:', subscription_id)
-      console.log('🔗 Redirecionando para:', init_point)
-
-      // Redirecionar para checkout do Mercado Pago
-      window.location.href = init_point
-
-    } catch (error) {
-      console.error('❌ Erro ao contratar plano:', error)
-      setErro(error.message || 'Erro ao processar pagamento. Tente novamente.')
-      setLoading(false)
-    }
-  }
-
-  const handleGerarPix = async () => {
-    try {
-      setLoading(true)
-      setErro(null)
-
-      console.log('💠 Gerando Pix para plano:', planoSelecionado)
-
-      // Criar pagamento Pix via Edge Function
-      const data = await mercadoPagoService.criarPagamentoPix(planoSelecionado)
-
+      console.log('💠 Gerando Pix para plano:', planoId)
+      const data = await mercadoPagoService.criarPagamentoPix(planoId)
       console.log('✅ Pix gerado:', data.payment_id)
-
       setPixData(data)
       setLoading(false)
-
     } catch (error) {
       console.error('❌ Erro ao gerar Pix:', error)
       setErro(error.message || 'Erro ao gerar Pix. Tente novamente.')
@@ -499,151 +455,7 @@ export default function UpgradePage() {
     )
   }
 
-  // Tela de seleção de método de pagamento
-  if (planoSelecionado && !metodoPagamento) {
-    const plano = planos.find(p => p.id === planoSelecionado)
-
-    return (
-      <div style={{
-        padding: '40px 24px',
-        maxWidth: '600px',
-        margin: '0 auto',
-        minHeight: '100vh'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '8px', color: '#333' }}>
-            Como você quer pagar?
-          </h2>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            Plano {plano.nome} - {plano.preco}{plano.periodo}
-          </p>
-        </div>
-
-        {/* Mensagem de Erro */}
-        {erro && (
-          <div style={{
-            backgroundColor: '#ffebee',
-            color: '#c62828',
-            padding: '16px 24px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            textAlign: 'center',
-            fontSize: '15px'
-          }}>
-            <Icon icon="mdi:alert-circle" width="20" style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-            {erro}
-          </div>
-        )}
-
-        {/* Opção Cartão */}
-        <button
-          onClick={() => handleSelecionarMetodo('cartao')}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '24px',
-            backgroundColor: 'white',
-            border: '2px solid #667eea',
-            borderRadius: '12px',
-            marginBottom: '16px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            textAlign: 'left'
-          }}
-        >
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '12px',
-            backgroundColor: '#667eea20',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Icon icon="mdi:credit-card" width="32" style={{ color: '#667eea' }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
-              Cartão de Crédito
-            </h3>
-            <p style={{ fontSize: '14px', color: '#666' }}>
-              Cobrança automática todo mês
-            </p>
-          </div>
-          <Icon icon="mdi:chevron-right" width="24" style={{ color: '#667eea' }} />
-        </button>
-
-        {/* Opção Pix */}
-        <button
-          onClick={() => handleSelecionarMetodo('pix')}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '24px',
-            backgroundColor: 'white',
-            border: '2px solid #00b894',
-            borderRadius: '12px',
-            marginBottom: '32px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            textAlign: 'left'
-          }}
-        >
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '12px',
-            backgroundColor: '#00b89420',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Icon icon="mdi:qrcode" width="32" style={{ color: '#00b894' }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
-              Pix
-            </h3>
-            <p style={{ fontSize: '14px', color: '#666' }}>
-              Pagamento único - renovar manualmente após 30 dias
-            </p>
-          </div>
-          <Icon icon="mdi:chevron-right" width="24" style={{ color: '#00b894' }} />
-        </button>
-
-        {loading && (
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <Icon icon="mdi:loading" width="32" style={{ color: '#667eea', animation: 'spin 1s linear infinite' }} />
-            <p style={{ color: '#666', marginTop: '8px' }}>Processando...</p>
-          </div>
-        )}
-
-        {/* Botão Voltar */}
-        <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={handleVoltar}
-            style={{
-              padding: '12px 32px',
-              backgroundColor: 'transparent',
-              color: '#666',
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Escolher outro plano
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // Tela de seleção de método removida - vai direto para Pix
 
   // Tela principal - Seleção de Plano
   return (
