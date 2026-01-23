@@ -43,6 +43,7 @@ export default function Clientes() {
   const [novoClienteDataNascimento, setNovoClienteDataNascimento] = useState('')
   const [criarAssinatura, setCriarAssinatura] = useState(false)
   const [dataInicioAssinatura, setDataInicioAssinatura] = useState('')
+  const [dataVencimentoAssinatura, setDataVencimentoAssinatura] = useState('')
   const [planoSelecionado, setPlanoSelecionado] = useState('')
   const [planos, setPlanos] = useState([])
   const [mostrarModalCriarPlano, setMostrarModalCriarPlano] = useState(false)
@@ -57,6 +58,7 @@ export default function Clientes() {
   const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState({ show: false, clienteId: null })
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
   const [dataInicioAssinaturaModal, setDataInicioAssinaturaModal] = useState('')
+  const [dataVencimentoAssinaturaModal, setDataVencimentoAssinaturaModal] = useState('')
   const [erroModalNovoCliente, setErroModalNovoCliente] = useState('')
 
   // Modal de Mensalidade
@@ -538,7 +540,12 @@ export default function Clientes() {
       if (!cliente?.plano_id) {
         // Se não tem plano, abrir modal para selecionar
         setPlanoParaAtivar('')
-        setDataInicioAssinaturaModal(new Date().toISOString().split('T')[0])
+        const hoje = new Date()
+        setDataInicioAssinaturaModal(hoje.toISOString().split('T')[0])
+        // Auto-preencher data de vencimento com hoje + 30 dias
+        const vencimento = new Date(hoje)
+        vencimento.setDate(vencimento.getDate() + 30)
+        setDataVencimentoAssinaturaModal(vencimento.toISOString().split('T')[0])
         setMostrarModalSelecionarPlano({ show: true, clienteId })
         return
       }
@@ -549,8 +556,8 @@ export default function Clientes() {
 
   const confirmarAtivarAssinaturaComPlano = async () => {
     const { clienteId } = mostrarModalSelecionarPlano
-    if (!clienteId || !planoParaAtivar || !dataInicioAssinaturaModal) {
-      showToast('Selecione um plano e data de início', 'warning')
+    if (!clienteId || !planoParaAtivar || !dataInicioAssinaturaModal || !dataVencimentoAssinaturaModal) {
+      showToast('Selecione um plano, data de início e data de vencimento', 'warning')
       return
     }
 
@@ -575,18 +582,14 @@ export default function Clientes() {
 
       if (error) throw error
 
-      // Criar primeira mensalidade
-      const dataInicio = new Date(dataInicioAssinaturaModal + 'T00:00:00')
-      const dataVencimento = new Date(dataInicio)
-      dataVencimento.setDate(dataVencimento.getDate() + 30)
-
+      // Criar primeira mensalidade usando data de vencimento definida pelo usuário
       const { error: mensalidadeError } = await supabase
         .from('mensalidades')
         .insert({
           user_id: userId,
           devedor_id: clienteId,
           valor: parseFloat(plano.valor),
-          data_vencimento: dataVencimento.toISOString().split('T')[0],
+          data_vencimento: dataVencimentoAssinaturaModal,
           status: 'pendente',
           is_mensalidade: true,
           numero_mensalidade: 1
@@ -618,6 +621,7 @@ export default function Clientes() {
       setMostrarModalSelecionarPlano({ show: false, clienteId: null })
       setPlanoParaAtivar('')
       setDataInicioAssinaturaModal('')
+      setDataVencimentoAssinaturaModal('')
     }
   }
 
@@ -803,8 +807,8 @@ export default function Clientes() {
       return
     }
 
-    if (criarAssinatura && (!dataInicioAssinatura || !planoSelecionado)) {
-      setErroModalNovoCliente('Preencha a data de início e selecione um plano')
+    if (criarAssinatura && (!dataInicioAssinatura || !dataVencimentoAssinatura || !planoSelecionado)) {
+      setErroModalNovoCliente('Preencha a data de início, data de vencimento e selecione um plano')
       return
     }
 
@@ -856,18 +860,14 @@ export default function Clientes() {
           return
         }
 
-        // Calcular data de vencimento (data_inicio + 30 dias)
-        const dataInicio = new Date(dataInicioAssinatura + 'T00:00:00')
-        const dataVencimento = new Date(dataInicio)
-        dataVencimento.setDate(dataVencimento.getDate() + 30)
-
+        // Usar data de vencimento definida pelo usuário
         const { error: mensalidadeError } = await supabase
           .from('mensalidades')
           .insert({
             user_id: userId,
             devedor_id: clienteData[0].id,
             valor: planoEncontrado.valor,
-            data_vencimento: dataVencimento.toISOString().split('T')[0],
+            data_vencimento: dataVencimentoAssinatura,
             status: 'pendente',
             is_mensalidade: true,
             numero_mensalidade: 1
@@ -884,6 +884,7 @@ export default function Clientes() {
       setNovoClienteDataNascimento('')
       setCriarAssinatura(false)
       setDataInicioAssinatura('')
+      setDataVencimentoAssinatura('')
       setPlanoSelecionado('')
       carregarClientes()
     } catch (error) {
@@ -2419,6 +2420,7 @@ export default function Clientes() {
             setMostrarModalSelecionarPlano({ show: false, clienteId: null })
             setPlanoParaAtivar('')
             setDataInicioAssinaturaModal('')
+            setDataVencimentoAssinaturaModal('')
           }}
           style={{
             position: 'fixed',
@@ -2545,7 +2547,40 @@ export default function Clientes() {
                     <input
                       type="date"
                       value={dataInicioAssinaturaModal}
-                      onChange={(e) => setDataInicioAssinaturaModal(e.target.value)}
+                      onChange={(e) => {
+                        setDataInicioAssinaturaModal(e.target.value)
+                        // Auto-preencher data de vencimento com início + 30 dias
+                        if (e.target.value) {
+                          const inicio = new Date(e.target.value + 'T00:00:00')
+                          inicio.setDate(inicio.getDate() + 30)
+                          setDataVencimentoAssinaturaModal(inicio.toISOString().split('T')[0])
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        backgroundColor: 'white'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#333'
+                    }}>
+                      Data de Vencimento
+                    </label>
+                    <input
+                      type="date"
+                      value={dataVencimentoAssinaturaModal}
+                      onChange={(e) => setDataVencimentoAssinaturaModal(e.target.value)}
                       style={{
                         width: '100%',
                         padding: '12px',
@@ -2556,7 +2591,7 @@ export default function Clientes() {
                       }}
                     />
                     <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
-                      A primeira mensalidade será criada com vencimento 30 dias após esta data
+                      Data da primeira mensalidade. Auto-preenchido com início + 30 dias.
                     </p>
                   </div>
 
@@ -2602,6 +2637,7 @@ export default function Clientes() {
                   setMostrarModalSelecionarPlano({ show: false, clienteId: null })
                   setPlanoParaAtivar('')
                   setDataInicioAssinaturaModal('')
+                  setDataVencimentoAssinaturaModal('')
                 }}
                 style={{
                   padding: '10px 20px',
@@ -2618,14 +2654,14 @@ export default function Clientes() {
               </button>
               <button
                 onClick={confirmarAtivarAssinaturaComPlano}
-                disabled={!planoParaAtivar || !dataInicioAssinaturaModal}
+                disabled={!planoParaAtivar || !dataInicioAssinaturaModal || !dataVencimentoAssinaturaModal}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: (planoParaAtivar && dataInicioAssinaturaModal) ? '#4CAF50' : '#ccc',
+                  backgroundColor: (planoParaAtivar && dataInicioAssinaturaModal && dataVencimentoAssinaturaModal) ? '#4CAF50' : '#ccc',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: (planoParaAtivar && dataInicioAssinaturaModal) ? 'pointer' : 'not-allowed',
+                  cursor: (planoParaAtivar && dataInicioAssinaturaModal && dataVencimentoAssinaturaModal) ? 'pointer' : 'not-allowed',
                   fontSize: '14px',
                   fontWeight: '500'
                 }}
@@ -2910,7 +2946,15 @@ export default function Clientes() {
                   <input
                     type="date"
                     value={dataInicioAssinatura}
-                    onChange={(e) => setDataInicioAssinatura(e.target.value)}
+                    onChange={(e) => {
+                      setDataInicioAssinatura(e.target.value)
+                      // Auto-preencher data de vencimento com início + 30 dias
+                      if (e.target.value) {
+                        const inicio = new Date(e.target.value + 'T00:00:00')
+                        inicio.setDate(inicio.getDate() + 30)
+                        setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
+                      }
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -2924,6 +2968,39 @@ export default function Clientes() {
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
                   />
+                </div>
+
+                {/* Data de vencimento */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#333'
+                  }}>
+                    Data de Vencimento *
+                  </label>
+                  <input
+                    type="date"
+                    value={dataVencimentoAssinatura}
+                    onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '16px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                    onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
+                    Data da primeira mensalidade. Auto-preenchido com início + 30 dias.
+                  </p>
                 </div>
 
                 {/* Seleção de plano */}
