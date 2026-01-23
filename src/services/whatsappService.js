@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient'
 
 /**
  * Serviço para integração com Evolution API
+ * Com cache para reduzir queries e timeout para evitar travamentos
  */
 class WhatsAppService {
   constructor() {
@@ -9,6 +10,81 @@ class WhatsAppService {
     this.apiKey = null
     this.instanceName = null
     this.initialized = false
+
+    // Cache para reduzir queries desnecessárias
+    this._cache = {
+      userValidation: new Map(), // Cache de validação por userId
+      lastInit: null,            // Timestamp da última inicialização
+      initTTL: 5 * 60 * 1000     // 5 minutos de cache para credenciais
+    }
+  }
+
+  /**
+   * Limpa o cache (útil após mudanças de configuração)
+   */
+  clearCache() {
+    this._cache.userValidation.clear()
+    this._cache.lastInit = null
+    this.initialized = false
+  }
+
+  /**
+   * Fetch com timeout para evitar requisições que travam
+   */
+  async fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      })
+      return response
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+
+  /**
+   * Fetch com retry e backoff exponencial
+   * @param {string} url - URL da requisição
+   * @param {object} options - Opções do fetch
+   * @param {number} maxRetries - Número máximo de tentativas (default: 3)
+   * @param {number} baseDelay - Delay base em ms (default: 1000)
+   */
+  async fetchWithRetry(url, options = {}, maxRetries = 3, baseDelay = 1000) {
+    let lastError
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await this.fetchWithTimeout(url, options, 30000)
+
+        // Se sucesso ou erro de cliente (4xx), não retry
+        if (response.ok || (response.status >= 400 && response.status < 500)) {
+          return response
+        }
+
+        // Erro de servidor (5xx), tentar novamente
+        lastError = new Error(`Erro HTTP: ${response.status}`)
+      } catch (error) {
+        lastError = error
+
+        // Se foi timeout ou erro de rede, tentar novamente
+        if (error.name !== 'AbortError' && !error.message.includes('fetch')) {
+          throw error // Erro inesperado, não fazer retry
+        }
+      }
+
+      // Se não é a última tentativa, aguardar com backoff exponencial
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt) // 1s, 2s, 4s...
+        console.log(`⏳ Tentativa ${attempt + 1} falhou. Aguardando ${delay}ms antes de retry...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+
+    throw lastError
   }
 
   /**
@@ -47,11 +123,22 @@ class WhatsAppService {
   }
 
   /**
-   * Garante que o serviço está inicializado
+   * Garante que o serviço está inicializado (com cache TTL)
    */
   async ensureInitialized() {
+    const now = Date.now()
+
+    // Verificar se cache expirou
+    if (this.initialized && this._cache.lastInit) {
+      const cacheAge = now - this._cache.lastInit
+      if (cacheAge > this._cache.initTTL) {
+        this.initialized = false
+      }
+    }
+
     if (!this.initialized) {
       await this.initialize()
+      this._cache.lastInit = now
     }
 
     if (!this.apiKey || !this.apiUrl || !this.instanceName) {
@@ -138,14 +225,19 @@ class WhatsAppService {
 
       console.log('📦 Payload completo:', JSON.stringify(payload, null, 2))
 
-      const response = await fetch(`${this.apiUrl}/message/sendText/${this.instanceName}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': this.apiKey
+      const response = await this.fetchWithRetry(
+        `${this.apiUrl}/message/sendText/${this.instanceName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': this.apiKey
+          },
+          body: JSON.stringify(payload)
         },
-        body: JSON.stringify(payload)
-      })
+        2, // 2 tentativas (1 original + 1 retry)
+        2000 // 2 segundos de delay base
+      )
 
       console.log('📊 Status da resposta:', response.status)
 
@@ -188,6 +280,15 @@ class WhatsAppService {
       }
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error)
+
+      // Tratar erro de timeout
+      if (error.name === 'AbortError') {
+        return {
+          sucesso: false,
+          erro: 'Tempo limite excedido. A API do WhatsApp não respondeu em 30 segundos.'
+        }
+      }
+
       return {
         sucesso: false,
         erro: error.message
@@ -214,15 +315,57 @@ class WhatsAppService {
   }
 
   /**
-   * Valida se o envio pode ser realizado
+   * Valida se o envio pode ser realizado (com cache de 60s)
    */
   async validarEnvio(userId, tipoMensagem) {
-    // 1. Buscar configuração de envio
-    const { data: config } = await supabase
-      .from('configuracoes_cobranca')
-      .select('envio_habilitado, enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois')
-      .eq('user_id', userId)
-      .maybeSingle()
+    const cacheKey = userId
+    const now = Date.now()
+    const cacheTTL = 60 * 1000 // 60 segundos
+
+    // Verificar cache
+    const cached = this._cache.userValidation.get(cacheKey)
+    let config, plano, usageCount, limiteMensal
+
+    if (cached && (now - cached.timestamp < cacheTTL)) {
+      // Usar dados do cache
+      config = cached.config
+      plano = cached.plano
+      usageCount = cached.usageCount
+      limiteMensal = cached.limiteMensal
+    } else {
+      // Buscar dados em paralelo (3 queries → 1 round-trip)
+      const [configResult, usuarioResult, controleResult] = await Promise.all([
+        supabase
+          .from('configuracoes_cobranca')
+          .select('envio_habilitado')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('usuarios')
+          .select('plano')
+          .eq('id', userId)
+          .maybeSingle(),
+        supabase
+          .from('controle_planos')
+          .select('usage_count, limite_mensal')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ])
+
+      config = configResult.data
+      plano = usuarioResult.data?.plano || 'starter'
+      usageCount = controleResult.data?.usage_count || 0
+      limiteMensal = controleResult.data?.limite_mensal || 200
+
+      // Salvar no cache
+      this._cache.userValidation.set(cacheKey, {
+        timestamp: now,
+        config,
+        plano,
+        usageCount,
+        limiteMensal
+      })
+    }
 
     // Se configuração existe e envio está desabilitado
     if (config && config.envio_habilitado === false) {
@@ -231,25 +374,6 @@ class WhatsAppService {
         erro: 'Envio de mensagens está desativado nas configurações'
       }
     }
-
-    // 2. Buscar plano do usuário (da tabela usuarios, que é a fonte correta)
-    const { data: usuario } = await supabase
-      .from('usuarios')
-      .select('plano')
-      .eq('id', userId)
-      .maybeSingle()
-
-    const plano = usuario?.plano || 'starter'
-
-    // Buscar controle de uso mensal
-    const { data: controle } = await supabase
-      .from('controle_planos')
-      .select('usage_count, limite_mensal')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    const usageCount = controle?.usage_count || 0
-    const limiteMensal = controle?.limite_mensal || 200
 
     // 3. Verificar se plano Starter tentando enviar mensagem bloqueada
     // Starter só pode enviar "No Dia" (due_day)
@@ -498,12 +622,16 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
     await this.ensureInitialized()
 
     try {
-      const response = await fetch(`${this.apiUrl}/instance/connectionState/${this.instanceName}`, {
-        method: 'GET',
-        headers: {
-          'apikey': this.apiKey
-        }
-      })
+      const response = await this.fetchWithTimeout(
+        `${this.apiUrl}/instance/connectionState/${this.instanceName}`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': this.apiKey
+          }
+        },
+        15000 // 15 segundos de timeout para status check
+      )
 
       if (!response.ok) {
         return { conectado: false, estado: 'erro' }
@@ -518,6 +646,16 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       }
     } catch (error) {
       console.error('Erro ao verificar status:', error)
+
+      // Tratar erro de timeout
+      if (error.name === 'AbortError') {
+        return {
+          conectado: false,
+          estado: 'timeout',
+          erro: 'Tempo limite excedido ao verificar conexão'
+        }
+      }
+
       return { conectado: false, estado: 'erro', erro: error.message }
     }
   }

@@ -18,9 +18,42 @@ export default function AdminDashboard() {
   useEffect(() => {
     carregarDados()
 
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(carregarDados, 30000)
-    return () => clearInterval(interval)
+    // Atualizar a cada 2 minutos (120s) - apenas quando aba está visível
+    let interval = null
+
+    const startPolling = () => {
+      if (!interval) {
+        interval = setInterval(carregarDados, 120000)
+      }
+    }
+
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        carregarDados() // Atualiza ao voltar
+        startPolling()
+      }
+    }
+
+    // Iniciar polling se página visível
+    if (!document.hidden) {
+      startPolling()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const carregarDados = async () => {
@@ -29,7 +62,7 @@ export default function AdminDashboard() {
       // Buscar todos os clientes
       const { data: clientesData, error: clientesError } = await supabase
         .from('mensallizap')
-        .select('*')
+        .select('id, user_id, conectado, ultima_conexao, total_mensagens_enviadas, mensagens_mes_atual, nome_empresa')
         .order('ultima_conexao', { ascending: false, nullsFirst: false })
 
       if (clientesError) throw clientesError

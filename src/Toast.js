@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 
 // Sistema global de toast
@@ -60,7 +60,7 @@ export default function Toast() {
   )
 }
 
-function ToastItem({ toast }) {
+const ToastItem = React.memo(function ToastItem({ toast }) {
   const [isExiting, setIsExiting] = useState(false)
 
   const handleClose = () => {
@@ -196,4 +196,4 @@ function ToastItem({ toast }) {
       </style>
     </div>
   )
-}
+})

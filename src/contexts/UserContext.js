@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../supabaseClient'
 
 const UserContext = createContext(null)
@@ -22,10 +22,10 @@ export function UserProvider({ children }) {
 
       setUser(authUser)
 
-      // Buscar dados adicionais do usuário
+      // Buscar dados adicionais do usuário (incluindo trial_fim para evitar query duplicada)
       const { data: usuarioData } = await supabase
         .from('usuarios')
-        .select('*')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
         .eq('id', authUser.id)
         .maybeSingle()
 
@@ -59,14 +59,43 @@ export function UserProvider({ children }) {
 
     const { data } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
       .eq('id', user.id)
       .maybeSingle()
 
     setUserData(data)
   }, [user])
 
-  const value = {
+  // Calcular status do trial uma vez (evita query duplicada no useTrialStatus)
+  const trialStatus = useMemo(() => {
+    if (!userData) return { isExpired: false, diasRestantes: 0, planoPago: false, trialFim: null }
+
+    // Se tem plano pago, trial não se aplica
+    if (userData.plano_pago) {
+      return { isExpired: false, diasRestantes: -1, planoPago: true, trialFim: null }
+    }
+
+    // Calcular dias restantes
+    const agora = new Date()
+    const trialFim = userData.trial_fim ? new Date(userData.trial_fim) : null
+
+    if (!trialFim) {
+      return { isExpired: false, diasRestantes: 0, planoPago: false, trialFim: null }
+    }
+
+    const diffMs = trialFim - agora
+    const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    const isExpired = diffDias <= 0
+
+    return {
+      isExpired,
+      diasRestantes: Math.max(0, diffDias),
+      planoPago: false,
+      trialFim: userData.trial_fim
+    }
+  }, [userData])
+
+  const value = useMemo(() => ({
     user,
     userData,
     loading,
@@ -75,8 +104,10 @@ export function UserProvider({ children }) {
     userId: user?.id,
     plano: userData?.plano || 'starter',
     nomeEmpresa: userData?.nome_empresa || '',
-    chavePix: userData?.chave_pix || ''
-  }
+    chavePix: userData?.chave_pix || '',
+    // Trial status (calculado uma vez, evita query duplicada)
+    trialStatus
+  }), [user, userData, loading, refreshUserData, trialStatus])
 
   return (
     <UserContext.Provider value={value}>

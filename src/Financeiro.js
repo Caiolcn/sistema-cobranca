@@ -27,6 +27,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [filtroDataInicio, setFiltroDataInicio] = useState('')
   const [filtroDataFim, setFiltroDataFim] = useState('')
   const [filtroNome, setFiltroNome] = useState('')
+  const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
+
+  // Debounce do filtro de nome (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFiltroNomeDebounced(filtroNome)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [filtroNome])
 
   // Modal de Detalhes da Mensalidade
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false)
@@ -76,7 +85,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   useEffect(() => {
     aplicarFiltros()
-  }, [mensalidades, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim, filtroNome])
+  }, [mensalidades, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim, filtroNomeDebounced])
 
   // OTIMIZAÇÃO: Consolidar carregarMensalidades, carregarClientes e calcularMRR em uma única função
   const carregarDados = useCallback(async () => {
@@ -254,9 +263,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const aplicarFiltros = () => {
     let resultado = [...mensalidades]
 
-    // Filtro por nome do cliente
-    if (filtroNome.trim() !== '') {
-      const termo = filtroNome.toLowerCase()
+    // Filtro por nome do cliente (usando valor com debounce)
+    if (filtroNomeDebounced.trim() !== '') {
+      const termo = filtroNomeDebounced.toLowerCase()
       resultado = resultado.filter(p =>
         p.devedor?.nome?.toLowerCase().includes(termo)
       )

@@ -20,7 +20,7 @@ const baseStyle = {
   borderRadius: '4px'
 }
 
-export function Skeleton({ width = '100%', height = '20px', borderRadius, style = {} }) {
+export const Skeleton = React.memo(function Skeleton({ width = '100%', height = '20px', borderRadius, style = {} }) {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -35,9 +35,9 @@ export function Skeleton({ width = '100%', height = '20px', borderRadius, style 
       />
     </>
   )
-}
+})
 
-export function SkeletonCard({ style = {} }) {
+export const SkeletonCard = React.memo(function SkeletonCard({ style = {} }) {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -56,9 +56,9 @@ export function SkeletonCard({ style = {} }) {
       </div>
     </>
   )
-}
+})
 
-export function SkeletonTableRow({ columns = 5 }) {
+export const SkeletonTableRow = React.memo(function SkeletonTableRow({ columns = 5 }) {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -71,9 +71,9 @@ export function SkeletonTableRow({ columns = 5 }) {
       </tr>
     </>
   )
-}
+})
 
-export function SkeletonListItem() {
+export const SkeletonListItem = React.memo(function SkeletonListItem() {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -96,9 +96,9 @@ export function SkeletonListItem() {
       </div>
     </>
   )
-}
+})
 
-export function SkeletonDashboard() {
+export const SkeletonDashboard = React.memo(function SkeletonDashboard() {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -126,9 +126,9 @@ export function SkeletonDashboard() {
       </div>
     </>
   )
-}
+})
 
-export function SkeletonList({ count = 5 }) {
+export const SkeletonList = React.memo(function SkeletonList({ count = 5 }) {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -139,9 +139,9 @@ export function SkeletonList({ count = 5 }) {
       </div>
     </>
   )
-}
+})
 
-export function SkeletonTable({ rows = 5, columns = 5 }) {
+export const SkeletonTable = React.memo(function SkeletonTable({ rows = 5, columns = 5 }) {
   return (
     <>
       <style>{shimmerStyle}</style>
@@ -169,6 +169,6 @@ export function SkeletonTable({ rows = 5, columns = 5 }) {
       </div>
     </>
   )
-}
+})
 
 export default Skeleton

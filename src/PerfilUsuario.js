@@ -28,7 +28,7 @@ export default function PerfilUsuario({ onClose }) {
         // Buscar dados do usuário
         const { data, error } = await supabase
           .from('usuarios')
-          .select('*')
+          .select('email, nome_completo, telefone, cpf_cnpj, plano, status_conta, limite_mensal')
           .eq('id', user.id)
           .single()
 
