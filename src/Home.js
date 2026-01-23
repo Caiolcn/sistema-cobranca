@@ -93,10 +93,10 @@ function Home() {
       const { inicio, fim } = obterDatasPeriodo();
       const hoje = new Date().toISOString().split('T')[0];
 
-      // Data de amanhã para incluir na fila de WhatsApp
-      const amanha = new Date();
-      amanha.setDate(amanha.getDate() + 1);
-      const amanhaStr = amanha.toISOString().split('T')[0];
+      // Data de 3 dias à frente para fila de WhatsApp (alinhado com automação)
+      const tresDiasFrente = new Date();
+      tresDiasFrente.setDate(tresDiasFrente.getDate() + 3);
+      const tresDiasFrenteStr = tresDiasFrente.toISOString().split('T')[0];
 
       // Calcular datas para queries
       const seteDiasFrente = new Date();
@@ -130,7 +130,8 @@ function Home() {
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
-        // 3. Fila de WhatsApp (inclui vencidas + vencendo hoje + vencendo amanhã)
+        // 3. Fila de WhatsApp (inclui vencidas + vencendo em até 3 dias)
+        // Alinhado com automação que envia 3 dias antes do vencimento
         supabase
           .from('mensalidades')
           .select(`
@@ -141,9 +142,9 @@ function Home() {
           .eq('status', 'pendente')
           .eq('enviado_hoje', false)
           .neq('cancelado_envio', true)
-          .lte('data_vencimento', amanhaStr)
+          .lte('data_vencimento', tresDiasFrenteStr)
           .order('data_vencimento', { ascending: true })
-          .limit(15),
+          .limit(20),
 
         // 4. Mensagens recentes (precisa de join com devedores)
         supabase
@@ -879,24 +880,29 @@ function Home() {
             ) : (
               <div className="fila-lista">
                 {filaWhatsapp.map((item) => {
-                  const diasAtraso = calcularDiasAtraso(item.data_vencimento);
-                  const hoje = new Date().toISOString().split('T')[0];
-                  const amanha = new Date();
-                  amanha.setDate(amanha.getDate() + 1);
-                  const amanhaStr = amanha.toISOString().split('T')[0];
+                  const hoje = new Date();
+                  hoje.setHours(0, 0, 0, 0);
+                  const vencimento = new Date(item.data_vencimento + 'T00:00:00');
+                  const diffMs = vencimento - hoje;
+                  const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
                   // Determinar status do vencimento
                   let statusVencimento = null;
                   let statusClass = '';
-                  if (item.data_vencimento === amanhaStr) {
-                    statusVencimento = 'Amanhã';
-                    statusClass = 'fila-amanha';
-                  } else if (item.data_vencimento === hoje) {
-                    statusVencimento = 'Hoje';
-                    statusClass = 'fila-hoje';
-                  } else if (diasAtraso > 0) {
+                  if (diffDias < 0) {
+                    // Atrasado
+                    const diasAtraso = Math.abs(diffDias);
                     statusVencimento = `${diasAtraso} dia${diasAtraso > 1 ? 's' : ''} atraso`;
                     statusClass = 'fila-atraso';
+                  } else if (diffDias === 0) {
+                    statusVencimento = 'Hoje';
+                    statusClass = 'fila-hoje';
+                  } else if (diffDias === 1) {
+                    statusVencimento = 'Amanhã';
+                    statusClass = 'fila-amanha';
+                  } else if (diffDias <= 3) {
+                    statusVencimento = `Em ${diffDias} dias`;
+                    statusClass = 'fila-futuro';
                   }
 
                   return (

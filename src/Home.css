@@ -717,6 +717,15 @@
   font-weight: 600;
 }
 
+.fila-futuro {
+  font-size: 11px;
+  color: white;
+  background: #9c27b0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 .fila-acoes {
   display: flex;
   gap: 6px;
