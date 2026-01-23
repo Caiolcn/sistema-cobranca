@@ -1053,11 +1053,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       {/* Cards de Indicadores - em seção separada */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-        gap: isSmallScreen ? '12px' : '16px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '16px' : '20px'
       }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gap: isSmallScreen ? '12px' : '16px'
+        }}>
             {/* Card 1: Em Atraso */}
             <div style={{
               flex: 1,
@@ -1229,13 +1235,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </div>
             </div>
           </div>
+        </div>
 
       {/* Tabela/Cards de Mensalidades */}
       <div style={{
         backgroundColor: isSmallScreen ? 'transparent' : 'white',
         borderRadius: isSmallScreen ? 0 : '8px',
         boxShadow: isSmallScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        marginBottom: '40px'
       }}>
         {mensalidadesFiltradas.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px' }}>
