@@ -1669,54 +1669,48 @@ function Configuracao() {
       id: 'starter',
       nome: 'Starter',
       preco: 49.90,
-      clientes: 50,
-      mensagens: 200,
-      recursos: [
-        'Até 50 clientes ativos',
-        '200 mensagens/mês',
-        '1 template padrão',
-        'Automação em atraso',
-        'Dashboard básico'
+      subtitulo: 'Ideal para começar',
+      features: [
+        'Lembretes automáticos 3 dias antes',
+        '1 template personalizável',
+        'Dashboard básico',
+        'Exportação CSV',
+        'Suporte'
       ],
-      cor: '#4CAF50',
-      popular: false
+      destaque: false,
+      dica: 'Economize ~2h/semana em cobranças',
+      cta: 'Começar no Starter'
     },
     {
       id: 'pro',
       nome: 'Pro',
       preco: 99.90,
-      clientes: 150,
-      mensagens: 600,
-      recursos: [
-        'Até 150 clientes ativos',
-        '600 mensagens/mês',
-        '3 templates de mensagens personalizáveis',
-        'Regra de cobrança (disparo de mensagens 3 dias, 5 dias e em atraso)',
-        'Dashboard completa com gráficos',
-        'Suporte via WhatsApp',
-        'Aging Report (status dos clientes)',
-        'Receita Projetada',
-        'Histórico Completo de Mensalidades'
+      subtitulo: 'Para negócios em crescimento',
+      features: [
+        'Lembretes em 3 dias antes, no dia do vencimento e 3 dias depois',
+        '3 templates personalizáveis',
+        'Dashboard com gráficos completos',
+        'Aging Report + Receita Projetada',
+        'Suporte WhatsApp'
       ],
-      cor: '#2196F3',
-      popular: true
+      destaque: true,
+      dica: 'Economize ~5h/semana + Reduza 70% inadimplência',
+      cta: 'Escolher mais popular'
     },
     {
       id: 'premium',
       nome: 'Premium',
       preco: 149.90,
-      clientes: 500,
-      mensagens: 3000,
-      recursos: [
-        'Tudo do Pro',
-        'Até 500 clientes ativos',
-        '3.000 mensagens/mês',
+      subtitulo: 'Gestão profissional',
+      features: [
+        'Tudo do plano Pro',
         'Consultoria inicial (1h)',
-        'Suporte prioritário via WhatsApp',
-        'Acesso antecipado a novas features'
+        'Suporte prioritário (4h)',
+        'Acesso antecipado a features'
       ],
-      cor: '#9c27b0',
-      popular: false
+      destaque: false,
+      dica: 'Economize ~10h/semana + Suporte VIP',
+      cta: 'Ativar Premium'
     }
   ]
 
@@ -1744,62 +1738,69 @@ function Configuracao() {
     }
   }
 
+  const handleSuporteWhatsApp = () => {
+    window.open('https://wa.me/5562999999999?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
+  }
+
   const renderUpgrade = () => (
     <div>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h3 style={{
-          fontSize: isSmallScreen ? '24px' : '32px',
-          fontWeight: '800',
+          fontSize: isSmallScreen ? '28px' : '36px',
+          fontWeight: 'bold',
           marginBottom: '12px',
-          letterSpacing: '-0.5px',
-          color: '#1a1a1a'
+          color: '#333'
         }}>
-          Escolha seu plano
+          Faça upgrade do seu plano
         </h3>
-        <p style={{ fontSize: '16px', color: '#666' }}>
-          Comece a automatizar suas cobranças hoje mesmo
+        <p style={{
+          fontSize: '16px',
+          color: '#666',
+          maxWidth: '500px',
+          margin: '0 auto'
+        }}>
+          Desbloqueie mais recursos e automatize ainda mais suas cobranças
         </p>
       </div>
 
+      {/* Cards de Planos */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
         gap: '24px',
-        alignItems: 'stretch'
+        marginBottom: '40px'
       }}>
         {planosDisponiveis.map((plano) => {
+          const isPro = plano.destaque
           const isAtual = plano.id === planoAtual
-          const isDowngrade = planosDisponiveis.findIndex(p => p.id === plano.id) < planosDisponiveis.findIndex(p => p.id === planoAtual)
 
           return (
             <div
               key={plano.id}
               style={{
-                backgroundColor: 'white',
+                backgroundColor: isPro ? '#25D366' : '#fafafa',
+                padding: '32px',
                 borderRadius: '16px',
-                padding: '32px 24px',
-                boxShadow: plano.popular ? '0 8px 30px rgba(33, 150, 243, 0.2)' : '0 2px 12px rgba(0,0,0,0.08)',
-                border: plano.id === 'premium' ? '2px solid #9c27b0' : plano.popular ? '2px solid #2196F3' : '1px solid #e0e0e0',
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column'
+                border: isPro ? 'none' : '1px solid #eee',
+                boxShadow: isPro ? '0 8px 32px rgba(37,211,102,0.3)' : 'none',
+                transform: isPro ? 'scale(1.02)' : 'scale(1)',
+                position: 'relative'
               }}
             >
-              {/* Badge Mais Popular */}
-              {plano.popular && (
+              {/* Badge Mais popular */}
+              {isPro && (
                 <div style={{
                   position: 'absolute',
-                  top: '-14px',
+                  top: '-12px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  backgroundColor: '#4CAF50',
+                  backgroundColor: '#1a1a1a',
                   color: 'white',
-                  padding: '6px 20px',
-                  borderRadius: '20px',
+                  padding: '6px 16px',
+                  borderRadius: '100px',
                   fontSize: '12px',
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap'
+                  fontWeight: '600'
                 }}>
                   Mais popular
                 </div>
@@ -1811,8 +1812,8 @@ function Configuracao() {
                   position: 'absolute',
                   top: '12px',
                   right: '12px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
+                  backgroundColor: isPro ? 'rgba(255,255,255,0.2)' : '#e8f5e9',
+                  color: isPro ? 'white' : '#2e7d32',
                   padding: '4px 10px',
                   borderRadius: '12px',
                   fontSize: '11px',
@@ -1822,69 +1823,73 @@ function Configuracao() {
                 </div>
               )}
 
-              {/* Nome do Plano */}
-              <h4 style={{
-                margin: '0 0 16px 0',
-                fontSize: '14px',
+              {/* Subtítulo */}
+              <p style={{
+                fontSize: '12px',
                 fontWeight: '600',
-                color: plano.id === 'premium' ? '#9c27b0' : '#666',
-                letterSpacing: '1px',
-                textTransform: 'uppercase'
+                color: isPro ? 'rgba(255,255,255,0.7)' : '#888',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '4px',
+                marginTop: isPro ? '8px' : '0'
+              }}>
+                {plano.subtitulo}
+              </p>
+
+              {/* Nome do plano */}
+              <h4 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                marginBottom: '16px',
+                color: isPro ? 'white' : '#1a1a1a'
               }}>
                 {plano.nome}
               </h4>
 
               {/* Preço */}
-              <div style={{ marginBottom: '8px' }}>
-                <span style={{ fontSize: '48px', fontWeight: '700', color: '#333' }}>
-                  R${plano.preco.toFixed(2).split('.')[0]}
+              <div style={{ marginBottom: '24px' }}>
+                <span style={{ fontSize: '42px', fontWeight: '800', color: isPro ? 'white' : '#1a1a1a' }}>
+                  R${plano.id === 'starter' ? '49' : plano.id === 'pro' ? '99' : '149'}
                 </span>
-                <span style={{ fontSize: '18px', color: '#666' }}>
-                  ,{plano.preco.toFixed(2).split('.')[1]}/mês
+                <span style={{ fontSize: '16px', color: isPro ? 'rgba(255,255,255,0.7)' : '#999' }}>
+                  /mês
                 </span>
               </div>
 
-              {/* Limites resumidos */}
-              <p style={{
-                margin: '0 0 24px 0',
-                fontSize: '14px',
-                color: '#666'
-              }}>
-                {plano.clientes} clientes ativos • {plano.mensagens.toLocaleString('pt-BR')} mensagens/mês
-              </p>
-
-              {/* Recursos */}
+              {/* Features */}
               <ul style={{
                 listStyle: 'none',
                 padding: 0,
-                margin: '0 0 24px 0',
-                flex: 1
+                marginBottom: '32px'
               }}>
-                {plano.recursos.map((recurso, idx) => (
-                  <li
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      marginBottom: '12px',
-                      fontSize: '14px',
-                      color: '#333',
-                      lineHeight: '1.4'
-                    }}
-                  >
+                {plano.features.map((feature, i) => (
+                  <li key={i} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    marginBottom: '12px',
+                    fontSize: '14px',
+                    color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
+                  }}>
                     <Icon
                       icon="mdi:check"
-                      width="20"
-                      style={{
-                        color: plano.cor,
-                        flexShrink: 0,
-                        marginTop: '2px'
-                      }}
+                      width="18"
+                      style={{ color: isPro ? 'white' : '#16a34a', flexShrink: 0, marginTop: '2px' }}
                     />
-                    {recurso}
+                    <span>{feature}</span>
                   </li>
                 ))}
+                {/* Dica de economia */}
+                <li style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  marginBottom: '12px',
+                  fontSize: '14px',
+                  color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
+                }}>
+                  <span>💡 {plano.dica}</span>
+                </li>
               </ul>
 
               {/* Botão */}
@@ -1892,68 +1897,135 @@ function Configuracao() {
                 onClick={() => handleUpgrade(plano.id)}
                 disabled={isAtual || processandoCheckout}
                 style={{
+                  display: 'block',
                   width: '100%',
-                  padding: '14px 24px',
-                  borderRadius: '8px',
+                  padding: '14px',
+                  backgroundColor: isAtual ? '#ccc' : (isPro ? 'white' : 'transparent'),
+                  color: isAtual ? 'white' : (isPro ? '#25D366' : '#1a1a1a'),
+                  border: isPro ? 'none' : '1px solid #1a1a1a',
+                  borderRadius: '10px',
                   fontSize: '15px',
                   fontWeight: '600',
-                  cursor: isAtual ? 'default' : 'pointer',
-                  border: isAtual ? 'none' : (plano.id === 'starter' ? '2px solid #333' : 'none'),
-                  backgroundColor: isAtual ? '#e0e0e0' : (plano.id === 'starter' ? 'transparent' : plano.cor),
-                  color: isAtual ? '#999' : (plano.id === 'starter' ? '#333' : 'white'),
-                  transition: 'all 0.2s'
+                  textAlign: 'center',
+                  cursor: isAtual ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: isAtual ? 0.6 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (!isAtual && !isPro) {
+                    e.currentTarget.style.backgroundColor = '#1a1a1a'
+                    e.currentTarget.style.color = 'white'
+                  }
+                  if (!isAtual && isPro) {
+                    e.currentTarget.style.opacity = '0.9'
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isAtual && !isPro) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#1a1a1a'
+                  }
+                  if (!isAtual && isPro) {
+                    e.currentTarget.style.opacity = '1'
+                  }
                 }}
               >
-                {processandoCheckout ? (
-                  <Icon icon="eos-icons:loading" width="20" />
-                ) : isAtual ? (
-                  'Plano Atual'
-                ) : plano.id === 'starter' ? (
-                  'Começar agora'
-                ) : plano.id === 'pro' ? (
-                  'Escolher Pro'
-                ) : (
-                  'Escolher Premium'
-                )}
+                {processandoCheckout ? 'Processando...' : isAtual ? 'Plano Atual' : plano.cta}
               </button>
+
+              {/* Texto extra para Pro */}
+              {isPro && (
+                <p style={{
+                  textAlign: 'center',
+                  marginTop: '16px',
+                  fontSize: '13px',
+                  color: 'rgba(255,255,255,0.8)'
+                }}>
+                  Economize R$ 150/mês vs. sistemas tradicionais
+                </p>
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* Footer - Informações de segurança */}
+      {/* Garantias e Benefícios */}
       <div style={{
-        marginTop: '40px',
-        textAlign: 'center',
-        padding: '24px',
         backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e0e0e0'
+        padding: '40px',
+        borderRadius: '16px',
+        border: '1px solid #e0e0e0',
+        marginBottom: '40px'
       }}>
         <div style={{
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: isSmallScreen ? '16px' : '32px',
           flexWrap: 'wrap',
-          marginBottom: '16px'
+          justifyContent: 'center',
+          gap: '32px',
+          marginBottom: '32px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon icon="mdi:shield-check" width="20" style={{ color: '#4CAF50' }} />
-            <span style={{ fontSize: '13px', color: '#666' }}>Pagamento seguro</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '15px', color: '#333' }}>Cancele quando quiser, sem multa</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon icon="mdi:lock-outline" width="20" style={{ color: '#4CAF50' }} />
-            <span style={{ fontSize: '13px', color: '#666' }}>Dados criptografados</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '15px', color: '#333' }}>Seus dados continuam salvos por 30 dias</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon icon="mdi:cancel" width="20" style={{ color: '#4CAF50' }} />
-            <span style={{ fontSize: '13px', color: '#666' }}>Cancele quando quiser</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
+            <span style={{ fontSize: '15px', color: '#333' }}>Upgrade ou downgrade a qualquer momento</span>
           </div>
         </div>
-        <p style={{ margin: 0, fontSize: '12px', color: '#999' }}>
-          Upgrade ou downgrade a qualquer momento. Sem multas, sem burocracia.
-        </p>
+
+        <div style={{
+          textAlign: 'center',
+          paddingTop: '24px',
+          borderTop: '1px solid #e0e0e0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Icon icon="mdi:shield-check" width="24" style={{ color: '#2196F3' }} />
+            <span style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+              Pagamento 100% seguro via Mercado Pago
+            </span>
+          </div>
+          <p style={{ fontSize: '14px', color: '#666' }}>
+            Seus dados financeiros estão protegidos com criptografia SSL
+          </p>
+        </div>
+      </div>
+
+      {/* Botão de Suporte */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <button
+          onClick={handleSuporteWhatsApp}
+          style={{
+            padding: '14px 28px',
+            backgroundColor: '#25D366',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50px',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.transform = 'translateY(-2px)'
+            e.target.style.boxShadow = '0 6px 16px rgba(37, 211, 102, 0.4)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.transform = 'translateY(0)'
+            e.target.style.boxShadow = '0 4px 12px rgba(37, 211, 102, 0.3)'
+          }}
+        >
+          <Icon icon="mdi:whatsapp" width="22" />
+          Dúvidas? Chama no WhatsApp
+        </button>
       </div>
     </div>
   )

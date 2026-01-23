@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
-import AddInstallmentsModal from './AddInstallmentsModal'
 import { showToast } from './Toast'
 import whatsappService from './services/whatsappService'
 import { exportarMensalidades } from './utils/exportUtils'
@@ -40,8 +39,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   // Modal de Detalhes da Mensalidade
   const [mostrarModalDetalhes, setMostrarModalDetalhes] = useState(false)
   const [mensalidadeDetalhes, setMensalidadeDetalhes] = useState(null)
-  const [mostrarModalAdicionar, setMostrarModalAdicionar] = useState(false)
-  const [clientes, setClientes] = useState([])
   const [mostrarModalConfirmacao, setMostrarModalConfirmacao] = useState(false)
   const [mensalidadeParaAtualizar, setMensalidadeParaAtualizar] = useState(null)
   const [novoStatusPagamento, setNovoStatusPagamento] = useState(false)
@@ -131,9 +128,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setMensalidades(mensalidadesComStatus)
       calcularTotais(mensalidadesComStatus)
 
-      // Processar clientes
-      setClientes(clientesData || [])
-
       // Calcular MRR a partir dos clientes já carregados
       const assinaturasAtivasList = clientesData?.filter(c => c.assinatura_ativa && c.plano?.valor) || []
       const ativas = assinaturasAtivasList.length
@@ -151,49 +145,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setLoading(false)
     }
   }, [userId])
-
-  const salvarMensalidades = async (dataToSave) => {
-    if (!userId) return
-
-    try {
-      // Criar mensalidades no banco de dados
-      const mensalidadesParaInserir = dataToSave.mensalidades.map(mensalidade => {
-        const mensalidadeBase = {
-          user_id: userId,
-          devedor_id: dataToSave.devedor_id,
-          valor: mensalidade.valor,
-          data_vencimento: mensalidade.vencimento,
-          status: 'pendente',
-          numero_mensalidade: mensalidade.numero,
-          total_mensalidades: dataToSave.is_mensalidade ? null : dataToSave.numero_mensalidades,
-          is_mensalidade: dataToSave.is_mensalidade,
-          enviado_hoje: false,
-          total_mensagens_enviadas: 0
-        }
-
-        // Adicionar dados de recorrência se for mensalidade
-        if (dataToSave.is_mensalidade && mensalidade.recorrencia) {
-          mensalidadeBase.recorrencia = mensalidade.recorrencia
-        }
-
-        return mensalidadeBase
-      })
-
-      const { error } = await supabase
-        .from('mensalidades')
-        .insert(mensalidadesParaInserir)
-
-      if (error) throw error
-
-      showToast(dataToSave.is_mensalidade
-        ? 'Mensalidade criada com sucesso!'
-        : 'Mensalidades criadas com sucesso!', 'success')
-      carregarDados()
-    } catch (error) {
-      console.error('Erro ao salvar mensalidades:', error)
-      showToast('Erro ao salvar mensalidades: ' + error.message, 'error')
-    }
-  }
 
   const calcularStatus = (mensalidade) => {
     if (mensalidade.status === 'pago') return 'pago'
@@ -768,30 +719,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   {filtroStatus.length + (filtroVencimento ? 1 : 0)}
                 </span>
               )}
-            </button>
-            <button
-              onClick={() => setMostrarModalAdicionar(true)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: '#333',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'background-color 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
-            >
-              <Icon icon="mdi:plus" width="18" height="18" />
-              {!isSmallScreen && 'Adicionar'}
             </button>
 
             {/* Popover de filtros */}
@@ -1449,6 +1376,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             alignItems: 'center',
             gap: '8px',
             marginTop: '24px',
+            marginBottom: '24px',
             flexWrap: 'wrap'
           }}>
             <button
@@ -1533,15 +1461,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         )}
       </div>
-
-      {/* Modal de Adicionar Mensalidades/Mensalidade */}
-      <AddInstallmentsModal
-        isOpen={mostrarModalAdicionar}
-        onClose={() => setMostrarModalAdicionar(false)}
-        clientes={clientes}
-        onSave={salvarMensalidades}
-        onClienteAdicionado={carregarDados}
-      />
 
       {/* Modal de Confirmação de Pagamento */}
       {/* Modal de Detalhes da Mensalidade */}
