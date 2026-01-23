@@ -2911,9 +2911,6 @@ export default function Clientes() {
                     type="date"
                     value={dataInicioAssinatura}
                     onChange={(e) => setDataInicioAssinatura(e.target.value)}
-                    onClick={(e) => {
-                      e.target.showPicker?.()
-                    }}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -2922,7 +2919,6 @@ export default function Clientes() {
                       fontSize: '16px',
                       outline: 'none',
                       transition: 'border-color 0.2s',
-                      cursor: 'pointer',
                       boxSizing: 'border-box'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
