@@ -1,21 +1,39 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { UserProvider } from './contexts/UserContext'
+import Toast from './Toast'
+import './App.css'
+
+// Componentes carregados imediatamente (rotas públicas)
 import LandingPage from './LandingPage'
 import Login from './Login'
 import Signup from './Signup'
-import Dashboard from './Dashboard'
-import Home from './Home'
-import Financeiro from './Financeiro'
-import Clientes from './Clientes'
-import WhatsAppConexao from './WhatsAppConexao'
-import Configuracao from './Configuracao'
-import UpgradePage from './UpgradePage'
-import UpgradeSuccessPage from './UpgradeSuccessPage'
 import ResetPassword from './ResetPassword'
-import Toast from './Toast'
-import './App.css'
+
+// Lazy loading para componentes do app (carregados sob demanda)
+// Economia estimada: ~339 KiB no carregamento inicial
+const Dashboard = lazy(() => import('./Dashboard'))
+const Home = lazy(() => import('./Home'))
+const Financeiro = lazy(() => import('./Financeiro'))
+const Clientes = lazy(() => import('./Clientes'))
+const WhatsAppConexao = lazy(() => import('./WhatsAppConexao'))
+const Configuracao = lazy(() => import('./Configuracao'))
+const UpgradePage = lazy(() => import('./UpgradePage'))
+const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
+
+// Componente de loading para Suspense
+const LoadingFallback = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    color: '#344848'
+  }}>
+    Carregando...
+  </div>
+)
 
 function App() {
   const [session, setSession] = useState(null)
@@ -44,31 +62,33 @@ function App() {
     <Router>
       <UserProvider>
         <div className="App">
-          <Routes>
-            {/* Rotas públicas */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Rotas públicas */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* Rotas protegidas (sistema) */}
-            {session ? (
-              <>
-                <Route path="/app/upgrade" element={<UpgradePage />} />
-                <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
-                <Route path="/app" element={<Dashboard />}>
-                  <Route index element={<Navigate to="/app/home" replace />} />
-                  <Route path="home" element={<Home />} />
-                  <Route path="financeiro" element={<Financeiro />} />
-                  <Route path="clientes" element={<Clientes />} />
-                  <Route path="whatsapp" element={<WhatsAppConexao />} />
-                  <Route path="configuracao" element={<Configuracao />} />
-                </Route>
-              </>
-            ) : (
-              <Route path="/app/*" element={<Navigate to="/login" replace />} />
-            )}
-          </Routes>
+              {/* Rotas protegidas (sistema) - carregadas sob demanda */}
+              {session ? (
+                <>
+                  <Route path="/app/upgrade" element={<UpgradePage />} />
+                  <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
+                  <Route path="/app" element={<Dashboard />}>
+                    <Route index element={<Navigate to="/app/home" replace />} />
+                    <Route path="home" element={<Home />} />
+                    <Route path="financeiro" element={<Financeiro />} />
+                    <Route path="clientes" element={<Clientes />} />
+                    <Route path="whatsapp" element={<WhatsAppConexao />} />
+                    <Route path="configuracao" element={<Configuracao />} />
+                  </Route>
+                </>
+              ) : (
+                <Route path="/app/*" element={<Navigate to="/login" replace />} />
+              )}
+            </Routes>
+          </Suspense>
           <Toast />
         </div>
       </UserProvider>

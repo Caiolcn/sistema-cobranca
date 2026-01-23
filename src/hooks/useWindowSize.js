@@ -1,22 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
+/**
+ * Hook otimizado para detectar tamanho da janela
+ * - Usa debounce de 150ms para evitar reflows excessivos
+ * - Leitura inicial apenas uma vez
+ * - Cleanup automático
+ */
 export default function useWindowSize() {
-  const [windowSize, setWindowSize] = useState({
+  // Usar função para inicialização lazy (evita leitura no SSR)
+  const [windowSize, setWindowSize] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
     height: typeof window !== 'undefined' ? window.innerHeight : 800
-  })
+  }))
 
-  useEffect(() => {
-    const handleResize = () => {
+  const timeoutRef = useRef(null)
+
+  // Handler com debounce para evitar reflows excessivos
+  const handleResize = useCallback(() => {
+    // Cancelar timeout anterior se existir
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+
+    // Debounce de 150ms
+    timeoutRef.current = setTimeout(() => {
       setWindowSize({
         width: window.innerWidth,
         height: window.innerHeight
       })
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    }, 150)
   }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', handleResize, { passive: true })
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      // Limpar timeout pendente
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [handleResize])
 
   // Breakpoints otimizados para dispositivos reais
   // Mobile: até 640px (cobre maioria dos smartphones)

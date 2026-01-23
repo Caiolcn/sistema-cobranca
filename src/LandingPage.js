@@ -1,5 +1,12 @@
-import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
+import {
+  MdCheckCircle, MdCheck, MdArrowForward, MdStar,
+  MdChevronLeft, MdChevronRight, MdShowChart, MdTimeline,
+  MdTrendingUp, MdMessage, MdCode, MdDescription,
+  MdMusicNote, MdFitnessCenter, MdSelfImprovement, MdPalette,
+  MdAdd, MdRemove, MdLocalFireDepartment, MdClose, MdWarning
+} from 'react-icons/md'
+import { FaWhatsapp } from 'react-icons/fa'
 import { useState } from 'react'
 import useWindowSize from './hooks/useWindowSize'
 
@@ -32,42 +39,42 @@ export default function LandingPage() {
       empresa: 'Escola de Música Crescendo',
       cargo: 'Fundador',
       texto: 'Reduzi a inadimplência em 40% no primeiro mês! Os lembretes automáticos pelo WhatsApp são mais eficientes que ligações.',
-      foto: 'https://randomuser.me/api/portraits/men/32.jpg'
+      foto: '/testimonials/men32.jpg'
     },
     {
       nome: 'Mariana Ferreira',
       empresa: 'Studio de Pilates Renascer',
       cargo: 'Dona',
       texto: 'Antes eu perdia horas ligando para cobrar. Agora o sistema faz tudo sozinho e ainda consigo acompanhar quem está em dia pelo dashboard.',
-      foto: 'https://randomuser.me/api/portraits/women/44.jpg'
+      foto: '/testimonials/women44.jpg'
     },
     {
       nome: 'Paulo Lima',
       empresa: 'Escola de Música Cultura Musical',
       cargo: 'Diretor',
       texto: 'O dashboard me mostra exatamente quanto vou receber no mês. Consegui planejar melhor o fluxo de caixa da minha escola.',
-      foto: 'https://randomuser.me/api/portraits/men/67.jpg'
+      foto: '/testimonials/men67.jpg'
     },
     {
       nome: 'Fernanda Santos',
       empresa: 'Academia Vida Ativa',
       cargo: 'Proprietária',
       texto: 'Meus alunos adoram receber o lembrete pelo WhatsApp. A taxa de pagamento em dia subiu de 60% para 90%!',
-      foto: 'https://randomuser.me/api/portraits/women/68.jpg'
+      foto: '/testimonials/women68.jpg'
     },
     {
       nome: 'Carlos Eduardo',
       empresa: 'Escola de Inglês GlobalSpeak',
       cargo: 'Diretor Administrativo',
       texto: 'O suporte é excelente e o sistema muito intuitivo. Em uma semana já estava com tudo funcionando perfeitamente.',
-      foto: 'https://randomuser.me/api/portraits/men/45.jpg'
+      foto: '/testimonials/men45.jpg'
     },
     {
       nome: 'Ana Paula',
       empresa: 'Personal Trainer',
       cargo: 'Autônoma',
       texto: 'Uso para cobrar os planos mensais dos meus alunos. Nunca mais tive problema com esquecimento de pagamento.',
-      foto: 'https://randomuser.me/api/portraits/women/33.jpg'
+      foto: '/testimonials/women33.jpg'
     }
   ]
 
@@ -197,7 +204,7 @@ export default function LandingPage() {
             fontWeight: '600',
             marginBottom: '32px'
           }}>
-            <Icon icon="mdi:check-circle" width="16" />
+            <MdCheckCircle size={16} />
             A partir de R$ 49,90/mês
           </div>
 
@@ -267,7 +274,7 @@ export default function LandingPage() {
               }}
             >
               Começar agora
-              <Icon icon="mdi:arrow-right" width="20" />
+              <MdArrowForward size={20} />
             </button>
           </div>
 
@@ -289,7 +296,10 @@ export default function LandingPage() {
             <img
               src="/dashboard.png"
               alt="Dashboard do Mensalli"
-              style={{ width: '100%', height: 'auto', display: 'block' }}
+              width="1800"
+              height="940"
+              fetchpriority="high"
+              style={{ width: '100%', height: 'auto', display: 'block', aspectRatio: '1800 / 940' }}
             />
           </div>
         </div>
@@ -397,8 +407,8 @@ export default function LandingPage() {
               { label: 'Tempo gasto', manual: '2-5h/semana', banco: 'Setup complexo', mensallizap: '5 min/mês' },
               { label: 'Relacionamento', manual: 'Constrangedor', banco: 'Impessoal', mensallizap: 'Tom amigável' },
               { label: 'Custo', manual: 'Seu tempo vale mais', banco: 'R$ 200-500/mês', mensallizap: 'A partir de R$ 49' },
-              { label: 'Automação', manual: 'Zero', banco: 'Emails ignorados', mensallizap: 'WhatsApp (98% abertura)', icons: { manual: 'mdi:close', banco: 'mdi:alert', mensallizap: 'mdi:check' } },
-              { label: 'Dashboard', manual: 'Planilhas manuais', banco: 'Complexo', mensallizap: 'Visual e simples', icons: { manual: 'mdi:close', banco: 'mdi:alert', mensallizap: 'mdi:check' } }
+              { label: 'Automação', manual: 'Zero', banco: 'Emails ignorados', mensallizap: 'WhatsApp (98% abertura)', icons: { manual: MdClose, banco: MdWarning, mensallizap: MdCheck } },
+              { label: 'Dashboard', manual: 'Planilhas manuais', banco: 'Complexo', mensallizap: 'Visual e simples', icons: { manual: MdClose, banco: MdWarning, mensallizap: MdCheck } }
             ].map((row, i) => (
               <div key={i} style={{
                 display: 'grid',
@@ -428,15 +438,15 @@ export default function LandingPage() {
                 ) : (
                   <>
                     <div style={{ textAlign: 'center', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      {row.icons && <Icon icon={row.icons.manual} width="16" />}
+                      {row.icons && <row.icons.manual size={16} />}
                       {row.manual}
                     </div>
                     <div style={{ textAlign: 'center', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      {row.icons && <Icon icon={row.icons.banco} width="16" />}
+                      {row.icons && <row.icons.banco size={16} />}
                       {row.banco}
                     </div>
                     <div style={{ textAlign: 'center', color: '#25D366', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      {row.icons && <Icon icon={row.icons.mensallizap} width="16" />}
+                      {row.icons && <row.icons.mensallizap size={16} />}
                       {row.mensallizap}
                     </div>
                   </>
@@ -474,7 +484,7 @@ export default function LandingPage() {
                 fontWeight: '600',
                 marginBottom: '16px'
               }}>
-                <Icon icon="mdi:whatsapp" width="14" />
+                <FaWhatsapp size={14} />
                 Automação Inteligente
               </div>
               <h3 style={{
@@ -496,11 +506,11 @@ export default function LandingPage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
-                  <Icon icon="mdi:check-circle" width="20" style={{ color: '#25D366' }} />
+                  <MdCheckCircle size={20} style={{ color: '#25D366' }} />
                   Taxa de abertura de 98% (vs. 20% do email)
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
-                  <Icon icon="mdi:check-circle" width="20" style={{ color: '#25D366' }} />
+                  <MdCheckCircle size={20} style={{ color: '#25D366' }} />
                   Resposta em minutos, não dias
                 </div>
               </div>
@@ -514,7 +524,10 @@ export default function LandingPage() {
               <img
                 src="/fila-whatsapp.png"
                 alt="Fila de WhatsApp com lembretes automáticos"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
+                width="900"
+                height="380"
+                loading="lazy"
+                style={{ width: '100%', height: 'auto', display: 'block', aspectRatio: '900 / 380' }}
               />
             </div>
           </div>
@@ -535,7 +548,10 @@ export default function LandingPage() {
               <img
                 src="/mensalidades.png"
                 alt="Dashboard de mensalidades e pagamentos"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
+                width="900"
+                height="450"
+                loading="lazy"
+                style={{ width: '100%', height: 'auto', display: 'block', aspectRatio: '900 / 450' }}
               />
             </div>
             <div>
@@ -551,7 +567,7 @@ export default function LandingPage() {
                 fontWeight: '600',
                 marginBottom: '16px'
               }}>
-                <Icon icon="mdi:chart-line" width="14" />
+                <MdShowChart size={14} />
                 Dashboard em Tempo Real
               </div>
               <h3 style={{
@@ -573,11 +589,11 @@ export default function LandingPage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
-                  <Icon icon="mdi:chart-timeline-variant" width="20" style={{ color: '#2563eb' }} />
+                  <MdTimeline size={20} style={{ color: '#2563eb' }} />
                   Métricas atualizadas em tempo real
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
-                  <Icon icon="mdi:trending-up" width="20" style={{ color: '#2563eb' }} />
+                  <MdTrendingUp size={20} style={{ color: '#2563eb' }} />
                   Identifique padrões antes de virar bola de neve
                 </div>
               </div>
@@ -604,7 +620,7 @@ export default function LandingPage() {
                 fontWeight: '600',
                 marginBottom: '16px'
               }}>
-                <Icon icon="mdi:message-text-outline" width="14" />
+                <MdMessage size={14} />
                 Templates Personalizáveis
               </div>
               <h3 style={{
@@ -626,11 +642,11 @@ export default function LandingPage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
-                  <Icon icon="mdi:code-braces" width="20" style={{ color: '#d97706' }} />
+                  <MdCode size={20} style={{ color: '#d97706' }} />
                   Variáveis dinâmicas (nome, valor, data)
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#444', fontSize: '15px' }}>
-                  <Icon icon="mdi:file-document-multiple" width="20" style={{ color: '#d97706' }} />
+                  <MdDescription size={20} style={{ color: '#d97706' }} />
                   3 templates prontos + crie os seus
                 </div>
               </div>
@@ -644,7 +660,10 @@ export default function LandingPage() {
               <img
                 src="/templates.png"
                 alt="Editor de templates de mensagens"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
+                width="900"
+                height="500"
+                loading="lazy"
+                style={{ width: '100%', height: 'auto', display: 'block', aspectRatio: '900 / 500' }}
               />
             </div>
           </div>
@@ -787,7 +806,7 @@ export default function LandingPage() {
                     fontSize: '14px',
                     color: '#444'
                   }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
+                    <MdCheck size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
                     {item}
                   </li>
                 ))}
@@ -883,7 +902,7 @@ export default function LandingPage() {
                     fontSize: '14px',
                     color: 'rgba(255,255,255,0.95)'
                   }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: 'white', flexShrink: 0, marginTop: '2px' }} />
+                    <MdCheck size={18} style={{ color: 'white', flexShrink: 0, marginTop: '2px' }} />
                     {item}
                   </li>
                 ))}
@@ -968,7 +987,7 @@ export default function LandingPage() {
                     fontSize: '14px',
                     color: '#444'
                   }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
+                    <MdCheck size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
                     {item}
                   </li>
                 ))}
@@ -1044,7 +1063,7 @@ export default function LandingPage() {
                   zIndex: 10
                 }}
               >
-                <Icon icon="mdi:chevron-left" width="24" style={{ color: '#333' }} />
+                <MdChevronLeft size={24} style={{ color: '#333' }} />
               </button>
             )}
 
@@ -1065,7 +1084,7 @@ export default function LandingPage() {
                 }}>
                   <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <Icon key={star} icon="mdi:star" width="18" style={{ color: '#FFD700' }} />
+                      <MdStar key={star} size={18} style={{ color: '#FFD700' }} />
                     ))}
                   </div>
                   <p style={{
@@ -1080,6 +1099,7 @@ export default function LandingPage() {
                     <img
                       src={dep.foto}
                       alt={dep.nome}
+                      loading="lazy"
                       style={{
                         width: '48px',
                         height: '48px',
@@ -1118,7 +1138,7 @@ export default function LandingPage() {
                   zIndex: 10
                 }}
               >
-                <Icon icon="mdi:chevron-right" width="24" style={{ color: '#333' }} />
+                <MdChevronRight size={24} style={{ color: '#333' }} />
               </button>
             )}
           </div>
@@ -1177,22 +1197,22 @@ export default function LandingPage() {
           }}>
             {[
               {
-                icon: 'mdi:music',
+                icon: MdMusicNote,
                 titulo: 'Escolas de Música/Idiomas',
                 descricao: 'Automatize lembretes para dezenas de alunos. Pais recebem mensagens 3 dias antes, você não perde tempo cobrando um por um.'
               },
               {
-                icon: 'mdi:dumbbell',
+                icon: MdFitnessCenter,
                 titulo: 'Academias & Box de CrossFit',
                 descricao: 'Chega de constrangimento ao cobrar aluno. Mensalidades automáticas via WhatsApp preservam o relacionamento e garantem pagamento.'
               },
               {
-                icon: 'healthicons:exercise-yoga',
+                icon: MdSelfImprovement,
                 titulo: 'Studios de Pilates & Yoga',
                 descricao: 'Seus alunos esquecem de pagar e você fica sem jeito de cobrar? Lembretes automáticos fazem isso por você, sem desconforto.'
               },
               {
-                icon: 'mdi:palette',
+                icon: MdPalette,
                 titulo: 'Estúdios & Consultórios',
                 descricao: 'Qualquer negócio com mensalidades pode usar. Se cobra todo mês, Mensalli é pra você.'
               }
@@ -1226,7 +1246,7 @@ export default function LandingPage() {
                   justifyContent: 'center',
                   flexShrink: 0
                 }}>
-                  <Icon icon={perfil.icon} width="24" style={{ color: '#25D366' }} />
+                  <perfil.icon size={24} style={{ color: '#25D366' }} />
                 </div>
                 <div>
                   <h3 style={{
@@ -1295,11 +1315,10 @@ export default function LandingPage() {
                   }}>
                     {faq.pergunta}
                   </span>
-                  <Icon
-                    icon={faqAberto === index ? 'mdi:minus' : 'mdi:plus'}
-                    width="20"
-                    style={{ color: '#666', flexShrink: 0 }}
-                  />
+{faqAberto === index
+                    ? <MdRemove size={20} style={{ color: '#666', flexShrink: 0 }} />
+                    : <MdAdd size={20} style={{ color: '#666', flexShrink: 0 }} />
+                  }
                 </div>
                 {faqAberto === index && (
                   <div style={{
@@ -1336,7 +1355,7 @@ export default function LandingPage() {
             fontWeight: '600',
             marginBottom: '24px'
           }}>
-            <Icon icon="mdi:fire" width="18" />
+            <MdLocalFireDepartment size={18} />
             234 negócios começaram esta semana
           </p>
           <h2 style={{
@@ -1382,7 +1401,7 @@ export default function LandingPage() {
             }}
           >
             Começar teste grátis
-            <Icon icon="mdi:arrow-right" width="20" />
+            <MdArrowForward size={20} />
           </button>
           <div style={{
             marginTop: '24px',
@@ -1394,15 +1413,15 @@ export default function LandingPage() {
             color: 'rgba(255,255,255,0.6)'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:check" width="16" style={{ color: '#25D366' }} />
+              <MdCheck size={16} style={{ color: '#25D366' }} />
               Sem cartão de crédito
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:check" width="16" style={{ color: '#25D366' }} />
+              <MdCheck size={16} style={{ color: '#25D366' }} />
               Cancele quando quiser
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:check" width="16" style={{ color: '#25D366' }} />
+              <MdCheck size={16} style={{ color: '#25D366' }} />
               Suporte em português
             </span>
           </div>
