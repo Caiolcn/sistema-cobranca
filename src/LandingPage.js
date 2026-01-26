@@ -1474,6 +1474,38 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
+
+      {/* Botão flutuante do WhatsApp */}
+      <a
+        href="https://wa.me/5562999999999"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '60px',
+          height: '60px',
+          backgroundColor: '#25d366',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '2px 2px 10px rgba(0,0,0,0.3)',
+          zIndex: 1000,
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'scale(1.1)'
+          e.currentTarget.style.boxShadow = '2px 2px 15px rgba(0,0,0,0.4)'
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'scale(1)'
+          e.currentTarget.style.boxShadow = '2px 2px 10px rgba(0,0,0,0.3)'
+        }}
+      >
+        <FaWhatsapp size={32} color="white" />
+      </a>
     </div>
   )
 }
