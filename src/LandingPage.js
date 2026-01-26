@@ -39,42 +39,42 @@ export default function LandingPage() {
       empresa: 'Escola de Música Crescendo',
       cargo: 'Fundador',
       texto: 'Reduzi a inadimplência em 40% no primeiro mês! Os lembretes automáticos pelo WhatsApp são mais eficientes que ligações.',
-      foto: `${process.env.PUBLIC_URL}/testimonials/men32.jpg`
+      foto: '/testimonials/men32.jpg'
     },
     {
       nome: 'Mariana Ferreira',
       empresa: 'Studio de Pilates Renascer',
       cargo: 'Dona',
       texto: 'Antes eu perdia horas ligando para cobrar. Agora o sistema faz tudo sozinho e ainda consigo acompanhar quem está em dia pelo dashboard.',
-      foto: `${process.env.PUBLIC_URL}/testimonials/women44.jpg`
+      foto: '/testimonials/women44.jpg'
     },
     {
       nome: 'Paulo Lima',
       empresa: 'Escola de Música Cultura Musical',
       cargo: 'Diretor',
       texto: 'O dashboard me mostra exatamente quanto vou receber no mês. Consegui planejar melhor o fluxo de caixa da minha escola.',
-      foto: `${process.env.PUBLIC_URL}/testimonials/men67.jpg`
+      foto: '/testimonials/men67.jpg'
     },
     {
       nome: 'Fernanda Santos',
       empresa: 'Academia Vida Ativa',
       cargo: 'Proprietária',
       texto: 'Meus alunos adoram receber o lembrete pelo WhatsApp. A taxa de pagamento em dia subiu de 60% para 90%!',
-      foto: `${process.env.PUBLIC_URL}/testimonials/women68.jpg`
+      foto: '/testimonials/women68.jpg'
     },
     {
       nome: 'Carlos Eduardo',
       empresa: 'Escola de Inglês GlobalSpeak',
       cargo: 'Diretor Administrativo',
       texto: 'O suporte é excelente e o sistema muito intuitivo. Em uma semana já estava com tudo funcionando perfeitamente.',
-      foto: `${process.env.PUBLIC_URL}/testimonials/men45.jpg`
+      foto: '/testimonials/men45.jpg'
     },
     {
       nome: 'Ana Paula',
       empresa: 'Personal Trainer',
       cargo: 'Autônoma',
       texto: 'Uso para cobrar os planos mensais dos meus alunos. Nunca mais tive problema com esquecimento de pagamento.',
-      foto: `${process.env.PUBLIC_URL}/testimonials/women33.jpg`
+      foto: '/testimonials/women33.jpg'
     }
   ]
 
