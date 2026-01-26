@@ -155,7 +155,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|testimonials/|.*\\.(jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|css|js)).*)",
       "destination": "/index.html"
     }
   ],
