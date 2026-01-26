@@ -298,6 +298,7 @@ class WhatsAppService {
 
   /**
    * Calcula o tipo de mensagem baseado na data de vencimento
+   * Retorna o tipo que corresponde ao template no banco de dados
    */
   calcularTipoMensagem(dataVencimento) {
     const hoje = new Date()
@@ -306,7 +307,7 @@ class WhatsAppService {
     const diffDias = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24))
 
     if (diffDias > 0) {
-      return 'pre_due' // Antes do vencimento
+      return 'pre_due_3days' // Antes do vencimento (template: pre_due_3days)
     } else if (diffDias === 0) {
       return 'due_day' // No dia
     } else {
@@ -377,8 +378,8 @@ class WhatsAppService {
 
     // 3. Verificar se plano Starter tentando enviar mensagem bloqueada
     // Starter só pode enviar "No Dia" (due_day)
-    // Pro/Premium pode enviar: 3 dias antes (pre_due), no dia (due_day), 3 dias depois (overdue)
-    if (plano === 'starter' && (tipoMensagem === 'pre_due' || tipoMensagem === 'overdue')) {
+    // Pro/Premium pode enviar: 3 dias antes (pre_due_3days), no dia (due_day), 3 dias depois (overdue)
+    if (plano === 'starter' && (tipoMensagem === 'pre_due_3days' || tipoMensagem === 'overdue')) {
       return {
         permitido: false,
         erro: 'Este tipo de mensagem está disponível apenas para planos Pro e Premium. Faça upgrade para desbloquear.'
@@ -442,18 +443,39 @@ class WhatsAppService {
       const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
       const chavePix = usuario?.chave_pix || ''
 
-      // Buscar template do tipo 'overdue' (em atraso) do usuário
+      // Buscar template baseado no tipo de mensagem calculado
       const { data: template } = await supabase
         .from('templates')
         .select('mensagem')
         .eq('user_id', user.id)
-        .eq('tipo', 'overdue')
+        .eq('tipo', tipoMensagem)
         .eq('ativo', true)
         .limit(1)
         .maybeSingle()
 
-      // Template padrão do sistema caso o usuário não tenha configurado
-      const TEMPLATE_PADRAO_OVERDUE = `Olá, {{nomeCliente}}, como vai?
+      // Templates padrão do sistema para cada tipo
+      const TEMPLATES_PADRAO = {
+        pre_due_3days: `Olá, {{nomeCliente}}! 👋
+
+Sua mensalidade vence em {{dataVencimento}}.
+
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
+
+Pague com antecedência e evite esquecimento!
+
+Qualquer dúvida, estamos à disposição.`,
+
+        due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃
+
+Hoje vence sua mensalidade!
+
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
+
+Qualquer dúvida, estamos à disposição!`,
+
+        overdue: `Olá, {{nomeCliente}}, como vai?
 
 Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
 
@@ -463,9 +485,10 @@ Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar
 🔑 Chave Pix: {{chavePix}}
 
 Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
+      }
 
-      // Usar template do usuário ou o padrão do sistema
-      const mensagemTemplate = template?.mensagem || TEMPLATE_PADRAO_OVERDUE
+      // Usar template do usuário ou o padrão do tipo correto
+      const mensagemTemplate = template?.mensagem || TEMPLATES_PADRAO[tipoMensagem] || TEMPLATES_PADRAO.overdue
 
       // Calcular dias de atraso
       const hoje = new Date()
