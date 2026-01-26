@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
+import whatsappService from './services/whatsappService'
 import { exportarClientes } from './utils/exportUtils'
 import { validarTelefone, validarCPF } from './utils/validators'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
@@ -51,6 +52,9 @@ export default function Clientes() {
   const [novoPlanoValor, setNovoPlanoValor] = useState('')
   const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
   const [novoPlanoDescricao, setNovoPlanoDescricao] = useState('')
+  const [enviarBoasVindas, setEnviarBoasVindas] = useState(true)
+  const [mostrarEdicaoBoasVindas, setMostrarEdicaoBoasVindas] = useState(false)
+  const [mensagemBoasVindasCustom, setMensagemBoasVindasCustom] = useState('')
 
   // Estados para modais de confirmação
   const [confirmPagamento, setConfirmPagamento] = useState({ show: false, mensalidade: null, novoPago: false })
@@ -361,15 +365,20 @@ export default function Clientes() {
 
       // Calcular tempo de casa (baseado na primeira mensalidade ou data de criação)
       let tempoDeCasa = null
+      let tempoDeCasaDias = null
       if (mensalidades.length > 0) {
         const primeiraData = new Date(mensalidades[0].data_vencimento)
         const diffTime = Math.abs(hoje - primeiraData)
-        const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30))
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+        const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30))
+        tempoDeCasaDias = diffDays
         tempoDeCasa = diffMonths
       } else if (cliente.created_at) {
         const dataCreated = new Date(cliente.created_at)
         const diffTime = Math.abs(hoje - dataCreated)
-        const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30))
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+        const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30))
+        tempoDeCasaDias = diffDays
         tempoDeCasa = diffMonths
       }
 
@@ -385,7 +394,8 @@ export default function Clientes() {
         parcelasPendentes,
         totalMensagensEnviadas,
         ultimoContato,
-        tempoDeCasa
+        tempoDeCasa,
+        tempoDeCasaDias
       }
 
       setClienteSelecionado(clienteComEstatisticas)
@@ -876,7 +886,71 @@ export default function Clientes() {
         if (mensalidadeError) throw mensalidadeError
       }
 
-      showToast('Cliente criado com sucesso!', 'success')
+      // Enviar mensagem de boas-vindas se opção estiver ativa
+      if (enviarBoasVindas && clienteData && clienteData.length > 0) {
+        try {
+          // Verificar se WhatsApp está conectado
+          const statusWhatsApp = await whatsappService.verificarStatus()
+
+          if (statusWhatsApp.conectado) {
+            // Buscar nome da empresa
+            const { data: usuarioData } = await supabase
+              .from('usuarios')
+              .select('nome_empresa')
+              .eq('id', userId)
+              .maybeSingle()
+
+            const nomeEmpresa = usuarioData?.nome_empresa || 'nossa empresa'
+            const primeiroNome = novoClienteNome.trim().split(' ')[0]
+
+            // Usar mensagem personalizada ou padrão
+            let mensagemFinal
+            if (mensagemBoasVindasCustom && mensagemBoasVindasCustom.trim()) {
+              // Substituir placeholders na mensagem customizada
+              mensagemFinal = mensagemBoasVindasCustom
+                .replace(/\[Nome\]/g, primeiroNome)
+                .replace(/{{nomeCliente}}/g, primeiroNome)
+            } else {
+              // Mensagem padrão
+              mensagemFinal = `Olá, ${primeiroNome}! 👋
+
+Seja muito bem-vindo(a) à ${nomeEmpresa}!
+
+Este é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:
+
+✅ Lembretes de vencimento
+✅ Confirmações de pagamento
+✅ Comunicados importantes
+
+*Salve nosso número* para não perder nenhuma mensagem!
+
+Qualquer dúvida, estamos à disposição.
+
+Abraços,
+Equipe ${nomeEmpresa}`
+            }
+
+            const resultado = await whatsappService.enviarMensagem(
+              novoClienteTelefone.trim(),
+              mensagemFinal
+            )
+
+            if (resultado.sucesso) {
+              showToast('Cliente criado e mensagem de boas-vindas enviada!', 'success')
+            } else {
+              showToast('Cliente criado! (Não foi possível enviar boas-vindas: ' + resultado.erro + ')', 'warning')
+            }
+          } else {
+            showToast('Cliente criado! (WhatsApp desconectado - boas-vindas não enviada)', 'warning')
+          }
+        } catch (whatsappError) {
+          console.error('Erro ao enviar boas-vindas:', whatsappError)
+          showToast('Cliente criado! (Erro ao enviar boas-vindas)', 'warning')
+        }
+      } else {
+        showToast('Cliente criado com sucesso!', 'success')
+      }
+
       setMostrarModalNovoCliente(false)
       setNovoClienteNome('')
       setNovoClienteTelefone('')
@@ -886,6 +960,9 @@ export default function Clientes() {
       setDataInicioAssinatura('')
       setDataVencimentoAssinatura('')
       setPlanoSelecionado('')
+      setEnviarBoasVindas(true)
+      setMostrarEdicaoBoasVindas(false)
+      setMensagemBoasVindasCustom('')
       carregarClientes()
     } catch (error) {
       showToast('Erro ao criar cliente: ' + error.message, 'error')
@@ -2102,10 +2179,14 @@ export default function Clientes() {
                   </div>
                   <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Tempo de Casa</p>
                   <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '700', color: '#3b82f6' }}>
-                    {clienteSelecionado.tempoDeCasa ? (
-                      clienteSelecionado.tempoDeCasa >= 12
-                        ? `${Math.floor(clienteSelecionado.tempoDeCasa / 12)} ano${Math.floor(clienteSelecionado.tempoDeCasa / 12) !== 1 ? 's' : ''}`
-                        : `${clienteSelecionado.tempoDeCasa} ${clienteSelecionado.tempoDeCasa === 1 ? 'mês' : 'meses'}`
+                    {clienteSelecionado.tempoDeCasaDias !== null ? (
+                      clienteSelecionado.tempoDeCasaDias < 30
+                        ? clienteSelecionado.tempoDeCasaDias === 0
+                          ? 'Hoje'
+                          : `${clienteSelecionado.tempoDeCasaDias} dia${clienteSelecionado.tempoDeCasaDias !== 1 ? 's' : ''}`
+                        : clienteSelecionado.tempoDeCasa >= 12
+                          ? `${Math.floor(clienteSelecionado.tempoDeCasa / 12)} ano${Math.floor(clienteSelecionado.tempoDeCasa / 12) !== 1 ? 's' : ''}`
+                          : `${clienteSelecionado.tempoDeCasa} ${clienteSelecionado.tempoDeCasa === 1 ? 'mês' : 'meses'}`
                     ) : '-'}
                   </p>
                   <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>como cliente</p>
@@ -3094,6 +3175,146 @@ export default function Clientes() {
               </div>
             )}
 
+            {/* Toggle para enviar mensagem de boas-vindas */}
+            <div style={{
+              marginBottom: '28px',
+              padding: '16px',
+              backgroundColor: '#f0f7ff',
+              borderRadius: '8px',
+              border: '1px solid #bbdefb'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333',
+                  gap: '10px',
+                  flex: 1
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={enviarBoasVindas}
+                    onChange={(e) => setEnviarBoasVindas(e.target.checked)}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      marginTop: '2px',
+                      cursor: 'pointer',
+                      accentColor: '#2196F3'
+                    }}
+                  />
+                  <div>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Icon icon="mdi:whatsapp" width="18" height="18" style={{ color: '#25D366' }} />
+                      Enviar mensagem de boas-vindas
+                    </span>
+                    <p style={{
+                      margin: '4px 0 0 0',
+                      fontSize: '12px',
+                      color: '#666',
+                      fontWeight: '400'
+                    }}>
+                      Envia uma mensagem apresentando sua empresa e solicitando que o cliente salve o número.
+                    </p>
+                  </div>
+                </label>
+                {enviarBoasVindas && (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarEdicaoBoasVindas(!mostrarEdicaoBoasVindas)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      color: '#2196F3',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    <Icon icon={mostrarEdicaoBoasVindas ? 'mdi:chevron-up' : 'mdi:pencil'} width="16" height="16" />
+                    {mostrarEdicaoBoasVindas ? 'Fechar' : 'Editar'}
+                  </button>
+                )}
+              </div>
+
+              {/* Área de edição da mensagem */}
+              {enviarBoasVindas && mostrarEdicaoBoasVindas && (
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px'
+                  }}>
+                    <label style={{ fontSize: '12px', fontWeight: '500', color: '#333' }}>
+                      Personalizar mensagem:
+                    </label>
+                    {mensagemBoasVindasCustom && (
+                      <button
+                        type="button"
+                        onClick={() => setMensagemBoasVindasCustom('')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#999',
+                          fontSize: '11px',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Restaurar padrão
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    value={mensagemBoasVindasCustom || `Olá, ${novoClienteNome.trim().split(' ')[0] || '[Nome]'}! 👋
+
+Seja muito bem-vindo(a)!
+
+Este é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:
+
+✅ Lembretes de vencimento
+✅ Confirmações de pagamento
+✅ Comunicados importantes
+
+*Salve nosso número* para não perder nenhuma mensagem!
+
+Qualquer dúvida, estamos à disposição.`}
+                    onChange={(e) => setMensagemBoasVindasCustom(e.target.value)}
+                    placeholder="Digite sua mensagem personalizada..."
+                    style={{
+                      width: '100%',
+                      minHeight: '180px',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                      backgroundColor: 'white',
+                      boxSizing: 'border-box',
+                      lineHeight: '1.5'
+                    }}
+                  />
+                  <p style={{
+                    margin: '8px 0 0 0',
+                    fontSize: '11px',
+                    color: '#888'
+                  }}>
+                    <Icon icon="mdi:information-outline" width="12" style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                    O nome do cliente será substituído automaticamente ao enviar.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Botões */}
             <div style={{
               display: 'flex',
@@ -3111,6 +3332,9 @@ export default function Clientes() {
                   setDataInicioAssinatura('')
                   setPlanoSelecionado('')
                   setErroModalNovoCliente('')
+                  setEnviarBoasVindas(true)
+                  setMostrarEdicaoBoasVindas(false)
+                  setMensagemBoasVindasCustom('')
                 }}
                 style={{
                   padding: '10px 20px',
