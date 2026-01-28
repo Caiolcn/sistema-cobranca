@@ -154,10 +154,9 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/((?!api/|testimonials/|.*\\.(jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|css|js)).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/testimonials/(.*)", "destination": "/testimonials/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "trailingSlash": false
 }
