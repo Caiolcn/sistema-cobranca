@@ -4,11 +4,14 @@ import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import whatsappService from './services/whatsappService'
+import { asaasService } from './services/asaasService'
 import { exportarMensalidades } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
 import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
+import { QRCodeSVG } from 'qrcode.react'
+import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -52,6 +55,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mostrarModalRecibo, setMostrarModalRecibo] = useState(false)
   const [mensalidadePaga, setMensalidadePaga] = useState(null)
 
+  // Modal de Link de Pagamento PIX
+  const [mostrarModalLinkPagamento, setMostrarModalLinkPagamento] = useState(false)
+  const [linkPagamentoData, setLinkPagamentoData] = useState(null)
+  const [gerandoLink, setGerandoLink] = useState(false)
+  const [pixCopied, setPixCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  // Modal de Boleto Asaas
+  const [mostrarModalBoleto, setMostrarModalBoleto] = useState(false)
+  const [boletoData, setBoletoData] = useState(null)
+  const [gerandoBoleto, setGerandoBoleto] = useState(false)
+  const [linhaDigitavelCopied, setLinhaDigitavelCopied] = useState(false)
+  const [pixBoletoCopied, setPixBoletoCopied] = useState(false)
+  const [asaasConfigurado, setAsaasConfigurado] = useState(false)
+  const [modoIntegracao, setModoIntegracao] = useState('manual') // 'asaas' ou 'manual'
+
   // Cards de resumo
   const [totalEmAtraso, setTotalEmAtraso] = useState(0)
   const [totalEmAberto, setTotalEmAberto] = useState(0)
@@ -69,6 +88,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   useEffect(() => {
     if (userId) {
       carregarDados()
+      // Verificar se Asaas está configurado
+      asaasService.isConfigured().then(setAsaasConfigurado)
+      // Carregar modo de integração
+      supabase
+        .from('usuarios')
+        .select('modo_integracao')
+        .eq('id', userId)
+        .single()
+        .then(({ data }) => {
+          if (data?.modo_integracao) {
+            setModoIntegracao(data.modo_integracao)
+          }
+        })
     }
   }, [userId])
 
@@ -95,14 +127,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         { data: mensalidadesData, error: mensalidadesError },
         { data: clientesData, error: clientesError }
       ] = await Promise.all([
-        // 1. Mensalidades com dados do devedor
+        // 1. Mensalidades com dados do devedor e boleto (se existir)
         supabase
           .from('mensalidades')
           .select(`
             *,
             devedor:devedores(
               nome,
+              telefone,
               plano:planos(nome)
+            ),
+            boletos(
+              id,
+              asaas_id,
+              status,
+              valor,
+              data_vencimento,
+              boleto_url,
+              invoice_url,
+              linha_digitavel,
+              pix_qrcode_url,
+              pix_copia_cola
             )
           `)
           .eq('user_id', userId)
@@ -487,6 +532,315 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     } catch (error) {
       showToast('Erro ao gerar recibo: ' + error.message, 'error')
     }
+  }
+
+  // Função para gerar link de pagamento PIX
+  const handleGerarLinkPagamento = async (mensalidade) => {
+    if (!chavePix) {
+      showToast('Configure sua chave PIX em Configurações antes de gerar links de pagamento.', 'error')
+      return
+    }
+
+    if (mensalidade.status === 'pago') {
+      showToast('Esta mensalidade já foi paga.', 'info')
+      return
+    }
+
+    setGerandoLink(true)
+
+    try {
+      // Gerar token único
+      const token = crypto.randomUUID().replace(/-/g, '').substring(0, 32)
+
+      // Salvar link no banco com todos os dados necessários
+      const { data: linkData, error: linkError } = await supabase
+        .from('links_pagamento')
+        .insert({
+          user_id: userId,
+          mensalidade_id: mensalidade.id,
+          token: token,
+          valor: mensalidade.valor,
+          cliente_nome: mensalidade.devedor?.nome || 'Cliente',
+          data_vencimento: mensalidade.data_vencimento,
+          nome_empresa: nomeEmpresa || 'Empresa',
+          chave_pix: chavePix
+        })
+        .select()
+        .single()
+
+      if (linkError) throw linkError
+
+      // Gerar código PIX
+      const codigoPix = gerarPixCopiaCola({
+        chavePix: chavePix,
+        valor: parseFloat(mensalidade.valor),
+        nomeRecebedor: nomeEmpresa || 'Empresa',
+        cidadeRecebedor: 'BRASIL',
+        txid: gerarTxId(mensalidade.id),
+        descricao: `Mensalidade ${mensalidade.devedor?.nome || ''}`
+      })
+
+      // Montar dados para o modal
+      const baseUrl = window.location.origin
+      setLinkPagamentoData({
+        token: token,
+        url: `${baseUrl}/pagar/${token}`,
+        pixCode: codigoPix,
+        valor: mensalidade.valor,
+        cliente: mensalidade.devedor?.nome || 'Cliente',
+        vencimento: mensalidade.data_vencimento
+      })
+
+      setMostrarModalLinkPagamento(true)
+    } catch (error) {
+      console.error('Erro ao gerar link:', error)
+      showToast('Erro ao gerar link de pagamento: ' + error.message, 'error')
+    } finally {
+      setGerandoLink(false)
+    }
+  }
+
+  const copiarPix = async () => {
+    if (!linkPagamentoData?.pixCode) return
+    try {
+      await navigator.clipboard.writeText(linkPagamentoData.pixCode)
+      setPixCopied(true)
+      setTimeout(() => setPixCopied(false), 3000)
+      showToast('Código PIX copiado!', 'success')
+    } catch (error) {
+      showToast('Erro ao copiar', 'error')
+    }
+  }
+
+  const copiarLink = async () => {
+    if (!linkPagamentoData?.url) return
+    try {
+      await navigator.clipboard.writeText(linkPagamentoData.url)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 3000)
+      showToast('Link copiado!', 'success')
+    } catch (error) {
+      showToast('Erro ao copiar', 'error')
+    }
+  }
+
+  const [enviandoLinkWhatsApp, setEnviandoLinkWhatsApp] = useState(false)
+
+  const enviarLinkWhatsApp = async () => {
+    if (!linkPagamentoData || !mensalidadeDetalhes?.devedor?.telefone) {
+      showToast('Telefone do cliente não encontrado', 'error')
+      return
+    }
+
+    // Verificar se WhatsApp está conectado
+    const status = await whatsappService.verificarStatus()
+    if (!status.conectado) {
+      showToast('WhatsApp não conectado. Conecte na aba WhatsApp primeiro.', 'error')
+      return
+    }
+
+    setEnviandoLinkWhatsApp(true)
+
+    try {
+      const telefone = mensalidadeDetalhes.devedor.telefone
+      const nomeCliente = mensalidadeDetalhes.devedor?.nome?.split(' ')[0] || 'Cliente'
+      const valorFormatado = parseFloat(linkPagamentoData.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      const vencimentoFormatado = new Date(linkPagamentoData.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+
+      let mensagem = `Olá, ${nomeCliente}! Tudo bem?\n\n`
+      mensagem += `Segue o link para pagamento da sua fatura:\n\n`
+      mensagem += `*Valor:* ${valorFormatado}\n`
+      mensagem += `*Vencimento:* ${vencimentoFormatado}\n\n`
+      mensagem += `Pague via PIX pelo link abaixo:\n\n`
+      mensagem += `${linkPagamentoData.url}\n\n`
+      mensagem += `Qualquer dúvida, estou à disposição!`
+
+      const resultado = await whatsappService.enviarMensagem(telefone, mensagem)
+
+      if (resultado.sucesso) {
+        showToast('Link de pagamento enviado via WhatsApp!', 'success')
+      } else {
+        showToast('Erro ao enviar: ' + resultado.erro, 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao enviar link via WhatsApp:', error)
+      showToast('Erro ao enviar: ' + error.message, 'error')
+    } finally {
+      setEnviandoLinkWhatsApp(false)
+    }
+  }
+
+  // Função para gerar boleto via Asaas
+  const handleGerarBoleto = async (mensalidade) => {
+    if (modoIntegracao !== 'asaas') {
+      showToast('Ative a integração Asaas em Configurações para gerar boletos.', 'error')
+      return
+    }
+
+    if (!asaasConfigurado) {
+      showToast('Configure sua API Key do Asaas em Configurações > Integrações.', 'error')
+      return
+    }
+
+    if (mensalidade.status === 'pago') {
+      showToast('Esta mensalidade já foi paga.', 'info')
+      return
+    }
+
+    setGerandoBoleto(true)
+
+    try {
+      const resultado = await asaasService.criarBolePix({
+        mensalidadeId: mensalidade.id,
+        devedorId: mensalidade.devedor_id,
+        valor: mensalidade.valor,
+        dataVencimento: mensalidade.data_vencimento,
+        descricao: `Mensalidade - ${mensalidade.devedor?.nome || 'Cliente'}`
+      })
+
+      setBoletoData({
+        ...resultado,
+        cliente: mensalidade.devedor?.nome || 'Cliente',
+        vencimento: mensalidade.data_vencimento
+      })
+
+      setMostrarModalBoleto(true)
+      showToast('Boleto gerado com sucesso!', 'success')
+
+      // Atualizar mensalidadeDetalhes com o boleto gerado
+      if (mensalidadeDetalhes && mensalidadeDetalhes.id === mensalidade.id) {
+        setMensalidadeDetalhes({
+          ...mensalidadeDetalhes,
+          boletos: [resultado]
+        })
+      }
+
+      // Recarregar dados para atualizar a lista com o boleto gerado
+      carregarDados()
+    } catch (error) {
+      console.error('Erro ao gerar boleto:', error)
+      showToast('Erro ao gerar boleto: ' + error.message, 'error')
+    } finally {
+      setGerandoBoleto(false)
+    }
+  }
+
+  const copiarLinhaDigitavel = async () => {
+    if (!boletoData?.linha_digitavel) return
+    try {
+      await navigator.clipboard.writeText(boletoData.linha_digitavel)
+      setLinhaDigitavelCopied(true)
+      setTimeout(() => setLinhaDigitavelCopied(false), 3000)
+      showToast('Linha digitável copiada!', 'success')
+    } catch (error) {
+      showToast('Erro ao copiar', 'error')
+    }
+  }
+
+  const copiarPixBoleto = async () => {
+    if (!boletoData?.pix_copia_cola) return
+    try {
+      await navigator.clipboard.writeText(boletoData.pix_copia_cola)
+      setPixBoletoCopied(true)
+      setTimeout(() => setPixBoletoCopied(false), 3000)
+      showToast('Código PIX copiado!', 'success')
+    } catch (error) {
+      showToast('Erro ao copiar', 'error')
+    }
+  }
+
+  const [enviandoBoletoWhatsApp, setEnviandoBoletoWhatsApp] = useState(false)
+
+  const enviarBoletoWhatsApp = async () => {
+    if (!boletoData || !mensalidadeDetalhes?.devedor?.telefone) {
+      showToast('Telefone do cliente não encontrado', 'error')
+      return
+    }
+
+    // Verificar se WhatsApp está conectado
+    const status = await whatsappService.verificarStatus()
+    if (!status.conectado) {
+      showToast('WhatsApp não conectado. Conecte na aba WhatsApp primeiro.', 'error')
+      return
+    }
+
+    setEnviandoBoletoWhatsApp(true)
+
+    try {
+      const telefone = mensalidadeDetalhes.devedor.telefone
+      const nomeCliente = mensalidadeDetalhes.devedor?.nome?.split(' ')[0] || 'Cliente'
+      const valorFormatado = parseFloat(boletoData.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      const vencimentoFormatado = new Date(boletoData.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+      const linkPagamento = boletoData.invoice_url || boletoData.boleto_url
+
+      // Montar mensagem completa
+      let mensagem = `Olá, ${nomeCliente}! Tudo bem?\n\n`
+      mensagem += `Segue o boleto para pagamento da sua fatura:\n\n`
+      mensagem += `*Valor:* ${valorFormatado}\n`
+      mensagem += `*Vencimento:* ${vencimentoFormatado}\n\n`
+
+      if (linkPagamento) {
+        mensagem += `Ou se preferir, pague via PIX pelo link abaixo:\n\n`
+        mensagem += `${linkPagamento}\n\n`
+      }
+
+      mensagem += `Qualquer dúvida, estou à disposição!`
+
+      // Enviar PDF do boleto com a mensagem como legenda
+      if (boletoData.boleto_url) {
+        const resultadoPdf = await whatsappService.enviarDocumento(
+          telefone,
+          boletoData.boleto_url,
+          mensagem,
+          `boleto-${vencimentoFormatado.replace(/\//g, '-')}.pdf`,
+          'document'
+        )
+
+        if (resultadoPdf.sucesso) {
+          showToast('Boleto enviado via WhatsApp!', 'success')
+        } else {
+          // Se falhar enviar PDF, tenta enviar só a mensagem de texto
+          console.warn('Não foi possível enviar PDF, enviando mensagem de texto:', resultadoPdf.erro)
+          const resultadoTexto = await whatsappService.enviarMensagem(telefone, mensagem)
+          if (resultadoTexto.sucesso) {
+            showToast('Mensagem enviada (sem PDF)', 'warning')
+          } else {
+            showToast('Erro ao enviar: ' + resultadoTexto.erro, 'error')
+          }
+        }
+      } else {
+        // Sem PDF, envia só mensagem de texto
+        const resultado = await whatsappService.enviarMensagem(telefone, mensagem)
+        if (resultado.sucesso) {
+          showToast('Mensagem enviada via WhatsApp!', 'success')
+        } else {
+          showToast('Erro ao enviar: ' + resultado.erro, 'error')
+        }
+      }
+
+    } catch (error) {
+      console.error('Erro ao enviar boleto via WhatsApp:', error)
+      showToast('Erro ao enviar boleto: ' + error.message, 'error')
+    } finally {
+      setEnviandoBoletoWhatsApp(false)
+    }
+  }
+
+  // Função para visualizar boleto já existente
+  const handleVisualizarBoleto = (mensalidade) => {
+    // Pega o boleto mais recente (boletos é um array)
+    const boleto = mensalidade.boletos?.[0]
+    if (!boleto) {
+      showToast('Boleto não encontrado', 'error')
+      return
+    }
+
+    setBoletoData({
+      ...boleto,
+      cliente: mensalidade.devedor?.nome || 'Cliente',
+      vencimento: boleto.data_vencimento
+    })
+    setMostrarModalBoleto(true)
   }
 
   const handleEnviarCobranca = async (mensalidade) => {
@@ -1601,7 +1955,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               borderTop: '1px solid #e8e8e8',
               display: 'flex',
               justifyContent: 'flex-end',
-              gap: '12px'
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
               <button
                 onClick={() => setMostrarModalDetalhes(false)}
@@ -1618,6 +1973,78 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               >
                 Fechar
               </button>
+              {/* Botão Link de Pagamento - só aparece se não está pago */}
+              {mensalidadeDetalhes.status !== 'pago' && (
+                <button
+                  onClick={() => handleGerarLinkPagamento(mensalidadeDetalhes)}
+                  disabled={gerandoLink}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#2196F3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: gerandoLink ? 'wait' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: gerandoLink ? 0.7 : 1
+                  }}
+                >
+                  <Icon icon={gerandoLink ? 'mdi:loading' : 'mdi:qrcode'} width="18" style={gerandoLink ? { animation: 'spin 1s linear infinite' } : {}} />
+                  {gerandoLink ? 'Gerando...' : 'Link de Pagamento'}
+                </button>
+              )}
+              {/* Botão Gerar/Visualizar Boleto - só aparece se modo é Asaas E está configurado */}
+              {modoIntegracao === 'asaas' && asaasConfigurado && (
+                mensalidadeDetalhes.boletos?.length > 0 ? (
+                  // Já tem boleto - mostrar "Visualizar Boleto"
+                  <button
+                    onClick={() => handleVisualizarBoleto(mensalidadeDetalhes)}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Icon icon="mdi:file-document-outline" width="18" />
+                    Visualizar Boleto
+                  </button>
+                ) : mensalidadeDetalhes.status !== 'pago' ? (
+                  // Não tem boleto e não está pago - mostrar "Gerar Boleto"
+                  <button
+                    onClick={() => handleGerarBoleto(mensalidadeDetalhes)}
+                    disabled={gerandoBoleto}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#FF9800',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: gerandoBoleto ? 'wait' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: gerandoBoleto ? 0.7 : 1
+                    }}
+                  >
+                    <Icon icon={gerandoBoleto ? 'mdi:loading' : 'mdi:barcode'} width="18" style={gerandoBoleto ? { animation: 'spin 1s linear infinite' } : {}} />
+                    {gerandoBoleto ? 'Gerando...' : 'Gerar Boleto'}
+                  </button>
+                ) : null
+              )}
               <button
                 onClick={marcarPagoDoModal}
                 style={{
@@ -1905,6 +2332,494 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Link de Pagamento PIX */}
+      {mostrarModalLinkPagamento && linkPagamentoData && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1003,
+          padding: '20px'
+        }}>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '420px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            {/* Header */}
+            <div style={{
+              backgroundColor: '#344848',
+              borderRadius: '16px 16px 0 0',
+              padding: '20px',
+              textAlign: 'center',
+              color: 'white'
+            }}>
+              <Icon icon="mdi:qrcode" width="36" height="36" />
+              <h2 style={{ margin: '8px 0 0', fontSize: '18px', fontWeight: '600' }}>
+                Link de Pagamento
+              </h2>
+            </div>
+
+            {/* Detalhes */}
+            <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: '#888', fontSize: '14px' }}>Cliente</span>
+                <span style={{ fontWeight: '500', color: '#333' }}>{linkPagamentoData.cliente}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: '#888', fontSize: '14px' }}>Valor</span>
+                <span style={{ fontWeight: '600', color: '#4CAF50', fontSize: '18px' }}>
+                  R$ {parseFloat(linkPagamentoData.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#888', fontSize: '14px' }}>Vencimento</span>
+                <span style={{ fontWeight: '500', color: '#333' }}>
+                  {new Date(linkPagamentoData.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            </div>
+
+            {/* QR Code */}
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#666' }}>
+                QR Code PIX
+              </p>
+              <div style={{
+                display: 'inline-block',
+                padding: '16px',
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '2px solid #eee'
+              }}>
+                <QRCodeSVG
+                  value={linkPagamentoData.pixCode}
+                  size={180}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+            </div>
+
+            {/* Ações */}
+            <div style={{ padding: '0 20px 20px' }}>
+              {/* Copiar Link */}
+              <button
+                onClick={copiarLink}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: linkCopied ? '#4CAF50' : '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginBottom: '10px'
+                }}
+              >
+                <Icon icon={linkCopied ? 'mdi:check' : 'mdi:link'} width="20" />
+                {linkCopied ? 'Link Copiado!' : 'Copiar Link de Pagamento'}
+              </button>
+
+              {/* Copiar PIX */}
+              <button
+                onClick={copiarPix}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: pixCopied ? '#4CAF50' : '#344848',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginBottom: '10px'
+                }}
+              >
+                <Icon icon={pixCopied ? 'mdi:check' : 'mdi:content-copy'} width="20" />
+                {pixCopied ? 'PIX Copiado!' : 'Copiar Código PIX'}
+              </button>
+
+              {/* Enviar via WhatsApp */}
+              <button
+                onClick={enviarLinkWhatsApp}
+                disabled={enviandoLinkWhatsApp}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: enviandoLinkWhatsApp ? '#1a9b4a' : '#25D366',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: enviandoLinkWhatsApp ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: enviandoLinkWhatsApp ? 0.8 : 1
+                }}
+              >
+                <Icon icon={enviandoLinkWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'} width="20" style={enviandoLinkWhatsApp ? { animation: 'spin 1s linear infinite' } : {}} />
+                {enviandoLinkWhatsApp ? 'Enviando...' : 'Enviar via WhatsApp'}
+              </button>
+            </div>
+
+            {/* Link URL */}
+            <div style={{ padding: '0 20px 16px' }}>
+              <div style={{
+                padding: '10px 12px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '6px',
+                fontSize: '11px',
+                color: '#666',
+                wordBreak: 'break-all',
+                fontFamily: 'monospace'
+              }}>
+                {linkPagamentoData.url}
+              </div>
+            </div>
+
+            {/* Fechar */}
+            <div style={{ padding: '0 20px 20px', textAlign: 'center' }}>
+              <button
+                onClick={() => {
+                  setMostrarModalLinkPagamento(false)
+                  setLinkPagamentoData(null)
+                  setPixCopied(false)
+                  setLinkCopied(false)
+                }}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: 'transparent',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+
+            {/* Aviso */}
+            <div style={{
+              padding: '12px 20px',
+              backgroundColor: '#fff8e1',
+              borderRadius: '0 0 16px 16px',
+              textAlign: 'center'
+            }}>
+              <p style={{ margin: 0, fontSize: '12px', color: '#f57c00' }}>
+                <Icon icon="mdi:clock-outline" width="14" style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                Link válido por 24 horas
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Boleto Asaas */}
+      {mostrarModalBoleto && boletoData && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1003,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e8e8e8',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: '#fff3e0',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Icon icon="mdi:barcode" width="24" height="24" style={{ color: '#FF9800' }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
+                    Boleto Gerado
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
+                    {boletoData.cliente}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setMostrarModalBoleto(false)
+                  setBoletoData(null)
+                  setLinhaDigitavelCopied(false)
+                  setPixBoletoCopied(false)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px' }}>
+              {/* Valor e Vencimento */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '20px',
+                padding: '16px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '12px'
+              }}>
+                <div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '0 0 4px 0' }}>Valor</p>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#344848', margin: 0 }}>
+                    R$ {parseFloat(boletoData.valor).toFixed(2)}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '0 0 4px 0' }}>Vencimento</p>
+                  <p style={{ fontSize: '16px', fontWeight: '600', color: '#344848', margin: 0 }}>
+                    {new Date(boletoData.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Linha Digitável */}
+              {boletoData.linha_digitavel && (
+                <div style={{ marginBottom: '16px' }}>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#344848', margin: '0 0 8px 0' }}>
+                    <Icon icon="mdi:barcode" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                    Linha Digitável
+                  </p>
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '8px',
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    wordBreak: 'break-all',
+                    color: '#333'
+                  }}>
+                    {boletoData.linha_digitavel}
+                  </div>
+                  <button
+                    onClick={copiarLinhaDigitavel}
+                    style={{
+                      width: '100%',
+                      marginTop: '8px',
+                      padding: '12px',
+                      backgroundColor: linhaDigitavelCopied ? '#4CAF50' : '#FF9800',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Icon icon={linhaDigitavelCopied ? 'mdi:check' : 'mdi:content-copy'} width="18" />
+                    {linhaDigitavelCopied ? 'Copiado!' : 'Copiar Linha Digitável'}
+                  </button>
+                </div>
+              )}
+
+              {/* PIX (BolePix) */}
+              {boletoData.pix_copia_cola && (
+                <div style={{ marginBottom: '16px' }}>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#344848', margin: '0 0 8px 0' }}>
+                    <Icon icon="mdi:qrcode" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                    Pague via PIX
+                  </p>
+
+                  {/* QR Code */}
+                  {boletoData.pix_qrcode_base64 && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <img
+                        src={`data:image/png;base64,${boletoData.pix_qrcode_base64}`}
+                        alt="QR Code PIX"
+                        style={{ width: '180px', height: '180px' }}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={copiarPixBoleto}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: pixBoletoCopied ? '#4CAF50' : '#00C853',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Icon icon={pixBoletoCopied ? 'mdi:check' : 'mdi:content-copy'} width="18" />
+                    {pixBoletoCopied ? 'Copiado!' : 'Copiar Código PIX'}
+                  </button>
+                </div>
+              )}
+
+              {/* Link do Boleto PDF */}
+              {(boletoData.boleto_url || boletoData.invoice_url) && (
+                <div style={{ marginBottom: '16px' }}>
+                  <a
+                    href={boletoData.boleto_url || boletoData.invoice_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      color: '#344848',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    <Icon icon="mdi:file-pdf-box" width="20" />
+                    Visualizar/Baixar Boleto PDF
+                  </a>
+                </div>
+              )}
+
+              {/* Botão Enviar WhatsApp */}
+              <button
+                onClick={enviarBoletoWhatsApp}
+                disabled={enviandoBoletoWhatsApp}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: enviandoBoletoWhatsApp ? '#1a9b4a' : '#25d366',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: enviandoBoletoWhatsApp ? 'wait' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: enviandoBoletoWhatsApp ? 0.8 : 1
+                }}
+              >
+                <Icon
+                  icon={enviandoBoletoWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'}
+                  width="20"
+                  style={enviandoBoletoWhatsApp ? { animation: 'spin 1s linear infinite' } : {}}
+                />
+                {enviandoBoletoWhatsApp ? 'Enviando...' : 'Enviar via WhatsApp'}
+              </button>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #e8e8e8',
+              display: 'flex',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => {
+                  setMostrarModalBoleto(false)
+                  setBoletoData(null)
+                  setLinhaDigitavelCopied(false)
+                  setPixBoletoCopied(false)
+                }}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: 'transparent',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

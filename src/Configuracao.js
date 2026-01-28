@@ -9,6 +9,7 @@ import {
   atualizarConfiguracao,
   executarAutomacoes
 } from './services/automacaoService'
+import { asaasService } from './services/asaasService'
 import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 
@@ -103,6 +104,20 @@ function Configuracao() {
   const [planoAtual, setPlanoAtual] = useState('starter')
   const [processandoCheckout, setProcessandoCheckout] = useState(false)
 
+  // Integrações
+  const [modoIntegracao, setModoIntegracao] = useState('manual') // 'asaas' ou 'manual'
+  const [salvandoModo, setSalvandoModo] = useState(false)
+
+  // Asaas (Boletos)
+  const [asaasConfig, setAsaasConfig] = useState({
+    apiKey: '',
+    ambiente: 'production'
+  })
+  const [asaasConectado, setAsaasConectado] = useState(false)
+  const [testandoAsaas, setTestandoAsaas] = useState(false)
+  const [salvandoAsaas, setSalvandoAsaas] = useState(false)
+  const [asaasContaInfo, setAsaasContaInfo] = useState(null)
+
   // Automação WhatsApp - REMOVIDO (movido para /whatsapp)
   // const [configAutomacao, setConfigAutomacao] = useState({...})
   // const [testando, setTestando] = useState(false)
@@ -114,7 +129,7 @@ function Configuracao() {
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade'].includes(abaUrl)) {
+    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade', 'integracoes'].includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
   }, [searchParams])
@@ -130,7 +145,8 @@ function Configuracao() {
           carregarDadosEmpresa(user.id),
           carregarConfigCobranca(user.id),
           carregarPlanos(user.id),
-          carregarUsoSistema(user.id)
+          carregarUsoSistema(user.id),
+          carregarConfigAsaas()
         ])
       }
     } catch (error) {
@@ -168,6 +184,8 @@ function Configuracao() {
         site: data.site || '',
         chavePix: data.chave_pix || ''
       })
+      // Carregar modo de integração
+      setModoIntegracao(data.modo_integracao || 'manual')
     }
   }
 
@@ -2030,6 +2048,747 @@ function Configuracao() {
     </div>
   )
 
+  // ==========================================
+  // ASAAS (BOLETOS)
+  // ==========================================
+
+  const carregarConfigAsaas = async () => {
+    try {
+      const config = await asaasService.getConfig()
+      setAsaasConfig({
+        apiKey: config.apiKey || '',
+        ambiente: config.ambiente || 'sandbox'
+      })
+      if (config.apiKey) {
+        setAsaasConectado(true)
+      }
+    } catch (error) {
+      console.log('Asaas não configurado ainda')
+    }
+  }
+
+  const testarConexaoAsaas = async () => {
+    if (!asaasConfig.apiKey) {
+      showToast('Digite a API Key do Asaas', 'error')
+      return
+    }
+
+    setTestandoAsaas(true)
+    try {
+      // Salvar temporariamente para testar (sempre production)
+      await asaasService.salvarConfig(asaasConfig.apiKey, 'production')
+
+      const resultado = await asaasService.testarConexao()
+
+      if (resultado.success) {
+        setAsaasConectado(true)
+        setAsaasContaInfo(resultado.conta)
+        showToast('Conexão com Asaas estabelecida!', 'success')
+      } else {
+        setAsaasConectado(false)
+        showToast(resultado.message || 'Erro ao conectar com Asaas', 'error')
+      }
+    } catch (error) {
+      setAsaasConectado(false)
+      showToast('Erro ao testar conexão: ' + error.message, 'error')
+    } finally {
+      setTestandoAsaas(false)
+    }
+  }
+
+  const salvarConfigAsaas = async () => {
+    setSalvandoAsaas(true)
+    try {
+      // Sempre salvar como 'production' - ambiente de produção
+      await asaasService.salvarConfig(asaasConfig.apiKey, 'production')
+      showToast('Configuração do Asaas salva com sucesso!', 'success')
+    } catch (error) {
+      showToast('Erro ao salvar: ' + error.message, 'error')
+    } finally {
+      setSalvandoAsaas(false)
+    }
+  }
+
+  // Salvar modo de integração
+  const salvarModoIntegracao = async (novoModo) => {
+    setSalvandoModo(true)
+    try {
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ modo_integracao: novoModo })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setModoIntegracao(novoModo)
+      showToast(`Modo alterado para ${novoModo === 'asaas' ? 'Asaas' : 'PIX Manual'}`, 'success')
+    } catch (error) {
+      console.error('Erro ao salvar modo:', error)
+      showToast('Erro ao salvar configuração', 'error')
+    } finally {
+      setSalvandoModo(false)
+    }
+  }
+
+  // Salvar chave PIX
+  const salvarChavePix = async () => {
+    if (!dadosEmpresa.chavePix?.trim()) {
+      showToast('Informe sua chave PIX', 'warning')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ chave_pix: dadosEmpresa.chavePix })
+        .eq('id', user.id)
+
+      if (error) throw error
+      showToast('Chave PIX salva com sucesso!', 'success')
+    } catch (error) {
+      console.error('Erro ao salvar chave PIX:', error)
+      showToast('Erro ao salvar chave PIX', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const renderIntegracoes = () => (
+    <div style={{ padding: isSmallScreen ? '16px' : '24px' }}>
+      {/* Header Section */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        padding: isSmallScreen ? '20px' : '28px',
+        marginBottom: '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Icon icon="mdi:link-variant" width="24" style={{ color: 'white' }} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a2e', margin: 0 }}>
+              Integrações de Pagamento
+            </h2>
+            <p style={{ fontSize: '14px', color: '#666', margin: '4px 0 0 0' }}>
+              Escolha como deseja receber pagamentos dos seus clientes
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Seletor de Modo */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        padding: isSmallScreen ? '20px' : '28px',
+        marginBottom: '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+      }}>
+        <h3 style={{
+          fontSize: '16px',
+          fontWeight: '600',
+          color: '#344848',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Icon icon="mdi:swap-horizontal" width="20" style={{ color: '#667eea' }} />
+          Selecione o modo de integração
+        </h3>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
+          gap: '20px'
+        }}>
+          {/* Opção Asaas */}
+          <div
+            onClick={() => !salvandoModo && salvarModoIntegracao('asaas')}
+            style={{
+              padding: '24px',
+              backgroundColor: modoIntegracao === 'asaas' ? '#f0f7ff' : '#fafafa',
+              border: modoIntegracao === 'asaas' ? '2px solid #2196F3' : '2px solid transparent',
+              borderRadius: '16px',
+              cursor: salvandoModo ? 'wait' : 'pointer',
+              transition: 'all 0.3s ease',
+              position: 'relative',
+              overflow: 'hidden',
+              boxShadow: modoIntegracao === 'asaas' ? '0 4px 15px rgba(33, 150, 243, 0.2)' : '0 2px 8px rgba(0,0,0,0.04)'
+            }}
+          >
+            {/* Badge Recomendado */}
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <Icon icon="mdi:star" width="12" />
+              Recomendado
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '14px',
+                backgroundColor: modoIntegracao === 'asaas' ? '#2196F3' : '#e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.3s ease'
+              }}>
+                <Icon icon="mdi:bank" width="26" style={{ color: 'white' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: modoIntegracao === 'asaas' ? '#1565c0' : '#333' }}>
+                  Asaas
+                </h3>
+                <span style={{ fontSize: '13px', color: '#666' }}>Gateway completo</span>
+              </div>
+              {modoIntegracao === 'asaas' && (
+                <Icon icon="mdi:check-circle" width="28" style={{ marginLeft: 'auto', color: '#2196F3' }} />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { text: 'Link de pagamento Asaas', subtitle: 'Múltiplas formas de pagamento' },
+                { text: 'Confirmação automática', subtitle: null },
+                { text: 'Geração de Boletos', subtitle: null }
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Icon
+                    icon="mdi:check-circle"
+                    width="18"
+                    style={{ color: '#4CAF50' }}
+                  />
+                  <div>
+                    <span style={{ fontSize: '14px', color: '#444' }}>{item.text}</span>
+                    {item.subtitle && (
+                      <span style={{ fontSize: '12px', color: '#888', display: 'block' }}>{item.subtitle}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Opção PIX Manual */}
+          <div
+            onClick={() => !salvandoModo && salvarModoIntegracao('manual')}
+            style={{
+              padding: '24px',
+              backgroundColor: modoIntegracao === 'manual' ? '#fff8f0' : '#fafafa',
+              border: modoIntegracao === 'manual' ? '2px solid #FF9800' : '2px solid transparent',
+              borderRadius: '16px',
+              cursor: salvandoModo ? 'wait' : 'pointer',
+              transition: 'all 0.3s ease',
+              position: 'relative',
+              boxShadow: modoIntegracao === 'manual' ? '0 4px 15px rgba(255, 152, 0, 0.2)' : '0 2px 8px rgba(0,0,0,0.04)'
+            }}
+          >
+            {/* Badge Simples */}
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              backgroundColor: '#9e9e9e',
+              color: 'white',
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '600'
+            }}>
+              Simples
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '14px',
+                backgroundColor: modoIntegracao === 'manual' ? '#FF9800' : '#e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.3s ease'
+              }}>
+                <Icon icon="mdi:qrcode" width="26" style={{ color: 'white' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: modoIntegracao === 'manual' ? '#e65100' : '#333' }}>
+                  PIX Manual
+                </h3>
+                <span style={{ fontSize: '13px', color: '#666' }}>Sem gateway externo</span>
+              </div>
+              {modoIntegracao === 'manual' && (
+                <Icon icon="mdi:check-circle" width="28" style={{ marginLeft: 'auto', color: '#FF9800' }} />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { text: 'Link de pagamento interno', active: true },
+                { text: 'Confirmação manual', active: false },
+                { text: 'Sem boletos', active: false }
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Icon
+                    icon={item.active ? "mdi:check-circle" : "mdi:close-circle"}
+                    width="18"
+                    style={{ color: item.active ? '#4CAF50' : '#bdbdbd' }}
+                  />
+                  <span style={{ fontSize: '14px', color: item.active ? '#444' : '#999' }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Configuração baseada no modo selecionado */}
+      {modoIntegracao === 'asaas' ? (
+        // Configuração Asaas
+        <>
+          {/* Status da conexão */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: isSmallScreen ? '20px' : '28px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          }}>
+            <div style={{
+              padding: '20px',
+              backgroundColor: asaasConectado ? '#e8f5e9' : '#fff3e0',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: asaasConectado ? '#4CAF50' : '#FF9800',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Icon
+                  icon={asaasConectado ? 'mdi:check-circle' : 'mdi:alert-circle'}
+                  width="24"
+                  style={{ color: 'white' }}
+                />
+              </div>
+              <div>
+                <p style={{ margin: 0, fontWeight: '700', fontSize: '16px', color: asaasConectado ? '#2e7d32' : '#e65100' }}>
+                  {asaasConectado ? '✓ Asaas Conectado' : 'Asaas Não Configurado'}
+                </p>
+                {asaasConectado && asaasContaInfo && (
+                  <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: '#666' }}>
+                    <strong>{asaasContaInfo.nome}</strong> • {asaasContaInfo.email}
+                  </p>
+                )}
+                {!asaasConectado && (
+                  <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: '#666' }}>
+                    Configure sua API Key abaixo para começar a emitir boletos
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Formulário Asaas */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: isSmallScreen ? '20px' : '28px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '700',
+              color: '#344848',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#e3f2fd',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Icon icon="mdi:key-variant" width="18" style={{ color: '#2196F3' }} />
+              </div>
+              Configurar API Key
+            </h3>
+
+            {/* API Key */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: '600', color: '#344848' }}>
+                API Key do Asaas <span style={{ color: '#f44336' }}>*</span>
+              </label>
+              <input
+                type="password"
+                value={asaasConfig.apiKey}
+                onChange={(e) => setAsaasConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                placeholder="$aact_..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <p style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+                Encontre sua API Key em: Asaas {'>'} Minha Conta {'>'} Integrações {'>'} Gerar nova chave de API
+              </p>
+            </div>
+
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={testarConexaoAsaas}
+                disabled={testandoAsaas || !asaasConfig.apiKey}
+                style={{
+                  flex: 1,
+                  minWidth: '150px',
+                  padding: '12px 20px',
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: testandoAsaas || !asaasConfig.apiKey ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: testandoAsaas || !asaasConfig.apiKey ? 0.6 : 1
+                }}
+              >
+                <Icon icon={testandoAsaas ? 'mdi:loading' : 'mdi:connection'} width="18" style={testandoAsaas ? { animation: 'spin 1s linear infinite' } : {}} />
+                {testandoAsaas ? 'Testando...' : 'Testar Conexão'}
+              </button>
+
+              <button
+                onClick={salvarConfigAsaas}
+                disabled={salvandoAsaas || !asaasConfig.apiKey}
+                style={{
+                  flex: 1,
+                  minWidth: '150px',
+                  padding: '12px 20px',
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: salvandoAsaas || !asaasConfig.apiKey ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: salvandoAsaas || !asaasConfig.apiKey ? 0.6 : 1
+                }}
+              >
+                <Icon icon={salvandoAsaas ? 'mdi:loading' : 'mdi:content-save'} width="18" style={salvandoAsaas ? { animation: 'spin 1s linear infinite' } : {}} />
+                {salvandoAsaas ? 'Salvando...' : 'Salvar Configuração'}
+              </button>
+            </div>
+          </div>
+
+          {/* Instruções Asaas */}
+          <div style={{
+            marginTop: '24px',
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: isSmallScreen ? '20px' : '28px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '700',
+              color: '#344848',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#e3f2fd',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Icon icon="mdi:help-circle" width="18" style={{ color: '#2196F3' }} />
+              </div>
+              Como configurar o Asaas
+            </h3>
+
+            <div style={{
+              display: 'grid',
+              gap: '12px'
+            }}>
+              {[
+                { step: 1, text: <>Acesse <a href="https://www.asaas.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2196F3', fontWeight: '600' }}>asaas.com</a> e crie sua conta gratuita</> },
+                { step: 2, text: <>Vá em <strong>Minha Conta</strong> → <strong>Integrações</strong></> },
+                { step: 3, text: <>Clique em <strong>Gerar nova chave de API</strong></> },
+                { step: 4, text: <>Copie a chave gerada e cole no campo acima</> }
+              ].map((item, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '14px',
+                  padding: '12px 16px',
+                  backgroundColor: '#fafafa',
+                  borderRadius: '10px'
+                }}>
+                  <div style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: '#2196F3',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    flexShrink: 0
+                  }}>
+                    {item.step}
+                  </div>
+                  <span style={{ fontSize: '14px', color: '#444', lineHeight: '28px' }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              marginTop: '20px',
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <Icon icon="mdi:gift" width="24" style={{ color: '#1565c0' }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#1565c0' }}>
+                  Taxa do Asaas: R$ 0,00 por boleto emitido
+                </p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#1976d2' }}>
+                  Emita quantos boletos quiser sem custo!
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        // Configuração PIX Manual
+        <>
+          {/* Formulário PIX */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: isSmallScreen ? '20px' : '28px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '700',
+              color: '#344848',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#fff3e0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Icon icon="mdi:key" width="18" style={{ color: '#FF9800' }} />
+              </div>
+              Configurar Chave PIX
+            </h3>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: '600', color: '#344848' }}>
+                Sua Chave PIX <span style={{ color: '#f44336' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={dadosEmpresa.chavePix}
+                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, chavePix: e.target.value }))}
+                placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  fontSize: '15px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '10px',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#FF9800'}
+                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+              />
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icon icon="mdi:information-outline" width="16" style={{ color: '#999' }} />
+                Esta chave será usada para gerar o QR Code PIX nos links de pagamento.
+              </p>
+            </div>
+
+            <button
+              onClick={salvarChavePix}
+              disabled={loading || !dadosEmpresa.chavePix}
+              style={{
+                padding: '14px 28px',
+                backgroundColor: loading || !dadosEmpresa.chavePix ? '#ccc' : '#FF9800',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: loading || !dadosEmpresa.chavePix ? 'not-allowed' : 'pointer',
+                fontSize: '15px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                transition: 'all 0.2s',
+                boxShadow: loading || !dadosEmpresa.chavePix ? 'none' : '0 4px 12px rgba(255, 152, 0, 0.3)'
+              }}
+            >
+              <Icon icon={loading ? 'mdi:loading' : 'mdi:content-save'} width="20" style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
+              {loading ? 'Salvando...' : 'Salvar Chave PIX'}
+            </button>
+          </div>
+
+          {/* Informações PIX Manual */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: isSmallScreen ? '20px' : '28px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '700',
+              color: '#344848',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#fff3e0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Icon icon="mdi:information" width="18" style={{ color: '#FF9800' }} />
+              </div>
+              Como funciona o PIX Manual
+            </h3>
+
+            <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
+              {[
+                { icon: 'mdi:send', text: 'Você envia um link de pagamento para o cliente via WhatsApp' },
+                { icon: 'mdi:qrcode-scan', text: 'O cliente acessa o link e vê o QR Code PIX + código copia e cola' },
+                { icon: 'mdi:check-decagram', text: 'Após o pagamento, você confirma manualmente no sistema' },
+                { icon: 'mdi:alert-circle', text: 'Não é possível gerar boletos neste modo', warning: true }
+              ].map((item, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '14px',
+                  padding: '14px 16px',
+                  backgroundColor: item.warning ? '#fff3e0' : '#fafafa',
+                  borderRadius: '10px',
+                  border: item.warning ? '1px solid #ffcc80' : '1px solid transparent'
+                }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    backgroundColor: item.warning ? '#FF9800' : '#e8e8e8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Icon icon={item.icon} width="18" style={{ color: item.warning ? 'white' : '#666' }} />
+                  </div>
+                  <span style={{ fontSize: '14px', color: item.warning ? '#e65100' : '#444', lineHeight: '32px', fontWeight: item.warning ? '600' : '400' }}>
+                    {item.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <Icon icon="mdi:lightbulb" width="24" style={{ color: '#1565c0' }} />
+              <p style={{ margin: 0, fontSize: '14px', color: '#1565c0' }}>
+                Para emitir <strong>boletos</strong> e ter <strong>confirmação automática</strong>, use a integração <strong>Asaas</strong>.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+
   // Aba de Automação WhatsApp foi movida para /whatsapp
   // A configuração de automações agora está integrada na página de templates
 
@@ -2040,6 +2799,7 @@ function Configuracao() {
   const tabs = [
     { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
+    { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
   ]
@@ -2160,6 +2920,7 @@ function Configuracao() {
             <>
               {abaAtiva === 'empresa' && renderDadosEmpresa()}
               {abaAtiva === 'planos' && renderPlanos()}
+              {abaAtiva === 'integracoes' && renderIntegracoes()}
               {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
             </>

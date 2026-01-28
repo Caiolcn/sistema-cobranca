@@ -161,7 +161,8 @@ class WhatsAppService {
       '{{dataVencimento}}': dados.dataVencimento || '',
       '{{diasAtraso}}': dados.diasAtraso || '0',
       '{{nomeEmpresa}}': dados.nomeEmpresa || '',
-      '{{chavePix}}': dados.chavePix || ''
+      '{{chavePix}}': dados.chavePix || '',
+      '{{linkPagamento}}': dados.linkPagamento || ''
     }
 
     // Aplicar todas as substituições
@@ -171,6 +172,46 @@ class WhatsAppService {
     })
 
     return mensagem
+  }
+
+  /**
+   * Gera um link de pagamento PIX para a mensalidade
+   * @returns {Promise<string>} URL do link de pagamento
+   */
+  async gerarLinkPagamento(userId, mensalidade, nomeEmpresa, chavePix) {
+    try {
+      // Gerar token único
+      const token = crypto.randomUUID().replace(/-/g, '').substring(0, 32)
+
+      // Determinar URL base
+      const baseUrl = typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://app.mensallizap.com.br' // URL padrão para produção
+
+      // Criar registro na tabela links_pagamento
+      const { error } = await supabase
+        .from('links_pagamento')
+        .insert({
+          user_id: userId,
+          mensalidade_id: mensalidade.id,
+          token: token,
+          valor: mensalidade.valor,
+          cliente_nome: mensalidade.devedor?.nome || 'Cliente',
+          data_vencimento: mensalidade.data_vencimento,
+          nome_empresa: nomeEmpresa || 'Empresa',
+          chave_pix: chavePix || ''
+        })
+
+      if (error) {
+        console.error('Erro ao criar link de pagamento:', error)
+        return '' // Retorna vazio se falhar
+      }
+
+      return `${baseUrl}/pagar/${token}`
+    } catch (error) {
+      console.error('Erro ao gerar link de pagamento:', error)
+      return ''
+    }
   }
 
   /**
@@ -297,6 +338,86 @@ class WhatsAppService {
   }
 
   /**
+   * Envia documento/arquivo via Evolution API (PDF, imagem, etc)
+   * @param {string} telefone - Número do telefone
+   * @param {string} mediaUrl - URL do arquivo (deve ser acessível publicamente)
+   * @param {string} caption - Legenda opcional para o documento
+   * @param {string} fileName - Nome do arquivo (ex: "boleto.pdf")
+   * @param {string} mediaType - Tipo: "document", "image", "video", "audio"
+   */
+  async enviarDocumento(telefone, mediaUrl, caption = '', fileName = 'documento.pdf', mediaType = 'document') {
+    await this.ensureInitialized()
+
+    try {
+      const numeroFormatado = this.formatarTelefone(telefone)
+
+      console.log('📄 Enviando documento via Evolution API...')
+      console.log('🔗 URL do arquivo:', mediaUrl)
+      console.log('📞 Número:', numeroFormatado)
+
+      const payload = {
+        number: numeroFormatado,
+        mediatype: mediaType,
+        mimetype: mediaType === 'document' ? 'application/pdf' : 'image/png',
+        caption: caption,
+        media: mediaUrl,
+        fileName: fileName
+      }
+
+      console.log('📦 Payload:', JSON.stringify(payload, null, 2))
+
+      const response = await this.fetchWithRetry(
+        `${this.apiUrl}/message/sendMedia/${this.instanceName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': this.apiKey
+          },
+          body: JSON.stringify(payload)
+        },
+        2,
+        3000 // 3 segundos de delay (arquivos podem demorar mais)
+      )
+
+      console.log('📊 Status da resposta:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Erro ao enviar documento:', errorText)
+
+        let errorData = {}
+        try {
+          errorData = JSON.parse(errorText)
+        } catch (e) {
+          // Não é JSON válido
+        }
+
+        if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
+          throw new Error('📱 WhatsApp desconectado. Reconecte na aba WhatsApp.')
+        }
+
+        throw new Error(errorData.message || errorText || `Erro HTTP: ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('✅ Documento enviado:', result)
+
+      return {
+        sucesso: true,
+        messageId: result.key?.id || null,
+        dados: result
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar documento:', error)
+      return {
+        sucesso: false,
+        erro: error.message
+      }
+    }
+  }
+
+  /**
    * Calcula o tipo de mensagem baseado na data de vencimento
    * Retorna o tipo que corresponde ao template no banco de dados
    */
@@ -398,9 +519,88 @@ class WhatsAppService {
   }
 
   /**
-   * Envia cobrança para uma mensalidade específica
+   * Gera preview da mensagem para uma mensalidade (para edição antes do envio)
+   * @returns {Promise<{mensagem: string, dados: object}>}
    */
-  async enviarCobranca(mensalidadeId) {
+  async gerarPreviewMensagem(mensalidadeId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Buscar dados da mensalidade
+      const { data: mensalidade, error } = await supabase
+        .from('mensalidades')
+        .select(`*, devedor:devedores(nome, telefone)`)
+        .eq('id', mensalidadeId)
+        .single()
+
+      if (error || !mensalidade) throw new Error('Mensalidade não encontrada')
+
+      // Buscar dados do usuário
+      const { data: usuario } = await supabase
+        .from('usuarios')
+        .select('nome_empresa, chave_pix')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
+      const chavePix = usuario?.chave_pix || ''
+
+      // Buscar template
+      const tipoMensagem = this.calcularTipoMensagem(mensalidade.data_vencimento)
+      const { data: template } = await supabase
+        .from('templates')
+        .select('mensagem')
+        .eq('user_id', user.id)
+        .eq('tipo', tipoMensagem)
+        .eq('ativo', true)
+        .limit(1)
+        .maybeSingle()
+
+      const TEMPLATES_PADRAO = {
+        pre_due_3days: `Olá, {{nomeCliente}}! 👋\n\nSua mensalidade vence em {{dataVencimento}}.\n\n💰 Valor: {{valorMensalidade}}\n🔑 Chave Pix: {{chavePix}}\n\nPague com antecedência e evite esquecimento!\n\nQualquer dúvida, estamos à disposição.`,
+        due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃\n\nHoje vence sua mensalidade!\n\n💰 Valor: {{valorMensalidade}}\n🔑 Chave Pix: {{chavePix}}\n\nQualquer dúvida, estamos à disposição!`,
+        overdue: `Olá, {{nomeCliente}}, como vai?\n\nNotamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.\n\nSabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:\n\n💰 Valor: {{valorMensalidade}}\n🔑 Chave Pix: {{chavePix}}\n\nSe você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
+      }
+
+      const mensagemTemplate = template?.mensagem || TEMPLATES_PADRAO[tipoMensagem] || TEMPLATES_PADRAO.overdue
+
+      // Calcular dias de atraso
+      const hoje = new Date()
+      const vencimento = new Date(mensalidade.data_vencimento)
+      const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
+
+      // Preparar dados
+      const dadosSubstituicao = {
+        nomeCliente: mensalidade.devedor?.nome || 'Cliente',
+        telefone: mensalidade.devedor?.telefone || '',
+        valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
+        diasAtraso: diasAtraso.toString(),
+        nomeEmpresa: nomeEmpresa,
+        chavePix: chavePix,
+        linkPagamento: ''
+      }
+
+      // Gerar link se template usa
+      if (mensagemTemplate.includes('{{linkPagamento}}')) {
+        dadosSubstituicao.linkPagamento = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
+      }
+
+      const mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
+
+      return { mensagem: mensagemFinal, dados: dadosSubstituicao }
+    } catch (error) {
+      console.error('Erro ao gerar preview:', error)
+      return { mensagem: '', dados: {} }
+    }
+  }
+
+  /**
+   * Envia cobrança para uma mensalidade específica
+   * @param {string} mensalidadeId - ID da mensalidade
+   * @param {string} [mensagemCustomizada] - Mensagem customizada (opcional, usa template se não fornecida)
+   */
+  async enviarCobranca(mensalidadeId, mensagemCustomizada = null) {
     await this.ensureInitialized()
 
     try {
@@ -503,15 +703,34 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         diasAtraso: diasAtraso.toString(),
         nomeEmpresa: nomeEmpresa,
-        chavePix: chavePix
+        chavePix: chavePix,
+        linkPagamento: '' // Será preenchido se necessário
+      }
+
+      // Se o template usa {{linkPagamento}}, gerar o link automaticamente
+      if (mensagemTemplate.includes('{{linkPagamento}}')) {
+        console.log('🔗 Template usa linkPagamento, gerando link...')
+        dadosSubstituicao.linkPagamento = await this.gerarLinkPagamento(
+          user.id,
+          mensalidade,
+          nomeEmpresa,
+          chavePix
+        )
+        console.log('🔗 Link gerado:', dadosSubstituicao.linkPagamento)
       }
 
       console.log('📝 Template usado:', mensagemTemplate)
       console.log('📊 Dados para substituição:', dadosSubstituicao)
       console.log('🔑 chavePix no dadosSubstituicao:', dadosSubstituicao.chavePix)
 
-      // Gerar mensagem final
-      const mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
+      // Gerar mensagem final (usa customizada se fornecida, senão gera do template)
+      let mensagemFinal
+      if (mensagemCustomizada && mensagemCustomizada.trim()) {
+        console.log('📝 Usando mensagem customizada')
+        mensagemFinal = mensagemCustomizada
+      } else {
+        mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
+      }
       console.log('📨 Mensagem final após substituição:', mensagemFinal)
 
       // Enviar via Evolution API

@@ -21,6 +21,7 @@ const WhatsAppConexao = lazy(() => import('./WhatsAppConexao'))
 const Configuracao = lazy(() => import('./Configuracao'))
 const UpgradePage = lazy(() => import('./UpgradePage'))
 const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
+const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -69,6 +70,7 @@ function App() {
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/pagar/:token" element={<PaginaPagamento />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (
