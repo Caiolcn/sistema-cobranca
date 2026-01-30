@@ -860,6 +860,65 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
   /**
    * Verifica status da conexão com WhatsApp
    */
+  /**
+   * Envia confirmação de pagamento ao cliente via WhatsApp
+   * Usado quando o gestor marca manualmente uma mensalidade como paga
+   */
+  async enviarConfirmacaoPagamento(mensalidadeId) {
+    try {
+      await this.ensureInitialized()
+
+      // Buscar dados da mensalidade + devedor
+      const { data: mensalidade } = await supabase
+        .from('mensalidades')
+        .select('*, devedores(id, nome, telefone)')
+        .eq('id', mensalidadeId)
+        .single()
+
+      if (!mensalidade?.devedores?.telefone) {
+        console.log('⏩ Confirmação WhatsApp: cliente sem telefone')
+        return { sucesso: false, erro: 'Cliente sem telefone' }
+      }
+
+      // Buscar nome da empresa
+      const { data: usuario } = await supabase
+        .from('usuarios')
+        .select('nome_empresa')
+        .eq('id', mensalidade.user_id)
+        .single()
+
+      const valor = parseFloat(mensalidade.valor || 0)
+      const valorFormatado = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+      const dataVenc = mensalidade.data_vencimento
+      const vencimentoFormatado = dataVenc
+        ? new Date(dataVenc + 'T12:00:00').toLocaleDateString('pt-BR')
+        : ''
+
+      const empresa = usuario?.nome_empresa || ''
+      const mensagemTexto = `Olá, ${mensalidade.devedores.nome}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
+
+      const resultado = await this.enviarMensagem(mensalidade.devedores.telefone, mensagemTexto)
+
+      // Logar envio
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('logs_mensagens').insert({
+        user_id: user?.id || mensalidade.user_id,
+        devedor_id: mensalidade.devedores.id,
+        mensalidade_id: mensalidadeId,
+        tipo: 'payment_confirmed',
+        mensagem: mensagemTexto,
+        status: resultado.sucesso ? 'enviado' : 'falha',
+        telefone: mensalidade.devedores.telefone
+      })
+
+      return resultado
+    } catch (error) {
+      console.error('⚠️ Erro ao enviar confirmação de pagamento:', error)
+      return { sucesso: false, erro: error.message }
+    }
+  }
+
   async verificarStatus() {
     await this.ensureInitialized()
 

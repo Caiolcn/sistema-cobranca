@@ -6,6 +6,7 @@ import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 import whatsappService from './services/whatsappService'
 import { exportarClientes } from './utils/exportUtils'
+import CsvImportModal from './components/CsvImportModal'
 import { validarTelefone, validarCPF } from './utils/validators'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
@@ -48,6 +49,7 @@ export default function Clientes() {
   const [planoSelecionado, setPlanoSelecionado] = useState('')
   const [planos, setPlanos] = useState([])
   const [mostrarModalCriarPlano, setMostrarModalCriarPlano] = useState(false)
+  const [mostrarImportModal, setMostrarImportModal] = useState(false)
   const [novoPlanoNome, setNovoPlanoNome] = useState('')
   const [novoPlanoValor, setNovoPlanoValor] = useState('')
   const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
@@ -493,6 +495,13 @@ export default function Clientes() {
 
       showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
 
+      // Enviar confirmação via WhatsApp ao cliente (fire-and-forget)
+      if (novoPago) {
+        whatsappService.enviarConfirmacaoPagamento(mensalidade.id)
+          .then(r => { if (r.sucesso) showToast('Confirmação enviada via WhatsApp', 'success') })
+          .catch(() => {})
+      }
+
       // Atualizar mensalidades do cliente no modal
       await carregarMensalidadesCliente(clienteSelecionado.id)
 
@@ -811,8 +820,12 @@ export default function Clientes() {
       return
     }
 
-    // Validar CPF se preenchido
-    if (novoClienteCpf.trim() && !validarCPF(novoClienteCpf)) {
+    // Validar CPF (obrigatório para emissão de boletos)
+    if (!novoClienteCpf.trim()) {
+      setErroModalNovoCliente('CPF é obrigatório para emissão de boletos')
+      return
+    }
+    if (!validarCPF(novoClienteCpf)) {
       setErroModalNovoCliente('CPF inválido')
       return
     }
@@ -1067,6 +1080,36 @@ Equipe ${nomeEmpresa}`
 
           {/* Botões */}
           <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+            <button
+              onClick={() => setMostrarImportModal(true)}
+              style={{
+                padding: isSmallScreen ? '10px 14px' : '10px 20px',
+                backgroundColor: 'white',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.2s',
+                flex: isSmallScreen ? 1 : 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#344848'
+                e.currentTarget.style.color = '#344848'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#ddd'
+                e.currentTarget.style.color = '#333'
+              }}
+              title="Importar clientes via CSV"
+            >
+              <Icon icon="ph:upload-simple-light" width="18" height="18" />
+            </button>
             <button
               onClick={() => exportarClientes(clientesFiltrados)}
               style={{
@@ -2909,13 +2952,14 @@ Equipe ${nomeEmpresa}`
                 fontWeight: '500',
                 color: '#333'
               }}>
-                CPF (opcional)
+                CPF <span style={{ color: '#e53935' }}>*</span>
               </label>
               <input
                 type="text"
                 value={novoClienteCpf}
-                onChange={(e) => setNovoClienteCpf(e.target.value)}
+                onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))}
                 placeholder="000.000.000-00"
+                maxLength="14"
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -3852,6 +3896,22 @@ Qualquer dúvida, estamos à disposição.`}
           </div>
         </div>
       )}
+
+      {/* Modal de Importação CSV */}
+      <CsvImportModal
+        isOpen={mostrarImportModal}
+        onClose={() => setMostrarImportModal(false)}
+        onImportComplete={(count) => {
+          setMostrarImportModal(false)
+          carregarClientes()
+          showToast(`${count} clientes importados com sucesso!`, 'success')
+        }}
+        userId={userId}
+        existingClients={clientes}
+        planos={planos}
+        limiteClientes={limiteClientes}
+        clientesAtivos={clientes.filter(c => c.assinatura_ativa && !c.deleted_at && !c.lixo).length}
+      />
     </div>
   )
 }

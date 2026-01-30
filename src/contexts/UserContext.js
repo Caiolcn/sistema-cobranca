@@ -23,11 +23,21 @@ export function UserProvider({ children }) {
       setUser(authUser)
 
       // Buscar dados adicionais do usuário (incluindo trial_fim para evitar query duplicada)
-      const { data: usuarioData } = await supabase
+      let { data: usuarioData, error } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim, onboarding_completed, onboarding_step')
         .eq('id', authUser.id)
         .maybeSingle()
+
+      // Fallback: se colunas de onboarding ainda nao existem no banco
+      if (error && !usuarioData) {
+        const { data: fallback } = await supabase
+          .from('usuarios')
+          .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
+          .eq('id', authUser.id)
+          .maybeSingle()
+        usuarioData = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
+      }
 
       setUserData(usuarioData)
     } catch (error) {
@@ -57,11 +67,21 @@ export function UserProvider({ children }) {
   const refreshUserData = useCallback(async () => {
     if (!user) return
 
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from('usuarios')
-      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
+      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim, onboarding_completed, onboarding_step')
       .eq('id', user.id)
       .maybeSingle()
+
+    // Fallback: se colunas de onboarding ainda nao existem no banco
+    if (error && !data) {
+      const { data: fallback } = await supabase
+        .from('usuarios')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
+        .eq('id', user.id)
+        .maybeSingle()
+      data = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
+    }
 
     setUserData(data)
   }, [user])

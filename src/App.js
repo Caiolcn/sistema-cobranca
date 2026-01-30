@@ -22,6 +22,7 @@ const Configuracao = lazy(() => import('./Configuracao'))
 const UpgradePage = lazy(() => import('./UpgradePage'))
 const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
 const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
+const Onboarding = lazy(() => import('./Onboarding'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -75,6 +76,7 @@ function App() {
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (
                 <>
+                  <Route path="/app/onboarding" element={<Onboarding />} />
                   <Route path="/app/upgrade" element={<UpgradePage />} />
                   <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
                   <Route path="/app" element={<Dashboard />}>

@@ -188,24 +188,33 @@ export default function WhatsAppConexao() {
           overdue: templates.find(t => t.tipo === 'overdue') || null
         }
 
-        // 4.1 Criar template "No Dia" (due_day) se não existir - é o único ativo por padrão
-        if (!agrupados.due_day) {
-          const { data: novoTemplate, error: erroInsert } = await supabase
-            .from('templates')
-            .insert({
-              user_id: user.id,
-              titulo: 'Lembrete - Vencimento Hoje',
-              mensagem: TEMPLATES_PADRAO.due_day,
-              tipo: 'due_day',
-              ativo: true,
-              is_padrao: true
-            })
-            .select()
-            .single()
+        // 4.1 Criar templates que não existem automaticamente
+        // Todos os 3 tipos são criados para garantir que o n8n encontre templates
+        const templatesParaCriar = [
+          { tipo: 'due_day', titulo: 'Lembrete - Vencimento Hoje', mensagem: TEMPLATES_PADRAO.due_day },
+          { tipo: 'pre_due_3days', titulo: 'Lembrete - 3 Dias Antes do Vencimento', mensagem: TEMPLATES_PADRAO.pre_due_3days },
+          { tipo: 'overdue', titulo: 'Cobrança - 3 Dias Após o Vencimento', mensagem: TEMPLATES_PADRAO.overdue }
+        ]
 
-          if (!erroInsert && novoTemplate) {
-            agrupados.due_day = novoTemplate
-            console.log('✅ Template "No Dia" criado automaticamente')
+        for (const tmpl of templatesParaCriar) {
+          if (!agrupados[tmpl.tipo]) {
+            const { data: novoTemplate, error: erroInsert } = await supabase
+              .from('templates')
+              .insert({
+                user_id: user.id,
+                titulo: tmpl.titulo,
+                mensagem: tmpl.mensagem,
+                tipo: tmpl.tipo,
+                ativo: true,
+                is_padrao: true
+              })
+              .select()
+              .single()
+
+            if (!erroInsert && novoTemplate) {
+              agrupados[tmpl.tipo] = novoTemplate
+              console.log(`Template "${tmpl.tipo}" criado automaticamente`)
+            }
           }
         }
 
@@ -901,6 +910,7 @@ export default function WhatsAppConexao() {
       .replace(/\{\{diasAtraso\}\}/g, '5')
       .replace(/\{\{nomeEmpresa\}\}/g, 'Minha Empresa')
       .replace(/\{\{chavePix\}\}/g, 'minha@chave.pix')
+      .replace(/\{\{linkPagamento\}\}/g, 'https://app.mensallizap.com.br/pagar/abc123')
   }
 
   const getTituloDefault = (tipo) => {
@@ -2100,6 +2110,25 @@ export default function WhatsAppConexao() {
                     }}
                   >
                     {`{{chavePix}}`}
+                  </code>
+                  <code
+                    onClick={() => {
+                      navigator.clipboard.writeText('{{linkPagamento}}')
+                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{linkPagamento}} copiado para a área de transferência' })
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#fff3e0',
+                      border: '1px solid #ffb74d',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#e65100',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                    title="Gera automaticamente um link de pagamento PIX com QR Code"
+                  >
+                    {`{{linkPagamento}}`}
                   </code>
                 </div>
                 {tipoTemplateSelecionado !== 'overdue' && (

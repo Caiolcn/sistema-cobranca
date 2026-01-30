@@ -39,7 +39,9 @@ function Home() {
     graficoRecebimentoVsVencimento: [],
     distribuicaoStatus: { emDia: 0, aVencer: 0, atrasadas: 0, canceladas: 0 },
     filaWhatsapp: [],
-    mensagensRecentes: []
+    mensagensRecentes: [],
+    pagamentosHoje: 0,
+    valorPagamentosHoje: 0
   });
 
   // Estados para modais de confirmação da Fila de WhatsApp
@@ -47,6 +49,10 @@ function Home() {
   const [confirmModalCancelar, setConfirmModalCancelar] = useState({ isOpen: false, mensalidadeId: null });
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
+
+  // Estado para mensagem editável no modal de envio
+  const [mensagemEditavel, setMensagemEditavel] = useState('');
+  const [carregandoPreview, setCarregandoPreview] = useState(false);
 
   // Um único useEffect para carregar dados quando userId ou periodo mudam
   useEffect(() => {
@@ -180,6 +186,7 @@ function Home() {
       const recebidosPorMes = {};
       const vencidosPorMes = {};
       let emDia = 0, aVencer = 0, atrasadas = 0, canceladas = 0;
+      let pagamentosHojeCount = 0, valorPagamentosHojeTotal = 0;
       const mensalidadesPorCliente = {};
 
       todasMensalidades?.forEach(p => {
@@ -235,6 +242,12 @@ function Home() {
           atrasadas++;
         } else if (p.status === 'pendente') {
           aVencer++;
+        }
+
+        // Pagamentos de hoje
+        if (p.status === 'pago' && p.updated_at?.substring(0, 10) === hoje) {
+          pagamentosHojeCount++;
+          valorPagamentosHojeTotal += valor;
         }
 
         // Status de acesso (mensalidades mais recentes por cliente)
@@ -319,7 +332,9 @@ function Home() {
         graficoRecebimentoVsVencimento: graficoMeses,
         distribuicaoStatus: { emDia, aVencer, atrasadas, canceladas },
         filaWhatsapp: fila || [],
-        mensagensRecentes: mensagens || []
+        mensagensRecentes: mensagens || [],
+        pagamentosHoje: pagamentosHojeCount,
+        valorPagamentosHoje: valorPagamentosHojeTotal
       });
 
     } catch (error) {
@@ -352,8 +367,19 @@ function Home() {
   };
 
   // Abre modal de confirmação para envio de WhatsApp
-  const handleEnviarWhatsApp = (item) => {
+  const handleEnviarWhatsApp = async (item) => {
     setConfirmModalWhatsapp({ isOpen: true, item });
+    setCarregandoPreview(true);
+    setMensagemEditavel('');
+
+    try {
+      const { mensagem } = await whatsappService.gerarPreviewMensagem(item.id);
+      setMensagemEditavel(mensagem);
+    } catch (error) {
+      console.error('Erro ao gerar preview:', error);
+    } finally {
+      setCarregandoPreview(false);
+    }
   };
 
   // Confirma e executa o envio de WhatsApp
@@ -361,11 +387,14 @@ function Home() {
     const item = confirmModalWhatsapp.item;
     if (!item) return;
 
+    const mensagemParaEnviar = mensagemEditavel.trim();
     setConfirmModalWhatsapp({ isOpen: false, item: null });
+    setMensagemEditavel('');
     setEnviandoWhatsapp(true);
 
     try {
-      const resultado = await whatsappService.enviarCobranca(item.id);
+      // Passa a mensagem customizada se foi editada
+      const resultado = await whatsappService.enviarCobranca(item.id, mensagemParaEnviar);
 
       setEnviandoWhatsapp(false);
 
@@ -455,7 +484,8 @@ function Home() {
   const {
     mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, clientesInadimplentes,
     receitaProjetadaMes, taxaCancelamento, mensalidadesVencer7Dias, mensagensEnviadasAuto,
-    statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus, filaWhatsapp, mensagensRecentes
+    statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus, filaWhatsapp, mensagensRecentes,
+    pagamentosHoje, valorPagamentosHoje
   } = dashboardData;
 
   // Usar nome da empresa do contexto
@@ -563,25 +593,37 @@ function Home() {
             </button>
           </div>
         </div>
+
+        {/* 5. Ticket Médio */}
+        <div className="home-card card-ticket-medio">
+          <div className="card-header">
+            <span className="card-label">Ticket Médio</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:person-pin-circle-outline" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value">{formatarMoeda(assinaturasAtivas > 0 ? mrr / assinaturasAtivas : 0)}</span>
+            <span className="card-subtitle">Por cliente ativo</span>
+          </div>
+        </div>
       </div>
 
       {/* Cards Secundários - Linha 2 */}
       <div className="home-cards-secondary">
-        {/* 1. Receita Projetada do Mês */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Receita Projetada">
-          <div className="home-card card-receita-projetada">
-            <div className="card-header">
-              <span className="card-label">Receita Projetada do Mês</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:analytics-outline" width="20" />
-              </div>
-            </div>
-            <div className="card-body">
-              <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
-              <span className="card-subtitle">Recebido + A receber</span>
+        {/* 1. Pagamentos de Hoje */}
+        <div className="home-card card-pagamentos-hoje">
+          <div className="card-header">
+            <span className="card-label">Pagamentos de Hoje</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:payments-outline" width="20" />
             </div>
           </div>
-        </FeatureLocked>
+          <div className="card-body">
+            <span className="card-value positive">{formatarMoeda(valorPagamentosHoje)}</span>
+            <span className="card-subtitle">{pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''} confirmado{pagamentosHoje !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
 
         {/* 2. Mensalidades a Vencer */}
         <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Mensalidades a Vencer">
@@ -620,7 +662,23 @@ function Home() {
           </div>
         </FeatureLocked>
 
-        {/* 4. Mensagens Enviadas Automaticamente */}
+        {/* 4. Receita Projetada do Mês */}
+        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Receita Projetada">
+          <div className="home-card card-receita-projetada">
+            <div className="card-header">
+              <span className="card-label">Receita Projetada do Mês</span>
+              <div className="card-icon">
+                <Icon icon="material-symbols:analytics-outline" width="20" />
+              </div>
+            </div>
+            <div className="card-body">
+              <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
+              <span className="card-subtitle">Recebido + A receber</span>
+            </div>
+          </div>
+        </FeatureLocked>
+
+        {/* 5. Mensagens Enviadas Automaticamente */}
         <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Mensagens Enviadas">
           <div className="home-card card-mensagens-auto">
             <div className="card-header">
@@ -991,20 +1049,245 @@ function Home() {
         </div>
       </div>
 
-      {/* Modal de Confirmação - Enviar WhatsApp */}
-      <ConfirmModal
-        isOpen={confirmModalWhatsapp.isOpen}
-        onClose={() => setConfirmModalWhatsapp({ isOpen: false, item: null })}
-        onConfirm={confirmarEnvioWhatsApp}
-        title="Enviar Cobrança"
-        message={confirmModalWhatsapp.item ?
-          `Enviar cobrança via WhatsApp para ${confirmModalWhatsapp.item.devedores?.nome}?\n\nValor: ${formatarMoeda(confirmModalWhatsapp.item.valor)}\nTelefone: ${confirmModalWhatsapp.item.devedores?.telefone}` :
-          ''
-        }
-        confirmText="Enviar"
-        cancelText="Cancelar"
-        type="info"
-      />
+      {/* Modal de Envio WhatsApp com Editor de Mensagem */}
+      {confirmModalWhatsapp.isOpen && (
+        <div className="modal-overlay" onClick={() => { setConfirmModalWhatsapp({ isOpen: false, item: null }); setMensagemEditavel(''); }}>
+          <div
+            className="modal-content"
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '480px',
+              width: '95%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: '16px',
+              borderBottom: '1px solid #e5e7eb',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Icon icon="mdi:whatsapp" width="22" style={{ color: 'white' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
+                    Enviar Cobrança
+                  </h3>
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>Via WhatsApp</span>
+                </div>
+              </div>
+              <button
+                onClick={() => { setConfirmModalWhatsapp({ isOpen: false, item: null }); setMensagemEditavel(''); }}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.background = '#e5e7eb'}
+                onMouseOut={e => e.currentTarget.style.background = '#f3f4f6'}
+              >
+                <Icon icon="mdi:close" width="20" style={{ color: '#6b7280' }} />
+              </button>
+            </div>
+
+            {confirmModalWhatsapp.item && (
+              <>
+                {/* Info do Cliente */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '10px',
+                  marginBottom: '16px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: '#e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#64748b'
+                    }}>
+                      {confirmModalWhatsapp.item.devedores?.nome?.charAt(0)?.toUpperCase() || 'C'}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', fontSize: '15px', color: '#1e293b' }}>
+                        {confirmModalWhatsapp.item.devedores?.nome}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <Icon icon="mdi:phone-outline" width="14" />
+                        {confirmModalWhatsapp.item.devedores?.telefone}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#16a34a' }}>
+                      {formatarMoeda(confirmModalWhatsapp.item.valor)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Área da Mensagem */}
+                <div style={{ flex: 1, minHeight: 0, marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '10px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: '#374151'
+                  }}>
+                    <Icon icon="mdi:message-text-outline" width="16" />
+                    Mensagem
+                    <span style={{
+                      fontSize: '11px',
+                      color: '#9ca3af',
+                      fontWeight: 'normal',
+                      marginLeft: '4px',
+                      padding: '2px 6px',
+                      background: '#f3f4f6',
+                      borderRadius: '4px'
+                    }}>
+                      editável
+                    </span>
+                  </label>
+                  {carregandoPreview ? (
+                    <div style={{
+                      padding: '60px 20px',
+                      textAlign: 'center',
+                      color: '#9ca3af',
+                      background: '#f9fafb',
+                      borderRadius: '10px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <Icon icon="mdi:loading" width="28" style={{ animation: 'spin 1s linear infinite' }} />
+                      <p style={{ margin: '12px 0 0', fontSize: '14px' }}>Carregando mensagem...</p>
+                    </div>
+                  ) : (
+                    <textarea
+                      value={mensagemEditavel}
+                      onChange={(e) => setMensagemEditavel(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '220px',
+                        padding: '14px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        lineHeight: '1.6',
+                        resize: 'none',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
+                      }}
+                      onFocus={e => {
+                        e.target.style.borderColor = '#25D366'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 211, 102, 0.1)'
+                      }}
+                      onBlur={e => {
+                        e.target.style.borderColor = '#d1d5db'
+                        e.target.style.boxShadow = 'none'
+                      }}
+                      placeholder="Digite sua mensagem..."
+                    />
+                  )}
+                </div>
+
+                {/* Botões */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'flex-end',
+                  paddingTop: '16px',
+                  borderTop: '1px solid #e5e7eb'
+                }}>
+                  <button
+                    onClick={() => { setConfirmModalWhatsapp({ isOpen: false, item: null }); setMensagemEditavel(''); }}
+                    style={{
+                      padding: '11px 24px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.background = '#f9fafb'
+                      e.currentTarget.style.borderColor = '#9ca3af'
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = '#fff'
+                      e.currentTarget.style.borderColor = '#d1d5db'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmarEnvioWhatsApp}
+                    disabled={carregandoPreview || !mensagemEditavel.trim()}
+                    style={{
+                      padding: '11px 28px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      background: carregandoPreview || !mensagemEditavel.trim()
+                        ? '#9ca3af'
+                        : 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                      color: '#fff',
+                      cursor: carregandoPreview || !mensagemEditavel.trim() ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s',
+                      boxShadow: carregandoPreview || !mensagemEditavel.trim()
+                        ? 'none'
+                        : '0 2px 8px rgba(37, 211, 102, 0.3)'
+                    }}
+                  >
+                    <Icon icon="mdi:send" width="18" />
+                    Enviar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal de Confirmação - Cancelar Envio */}
       <ConfirmModal

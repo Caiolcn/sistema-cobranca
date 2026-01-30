@@ -251,8 +251,8 @@ export default function Signup() {
       if (controleError) throw controleError
 
       // 5. Login automático já está ativo (sessão criada pelo signUp)
-      // 6. Redirecionar para dashboard
-      navigate('/app/home')
+      // 6. Redirecionar para onboarding
+      navigate('/app/onboarding')
 
     } catch (error) {
       console.error('Erro ao cadastrar:', error)

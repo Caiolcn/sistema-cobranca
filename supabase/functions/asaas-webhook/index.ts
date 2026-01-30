@@ -109,6 +109,114 @@ serve(async (req) => {
 
           console.log('✅ Mensalidade marcada como paga:', boleto.mensalidade_id)
 
+          // --- Enviar WhatsApp de confirmacao ao cliente ---
+          try {
+            const { data: devedor } = await supabase
+              .from('devedores')
+              .select('id, nome, telefone')
+              .eq('id', boleto.devedor_id)
+              .single()
+
+            const { data: configs } = await supabase
+              .from('config')
+              .select('key, value')
+              .eq('user_id', boleto.user_id)
+              .in('key', ['evolution_api_key', 'evolution_api_url'])
+
+            const { data: usuario } = await supabase
+              .from('usuarios')
+              .select('nome_empresa')
+              .eq('id', boleto.user_id)
+              .single()
+
+            const { data: whatsapp } = await supabase
+              .from('mensallizap')
+              .select('instance_name, conectado')
+              .eq('user_id', boleto.user_id)
+              .eq('conectado', true)
+              .maybeSingle()
+
+            if (devedor?.telefone && whatsapp?.instance_name && configs?.length) {
+              const apiKey = configs.find((c: any) => c.key === 'evolution_api_key')?.value
+              const apiUrl = configs.find((c: any) => c.key === 'evolution_api_url')?.value
+                || 'https://service-evolution-api.tnvro1.easypanel.host'
+
+              let telefone = devedor.telefone.replace(/\D/g, '')
+              if (!telefone.startsWith('55')) telefone = '55' + telefone
+
+              const valorPago = parseFloat(payment.value || boleto.valor || 0)
+              const valorFormatado = valorPago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+              // Formatar data de vencimento
+              const dataVenc = boleto.mensalidade?.data_vencimento
+              const vencimentoFormatado = dataVenc
+                ? new Date(dataVenc + 'T12:00:00').toLocaleDateString('pt-BR')
+                : ''
+
+              const empresa = usuario?.nome_empresa || ''
+              const mensagem = `Olá, ${devedor.nome}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
+
+              const whatsappResponse = await fetch(
+                `${apiUrl}/message/sendText/${whatsapp.instance_name}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                  body: JSON.stringify({
+                    number: `${telefone}@s.whatsapp.net`,
+                    text: mensagem
+                  })
+                }
+              )
+
+              console.log('📱 WhatsApp confirmacao:', whatsappResponse.ok ? 'enviado' : 'falha')
+
+              await supabase.from('logs_mensagens').insert({
+                user_id: boleto.user_id,
+                devedor_id: devedor.id,
+                mensalidade_id: boleto.mensalidade_id,
+                tipo: 'payment_confirmed',
+                mensagem,
+                status: whatsappResponse.ok ? 'enviado' : 'falha',
+                telefone
+              })
+
+              // --- Notificar o gestor (dono da instancia WhatsApp) ---
+              try {
+                const instanceResp = await fetch(
+                  `${apiUrl}/instance/fetchInstances?instanceName=${whatsapp.instance_name}`,
+                  { headers: { 'apikey': apiKey } }
+                )
+                if (instanceResp.ok) {
+                  const instances = await instanceResp.json()
+                  const ownerJid = instances?.[0]?.instance?.owner
+                  if (ownerJid) {
+                    const ownerNumber = ownerJid.replace('@s.whatsapp.net', '')
+                    const notifGestor = `💰 Pagamento recebido!\n\n${devedor.nome} pagou ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}`
+
+                    await fetch(
+                      `${apiUrl}/message/sendText/${whatsapp.instance_name}`,
+                      {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                        body: JSON.stringify({
+                          number: `${ownerNumber}@s.whatsapp.net`,
+                          text: notifGestor
+                        })
+                      }
+                    )
+                    console.log('📱 Notificacao gestor enviada para:', ownerNumber)
+                  }
+                }
+              } catch (gestorErr) {
+                console.error('⚠️ Erro notificacao gestor (nao afeta webhook):', gestorErr)
+              }
+            } else {
+              console.log('⏩ WhatsApp nao enviado: sem telefone, conexao ou config')
+            }
+          } catch (whatsappError) {
+            console.error('⚠️ Erro WhatsApp confirmacao (nao afeta webhook):', whatsappError)
+          }
+
           // Criar próxima mensalidade se for recorrente
           if (boleto.mensalidade?.is_mensalidade) {
             const dataVencimentoAtual = new Date(boleto.mensalidade.data_vencimento)

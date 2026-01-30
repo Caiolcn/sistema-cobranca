@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation, Outlet } from 'react-router-dom'
+import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
 import PerfilUsuario from './PerfilUsuario'
 import TrialExpiredModal from './TrialExpiredModal'
 import { useTrialStatus } from './useTrialStatus'
+import { useUser } from './contexts/UserContext'
+import { usePaymentNotifications } from './hooks/usePaymentNotifications'
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 
@@ -21,6 +23,10 @@ export default function Dashboard() {
 
   // Hook para verificar status do trial
   const { isExpired, diasRestantes, planoPago, loading } = useTrialStatus()
+  const { userData, userId } = useUser()
+
+  // Notificacoes em tempo real de pagamentos
+  usePaymentNotifications(userId)
 
   // Determinar tela ativa pela rota atual
   const telaAtiva = location.pathname.replace('/app/', '') || 'home'
@@ -45,6 +51,11 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.reload()
+  }
+
+  // Redirecionar para onboarding se não completou
+  if (!loading && userData && userData.onboarding_completed === false) {
+    return <Navigate to="/app/onboarding" replace />
   }
 
   // Se trial expirou, bloquear acesso

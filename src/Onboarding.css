@@ -1,0 +1,372 @@
+.onboarding-page {
+  min-height: 100vh;
+  background: #f0f4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.onboarding-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
+  max-width: 560px;
+  width: 100%;
+  padding: 40px;
+}
+
+.onboarding-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.onboarding-logo-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: #344848;
+  letter-spacing: -0.5px;
+}
+
+/* Steps indicator */
+.onboarding-steps {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 36px;
+}
+
+.onboarding-step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.onboarding-step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.onboarding-step-item.active .onboarding-step-circle {
+  background: #344848;
+  color: white;
+}
+
+.onboarding-step-item.completed .onboarding-step-circle {
+  background: #16a34a;
+  color: white;
+}
+
+.onboarding-step-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+  text-align: center;
+}
+
+.onboarding-step-item.active .onboarding-step-label {
+  color: #344848;
+  font-weight: 600;
+}
+
+.onboarding-step-item.completed .onboarding-step-label {
+  color: #16a34a;
+}
+
+/* Content */
+.onboarding-content {
+  min-height: 280px;
+}
+
+.onboarding-step-content {
+  animation: onboardingFadeIn 0.3s ease-out;
+}
+
+@keyframes onboardingFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.onboarding-step-header {
+  margin-bottom: 24px;
+}
+
+.onboarding-step-header h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.onboarding-step-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Fields */
+.onboarding-field {
+  margin-bottom: 16px;
+}
+
+.onboarding-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.onboarding-field input,
+.onboarding-field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.onboarding-field input:focus,
+.onboarding-field select:focus {
+  border-color: #344848;
+  box-shadow: 0 0 0 3px rgba(52, 72, 72, 0.1);
+}
+
+.onboarding-fields-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.onboarding-fields-row .onboarding-field {
+  margin-bottom: 0;
+}
+
+/* Actions */
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.onboarding-btn-primary {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 10px;
+  background: #344848;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.onboarding-btn-primary:hover {
+  background: #1f2d2d;
+}
+
+.onboarding-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.onboarding-btn-finish {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+.onboarding-btn-finish:hover {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+}
+
+.onboarding-btn-secondary {
+  padding: 12px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.onboarding-btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.onboarding-btn-skip {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.onboarding-btn-skip:hover {
+  color: #6b7280;
+}
+
+/* Step 4: Option cards */
+.onboarding-option-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboarding-option-card {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  text-align: left;
+  width: 100%;
+}
+
+.onboarding-option-card-clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.onboarding-option-card-clickable:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.onboarding-option-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.onboarding-btn-add {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.onboarding-btn-add:hover {
+  background: #344848;
+  color: white;
+  border-color: #344848;
+}
+
+.onboarding-btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.onboarding-clientes-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-cliente-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+  padding: 6px 0;
+}
+
+.onboarding-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.onboarding-divider::before,
+.onboarding-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.onboarding-divider span {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .onboarding-card {
+    padding: 24px;
+    border-radius: 16px;
+  }
+
+  .onboarding-step-header h2 {
+    font-size: 18px;
+  }
+
+  .onboarding-fields-row {
+    flex-direction: column;
+  }
+
+  .onboarding-btn-add {
+    width: 100%;
+    height: 40px;
+  }
+
+  .onboarding-actions {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .onboarding-actions > * {
+    width: 100%;
+  }
+
+  .onboarding-btn-primary,
+  .onboarding-btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .onboarding-step-label {
+    display: none;
+  }
+}

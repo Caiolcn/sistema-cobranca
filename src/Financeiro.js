@@ -483,6 +483,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       // 🆕 CRIAR PRÓXIMA MENSALIDADE AUTOMATICAMENTE (apenas se estiver marcando como pago)
       if (novoStatusPagamento && mensalidadeAtualizada) {
+        // Enviar confirmação via WhatsApp ao cliente (fire-and-forget)
+        whatsappService.enviarConfirmacaoPagamento(mensalidadeParaAtualizar.id)
+          .then(r => { if (r.sucesso) showToast('Confirmação enviada via WhatsApp', 'success') })
+          .catch(() => {})
+
         await criarProximaMensalidade(mensalidadeAtualizada)
         // Recarregar lista para mostrar nova mensalidade
         carregarDados()
