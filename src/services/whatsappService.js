@@ -583,7 +583,27 @@ class WhatsAppService {
 
       // Gerar link se template usa
       if (mensagemTemplate.includes('{{linkPagamento}}')) {
-        dadosSubstituicao.linkPagamento = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
+        // Verificar preferência do usuário: asaas_link ou pix_manual
+        const { data: configMetodo } = await supabase
+          .from('config')
+          .select('chave, valor')
+          .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+          .maybeSingle()
+
+        const metodoPag = configMetodo?.valor || 'pix_manual'
+
+        if (metodoPag === 'asaas_link') {
+          // Preview: só busca link existente, nunca cria boleto
+          const existente = await this.buscarLinkAsaasExistente(mensalidade.id)
+          if (existente.sucesso) {
+            dadosSubstituicao.linkPagamento = existente.link
+          } else {
+            // Manter {{linkPagamento}} no preview - será gerado no envio
+            dadosSubstituicao.linkPagamento = '{{linkPagamento}}'
+          }
+        } else {
+          dadosSubstituicao.linkPagamento = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
+        }
       }
 
       const mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
@@ -592,6 +612,72 @@ class WhatsAppService {
     } catch (error) {
       console.error('Erro ao gerar preview:', error)
       return { mensagem: '', dados: {} }
+    }
+  }
+
+  /**
+   * Busca link de pagamento Asaas existente (não cria novo)
+   * Usado para preview - nunca gera custo no Asaas
+   */
+  async buscarLinkAsaasExistente(mensalidadeId) {
+    try {
+      const { data: boletoExistente } = await supabase
+        .from('boletos')
+        .select('invoice_url, asaas_id, status')
+        .eq('mensalidade_id', mensalidadeId)
+        .not('invoice_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (boletoExistente?.invoice_url) {
+        return { sucesso: true, link: boletoExistente.invoice_url }
+      }
+      return { sucesso: false, erro: 'Nenhum boleto Asaas encontrado' }
+    } catch (error) {
+      return { sucesso: false, erro: error.message }
+    }
+  }
+
+  /**
+   * Gera link de pagamento via Asaas (BolePix)
+   * Reutiliza boleto existente se houver, senão cria um novo
+   * Usado apenas no envio efetivo (não no preview)
+   */
+  async gerarLinkPagamentoAsaas(mensalidade, devedorId) {
+    try {
+      // 1. Verificar se já existe boleto Asaas para esta mensalidade
+      const existente = await this.buscarLinkAsaasExistente(mensalidade.id)
+      if (existente.sucesso) {
+        console.log('🔗 Reusando link Asaas existente:', existente.link)
+        return existente
+      }
+
+      // 2. Importar e usar asaasService para criar BolePix
+      const { asaasService } = await import('./asaasService')
+
+      const isConfigured = await asaasService.isConfigured()
+      if (!isConfigured) {
+        return { sucesso: false, erro: 'Asaas não configurado' }
+      }
+
+      const resultado = await asaasService.criarBolePix({
+        mensalidadeId: mensalidade.id,
+        devedorId: devedorId,
+        valor: mensalidade.valor,
+        dataVencimento: mensalidade.data_vencimento,
+        descricao: `Mensalidade - ${mensalidade.devedor?.nome || 'Cliente'}`
+      })
+
+      if (resultado?.invoice_url) {
+        console.log('🔗 Link Asaas criado:', resultado.invoice_url)
+        return { sucesso: true, link: resultado.invoice_url }
+      }
+
+      return { sucesso: false, erro: 'Sem invoice_url no retorno do Asaas' }
+    } catch (error) {
+      console.error('❌ Erro ao gerar link Asaas:', error)
+      return { sucesso: false, erro: error.message }
     }
   }
 
@@ -710,13 +796,35 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // Se o template usa {{linkPagamento}}, gerar o link automaticamente
       if (mensagemTemplate.includes('{{linkPagamento}}')) {
         console.log('🔗 Template usa linkPagamento, gerando link...')
-        dadosSubstituicao.linkPagamento = await this.gerarLinkPagamento(
-          user.id,
-          mensalidade,
-          nomeEmpresa,
-          chavePix
-        )
-        console.log('🔗 Link gerado:', dadosSubstituicao.linkPagamento)
+
+        // Verificar preferência do usuário: asaas_link ou pix_manual
+        const { data: configMetodo } = await supabase
+          .from('config')
+          .select('chave, valor')
+          .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+          .maybeSingle()
+
+        const metodoPagamento = configMetodo?.valor || 'pix_manual'
+        let linkGerado = null
+
+        if (metodoPagamento === 'asaas_link') {
+          console.log('🔗 Tentando gerar link Asaas...')
+          const resultadoAsaas = await this.gerarLinkPagamentoAsaas(mensalidade, mensalidade.devedor_id)
+          if (resultadoAsaas.sucesso) {
+            linkGerado = resultadoAsaas.link
+            console.log('🔗 Link Asaas obtido:', linkGerado)
+          } else {
+            console.log('⚠️ Fallback para link PIX in-app:', resultadoAsaas.erro)
+          }
+        }
+
+        // Fallback: link PIX in-app (comportamento original)
+        if (!linkGerado) {
+          linkGerado = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
+        }
+
+        dadosSubstituicao.linkPagamento = linkGerado
+        console.log('🔗 Link final:', dadosSubstituicao.linkPagamento)
       }
 
       console.log('📝 Template usado:', mensagemTemplate)
@@ -728,6 +836,44 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       if (mensagemCustomizada && mensagemCustomizada.trim()) {
         console.log('📝 Usando mensagem customizada')
         mensagemFinal = mensagemCustomizada
+
+        // Se a mensagem customizada contém {{linkPagamento}}, gerar link real agora
+        if (mensagemFinal.includes('{{linkPagamento}}')) {
+          console.log('🔗 Mensagem customizada contém {{linkPagamento}}, gerando link...')
+
+          // Verificar preferência do usuário
+          const { data: configMetodo } = await supabase
+            .from('config')
+            .select('chave, valor')
+            .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+            .maybeSingle()
+
+          const metodoPagamento = configMetodo?.valor || 'pix_manual'
+          let linkGerado = null
+
+          if (metodoPagamento === 'asaas_link') {
+            const resultadoAsaas = await this.gerarLinkPagamentoAsaas(mensalidade, mensalidade.devedor_id)
+            if (resultadoAsaas.sucesso) {
+              linkGerado = resultadoAsaas.link
+              console.log('🔗 Link Asaas inserido:', linkGerado)
+            } else {
+              console.log('⚠️ Fallback para link PIX in-app:', resultadoAsaas.erro)
+            }
+          }
+
+          // Fallback: link PIX in-app
+          if (!linkGerado) {
+            linkGerado = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
+            console.log('🔗 Link PIX in-app:', linkGerado)
+          }
+
+          mensagemFinal = mensagemFinal.replace(/\{\{linkPagamento\}\}/g, linkGerado)
+        }
+
+        // Se a mensagem customizada contém {{chavePix}}, substituir também
+        if (mensagemFinal.includes('{{chavePix}}')) {
+          mensagemFinal = mensagemFinal.replace(/\{\{chavePix\}\}/g, chavePix || '')
+        }
       } else {
         mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
       }

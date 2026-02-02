@@ -190,16 +190,16 @@ export const asaasService = {
   },
 
   /**
-   * Cria um BolePix (boleto + PIX) para uma mensalidade
+   * Cria uma cobrança PIX para uma mensalidade
    * @param {Object} params - Parâmetros
-   * @returns {Promise<Object>} Dados do BolePix criado
+   * @returns {Promise<Object>} Dados da cobrança criada
    */
   async criarBolePix({ mensalidadeId, devedorId, valor, dataVencimento, descricao }) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Usuário não autenticado')
 
-      console.log('📄 Criando BolePix via Asaas...')
+      console.log('📄 Criando cobrança PIX via Asaas...')
 
       const response = await fetch(`${FUNCTIONS_URL}/asaas-create-payment`, {
         method: 'POST',
@@ -213,7 +213,7 @@ export const asaasService = {
           valor,
           data_vencimento: dataVencimento,
           descricao,
-          billing_type: 'UNDEFINED' // UNDEFINED = BolePix (aceita boleto OU PIX)
+          billing_type: 'PIX' // Apenas PIX - boleto é gerado manualmente se necessário
         })
       })
 

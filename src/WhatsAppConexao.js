@@ -117,6 +117,10 @@ export default function WhatsAppConexao() {
   // Estado para modal de confirmação de desconexão
   const [confirmDesconexaoModal, setConfirmDesconexaoModal] = useState(false)
 
+  // Estado para método de pagamento (PIX Manual ou Link Asaas)
+  const [metodoPagamento, setMetodoPagamento] = useState('pix_manual')
+  const [asaasConfigurado, setAsaasConfigurado] = useState(false)
+
   // Atualizar status global quando mudar
   useEffect(() => {
     updateGlobalStatus(status)
@@ -133,7 +137,7 @@ export default function WhatsAppConexao() {
         const instanceName = `instance_${user.id.substring(0, 8)}`
 
         // 2. Fazer TODAS as queries em paralelo
-        const [configResult, templatesResult, automacoesResult, usuarioResult] = await Promise.all([
+        const [configResult, templatesResult, automacoesResult, usuarioResult, metodoPagResult, asaasResult] = await Promise.all([
           // Config da Evolution API
           supabase
             .from('config')
@@ -162,6 +166,20 @@ export default function WhatsAppConexao() {
           supabase
             .from('usuarios')
             .select('chave_pix')
+            .eq('id', user.id)
+            .single(),
+
+          // Método de pagamento WhatsApp
+          supabase
+            .from('config')
+            .select('chave, valor')
+            .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+            .maybeSingle(),
+
+          // Verificar se Asaas está configurado
+          supabase
+            .from('usuarios')
+            .select('asaas_api_key, modo_integracao')
             .eq('id', user.id)
             .single()
         ])
@@ -241,6 +259,16 @@ export default function WhatsAppConexao() {
         // No Dia vem ativo por padrão se não houver configuração
         setAutomacaoNoDiaAtiva(automacoesMap['automacao_nodia_ativa'] !== 'false')
         setAutomacao3DiasDepoisAtiva(automacoesMap['automacao_3diasdepois_ativa'] === 'true')
+
+        // 5.1 Processar método de pagamento
+        if (metodoPagResult.data?.valor) {
+          setMetodoPagamento(metodoPagResult.data.valor)
+        }
+
+        // 5.2 Verificar se Asaas está configurado
+        if (asaasResult.data) {
+          setAsaasConfigurado(!!(asaasResult.data.asaas_api_key && asaasResult.data.modo_integracao === 'asaas'))
+        }
 
         // 6. Verificar status WhatsApp (pode ser em paralelo com os outros)
         if (apiKey && instanceName) {
@@ -512,6 +540,130 @@ export default function WhatsAppConexao() {
       console.error('Erro ao salvar configuração de automação:', error)
       setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar configuração' })
       return false
+    }
+  }
+
+  // Atualizar variável de pagamento nos templates (troca {{chavePix}} <-> {{linkPagamento}})
+  // Também troca os labels associados para manter consistência
+  const atualizarVariavelTemplates = async (de, para) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Buscar templates que contenham a variável antiga OU os labels antigos
+      const { data: templatesParaAtualizar } = await supabase
+        .from('templates')
+        .select('id, mensagem')
+        .eq('user_id', user.id)
+
+      const temAlteracao = templatesParaAtualizar?.filter(t =>
+        t.mensagem.includes(de) ||
+        (de === '{{chavePix}}' && (t.mensagem.includes('Chave Pix:') || t.mensagem.includes('Pix para pagamento:'))) ||
+        (de === '{{linkPagamento}}' && t.mensagem.includes('Link de pagamento:'))
+      )
+
+      if (temAlteracao?.length) {
+        for (const t of temAlteracao) {
+          let novaMensagem = t.mensagem.replaceAll(de, para)
+
+          // Trocar também os labels
+          if (de === '{{chavePix}}') {
+            // PIX -> Link Asaas: trocar labels
+            novaMensagem = novaMensagem
+              .replace(/🔑 Chave Pix:/g, '🔗 Link de pagamento:')
+              .replace(/💳 Pix para pagamento:/g, '🔗 Link de pagamento:')
+          } else if (de === '{{linkPagamento}}') {
+            // Link Asaas -> PIX: trocar labels de volta
+            novaMensagem = novaMensagem
+              .replace(/🔗 Link de pagamento:/g, '🔑 Chave Pix:')
+          }
+
+          await supabase
+            .from('templates')
+            .update({ mensagem: novaMensagem })
+            .eq('id', t.id)
+        }
+
+        // Recarregar templates no estado
+        const { data: templatesAtualizados } = await supabase
+          .from('templates')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .order('created_at', { ascending: false })
+
+        if (templatesAtualizados) {
+          const agrupados = {
+            pre_due_3days: templatesAtualizados.find(t => t.tipo === 'pre_due_3days') || null,
+            due_day: templatesAtualizados.find(t => t.tipo === 'due_day') || null,
+            overdue: templatesAtualizados.find(t => t.tipo === 'overdue') || null
+          }
+          setTemplatesAgrupados(agrupados)
+
+          // Atualizar template atualmente selecionado no editor
+          const templateSelecionado = agrupados[tipoTemplateSelecionado]
+          if (templateSelecionado) {
+            setMensagemTemplate(templateSelecionado.mensagem)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar variável nos templates:', error)
+    }
+  }
+
+  // Salvar método de pagamento (PIX Manual ou Link Asaas)
+  const salvarMetodoPagamento = async (metodo) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      setMetodoPagamento(metodo)
+
+      const chaveUnica = `${user.id}_metodo_pagamento_whatsapp`
+
+      // Verificar se já existe
+      const { data: existing } = await supabase
+        .from('config')
+        .select('id')
+        .eq('chave', chaveUnica)
+        .maybeSingle()
+
+      if (existing) {
+        await supabase
+          .from('config')
+          .update({ valor: metodo, updated_at: new Date().toISOString() })
+          .eq('chave', chaveUnica)
+      } else {
+        await supabase
+          .from('config')
+          .insert({
+            user_id: user.id,
+            chave: chaveUnica,
+            valor: metodo,
+            descricao: 'Método de pagamento nas mensagens WhatsApp',
+            updated_at: new Date().toISOString()
+          })
+      }
+
+      // Auto-atualizar templates: trocar variável de pagamento
+      if (metodo === 'asaas_link') {
+        await atualizarVariavelTemplates('{{chavePix}}', '{{linkPagamento}}')
+      } else {
+        await atualizarVariavelTemplates('{{linkPagamento}}', '{{chavePix}}')
+      }
+
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Salvo!',
+        message: metodo === 'asaas_link'
+          ? 'Link de pagamento Asaas ativado nas mensagens'
+          : 'PIX manual ativado nas mensagens'
+      })
+    } catch (error) {
+      console.error('Erro ao salvar método de pagamento:', error)
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar método de pagamento' })
     }
   }
 
@@ -923,7 +1075,15 @@ export default function WhatsAppConexao() {
   }
 
   const getMensagemDefault = (tipo) => {
-    return TEMPLATES_PADRAO[tipo] || TEMPLATES_PADRAO.overdue
+    let mensagem = TEMPLATES_PADRAO[tipo] || TEMPLATES_PADRAO.overdue
+    // Se método de pagamento é Asaas, trocar variável e labels
+    if (metodoPagamento === 'asaas_link') {
+      mensagem = mensagem
+        .replaceAll('{{chavePix}}', '{{linkPagamento}}')
+        .replace(/🔑 Chave Pix:/g, '🔗 Link de pagamento:')
+        .replace(/💳 Pix para pagamento:/g, '🔗 Link de pagamento:')
+    }
+    return mensagem
   }
 
   const restaurarMensagemPadrao = async () => {
@@ -1722,6 +1882,89 @@ export default function WhatsAppConexao() {
                       }} />
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* Método de Pagamento nas Mensagens */}
+              <div style={{
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon icon="mdi:credit-card-outline" width="18" />
+                    Pagamento nas Mensagens
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
+                    Escolha como o link de pagamento aparece nas cobranças
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', flexDirection: isSmallScreen ? 'column' : 'row' }}>
+                  {/* Card PIX Manual */}
+                  <button
+                    onClick={() => salvarMetodoPagamento('pix_manual')}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      borderRadius: '8px',
+                      border: `2px solid ${metodoPagamento === 'pix_manual' ? '#344848' : '#e0e0e0'}`,
+                      background: metodoPagamento === 'pix_manual' ? '#f0f7f7' : 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <Icon icon="mdi:key-variant" width="20" style={{ color: metodoPagamento === 'pix_manual' ? '#344848' : '#999' }} />
+                      <span style={{ fontWeight: 600, fontSize: '13px', color: metodoPagamento === 'pix_manual' ? '#344848' : '#666' }}>
+                        PIX Manual
+                      </span>
+                      {metodoPagamento === 'pix_manual' && (
+                        <Icon icon="mdi:check-circle" width="16" style={{ color: '#4CAF50', marginLeft: 'auto' }} />
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#999' }}>
+                      Envia sua chave PIX para pagamento
+                    </div>
+                  </button>
+
+                  {/* Card Link Asaas */}
+                  <button
+                    onClick={() => asaasConfigurado && salvarMetodoPagamento('asaas_link')}
+                    disabled={!asaasConfigurado}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      borderRadius: '8px',
+                      border: `2px solid ${metodoPagamento === 'asaas_link' ? '#344848' : '#e0e0e0'}`,
+                      background: metodoPagamento === 'asaas_link' ? '#f0f7f7' : 'white',
+                      cursor: asaasConfigurado ? 'pointer' : 'not-allowed',
+                      textAlign: 'left',
+                      opacity: asaasConfigurado ? 1 : 0.5,
+                      transition: 'all 0.2s',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <Icon icon="mdi:link-variant" width="20" style={{ color: metodoPagamento === 'asaas_link' ? '#344848' : '#999' }} />
+                      <span style={{ fontWeight: 600, fontSize: '13px', color: metodoPagamento === 'asaas_link' ? '#344848' : '#666' }}>
+                        Link Asaas
+                      </span>
+                      {metodoPagamento === 'asaas_link' && (
+                        <Icon icon="mdi:check-circle" width="16" style={{ color: '#4CAF50', marginLeft: 'auto' }} />
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#999' }}>
+                      {asaasConfigurado
+                        ? 'Gera link de pagamento Asaas (PIX + Boleto)'
+                        : 'Configure o Asaas em Integrações'}
+                    </div>
+                  </button>
                 </div>
               </div>
 

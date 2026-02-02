@@ -43,6 +43,24 @@ export default function CsvImportModal({
     return set
   }, [existingClients])
 
+  const baixarPlanilhaExemplo = () => {
+    const linhas = [
+      'Nome;Telefone;CPF;Plano',
+      'Maria Silva;(11) 99876-5432;529.982.247-25;Mensal',
+      'João Santos;(21) 98765-4321;361.440.190-04;Trimestral',
+      'Ana Oliveira;(62) 91234-5678;;Mensal',
+      'Carlos Souza;11987654321;;'
+    ]
+    const conteudo = '\uFEFF' + linhas.join('\r\n')
+    const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'modelo-importacao-clientes.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const resetState = () => {
     setStep(1)
     setFileName('')
@@ -311,9 +329,26 @@ export default function CsvImportModal({
                 marginTop: '20px', padding: '14px', backgroundColor: '#f0fdf4',
                 borderRadius: '10px', border: '1px solid #bbf7d0'
               }}>
-                <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: '600', color: '#166534' }}>
-                  Formato esperado do CSV:
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#166534' }}>
+                    Formato esperado do CSV:
+                  </p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); baixarPlanilhaExemplo() }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                      color: '#166534', backgroundColor: '#dcfce7',
+                      border: '1px solid #86efac', borderRadius: '6px',
+                      cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => { e.target.style.backgroundColor = '#bbf7d0' }}
+                    onMouseLeave={e => { e.target.style.backgroundColor = '#dcfce7' }}
+                  >
+                    <Icon icon="ph:download-simple-bold" width="14" />
+                    Baixar modelo
+                  </button>
+                </div>
                 <code style={{ fontSize: '12px', color: '#15803d', lineHeight: '1.6' }}>
                   Nome;Telefone;CPF;Plano<br />
                   João Silva;(62) 99999-9999;123.456.789-00;Mensal

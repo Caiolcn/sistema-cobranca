@@ -552,24 +552,20 @@ export default function Clientes() {
   }
 
   const handleAlterarAssinatura = (clienteId, novoStatus) => {
-    // Se está tentando ativar a assinatura
+    // Se está tentando ativar a assinatura, sempre abrir modal com datas
     if (novoStatus) {
-      // Verificar se o cliente já tem um plano
       const cliente = clientes.find(c => c.id === clienteId) || clienteSelecionado
-      if (!cliente?.plano_id) {
-        // Se não tem plano, abrir modal para selecionar
-        setPlanoParaAtivar('')
-        const hoje = new Date()
-        setDataInicioAssinaturaModal(hoje.toISOString().split('T')[0])
-        // Auto-preencher data de vencimento com hoje + 30 dias
-        const vencimento = new Date(hoje)
-        vencimento.setDate(vencimento.getDate() + 30)
-        setDataVencimentoAssinaturaModal(vencimento.toISOString().split('T')[0])
-        setMostrarModalSelecionarPlano({ show: true, clienteId })
-        return
-      }
+      const hoje = new Date()
+      setDataInicioAssinaturaModal(hoje.toISOString().split('T')[0])
+      const vencimento = new Date(hoje)
+      vencimento.setDate(vencimento.getDate() + 30)
+      setDataVencimentoAssinaturaModal(vencimento.toISOString().split('T')[0])
+      // Pré-selecionar plano se já tiver
+      setPlanoParaAtivar(cliente?.plano_id || '')
+      setMostrarModalSelecionarPlano({ show: true, clienteId })
+      return
     }
-    // Se já tem plano ou está desativando, mostrar confirmação normal
+    // Se está desativando, mostrar confirmação normal
     setConfirmAssinatura({ show: true, clienteId, novoStatus })
   }
 
@@ -2590,10 +2586,10 @@ Equipe ${nomeEmpresa}`
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
-                  Selecione um Plano
+                  Ativar Assinatura
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-                  Para ativar a assinatura, selecione um plano
+                  Defina o plano e as datas da assinatura
                 </p>
               </div>
             </div>
