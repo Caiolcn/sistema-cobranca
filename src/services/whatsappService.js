@@ -162,7 +162,8 @@ class WhatsAppService {
       '{{diasAtraso}}': dados.diasAtraso || '0',
       '{{nomeEmpresa}}': dados.nomeEmpresa || '',
       '{{chavePix}}': dados.chavePix || '',
-      '{{linkPagamento}}': dados.linkPagamento || ''
+      '{{linkPagamento}}': dados.linkPagamento || '',
+      '{{portalCliente}}': dados.portalCliente || ''
     }
 
     // Aplicar todas as substituições
@@ -529,7 +530,7 @@ class WhatsAppService {
       // Buscar dados da mensalidade
       const { data: mensalidade, error } = await supabase
         .from('mensalidades')
-        .select(`*, devedor:devedores(nome, telefone)`)
+        .select(`*, devedor:devedores(nome, telefone, portal_token)`)
         .eq('id', mensalidadeId)
         .single()
 
@@ -544,6 +545,13 @@ class WhatsAppService {
 
       const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
       const chavePix = usuario?.chave_pix || ''
+
+      // Gerar link do portal do cliente
+      const baseUrl = typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://app.mensallizap.com.br'
+      const portalToken = mensalidade.devedor?.portal_token
+      const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
 
       // Buscar template
       const tipoMensagem = this.calcularTipoMensagem(mensalidade.data_vencimento)
@@ -578,33 +586,11 @@ class WhatsAppService {
         diasAtraso: diasAtraso.toString(),
         nomeEmpresa: nomeEmpresa,
         chavePix: chavePix,
-        linkPagamento: ''
+        linkPagamento: '{{linkPagamento}}',
+        portalCliente: '{{portalCliente}}'
       }
 
-      // Gerar link se template usa
-      if (mensagemTemplate.includes('{{linkPagamento}}')) {
-        // Verificar preferência do usuário: asaas_link ou pix_manual
-        const { data: configMetodo } = await supabase
-          .from('config')
-          .select('chave, valor')
-          .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
-          .maybeSingle()
-
-        const metodoPag = configMetodo?.valor || 'pix_manual'
-
-        if (metodoPag === 'asaas_link') {
-          // Preview: só busca link existente, nunca cria boleto
-          const existente = await this.buscarLinkAsaasExistente(mensalidade.id)
-          if (existente.sucesso) {
-            dadosSubstituicao.linkPagamento = existente.link
-          } else {
-            // Manter {{linkPagamento}} no preview - será gerado no envio
-            dadosSubstituicao.linkPagamento = '{{linkPagamento}}'
-          }
-        } else {
-          dadosSubstituicao.linkPagamento = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
-        }
-      }
+      // No preview, manter placeholders - link só é gerado no envio efetivo
 
       const mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
 
@@ -801,38 +787,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         portalCliente: portalLink
       }
 
-      // Se o template usa {{linkPagamento}}, gerar o link automaticamente
+      // Se o template usa {{linkPagamento}}, sempre usa o portal do cliente
       if (mensagemTemplate.includes('{{linkPagamento}}')) {
-        console.log('🔗 Template usa linkPagamento, gerando link...')
-
-        // Verificar preferência do usuário: asaas_link ou pix_manual
-        const { data: configMetodo } = await supabase
-          .from('config')
-          .select('chave, valor')
-          .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
-          .maybeSingle()
-
-        const metodoPagamento = configMetodo?.valor || 'pix_manual'
-        let linkGerado = null
-
-        if (metodoPagamento === 'asaas_link') {
-          console.log('🔗 Tentando gerar link Asaas...')
-          const resultadoAsaas = await this.gerarLinkPagamentoAsaas(mensalidade, mensalidade.devedor_id)
-          if (resultadoAsaas.sucesso) {
-            linkGerado = resultadoAsaas.link
-            console.log('🔗 Link Asaas obtido:', linkGerado)
-          } else {
-            console.log('⚠️ Fallback para link PIX in-app:', resultadoAsaas.erro)
-          }
-        }
-
-        // Fallback: link PIX in-app (comportamento original)
-        if (!linkGerado) {
-          linkGerado = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
-        }
-
+        const linkGerado = portalLink || await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
         dadosSubstituicao.linkPagamento = linkGerado
-        console.log('🔗 Link final:', dadosSubstituicao.linkPagamento)
+        console.log('🔗 Link pagamento (portal):', linkGerado)
       }
 
       console.log('📝 Template usado:', mensagemTemplate)
@@ -845,37 +804,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         console.log('📝 Usando mensagem customizada')
         mensagemFinal = mensagemCustomizada
 
-        // Se a mensagem customizada contém {{linkPagamento}}, gerar link real agora
+        // Se a mensagem customizada contém {{linkPagamento}}, usar link do portal
         if (mensagemFinal.includes('{{linkPagamento}}')) {
-          console.log('🔗 Mensagem customizada contém {{linkPagamento}}, gerando link...')
-
-          // Verificar preferência do usuário
-          const { data: configMetodo } = await supabase
-            .from('config')
-            .select('chave, valor')
-            .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
-            .maybeSingle()
-
-          const metodoPagamento = configMetodo?.valor || 'pix_manual'
-          let linkGerado = null
-
-          if (metodoPagamento === 'asaas_link') {
-            const resultadoAsaas = await this.gerarLinkPagamentoAsaas(mensalidade, mensalidade.devedor_id)
-            if (resultadoAsaas.sucesso) {
-              linkGerado = resultadoAsaas.link
-              console.log('🔗 Link Asaas inserido:', linkGerado)
-            } else {
-              console.log('⚠️ Fallback para link PIX in-app:', resultadoAsaas.erro)
-            }
-          }
-
-          // Fallback: link PIX in-app
-          if (!linkGerado) {
-            linkGerado = await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
-            console.log('🔗 Link PIX in-app:', linkGerado)
-          }
-
+          const linkGerado = portalLink || await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
           mensagemFinal = mensagemFinal.replace(/\{\{linkPagamento\}\}/g, linkGerado)
+          console.log('🔗 Link pagamento (portal) na msg customizada:', linkGerado)
         }
 
         // Se a mensagem customizada contém {{chavePix}}, substituir também

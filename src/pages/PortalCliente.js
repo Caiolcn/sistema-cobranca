@@ -207,13 +207,16 @@ export default function PortalCliente() {
     )
   }
 
-  const pendentes = dados.mensalidades.filter(m => m.status !== 'pago')
-  const pagas = dados.mensalidades.filter(m => m.status === 'pago')
-  const totalPendente = pendentes.reduce((sum, m) => sum + parseFloat(m.valor), 0)
-  const temAtrasadas = pendentes.some(m => {
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-    return new Date(m.data_vencimento + 'T00:00:00') < hoje
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const pendentes = dados.mensalidades.filter(m => {
+    if (m.status === 'pago') return false
+    const vencimento = new Date(m.data_vencimento + 'T00:00:00')
+    const diffDias = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24))
+    return diffDias <= 3 // Mostra apenas vencendo em 3 dias ou menos (e vencidas)
   })
+  const pagas = dados.mensalidades.filter(m => m.status === 'pago')
+
+  const temAtrasadas = pendentes.some(m => new Date(m.data_vencimento + 'T00:00:00') < hoje)
   const inicialEmpresa = (dados.empresa.nome || 'E').charAt(0).toUpperCase()
   const temInfoEmpresa = dados.empresa.cnpj || dados.empresa.endereco || dados.empresa.telefone
 
@@ -296,81 +299,54 @@ export default function PortalCliente() {
       {/* Content */}
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 16px 24px' }}>
 
-        {/* Card de saudacao + resumo financeiro */}
+        {/* Card de saudacao + pagamentos */}
         <div style={{
           background: '#ffffff', borderRadius: 16, padding: 24,
           margin: '20px 0 0',
           boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06)',
           border: '1px solid #e2e8f0'
         }}>
-          <div style={{ fontSize: 15, color: '#334155', margin: '0 0 4px' }}>
-            Ola, <span style={{ fontWeight: 700 }}>{dados.devedor.nome.split(' ')[0]}</span>!
-          </div>
-
-          {dados.devedor.plano_nome && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              background: '#f0fdf4', color: '#16a34a',
-              padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600
-            }}>
-              <Icon icon="mdi:star" width="13" />
-              {dados.devedor.plano_nome}
-            </span>
-          )}
-
-          <hr style={{ height: 1, background: '#f1f5f9', border: 'none', margin: '16px 0' }} />
-
-          {pendentes.length > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{
-                  fontSize: 11, color: '#64748b', fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4
-                }}>
-                  Total pendente
-                </div>
-                <div style={{
-                  fontSize: 32, fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.1,
-                  color: temAtrasadas ? '#dc2626' : '#0f172a'
-                }}>
-                  {formatarValor(totalPendente)}
-                </div>
-                <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
-                  {pendentes.length} {pendentes.length === 1 ? 'mensalidade pendente' : 'mensalidades pendentes'}
-                </div>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 15, color: '#334155' }}>
+              Ola, <span style={{ fontWeight: 700 }}>{dados.devedor.nome.split(' ')[0]}</span>!
+            </div>
+            {dados.devedor.plano_nome ? (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: '#f0fdf4', color: '#16a34a',
+                padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600
+              }}>
+                <Icon icon="mdi:star" width="13" />
+                {dados.devedor.plano_nome}
+              </span>
+            ) : pendentes.length > 0 ? (
               <div style={{
-                width: 56, height: 56, borderRadius: 16,
-                background: temAtrasadas ? '#fef2f2' : '#f0fdf4',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                fontSize: 12, color: temAtrasadas ? '#dc2626' : '#64748b', fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 4
               }}>
                 <Icon
                   icon={temAtrasadas ? 'mdi:alert-circle-outline' : 'mdi:receipt-text-clock-outline'}
-                  width="28"
+                  width="16"
                   style={{ color: temAtrasadas ? '#dc2626' : '#16a34a' }}
                 />
+                {pendentes.length} {pendentes.length === 1 ? 'pendente' : 'pendentes'}
               </div>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <Icon icon="mdi:check-decagram" width="40" style={{ color: '#16a34a', marginBottom: 8 }} />
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#166534' }}>Tudo em dia!</div>
-              <div style={{ fontSize: 13, color: '#16a34a', marginTop: 2 }}>Nenhuma mensalidade pendente</div>
-            </div>
+            ) : null}
+          </div>
+
+          {pendentes.length === 0 && (
+            <>
+              <hr style={{ height: 1, background: '#f1f5f9', border: 'none', margin: '16px 0' }} />
+              <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                <Icon icon="mdi:check-decagram" width="40" style={{ color: '#16a34a', marginBottom: 8 }} />
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#166534' }}>Tudo em dia!</div>
+                <div style={{ fontSize: 13, color: '#16a34a', marginTop: 2 }}>Nenhuma mensalidade pendente</div>
+              </div>
+            </>
           )}
-        </div>
 
-        {/* Pagamentos pendentes */}
-        {pendentes.length > 0 && (
-          <div>
-            <div style={{
-              fontSize: 11, fontWeight: 700, color: '#94a3b8',
-              textTransform: 'uppercase', letterSpacing: '1px',
-              margin: '28px 0 12px', padding: 0
-            }}>
-              Pagamentos pendentes
-            </div>
-
+          {pendentes.length > 0 && (
+            <div style={{ marginTop: 16 }}>
             {pendentes.map(m => {
               const info = getStatusInfo(m)
               const isExpanded = expandedId === m.id
@@ -588,17 +564,21 @@ export default function PortalCliente() {
                 </div>
               )
             })}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* Historico de pagos */}
         {pagas.length > 0 && (
-          <div style={{ marginTop: 8 }}>
+          <div style={{
+            marginTop: 8, background: '#ffffff',
+            border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden'
+          }}>
             <button
               onClick={() => setMostrarPagos(!mostrarPagos)}
               style={{
                 width: '100%', padding: '14px 16px',
-                background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12,
+                background: 'transparent', border: 'none',
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 transition: 'all 0.2s ease'
@@ -625,8 +605,8 @@ export default function PortalCliente() {
 
             {mostrarPagos && pagas.map(m => (
               <div key={m.id} style={{
-                background: '#ffffff', borderRadius: 10, padding: '14px 16px',
-                marginTop: 8, border: '1px solid #e2e8f0',
+                padding: '14px 16px',
+                borderTop: '1px solid #f1f5f9',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
                 <div>
