@@ -70,7 +70,8 @@ function Configuracao() {
     telefone: '',
     email: '',
     site: '',
-    chavePix: ''
+    chavePix: '',
+    logoUrl: ''
   })
 
   // Billing config
@@ -117,6 +118,9 @@ function Configuracao() {
   const [testandoAsaas, setTestandoAsaas] = useState(false)
   const [salvandoAsaas, setSalvandoAsaas] = useState(false)
   const [asaasContaInfo, setAsaasContaInfo] = useState(null)
+
+  // Logo upload
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   // Automação WhatsApp - REMOVIDO (movido para /whatsapp)
   // const [configAutomacao, setConfigAutomacao] = useState({...})
@@ -182,10 +186,66 @@ function Configuracao() {
         telefone: data.telefone || '',
         email: data.email_empresa || data.email || '',
         site: data.site || '',
-        chavePix: data.chave_pix || ''
+        chavePix: data.chave_pix || '',
+        logoUrl: data.logo_url || ''
       })
       // Carregar modo de integração
       setModoIntegracao(data.modo_integracao || 'manual')
+    }
+  }
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Selecione um arquivo de imagem (PNG, JPG, etc.)', 'warning')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('A imagem deve ter no maximo 2MB', 'warning')
+      return
+    }
+
+    setUploadingLogo(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const fileName = `${user.id}/logo.${ext}`
+
+      // Upload para Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      // Buscar URL publica
+      const { data: urlData } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName)
+
+      const logoUrl = urlData.publicUrl
+
+      // Salvar URL no banco
+      await supabase.from('usuarios').update({ logo_url: logoUrl }).eq('id', user.id)
+      setDadosEmpresa(prev => ({ ...prev, logoUrl }))
+      showToast('Logo atualizada!', 'success')
+    } catch (error) {
+      console.error('Erro no upload:', error)
+      showToast('Erro ao fazer upload da logo: ' + error.message, 'error')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const removerLogo = async () => {
+    try {
+      await supabase.from('usuarios').update({ logo_url: null }).eq('id', user.id)
+      setDadosEmpresa(prev => ({ ...prev, logoUrl: '' }))
+      showToast('Logo removida', 'success')
+    } catch (error) {
+      showToast('Erro ao remover logo', 'error')
     }
   }
 
@@ -650,9 +710,38 @@ function Configuracao() {
 
   const renderDadosEmpresa = () => (
     <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
-        Dados da Empresa
-      </h3>
+      {/* Header com logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <label style={{
+          width: 56, height: 56, borderRadius: '12px',
+          border: dadosEmpresa.logoUrl ? '2px solid #e5e7eb' : '2px dashed #ccc',
+          overflow: 'hidden', cursor: uploadingLogo ? 'wait' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#f9fafb', flexShrink: 0, position: 'relative',
+          opacity: uploadingLogo ? 0.6 : 1, transition: 'opacity 0.2s'
+        }}>
+          {dadosEmpresa.logoUrl ? (
+            <img src={dadosEmpresa.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          ) : (
+            <Icon icon="mdi:camera-plus-outline" width="22" style={{ color: '#aaa' }} />
+          )}
+          <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+        </label>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
+            Dados da Empresa
+          </h3>
+          <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+            {dadosEmpresa.logoUrl ? 'Clique na logo para trocar' : 'Clique para adicionar logo'}
+            {dadosEmpresa.logoUrl && (
+              <button onClick={removerLogo} style={{
+                background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
+                fontSize: '12px', marginLeft: '8px', padding: 0, textDecoration: 'underline'
+              }}>remover</button>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
         <div>

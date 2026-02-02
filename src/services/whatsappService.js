@@ -697,7 +697,7 @@ class WhatsAppService {
         .from('mensalidades')
         .select(`
           *,
-          devedor:devedores(nome, telefone)
+          devedor:devedores(nome, telefone, portal_token)
         `)
         .eq('id', mensalidadeId)
         .single()
@@ -781,6 +781,13 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const vencimento = new Date(mensalidade.data_vencimento)
       const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
 
+      // Gerar link do portal do cliente
+      const baseUrl = typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://app.mensallizap.com.br'
+      const portalToken = mensalidade.devedor?.portal_token
+      const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
+
       // Preparar dados para substituição
       const dadosSubstituicao = {
         nomeCliente: mensalidade.devedor?.nome || 'Cliente',
@@ -790,7 +797,8 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         diasAtraso: diasAtraso.toString(),
         nomeEmpresa: nomeEmpresa,
         chavePix: chavePix,
-        linkPagamento: '' // Será preenchido se necessário
+        linkPagamento: '', // Será preenchido se necessário
+        portalCliente: portalLink
       }
 
       // Se o template usa {{linkPagamento}}, gerar o link automaticamente
@@ -873,6 +881,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         // Se a mensagem customizada contém {{chavePix}}, substituir também
         if (mensagemFinal.includes('{{chavePix}}')) {
           mensagemFinal = mensagemFinal.replace(/\{\{chavePix\}\}/g, chavePix || '')
+        }
+
+        // Se a mensagem customizada contém {{portalCliente}}, substituir com link do portal
+        if (mensagemFinal.includes('{{portalCliente}}')) {
+          mensagemFinal = mensagemFinal.replace(/\{\{portalCliente\}\}/g, portalLink)
         }
       } else {
         mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)

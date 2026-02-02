@@ -22,6 +22,7 @@ const Configuracao = lazy(() => import('./Configuracao'))
 const UpgradePage = lazy(() => import('./UpgradePage'))
 const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
 const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
+const PortalCliente = lazy(() => import('./pages/PortalCliente'))
 const Onboarding = lazy(() => import('./Onboarding'))
 
 // Componente de loading para Suspense
@@ -72,6 +73,7 @@ function App() {
               <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
+              <Route path="/portal/:token" element={<PortalCliente />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (
