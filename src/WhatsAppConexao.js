@@ -653,6 +653,19 @@ export default function WhatsAppConexao() {
         await atualizarVariavelTemplates('{{linkPagamento}}', '{{chavePix}}')
       }
 
+      // Atualizar template exibido no editor (caso seja default/não salvo)
+      const templateAtual = templatesAgrupados[tipoTemplateSelecionado]
+      if (!templateAtual) {
+        let msg = TEMPLATES_PADRAO[tipoTemplateSelecionado] || TEMPLATES_PADRAO.overdue
+        if (metodo === 'asaas_link') {
+          msg = msg
+            .replaceAll('{{chavePix}}', '{{linkPagamento}}')
+            .replace(/🔑 Chave Pix:/g, '🔗 Link de pagamento:')
+            .replace(/💳 Pix para pagamento:/g, '🔗 Link de pagamento:')
+        }
+        setMensagemTemplate(msg)
+      }
+
       setFeedbackModal({
         isOpen: true,
         type: 'success',
