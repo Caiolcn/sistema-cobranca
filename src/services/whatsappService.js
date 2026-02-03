@@ -787,16 +787,29 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         portalCliente: portalLink
       }
 
-      // Se o template usa {{linkPagamento}}, sempre usa o portal do cliente
-      if (mensagemTemplate.includes('{{linkPagamento}}')) {
-        const linkGerado = portalLink || await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
-        dadosSubstituicao.linkPagamento = linkGerado
-        console.log('🔗 Link pagamento (portal):', linkGerado)
+      // Verificar metodo de pagamento para decidir se envia link ou não
+      if (mensagemTemplate.includes('{{linkPagamento}}') || mensagemTemplate.includes('{{portalCliente}}')) {
+        const { data: configMetodo } = await supabase
+          .from('config')
+          .select('chave, valor')
+          .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+          .maybeSingle()
+
+        const metodoPagamento = configMetodo?.valor || 'pix_manual'
+
+        if (metodoPagamento === 'asaas_link') {
+          // Asaas ativo: envia link do portal (checkout com QR do Asaas)
+          dadosSubstituicao.linkPagamento = portalLink
+          console.log('🔗 Asaas ativo - link do portal:', portalLink)
+        } else {
+          // PIX manual: sem link, só chave PIX na mensagem
+          dadosSubstituicao.linkPagamento = ''
+          console.log('🔑 PIX manual - sem link, usando chavePix')
+        }
       }
 
       console.log('📝 Template usado:', mensagemTemplate)
       console.log('📊 Dados para substituição:', dadosSubstituicao)
-      console.log('🔑 chavePix no dadosSubstituicao:', dadosSubstituicao.chavePix)
 
       // Gerar mensagem final (usa customizada se fornecida, senão gera do template)
       let mensagemFinal
@@ -804,11 +817,17 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         console.log('📝 Usando mensagem customizada')
         mensagemFinal = mensagemCustomizada
 
-        // Se a mensagem customizada contém {{linkPagamento}}, usar link do portal
+        // Verificar metodo para {{linkPagamento}} em msg customizada
         if (mensagemFinal.includes('{{linkPagamento}}')) {
-          const linkGerado = portalLink || await this.gerarLinkPagamento(user.id, mensalidade, nomeEmpresa, chavePix)
+          const { data: configMetodo } = await supabase
+            .from('config')
+            .select('chave, valor')
+            .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+            .maybeSingle()
+
+          const metodoPagamento = configMetodo?.valor || 'pix_manual'
+          const linkGerado = metodoPagamento === 'asaas_link' ? portalLink : ''
           mensagemFinal = mensagemFinal.replace(/\{\{linkPagamento\}\}/g, linkGerado)
-          console.log('🔗 Link pagamento (portal) na msg customizada:', linkGerado)
         }
 
         // Se a mensagem customizada contém {{chavePix}}, substituir também
