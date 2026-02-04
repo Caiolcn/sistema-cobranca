@@ -12,6 +12,7 @@ import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton
 import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
+import Despesas from './Despesas'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -30,6 +31,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [filtroDataFim, setFiltroDataFim] = useState('')
   const [filtroNome, setFiltroNome] = useState('')
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
+
+  // Aba ativa do menu financeiro
+  const [abaAtiva, setAbaAtiva] = useState('mensalidades')
 
   // Debounce do filtro de nome (300ms)
   useEffect(() => {
@@ -978,6 +982,51 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Menu de Abas */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: isSmallScreen ? '6px' : '8px',
+        marginBottom: isSmallScreen ? '12px' : '16px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        display: 'flex',
+        gap: '4px',
+        overflowX: 'auto'
+      }}>
+        {[
+          { id: 'mensalidades', label: 'Mensalidades', icon: 'fluent:receipt-20-regular' },
+          { id: 'despesas', label: 'Despesas', icon: 'mdi:wallet-outline' }
+        ].map(aba => (
+          <button
+            key={aba.id}
+            onClick={() => setAbaAtiva(aba.id)}
+            style={{
+              padding: isSmallScreen ? '8px 14px' : '10px 20px',
+              backgroundColor: abaAtiva === aba.id ? '#344848' : 'transparent',
+              color: abaAtiva === aba.id ? 'white' : '#666',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: isSmallScreen ? '13px' : '14px',
+              fontWeight: abaAtiva === aba.id ? '600' : '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Icon icon={aba.icon} width={isSmallScreen ? 16 : 18} />
+            {aba.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ========== ABA: DESPESAS ========== */}
+      {abaAtiva === 'despesas' && <Despesas embedded />}
+
+      {/* ========== ABA: MENSALIDADES ========== */}
+      {abaAtiva === 'mensalidades' && (<>
       {/* Header - Título e Botões */}
       <div style={{
         backgroundColor: 'white',
@@ -1820,6 +1869,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         )}
       </div>
+      </>)}
 
       {/* Modal de Confirmação de Pagamento */}
       {/* Modal de Detalhes da Mensalidade */}

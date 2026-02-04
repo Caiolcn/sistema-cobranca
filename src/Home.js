@@ -14,7 +14,7 @@ import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
-  const { userId, nomeEmpresa: nomeEmpresaContext, loading: loadingUser } = useUser();
+  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, loading: loadingUser } = useUser();
   const { isLocked, loading: loadingPlan } = useUserPlan();
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState('mes_atual');
@@ -41,7 +41,10 @@ function Home() {
     filaWhatsapp: [],
     mensagensRecentes: [],
     pagamentosHoje: 0,
-    valorPagamentosHoje: 0
+    valorPagamentosHoje: 0,
+    despesasPagoMes: 0,
+    despesasPendenteMes: 0,
+    despesasTotalMes: 0
   });
 
   // Estados para modais de confirmação da Fila de WhatsApp
@@ -121,7 +124,8 @@ function Home() {
         { data: todosClientes },          // Clientes e assinaturas
         { data: fila },                   // Fila WhatsApp
         { data: mensagens },              // Mensagens recentes
-        { count: countMensagensEnviadas } // Count de mensagens (count vem direto, não em data)
+        { count: countMensagensEnviadas }, // Count de mensagens (count vem direto, não em data)
+        { data: todasDespesas, error: erroDespesas }  // Despesas (para Resultado Financeiro)
       ] = await Promise.all([
         // 1. TODAS as mensalidades - processamos tudo no cliente
         supabase
@@ -168,7 +172,13 @@ function Home() {
           .from('logs_mensagens')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
-          .eq('status', 'enviado')
+          .eq('status', 'enviado'),
+
+        // 6. Despesas (para Resultado Financeiro)
+        supabase
+          .from('despesas')
+          .select('id, valor, status, data_vencimento, data_pagamento')
+          .eq('user_id', userId)
       ]);
 
       // ========== PROCESSAMENTO LOCAL (mais eficiente) ==========
@@ -259,6 +269,21 @@ function Home() {
         }
       });
 
+      // Processamento de despesas (para Resultado Financeiro)
+      if (erroDespesas) console.error('Erro ao buscar despesas:', erroDespesas);
+      let despPagoMes = 0, despPendenteMes = 0, despTotalMes = 0;
+      (todasDespesas || []).forEach(d => {
+        const valor = parseFloat(d.valor || 0);
+        const dataRef = d.status === 'pago' && d.data_pagamento
+          ? d.data_pagamento
+          : d.data_vencimento;
+        if (dataRef >= inicio && dataRef <= fim) {
+          despTotalMes += valor;
+          if (d.status === 'pago') despPagoMes += valor;
+          if (d.status === 'pendente') despPendenteMes += valor;
+        }
+      });
+
       // Calcular gráfico dos últimos 3 meses
       const graficoMeses = [];
       for (let i = 2; i >= 0; i--) {
@@ -334,7 +359,10 @@ function Home() {
         filaWhatsapp: fila || [],
         mensagensRecentes: mensagens || [],
         pagamentosHoje: pagamentosHojeCount,
-        valorPagamentosHoje: valorPagamentosHojeTotal
+        valorPagamentosHoje: valorPagamentosHojeTotal,
+        despesasPagoMes: despPagoMes,
+        despesasPendenteMes: despPendenteMes,
+        despesasTotalMes: despTotalMes
       });
 
     } catch (error) {
@@ -365,6 +393,37 @@ function Home() {
     if (hora < 18) return 'Boa tarde';
     return 'Boa noite';
   };
+
+  const getSubtitulo = () => {
+    const agora = new Date();
+    const diaSemana = agora.getDay();
+
+    const frases = [
+      'Mais um dia produtivo',
+      'Bora trabalhar',
+      'Tudo certo por aí',
+      'Vamos nessa',
+      'Pronto pra mais um dia',
+      'Hora do café',
+      'Tudo nos trilhos',
+      'Como vão os negócios',
+      'Que bom te ver',
+      'De volta ao comando'
+    ];
+
+    // Dia da semana
+    const diasSemana = ['Bom domingo', 'Boa segunda-feira', 'Boa terça-feira', 'Boa quarta-feira', 'Boa quinta-feira', 'Boa sexta-feira', 'Bom sábado'];
+    frases.push(diasSemana[diaSemana]);
+
+    // Frases especiais por dia
+    if (diaSemana === 1) frases.push('Bom início de semana');
+    if (diaSemana === 4) frases.push('Quase lá, sexta tá chegando');
+    if (diaSemana === 5) frases.push('Sextou');
+
+    return frases[Math.floor(Math.random() * frases.length)];
+  };
+
+  const [subtitulo] = useState(getSubtitulo);
 
   // Abre modal de confirmação para envio de WhatsApp
   const handleEnviarWhatsApp = async (item) => {
@@ -485,7 +544,8 @@ function Home() {
     mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, clientesInadimplentes,
     receitaProjetadaMes, taxaCancelamento, mensalidadesVencer7Dias, mensagensEnviadasAuto,
     statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus, filaWhatsapp, mensagensRecentes,
-    pagamentosHoje, valorPagamentosHoje
+    pagamentosHoje, valorPagamentosHoje,
+    despesasPagoMes, despesasPendenteMes, despesasTotalMes
   } = dashboardData;
 
   // Usar nome da empresa do contexto
@@ -500,7 +560,7 @@ function Home() {
       <div className="home-header">
         <div className="home-welcome">
           <h1>{getHoraSaudacao()}! 👋</h1>
-          <p>Bem-vindo(a) <strong>{nomeEmpresa}</strong></p>
+          <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
         </div>
 
         {/* Filtro de Período */}
@@ -509,6 +569,77 @@ function Home() {
           onChange={setPeriodo}
         />
       </div>
+
+      {/* Resultado Financeiro */}
+      <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Resultado Financeiro">
+        <div className="home-section" style={{ marginBottom: '24px' }}>
+          <div className="section-header">
+            <Icon icon="material-symbols:account-balance-wallet-outline" width="24" />
+            <h2>Resultado Financeiro</h2>
+          </div>
+          <div className="home-cards-tertiary">
+            {/* Receita do Período */}
+            <div className="home-card" style={{ borderLeft: '4px solid #2196F3' }}>
+              <div className="card-header">
+                <span className="card-label">Receita</span>
+                <div className="card-icon" style={{ background: '#E3F2FD', color: '#2196F3' }}>
+                  <Icon icon="material-symbols:trending-up" width="20" />
+                </div>
+              </div>
+              <div className="card-body">
+                <span className="card-value" style={{ color: '#2196F3' }}>{formatarMoeda(recebimentosMes)}</span>
+                <span className="card-subtitle">Pagamentos recebidos</span>
+              </div>
+            </div>
+
+            {/* Despesas do Período */}
+            <div className="home-card" style={{ borderLeft: '4px solid #f44336' }}>
+              <div className="card-header">
+                <span className="card-label">Despesas</span>
+                <div className="card-icon" style={{ background: '#FFEBEE', color: '#f44336' }}>
+                  <Icon icon="material-symbols:receipt-long-outline" width="20" />
+                </div>
+              </div>
+              <div className="card-body">
+                <span className="card-value" style={{ color: '#f44336' }}>{formatarMoeda(despesasPagoMes)}</span>
+                <span className="card-subtitle">
+                  {despesasPendenteMes > 0
+                    ? `+ ${formatarMoeda(despesasPendenteMes)} pendente`
+                    : 'Despesas pagas no período'}
+                </span>
+              </div>
+            </div>
+
+            {/* Resultado */}
+            <div className="home-card" style={{
+              borderLeft: `4px solid ${(recebimentosMes - despesasPagoMes) >= 0 ? '#4CAF50' : '#f44336'}`
+            }}>
+              <div className="card-header">
+                <span className="card-label">Resultado</span>
+                <div className="card-icon" style={{
+                  background: (recebimentosMes - despesasPagoMes) >= 0 ? '#E8F5E9' : '#FFEBEE',
+                  color: (recebimentosMes - despesasPagoMes) >= 0 ? '#4CAF50' : '#f44336'
+                }}>
+                  <Icon icon={(recebimentosMes - despesasPagoMes) >= 0
+                    ? 'material-symbols:thumb-up-outline'
+                    : 'material-symbols:thumb-down-outline'}
+                    width="20" />
+                </div>
+              </div>
+              <div className="card-body">
+                <span className="card-value" style={{
+                  color: (recebimentosMes - despesasPagoMes) >= 0 ? '#4CAF50' : '#f44336'
+                }}>
+                  {formatarMoeda(recebimentosMes - despesasPagoMes)}
+                </span>
+                <span className="card-subtitle">
+                  {(recebimentosMes - despesasPagoMes) >= 0 ? 'Lucro no período' : 'Prejuízo no período'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FeatureLocked>
 
       {/* Cards Principais - Linha 1 */}
       <div className="home-cards-grid">

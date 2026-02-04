@@ -96,6 +96,25 @@ export const exportarMensalidades = (mensalidades) => {
 };
 
 /**
+ * Exporta lista de despesas
+ */
+export const exportarDespesas = (despesas) => {
+  const dados = despesas.map(d => ({
+    'Descrição': d.descricao || '',
+    'Categoria': d.categorias_despesas?.nome || 'Sem categoria',
+    'Valor': formatarMoedaExport(d.valor),
+    'Status': d.status === 'pago' ? 'Pago' : d.status === 'pendente' ? 'Pendente' : 'Cancelado',
+    'Data Vencimento': formatarDataExport(d.data_vencimento),
+    'Forma Pagamento': d.forma_pagamento || '',
+    'Data Pagamento': d.data_pagamento ? formatarDataExport(d.data_pagamento) : '',
+    'Recorrente': d.is_recorrente ? 'Sim' : 'Não',
+    'Observações': d.observacoes || ''
+  }));
+
+  exportToCSV(dados, 'despesas');
+};
+
+/**
  * Exporta resumo do dashboard
  */
 export const exportarResumoDashboard = (dados) => {

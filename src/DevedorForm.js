@@ -25,7 +25,8 @@ export default function DevedorForm({ devedor, onClose }) {
       telefone,
       valor_devido: 0, // Valor calculado será a soma das parcelas
       data_vencimento: new Date().toISOString().split('T')[0], // Data padrão
-      status: 'pendente'
+      status: 'pendente',
+      portal_token: crypto.randomUUID().replace(/-/g, '')
     }
 
     let error

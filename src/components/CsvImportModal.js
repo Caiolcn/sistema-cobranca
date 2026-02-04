@@ -187,7 +187,8 @@ export default function CsvImportModal({
         assinatura_ativa: false,
         valor_devido: 0,
         data_vencimento: new Date().toISOString().split('T')[0],
-        status: 'pendente'
+        status: 'pendente',
+        portal_token: crypto.randomUUID().replace(/-/g, '')
       }))
 
       const { data, error } = await supabase

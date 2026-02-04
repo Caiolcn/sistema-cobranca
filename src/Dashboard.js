@@ -209,7 +209,7 @@ export default function Dashboard() {
               if (telaAtiva !== 'financeiro') e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            <Icon icon="fluent:receipt-20-regular" width="22" height="22" />
+            <Icon icon="solar:chat-round-money-outline" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Financeiro</span>}
           </div>
 

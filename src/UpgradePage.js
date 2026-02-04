@@ -132,7 +132,7 @@ export default function UpgradePage() {
   }
 
   const handleSuporteWhatsApp = () => {
-    window.open('https://wa.me/5562999999999?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
+    window.open('https://wa.me/5562982466639?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
   }
 
   const planos = [

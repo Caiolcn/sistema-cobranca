@@ -152,7 +152,8 @@ export default function Onboarding() {
       assinatura_ativa: false,
       valor_devido: 0,
       data_vencimento: new Date().toISOString().split('T')[0],
-      status: 'pendente'
+      status: 'pendente',
+      portal_token: crypto.randomUUID().replace(/-/g, '')
     }).select()
 
     if (!error && data) {

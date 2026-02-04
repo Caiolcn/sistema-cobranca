@@ -865,7 +865,8 @@ export default function Clientes() {
           data_vencimento: new Date().toISOString().split('T')[0],
           status: 'pendente',
           assinatura_ativa: criarAssinatura,
-          plano_id: criarAssinatura ? planoSelecionado : null
+          plano_id: criarAssinatura ? planoSelecionado : null,
+          portal_token: crypto.randomUUID().replace(/-/g, '')
         })
         .select()
 

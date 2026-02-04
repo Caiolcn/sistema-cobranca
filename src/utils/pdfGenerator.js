@@ -266,3 +266,187 @@ export function gerarReciboDataURL(dados) {
   const doc = criarReciboPDF(dados)
   return doc.output('dataurlstring')
 }
+
+/**
+ * Gera relatório de despesas em PDF (formato tabular)
+ * @param {Array} despesas - Lista de despesas
+ * @param {Object} resumo - Resumo com totais
+ * @param {string} nomeEmpresa - Nome da empresa
+ */
+export function gerarRelatorioDespesasPDF(despesas, resumo, nomeEmpresa) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 15
+  const contentWidth = pageWidth - margin * 2
+
+  // ============ HEADER ============
+  doc.setFillColor(52, 72, 72) // #344848
+  doc.rect(0, 0, pageWidth, 22, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('RELATÓRIO DE DESPESAS', pageWidth / 2, 14, { align: 'center' })
+
+  // Linha decorativa
+  doc.setFillColor(76, 175, 80)
+  doc.rect(0, 22, pageWidth, 2, 'F')
+
+  // Empresa e data
+  doc.setTextColor(52, 72, 72)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text(nomeEmpresa || 'Empresa', margin, 32)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(100, 100, 100)
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, margin, 38)
+
+  // ============ RESUMO ============
+  let yPos = 46
+
+  const formatarMoeda = (valor) => {
+    return `R$ ${parseFloat(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+
+  // Caixas de resumo
+  const boxWidth = (contentWidth - 10) / 3
+  const boxes = [
+    { label: 'Pendente', valor: formatarMoeda(resumo.totalPendente), cor: [244, 67, 54] },
+    { label: 'Pago no mês', valor: formatarMoeda(resumo.totalPagoMes), cor: [76, 175, 80] },
+    { label: 'Total do mês', valor: formatarMoeda(resumo.totalMes), cor: [33, 150, 243] }
+  ]
+
+  boxes.forEach((box, i) => {
+    const x = margin + (boxWidth + 5) * i
+    doc.setFillColor(245, 245, 245)
+    doc.roundedRect(x, yPos, boxWidth, 18, 2, 2, 'F')
+    doc.setFillColor(...box.cor)
+    doc.rect(x, yPos, 2, 18, 'F')
+
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(100, 100, 100)
+    doc.text(box.label, x + 6, yPos + 7)
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(26, 26, 26)
+    doc.text(box.valor, x + 6, yPos + 14)
+  })
+
+  yPos += 26
+
+  // ============ TABELA ============
+  // Header da tabela
+  const colWidths = [65, 35, 28, 30, 22]
+  const colHeaders = ['Descrição', 'Categoria', 'Vencimento', 'Valor', 'Status']
+  const colAligns = ['left', 'left', 'left', 'right', 'center']
+
+  doc.setFillColor(52, 72, 72)
+  doc.rect(margin, yPos, contentWidth, 8, 'F')
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+
+  let colX = margin + 3
+  colHeaders.forEach((header, i) => {
+    const align = colAligns[i]
+    const textX = align === 'right' ? colX + colWidths[i] - 3 : align === 'center' ? colX + colWidths[i] / 2 : colX
+    doc.text(header, textX, yPos + 5.5, { align })
+    colX += colWidths[i]
+  })
+
+  yPos += 8
+
+  // Linhas da tabela
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+
+  despesas.forEach((despesa, index) => {
+    // Verificar se precisa nova página
+    if (yPos > pageHeight - 25) {
+      doc.addPage()
+      yPos = 15
+
+      // Repetir header da tabela
+      doc.setFillColor(52, 72, 72)
+      doc.rect(margin, yPos, contentWidth, 8, 'F')
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(255, 255, 255)
+
+      colX = margin + 3
+      colHeaders.forEach((header, i) => {
+        const align = colAligns[i]
+        const textX = align === 'right' ? colX + colWidths[i] - 3 : align === 'center' ? colX + colWidths[i] / 2 : colX
+        doc.text(header, textX, yPos + 5.5, { align })
+        colX += colWidths[i]
+      })
+
+      yPos += 8
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+    }
+
+    // Fundo alternado
+    if (index % 2 === 0) {
+      doc.setFillColor(250, 250, 250)
+      doc.rect(margin, yPos, contentWidth, 7, 'F')
+    }
+
+    doc.setTextColor(51, 51, 51)
+    colX = margin + 3
+
+    // Descrição
+    const descricao = (despesa.descricao || '').substring(0, 35)
+    doc.text(descricao, colX, yPos + 5)
+    colX += colWidths[0]
+
+    // Categoria
+    const categoria = (despesa.categorias_despesas?.nome || '-').substring(0, 18)
+    doc.text(categoria, colX, yPos + 5)
+    colX += colWidths[1]
+
+    // Vencimento
+    const venc = despesa.data_vencimento
+      ? new Date(despesa.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+      : '-'
+    doc.text(venc, colX, yPos + 5)
+    colX += colWidths[2]
+
+    // Valor
+    const valorStr = formatarMoeda(despesa.valor)
+    doc.text(valorStr, colX + colWidths[3] - 3, yPos + 5, { align: 'right' })
+    colX += colWidths[3]
+
+    // Status
+    const statusText = despesa.status === 'pago' ? 'Pago' : despesa.status === 'pendente' ? 'Pendente' : 'Cancelado'
+    if (despesa.status === 'pago') doc.setTextColor(76, 175, 80)
+    else if (despesa.status === 'pendente') doc.setTextColor(33, 150, 243)
+    else doc.setTextColor(158, 158, 158)
+    doc.text(statusText, colX + colWidths[4] / 2, yPos + 5, { align: 'center' })
+
+    doc.setTextColor(51, 51, 51)
+    yPos += 7
+  })
+
+  // ============ FOOTER ============
+  const totalPages = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setFillColor(245, 245, 245)
+    doc.rect(0, pageHeight - 12, pageWidth, 12, 'F')
+    doc.setTextColor(100, 100, 100)
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.text(
+      `${despesas.length} despesa(s) | Página ${i} de ${totalPages}`,
+      pageWidth / 2,
+      pageHeight - 5,
+      { align: 'center' }
+    )
+  }
+
+  doc.save(`relatorio_despesas_${new Date().toISOString().split('T')[0]}.pdf`)
+}

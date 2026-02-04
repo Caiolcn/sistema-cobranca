@@ -25,7 +25,7 @@ export function UserProvider({ children }) {
       // Buscar dados adicionais do usuário (incluindo trial_fim para evitar query duplicada)
       let { data: usuarioData, error } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim, onboarding_completed, onboarding_step')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step')
         .eq('id', authUser.id)
         .maybeSingle()
 
@@ -33,7 +33,7 @@ export function UserProvider({ children }) {
       if (error && !usuarioData) {
         const { data: fallback } = await supabase
           .from('usuarios')
-          .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
+          .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim')
           .eq('id', authUser.id)
           .maybeSingle()
         usuarioData = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -69,7 +69,7 @@ export function UserProvider({ children }) {
 
     let { data, error } = await supabase
       .from('usuarios')
-      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim, onboarding_completed, onboarding_step')
+      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -77,7 +77,7 @@ export function UserProvider({ children }) {
     if (error && !data) {
       const { data: fallback } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, chave_pix, trial_fim')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim')
         .eq('id', user.id)
         .maybeSingle()
       data = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -124,6 +124,7 @@ export function UserProvider({ children }) {
     userId: user?.id,
     plano: userData?.plano || 'starter',
     nomeEmpresa: userData?.nome_empresa || '',
+    nomeCompleto: userData?.nome_completo || '',
     chavePix: userData?.chave_pix || '',
     // Trial status (calculado uma vez, evita query duplicada)
     trialStatus
