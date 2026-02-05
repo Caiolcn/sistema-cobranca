@@ -47,7 +47,7 @@ export default function CsvImportModal({
 
   const baixarPlanilhaExemplo = () => {
     const linhas = [
-      'Nome;Telefone;CPF;Plano;Data Inicio;Data Vencimento',
+      'Nome;Telefone;CPF;Plano;Data_Inicio;Data_Vencimento',
       'Maria Silva;(11) 99876-5432;529.982.247-25;Mensal;01/01/2025;05/02/2025',
       'João Santos;(21) 98765-4321;361.440.190-04;Trimestral;15/12/2024;15/01/2025',
       'Ana Oliveira;(62) 91234-5678;;Mensal;;10/02/2025',
@@ -371,12 +371,12 @@ export default function CsvImportModal({
                     onMouseEnter={e => { e.target.style.backgroundColor = '#bbf7d0' }}
                     onMouseLeave={e => { e.target.style.backgroundColor = '#dcfce7' }}
                   >
-                    <Icon icon="ph:download-simple-bold" width="14" />
+                    <Icon icon="iconoir:import" width="14" />
                     Baixar modelo
                   </button>
                 </div>
                 <code style={{ fontSize: '12px', color: '#15803d', lineHeight: '1.6' }}>
-                  Nome;Telefone;CPF;Plano;Data Inicio;Data Vencimento<br />
+                  Nome;Telefone;CPF;Plano;Data_Inicio;Data_Vencimento<br />
                   João Silva;(62) 99999-9999;123.456.789-00;Mensal;01/01/2025;05/02/2025
                 </code>
               </div>
@@ -582,7 +582,7 @@ export default function CsvImportModal({
                     cursor: validationResults.valid.length > 0 ? 'pointer' : 'not-allowed'
                   }}
                 >
-                  <Icon icon="ph:download-simple-bold" width="16" />
+                  <Icon icon="iconoir:import" width="16" />
                   Importar {Math.min(validationResults.valid.length, availableSlots)} clientes
                 </button>
               </div>
