@@ -127,11 +127,12 @@ function Home() {
         { count: countMensagensEnviadas }, // Count de mensagens (count vem direto, não em data)
         { data: todasDespesas, error: erroDespesas }  // Despesas (para Resultado Financeiro)
       ] = await Promise.all([
-        // 1. TODAS as mensalidades - processamos tudo no cliente
+        // 1. TODAS as mensalidades - processamos tudo no cliente (excluindo deletadas)
         supabase
           .from('mensalidades')
           .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at')
-          .eq('user_id', userId),
+          .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false'),
 
         // 2. Todos os clientes com assinaturas e planos (excluindo deletados)
         supabase
@@ -152,6 +153,7 @@ function Home() {
           .eq('status', 'pendente')
           .eq('enviado_hoje', false)
           .neq('cancelado_envio', true)
+          .or('lixo.is.null,lixo.eq.false')
           .lte('data_vencimento', tresDiasFrenteStr)
           .order('data_vencimento', { ascending: true })
           .limit(20),

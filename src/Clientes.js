@@ -38,6 +38,7 @@ export default function Clientes() {
   const [filtroAssinatura, setFiltroAssinatura] = useState(searchParams.get('assinatura') || 'todos')
   const [filtroInadimplente, setFiltroInadimplente] = useState(searchParams.get('inadimplente') === 'true')
   const [confirmDelete, setConfirmDelete] = useState({ show: false, cliente: null })
+  const [excluirMensalidades, setExcluirMensalidades] = useState(false)
   const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(false)
   const [novoClienteNome, setNovoClienteNome] = useState('')
   const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
@@ -264,6 +265,7 @@ export default function Clientes() {
         .from('mensalidades')
         .select('*')
         .eq('devedor_id', clienteId)
+        .or('lixo.is.null,lixo.eq.false')
         .order('data_vencimento', { ascending: true })
 
       if (error) throw error
@@ -524,6 +526,14 @@ export default function Clientes() {
     if (!cliente) return
 
     try {
+      // Se opção de excluir mensalidades marcada → soft delete das mensalidades
+      if (excluirMensalidades) {
+        await supabase
+          .from('mensalidades')
+          .update({ lixo: true, deletado_em: new Date().toISOString() })
+          .eq('devedor_id', cliente.id)
+      }
+
       // Soft delete: marcar cliente como lixo = true
       const { error: clienteError } = await supabase
         .from('devedores')
@@ -535,14 +545,18 @@ export default function Clientes() {
 
       if (clienteError) throw clienteError
 
-      showToast('Cliente excluído com sucesso!', 'success')
+      const mensagem = excluirMensalidades
+        ? 'Cliente e mensalidades excluídos com sucesso!'
+        : 'Cliente excluído com sucesso!'
+      showToast(mensagem, 'success')
 
       // Fechar o modal de detalhes do cliente
       setMostrarModal(false)
       setClienteSelecionado(null)
 
-      // Fechar o modal de confirmação
+      // Fechar o modal de confirmação e resetar checkbox
       setConfirmDelete({ show: false, cliente: null })
+      setExcluirMensalidades(false)
 
       // Recarregar lista de clientes
       carregarClientes()
@@ -2493,13 +2507,17 @@ Equipe ${nomeEmpresa}`
       {/* Modal de confirmação de exclusão */}
       <ConfirmModal
         isOpen={confirmDelete.show}
-        onClose={() => setConfirmDelete({ show: false, cliente: null })}
+        onClose={() => { setConfirmDelete({ show: false, cliente: null }); setExcluirMensalidades(false) }}
         onConfirm={confirmarExclusao}
-        title={`Tem certeza que deseja excluir o cliente "${confirmDelete.cliente?.nome}"?`}
-        message={`ATENÇÃO: Todas as ${confirmDelete.cliente?.totalMensalidades || 0} mensalidade(s) associadas também serão excluídas!`}
-        confirmText="OK"
+        title={`Excluir cliente "${confirmDelete.cliente?.nome}"?`}
+        message={`Este cliente possui ${confirmDelete.cliente?.totalMensalidades || 0} mensalidade(s) associadas.`}
+        confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"
+        showCheckbox={confirmDelete.cliente?.totalMensalidades > 0}
+        checkboxLabel={`Também excluir as ${confirmDelete.cliente?.totalMensalidades || 0} mensalidades`}
+        checkboxChecked={excluirMensalidades}
+        onCheckboxChange={setExcluirMensalidades}
       />
 
       {/* Modal de confirmação de pagamento */}

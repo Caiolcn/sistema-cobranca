@@ -13,6 +13,7 @@ import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
+import ConfirmModal from './ConfirmModal'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -89,6 +90,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mrr, setMrr] = useState(0)
   const [assinaturasAtivas, setAssinaturasAtivas] = useState(0)
 
+  // Estados para exclusão e desfazer pagamento
+  const [confirmDeleteMensalidade, setConfirmDeleteMensalidade] = useState({ show: false, mensalidade: null })
+  const [confirmDesfazerPagoMensalidade, setConfirmDesfazerPagoMensalidade] = useState({ show: false, mensalidade: null })
+
   useEffect(() => {
     if (userId) {
       carregarDados()
@@ -155,6 +160,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             )
           `)
           .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false')
           .order('data_vencimento', { ascending: true }),
 
         // 2. Clientes com assinaturas para MRR (consolidado)
@@ -513,6 +519,61 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setMostrarModalConfirmacao(false)
       setMensalidadeParaAtualizar(null)
       setFormaPagamento('')
+    }
+  }
+
+  // Marcar como pago rapidamente (igual padrão Despesas)
+  const handleMarcarPagoRapido = (mensalidade) => {
+    if (mensalidade.status === 'pago') {
+      // Se já está paga, pedir confirmação antes de desfazer
+      setConfirmDesfazerPagoMensalidade({ show: true, mensalidade })
+      return
+    }
+    // Se pendente, usa o fluxo existente (abre modal de forma de pagamento)
+    alterarStatusPagamento(mensalidade, true)
+  }
+
+  // Confirmar desfazer pagamento
+  const confirmarDesfazerPagoMensalidade = async () => {
+    const mensalidade = confirmDesfazerPagoMensalidade.mensalidade
+    if (!mensalidade) return
+
+    try {
+      const { error } = await supabase
+        .from('mensalidades')
+        .update({ status: 'pendente', data_pagamento: null, forma_pagamento: null })
+        .eq('id', mensalidade.id)
+
+      if (error) throw error
+
+      showToast('Pagamento desfeito!', 'success')
+      carregarDados()
+    } catch (error) {
+      showToast('Erro ao desfazer: ' + error.message, 'error')
+    } finally {
+      setConfirmDesfazerPagoMensalidade({ show: false, mensalidade: null })
+    }
+  }
+
+  // Confirmar exclusão de mensalidade (soft delete)
+  const confirmarExclusaoMensalidade = async () => {
+    const mensalidade = confirmDeleteMensalidade.mensalidade
+    if (!mensalidade) return
+
+    try {
+      const { error } = await supabase
+        .from('mensalidades')
+        .update({ lixo: true, deletado_em: new Date().toISOString() })
+        .eq('id', mensalidade.id)
+
+      if (error) throw error
+
+      showToast('Mensalidade excluída!', 'success')
+      carregarDados()
+    } catch (error) {
+      showToast('Erro ao excluir: ' + error.message, 'error')
+    } finally {
+      setConfirmDeleteMensalidade({ show: false, mensalidade: null })
     }
   }
 
@@ -1633,39 +1694,42 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     </p>
                   </div>
 
-                  {/* Toggle de pagamento */}
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-                      <input
-                        type="checkbox"
-                        checked={mensalidade.status === 'pago'}
-                        onChange={(e) => alterarStatusPagamento(mensalidade, e.target.checked)}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span style={{
-                        position: 'absolute',
+                  {/* Ações rápidas */}
+                  <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => handleMarcarPagoRapido(mensalidade)}
+                      title={mensalidade.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: mensalidade.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
+                        color: mensalidade.status === 'pago' ? '#4CAF50' : '#666',
+                        border: 'none',
+                        borderRadius: '4px',
                         cursor: 'pointer',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: mensalidade.status === 'pago' ? '#4CAF50' : '#ccc',
-                        transition: '0.3s',
-                        borderRadius: '22px'
-                      }}>
-                        <span style={{
-                          position: 'absolute',
-                          content: '',
-                          height: '16px',
-                          width: '16px',
-                          left: mensalidade.status === 'pago' ? '25px' : '3px',
-                          bottom: '3px',
-                          backgroundColor: 'white',
-                          transition: '0.3s',
-                          borderRadius: '50%'
-                        }} />
-                      </span>
-                    </label>
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="16" height="16" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteMensalidade({ show: true, mensalidade })}
+                      title="Excluir"
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: '#ffebee',
+                        color: '#f44336',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Icon icon="mdi:delete-outline" width="16" height="16" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1677,29 +1741,29 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', width: '20%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Cliente
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Vencimento
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '15%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Valor
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '18%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Plano
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Status
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>
                     Forma Pagamento
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '12%' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>
                     Data Pagamento
                   </th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', width: '10%' }}>
-                    Pagou
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -1736,38 +1800,43 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                         : '-'
                       }
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-                        <input
-                          type="checkbox"
-                          checked={mensalidade.status === 'pago'}
-                          onChange={(e) => alterarStatusPagamento(mensalidade, e.target.checked)}
-                          style={{ opacity: 0, width: 0, height: 0 }}
-                        />
-                        <span style={{
-                          position: 'absolute',
-                          cursor: 'pointer',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          backgroundColor: mensalidade.status === 'pago' ? '#4CAF50' : '#ccc',
-                          transition: '0.3s',
-                          borderRadius: '22px'
-                        }}>
-                          <span style={{
-                            position: 'absolute',
-                            content: '',
-                            height: '16px',
-                            width: '16px',
-                            left: mensalidade.status === 'pago' ? '25px' : '3px',
-                            bottom: '3px',
-                            backgroundColor: 'white',
-                            transition: '0.3s',
-                            borderRadius: '50%'
-                          }} />
-                        </span>
-                      </label>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => handleMarcarPagoRapido(mensalidade)}
+                          title={mensalidade.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+                          style={{
+                            padding: '6px 8px',
+                            backgroundColor: mensalidade.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
+                            color: mensalidade.status === 'pago' ? '#4CAF50' : '#666',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="18" height="18" />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteMensalidade({ show: true, mensalidade })}
+                          title="Excluir"
+                          style={{
+                            padding: '6px 8px',
+                            backgroundColor: '#ffebee',
+                            color: '#f44336',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <Icon icon="mdi:delete-outline" width="18" height="18" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2878,6 +2947,30 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
       )}
+
+      {/* Modal Confirmar Exclusão de Mensalidade */}
+      <ConfirmModal
+        isOpen={confirmDeleteMensalidade.show}
+        onClose={() => setConfirmDeleteMensalidade({ show: false, mensalidade: null })}
+        onConfirm={confirmarExclusaoMensalidade}
+        title="Excluir mensalidade"
+        message={`Tem certeza que deseja excluir a mensalidade de ${confirmDeleteMensalidade.mensalidade?.devedor?.nome || 'N/A'}?\n\nValor: R$ ${parseFloat(confirmDeleteMensalidade.mensalidade?.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nVencimento: ${confirmDeleteMensalidade.mensalidade?.data_vencimento ? new Date(confirmDeleteMensalidade.mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
+
+      {/* Modal Desfazer Pagamento */}
+      <ConfirmModal
+        isOpen={confirmDesfazerPagoMensalidade.show}
+        onClose={() => setConfirmDesfazerPagoMensalidade({ show: false, mensalidade: null })}
+        onConfirm={confirmarDesfazerPagoMensalidade}
+        title="Desfazer pagamento"
+        message={`Deseja desfazer o pagamento da mensalidade de ${confirmDesfazerPagoMensalidade.mensalidade?.devedor?.nome || 'N/A'}?\n\nO status voltará para pendente.`}
+        confirmText="Desfazer"
+        cancelText="Cancelar"
+        type="warning"
+      />
     </div>
   )
 }

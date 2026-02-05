@@ -8,7 +8,11 @@ export default function ConfirmModal({
   message,
   confirmText = 'OK',
   cancelText = 'Cancelar',
-  type = 'danger' // 'danger', 'warning', 'info'
+  type = 'danger', // 'danger', 'warning', 'info'
+  showCheckbox = false,
+  checkboxLabel = '',
+  checkboxChecked = false,
+  onCheckboxChange = () => {}
 }) {
   if (!isOpen) return null
 
@@ -136,6 +140,29 @@ export default function ConfirmModal({
               }}>
                 {message}
               </p>
+
+              {/* Checkbox opcional */}
+              {showCheckbox && (
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: '#fff8e1',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  border: '1px solid #ffe082'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checkboxChecked}
+                    onChange={(e) => onCheckboxChange(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#ff9800' }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#666' }}>{checkboxLabel}</span>
+                </label>
+              )}
             </div>
           </div>
 
