@@ -9,7 +9,9 @@ const FIELD_OPTIONS = [
   { value: 'nome', label: 'Nome' },
   { value: 'telefone', label: 'Telefone' },
   { value: 'cpf', label: 'CPF' },
-  { value: 'plano', label: 'Plano' }
+  { value: 'plano', label: 'Plano' },
+  { value: 'data_inicio', label: 'Data de Início' },
+  { value: 'data_vencimento', label: 'Data de Vencimento' }
 ]
 
 export default function CsvImportModal({
@@ -45,11 +47,11 @@ export default function CsvImportModal({
 
   const baixarPlanilhaExemplo = () => {
     const linhas = [
-      'Nome;Telefone;CPF;Plano',
-      'Maria Silva;(11) 99876-5432;529.982.247-25;Mensal',
-      'João Santos;(21) 98765-4321;361.440.190-04;Trimestral',
-      'Ana Oliveira;(62) 91234-5678;;Mensal',
-      'Carlos Souza;11987654321;;'
+      'Nome;Telefone;CPF;Plano;Data Inicio;Data Vencimento',
+      'Maria Silva;(11) 99876-5432;529.982.247-25;Mensal;01/01/2025;05/02/2025',
+      'João Santos;(21) 98765-4321;361.440.190-04;Trimestral;15/12/2024;15/01/2025',
+      'Ana Oliveira;(62) 91234-5678;;Mensal;;10/02/2025',
+      'Carlos Souza;11987654321;;;'
     ]
     const conteudo = '\uFEFF' + linhas.join('\r\n')
     const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' })
@@ -178,15 +180,17 @@ export default function CsvImportModal({
     const batchSize = 50
 
     for (let i = 0; i < toImport.length; i += batchSize) {
-      const batch = toImport.slice(i, i + batchSize).map(item => ({
+      const batchItems = toImport.slice(i, i + batchSize)
+      const batch = batchItems.map(item => ({
         user_id: userId,
         nome: item.data.nome,
         telefone: item.data.telefone,
         cpf: item.data.cpf || null,
         plano_id: item.data.plano_id || null,
-        assinatura_ativa: false,
+        // Se tem plano + data_vencimento, ativa assinatura automaticamente
+        assinatura_ativa: !!(item.data.plano_id && item.data.data_vencimento),
         valor_devido: 0,
-        data_vencimento: new Date().toISOString().split('T')[0],
+        data_vencimento: item.data.data_vencimento || new Date().toISOString().split('T')[0],
         status: 'pendente',
         portal_token: crypto.randomUUID().replace(/-/g, '')
       }))
@@ -197,6 +201,27 @@ export default function CsvImportModal({
         .select('id')
 
       if (!error && data) {
+        // Criar mensalidades para clientes com assinatura ativa
+        const mensalidadesParaCriar = []
+        data.forEach((devedor, index) => {
+          const itemOriginal = batchItems[index]
+          if (itemOriginal.data.plano_id && itemOriginal.data.data_vencimento) {
+            mensalidadesParaCriar.push({
+              user_id: userId,
+              devedor_id: devedor.id,
+              valor: parseFloat(itemOriginal.data.plano_valor) || 0,
+              data_vencimento: itemOriginal.data.data_vencimento,
+              status: 'pendente',
+              is_mensalidade: true,
+              numero_mensalidade: 1
+            })
+          }
+        })
+
+        if (mensalidadesParaCriar.length > 0) {
+          await supabase.from('mensalidades').insert(mensalidadesParaCriar)
+        }
+
         imported += data.length
       }
 
@@ -351,9 +376,29 @@ export default function CsvImportModal({
                   </button>
                 </div>
                 <code style={{ fontSize: '12px', color: '#15803d', lineHeight: '1.6' }}>
-                  Nome;Telefone;CPF;Plano<br />
-                  João Silva;(62) 99999-9999;123.456.789-00;Mensal
+                  Nome;Telefone;CPF;Plano;Data Inicio;Data Vencimento<br />
+                  João Silva;(62) 99999-9999;123.456.789-00;Mensal;01/01/2025;05/02/2025
                 </code>
+              </div>
+
+              {/* Info sobre ativação automática de assinatura */}
+              <div style={{
+                marginTop: '12px', padding: '14px', backgroundColor: '#eff6ff',
+                borderRadius: '10px', border: '1px solid #bfdbfe'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <Icon icon="mdi:information-outline" width="18" style={{ color: '#1d4ed8', flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: '600', color: '#1e40af' }}>
+                      Ativação automática de assinatura
+                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#3b82f6', lineHeight: '1.5' }}>
+                      Se o cliente tiver <strong>Plano</strong> e <strong>Data de Vencimento</strong> preenchidos,
+                      a assinatura será ativada automaticamente e a primeira mensalidade será criada.
+                      Clientes sem esses dados serão importados com assinatura inativa.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

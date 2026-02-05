@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
+import ConfirmModal from './ConfirmModal'
 
 export default function PerfilUsuario({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
 
   // Dados do usuário
   const [email, setEmail] = useState('')
@@ -89,10 +91,9 @@ export default function PerfilUsuario({ onClose }) {
 
       if (error) throw error
 
-      alert('Dados atualizados com sucesso!')
-      onClose()
+      setFeedbackModal({ isOpen: true, type: 'success', title: 'Salvo!', message: 'Dados atualizados com sucesso!' })
     } catch (error) {
-      alert('Erro ao salvar: ' + error.message)
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar: ' + error.message })
     } finally {
       setSalvando(false)
     }
@@ -358,6 +359,23 @@ export default function PerfilUsuario({ onClose }) {
           </div>
         </form>
       </div>
+
+      {/* Modal de Feedback */}
+      <ConfirmModal
+        isOpen={feedbackModal.isOpen}
+        onClose={() => {
+          setFeedbackModal({ ...feedbackModal, isOpen: false })
+          if (feedbackModal.type === 'success') onClose()
+        }}
+        onConfirm={() => {
+          setFeedbackModal({ ...feedbackModal, isOpen: false })
+          if (feedbackModal.type === 'success') onClose()
+        }}
+        title={feedbackModal.title}
+        message={feedbackModal.message}
+        confirmText="OK"
+        type={feedbackModal.type}
+      />
     </div>
   )
 }

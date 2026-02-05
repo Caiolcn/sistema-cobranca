@@ -2075,118 +2075,132 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
             {/* Footer */}
             <div style={{
-              padding: '16px 24px',
+              padding: '20px 24px',
               borderTop: '1px solid #e8e8e8',
               display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px',
-              flexWrap: 'wrap'
+              flexDirection: 'column',
+              gap: '12px'
             }}>
+              {/* Botões de ação principais - só aparece se não está pago */}
+              {mensalidadeDetalhes.status !== 'pago' && (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {/* Botão Link de Pagamento */}
+                  <button
+                    onClick={() => handleGerarLinkPagamento(mensalidadeDetalhes)}
+                    disabled={gerandoLink}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: gerandoLink ? 'wait' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: gerandoLink ? 0.7 : 1
+                    }}
+                  >
+                    <Icon icon={gerandoLink ? 'mdi:loading' : 'mdi:link-variant'} width="18" style={gerandoLink ? { animation: 'spin 1s linear infinite' } : {}} />
+                    {gerandoLink ? 'Gerando...' : 'Link de Pagamento'}
+                  </button>
+
+                  {/* Botão Gerar/Visualizar Boleto - só aparece se modo é Asaas E está configurado */}
+                  {modoIntegracao === 'asaas' && asaasConfigurado && (
+                    mensalidadeDetalhes.boletos?.length > 0 ? (
+                      <button
+                        onClick={() => handleVisualizarBoleto(mensalidadeDetalhes)}
+                        style={{
+                          flex: 1,
+                          padding: '12px 16px',
+                          backgroundColor: '#FF9800',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <Icon icon="mdi:file-document-outline" width="18" />
+                        Ver Boleto
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleGerarBoleto(mensalidadeDetalhes)}
+                        disabled={gerandoBoleto}
+                        style={{
+                          flex: 1,
+                          padding: '12px 16px',
+                          backgroundColor: '#FF9800',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: gerandoBoleto ? 'wait' : 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          opacity: gerandoBoleto ? 0.7 : 1
+                        }}
+                      >
+                        <Icon icon={gerandoBoleto ? 'mdi:loading' : 'mdi:barcode'} width="18" style={gerandoBoleto ? { animation: 'spin 1s linear infinite' } : {}} />
+                        {gerandoBoleto ? 'Gerando...' : 'Gerar Boleto'}
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+
+              {/* Botão principal de ação: Marcar como Pago / Desfazer */}
+              <button
+                onClick={marcarPagoDoModal}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  backgroundColor: mensalidadeDetalhes.status === 'pago' ? '#f44336' : '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Icon icon={mensalidadeDetalhes.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle'} width="20" />
+                {mensalidadeDetalhes.status === 'pago' ? 'Desfazer Pagamento' : 'Marcar como Pago'}
+              </button>
+
+              {/* Botão Fechar - secundário */}
               <button
                 onClick={() => setMostrarModalDetalhes(false)}
                 style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'white',
+                  width: '100%',
+                  padding: '12px 20px',
+                  backgroundColor: 'transparent',
                   color: '#666',
                   border: '1px solid #ddd',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: '500'
                 }}
               >
                 Fechar
-              </button>
-              {/* Botão Link de Pagamento - só aparece se não está pago */}
-              {mensalidadeDetalhes.status !== 'pago' && (
-                <button
-                  onClick={() => handleGerarLinkPagamento(mensalidadeDetalhes)}
-                  disabled={gerandoLink}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: gerandoLink ? 'wait' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: gerandoLink ? 0.7 : 1
-                  }}
-                >
-                  <Icon icon={gerandoLink ? 'mdi:loading' : 'mdi:qrcode'} width="18" style={gerandoLink ? { animation: 'spin 1s linear infinite' } : {}} />
-                  {gerandoLink ? 'Gerando...' : 'Link de Pagamento'}
-                </button>
-              )}
-              {/* Botão Gerar/Visualizar Boleto - só aparece se modo é Asaas E está configurado */}
-              {modoIntegracao === 'asaas' && asaasConfigurado && (
-                mensalidadeDetalhes.boletos?.length > 0 ? (
-                  // Já tem boleto - mostrar "Visualizar Boleto"
-                  <button
-                    onClick={() => handleVisualizarBoleto(mensalidadeDetalhes)}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <Icon icon="mdi:file-document-outline" width="18" />
-                    Visualizar Boleto
-                  </button>
-                ) : mensalidadeDetalhes.status !== 'pago' ? (
-                  // Não tem boleto e não está pago - mostrar "Gerar Boleto"
-                  <button
-                    onClick={() => handleGerarBoleto(mensalidadeDetalhes)}
-                    disabled={gerandoBoleto}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#FF9800',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: gerandoBoleto ? 'wait' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      opacity: gerandoBoleto ? 0.7 : 1
-                    }}
-                  >
-                    <Icon icon={gerandoBoleto ? 'mdi:loading' : 'mdi:barcode'} width="18" style={gerandoBoleto ? { animation: 'spin 1s linear infinite' } : {}} />
-                    {gerandoBoleto ? 'Gerando...' : 'Gerar Boleto'}
-                  </button>
-                ) : null
-              )}
-              <button
-                onClick={marcarPagoDoModal}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: mensalidadeDetalhes.status === 'pago' ? '#f44336' : '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <Icon icon={mensalidadeDetalhes.status === 'pago' ? 'mdi:close-circle' : 'mdi:check-circle'} width="18" />
-                {mensalidadeDetalhes.status === 'pago' ? 'Desfazer Pagamento' : 'Marcar como Pago'}
               </button>
             </div>
           </div>
