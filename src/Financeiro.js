@@ -14,6 +14,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
 import ConfirmModal from './ConfirmModal'
+import { validarCPF } from './utils/validators'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -75,6 +76,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [pixBoletoCopied, setPixBoletoCopied] = useState(false)
   const [asaasConfigurado, setAsaasConfigurado] = useState(false)
   const [modoIntegracao, setModoIntegracao] = useState('manual') // 'asaas' ou 'manual'
+
+  // Modal para solicitar CPF do cliente
+  const [mostrarModalCpf, setMostrarModalCpf] = useState(false)
+  const [cpfInput, setCpfInput] = useState('')
+  const [mensalidadeParaBoleto, setMensalidadeParaBoleto] = useState(null)
+  const [salvandoCpf, setSalvandoCpf] = useState(false)
 
   // Cards de resumo
   const [totalEmAtraso, setTotalEmAtraso] = useState(0)
@@ -144,6 +151,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             devedor:devedores(
               nome,
               telefone,
+              cpf,
               plano:planos(nome)
             ),
             boletos(
@@ -740,23 +748,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
   }
 
-  // Função para gerar boleto via Asaas
-  const handleGerarBoleto = async (mensalidade) => {
-    if (modoIntegracao !== 'asaas') {
-      showToast('Ative a integração Asaas em Configurações para gerar boletos.', 'error')
-      return
-    }
+  // Função para formatar CPF
+  const formatarCpf = (value) => {
+    const numeros = value.replace(/\D/g, '').slice(0, 11)
+    if (numeros.length <= 3) return numeros
+    if (numeros.length <= 6) return numeros.replace(/(\d{3})(\d+)/, '$1.$2')
+    if (numeros.length <= 9) return numeros.replace(/(\d{3})(\d{3})(\d+)/, '$1.$2.$3')
+    return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d+)/, '$1.$2.$3-$4')
+  }
 
-    if (!asaasConfigurado) {
-      showToast('Configure sua API Key do Asaas em Configurações > Integrações.', 'error')
-      return
-    }
-
-    if (mensalidade.status === 'pago') {
-      showToast('Esta mensalidade já foi paga.', 'info')
-      return
-    }
-
+  // Função para gerar boleto com CPF já validado
+  const gerarBoletoComCpf = async (mensalidade) => {
     setGerandoBoleto(true)
 
     try {
@@ -793,6 +795,76 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     } finally {
       setGerandoBoleto(false)
     }
+  }
+
+  // Função para salvar CPF e gerar boleto
+  const handleSalvarCpfEGerarBoleto = async () => {
+    if (!validarCPF(cpfInput)) {
+      showToast('CPF inválido', 'error')
+      return
+    }
+
+    setSalvandoCpf(true)
+    try {
+      // Salvar CPF no devedor
+      const { error } = await supabase
+        .from('devedores')
+        .update({ cpf: formatarCpf(cpfInput) })
+        .eq('id', mensalidadeParaBoleto.devedor_id)
+
+      if (error) throw error
+
+      // Atualizar dados locais
+      const mensalidadeAtualizada = {
+        ...mensalidadeParaBoleto,
+        devedor: {
+          ...mensalidadeParaBoleto.devedor,
+          cpf: formatarCpf(cpfInput)
+        }
+      }
+
+      // Fechar modal e gerar boleto
+      setMostrarModalCpf(false)
+      await gerarBoletoComCpf(mensalidadeAtualizada)
+
+      // Recarregar dados para atualizar a lista
+      carregarDados()
+    } catch (error) {
+      showToast('Erro ao salvar CPF: ' + error.message, 'error')
+    } finally {
+      setSalvandoCpf(false)
+    }
+  }
+
+  // Função para gerar boleto via Asaas
+  const handleGerarBoleto = async (mensalidade) => {
+    if (modoIntegracao !== 'asaas') {
+      showToast('Ative a integração Asaas em Configurações para gerar boletos.', 'error')
+      return
+    }
+
+    if (!asaasConfigurado) {
+      showToast('Configure sua API Key do Asaas em Configurações > Integrações.', 'error')
+      return
+    }
+
+    if (mensalidade.status === 'pago') {
+      showToast('Esta mensalidade já foi paga.', 'info')
+      return
+    }
+
+    // Verificar se devedor tem CPF
+    const cpfDevedor = mensalidade.devedor?.cpf?.replace(/\D/g, '') || ''
+    if (!cpfDevedor || cpfDevedor.length < 11) {
+      // Abrir modal para pedir CPF
+      setMensalidadeParaBoleto(mensalidade)
+      setCpfInput(mensalidade.devedor?.cpf || '')
+      setMostrarModalCpf(true)
+      return
+    }
+
+    // Se tem CPF, continuar normalmente
+    await gerarBoletoComCpf(mensalidade)
   }
 
   const copiarLinhaDigitavel = async () => {
@@ -2956,6 +3028,116 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 }}
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para solicitar CPF */}
+      {mostrarModalCpf && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1004,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: '#fff3e0',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Icon icon="mdi:card-account-details" width="24" height="24" style={{ color: '#FF9800' }} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
+                CPF necessário
+              </h3>
+            </div>
+            <p style={{ color: '#666', marginBottom: '16px', fontSize: '14px', lineHeight: '1.5' }}>
+              O Asaas exige o CPF do cliente para emitir boletos.
+              Informe o CPF de <strong style={{ color: '#344848' }}>{mensalidadeParaBoleto?.devedor?.nome}</strong>:
+            </p>
+            <input
+              type="text"
+              value={cpfInput}
+              onChange={(e) => setCpfInput(formatarCpf(e.target.value))}
+              placeholder="000.000.000-00"
+              maxLength="14"
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                background: '#f8f9fa',
+                color: '#344848',
+                fontSize: '16px',
+                marginBottom: '20px',
+                boxSizing: 'border-box',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#FF9800'}
+              onBlur={(e) => e.target.style.borderColor = '#ddd'}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setMostrarModalCpf(false)
+                  setCpfInput('')
+                  setMensalidadeParaBoleto(null)
+                }}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSalvarCpfEGerarBoleto}
+                disabled={salvandoCpf || cpfInput.replace(/\D/g, '').length < 11}
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  background: '#FF9800',
+                  color: 'white',
+                  border: 'none',
+                  cursor: (salvandoCpf || cpfInput.replace(/\D/g, '').length < 11) ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  opacity: (salvandoCpf || cpfInput.replace(/\D/g, '').length < 11) ? 0.6 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {salvandoCpf && <Icon icon="mdi:loading" width="18" style={{ animation: 'spin 1s linear infinite' }} />}
+                {salvandoCpf ? 'Salvando...' : 'Salvar e Gerar Boleto'}
               </button>
             </div>
           </div>

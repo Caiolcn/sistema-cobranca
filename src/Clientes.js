@@ -830,12 +830,8 @@ export default function Clientes() {
       return
     }
 
-    // Validar CPF (obrigatório para emissão de boletos)
-    if (!novoClienteCpf.trim()) {
-      setErroModalNovoCliente('CPF é obrigatório para emissão de boletos')
-      return
-    }
-    if (!validarCPF(novoClienteCpf)) {
+    // Validar CPF apenas se preenchido (opcional no cadastro)
+    if (novoClienteCpf.trim() && !validarCPF(novoClienteCpf)) {
       setErroModalNovoCliente('CPF inválido')
       return
     }
@@ -2967,7 +2963,7 @@ Equipe ${nomeEmpresa}`
                 fontWeight: '500',
                 color: '#333'
               }}>
-                CPF <span style={{ color: '#e53935' }}>*</span>
+                CPF <span style={{ color: '#888', fontSize: '12px', fontWeight: '400' }}>(opcional)</span>
               </label>
               <input
                 type="text"
