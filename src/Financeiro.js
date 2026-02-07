@@ -353,23 +353,28 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
    */
   const criarProximaMensalidade = async (mensalidadeAtual) => {
     try {
-      // 1. Verificar se é recorrente
-      if (!mensalidadeAtual.is_mensalidade) {
-        console.log('Mensalidade não é recorrente, pulando criação automática')
-        return
-      }
-
-      // 2. Buscar dados completos do cliente e plano
+      // 1. Buscar dados completos do cliente
       const devedor = mensalidadeAtual.devedores
 
       if (!devedor) {
         console.error('Erro: devedor não encontrado na mensalidade')
+        showToast('Erro ao criar próxima parcela: cliente não encontrado', 'error')
         return
       }
 
-      // 3. Verificar se assinatura está ativa
+      // 2. Verificar se assinatura está ativa (condição principal para gerar próxima)
       if (!devedor.assinatura_ativa) {
         console.log('Assinatura inativa, não criar próxima mensalidade')
+        return
+      }
+
+      // 3. Verificar se é mensalidade recorrente
+      // Se assinatura está ativa mas is_mensalidade não está definido, assumir como recorrente
+      const isRecorrente = mensalidadeAtual.is_mensalidade === true ||
+                           (mensalidadeAtual.is_mensalidade == null && devedor.assinatura_ativa)
+
+      if (!isRecorrente) {
+        console.log('Mensalidade não é recorrente (is_mensalidade=false), pulando criação automática')
         return
       }
 
