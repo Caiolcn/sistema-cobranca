@@ -61,6 +61,27 @@ WHERE u.email = 'pilatescarolribeiro@outlook.com'
     AND m.data_vencimento = '2026-03-02'
   );
 
+-- Criar próxima mensalidade para ANA PAULA FERREIRA
+INSERT INTO mensalidades (user_id, devedor_id, valor, data_vencimento, status, is_mensalidade, numero_mensalidade)
+SELECT
+  d.user_id,
+  d.id,
+  COALESCE(p.valor, 180.00),
+  '2026-03-02',
+  'pendente',
+  true,
+  COALESCE((SELECT MAX(numero_mensalidade) FROM mensalidades WHERE devedor_id = d.id), 0) + 1
+FROM devedores d
+LEFT JOIN planos p ON d.plano_id = p.id
+JOIN auth.users u ON d.user_id = u.id
+WHERE u.email = 'pilatescarolribeiro@outlook.com'
+  AND d.nome ILIKE '%Ana Paula Ferreira%'
+  AND NOT EXISTS (
+    SELECT 1 FROM mensalidades m
+    WHERE m.devedor_id = d.id
+    AND m.data_vencimento = '2026-03-02'
+  );
+
 -- ============================================
 -- PASSO 3: Verificar se as mensalidades foram criadas
 -- ============================================
@@ -69,5 +90,5 @@ FROM mensalidades m
 JOIN devedores d ON m.devedor_id = d.id
 JOIN auth.users u ON d.user_id = u.id
 WHERE u.email = 'pilatescarolribeiro@outlook.com'
-  AND (d.nome ILIKE '%Joelma Borges%' OR d.nome ILIKE '%Lara Roberta%')
+  AND (d.nome ILIKE '%Joelma Borges%' OR d.nome ILIKE '%Lara Roberta%' OR d.nome ILIKE '%Ana Paula Ferreira%')
 ORDER BY d.nome, m.data_vencimento DESC;

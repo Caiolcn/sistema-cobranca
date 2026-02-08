@@ -506,10 +506,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       // 🆕 CRIAR PRÓXIMA MENSALIDADE AUTOMATICAMENTE (apenas se estiver marcando como pago)
       if (novoStatusPagamento && mensalidadeAtualizada) {
-        // Enviar confirmação via WhatsApp ao cliente (fire-and-forget)
+        // Enviar confirmação via WhatsApp ao cliente
         whatsappService.enviarConfirmacaoPagamento(mensalidadeParaAtualizar.id)
-          .then(r => { if (r.sucesso) showToast('Confirmação enviada via WhatsApp', 'success') })
-          .catch(() => {})
+          .then(r => {
+            if (r.sucesso) {
+              showToast('Confirmação enviada via WhatsApp', 'success')
+            } else {
+              showToast('Não foi possível enviar confirmação via WhatsApp: ' + (r.erro || 'erro desconhecido'), 'warning')
+            }
+          })
+          .catch((err) => {
+            showToast('Falha ao enviar confirmação via WhatsApp', 'warning')
+            console.error('Erro ao enviar confirmação WhatsApp:', err)
+          })
 
         await criarProximaMensalidade(mensalidadeAtualizada)
         // Recarregar lista para mostrar nova mensalidade
