@@ -6,6 +6,8 @@ import useWindowSize from './hooks/useWindowSize'
 import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
 
+console.log('>>> WhatsAppConexao.js CARREGADO <<<')
+
 // Estado global do status de conexão do WhatsApp
 let globalStatus = 'disconnected'
 const statusListeners = []
@@ -246,14 +248,14 @@ export default function WhatsAppConexao() {
 
         setTemplatesAgrupados(agrupados)
 
-        // Carregar template atual
-        const templateAtual = agrupados['overdue'] // Default é overdue (3 dias depois)
+        // Carregar template atual baseado no tipo selecionado (due_day por padrão)
+        const templateAtual = agrupados[tipoTemplateSelecionado] || agrupados['due_day']
         if (templateAtual) {
           setTituloTemplate(templateAtual.titulo)
           setMensagemTemplate(templateAtual.mensagem)
         } else {
-          setTituloTemplate(getTituloDefault('overdue'))
-          setMensagemTemplate(getMensagemDefault('overdue'))
+          setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
+          setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
         }
 
         // 5. Processar Automações (novo fluxo: 3 dias antes, no dia, 3 dias depois)
@@ -601,10 +603,15 @@ export default function WhatsAppConexao() {
           .order('created_at', { ascending: false })
 
         if (templatesAtualizados) {
+          // Priorizar customizados sobre padrões (mesma lógica de carregarTemplates)
+          const findBest = (tipo) => {
+            const custom = templatesAtualizados.find(t => t.tipo === tipo && t.is_padrao !== true)
+            return custom || templatesAtualizados.find(t => t.tipo === tipo) || null
+          }
           const agrupados = {
-            pre_due_3days: templatesAtualizados.find(t => t.tipo === 'pre_due_3days') || null,
-            due_day: templatesAtualizados.find(t => t.tipo === 'due_day') || null,
-            overdue: templatesAtualizados.find(t => t.tipo === 'overdue') || null
+            pre_due_3days: findBest('pre_due_3days'),
+            due_day: findBest('due_day'),
+            overdue: findBest('overdue')
           }
           setTemplatesAgrupados(agrupados)
 
@@ -1189,7 +1196,6 @@ export default function WhatsAppConexao() {
         setTituloTemplate(templateAtual.titulo)
         setMensagemTemplate(templateAtual.mensagem)
       } else {
-        // Load default for this type
         setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
         setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
       }
@@ -1222,24 +1228,17 @@ export default function WhatsAppConexao() {
   }
 
   const salvarTemplate = async () => {
-    console.log('🔵 salvarTemplate() chamado!', { tipoTemplateSelecionado, tituloTemplate: tituloTemplate.substring(0, 30) })
-
     if (!tituloTemplate.trim() || !mensagemTemplate.trim()) {
-      console.log('❌ Campos vazios - abortando')
       setFeedbackModal({ isOpen: true, type: 'warning', title: 'Atenção', message: 'Preencha o título e a mensagem do template' })
       return
     }
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      console.log('👤 Usuário:', user?.id)
-
       const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
-      console.log('📋 Template existente:', templateExistente?.id, templateExistente?.is_padrao)
 
       if (templateExistente) {
         // Update existing - marcar como customizado (não padrão)
-        console.log('📝 Atualizando template existente:', templateExistente.id, tipoTemplateSelecionado)
         const { error, data } = await supabase
           .from('templates')
           .update({
@@ -1252,7 +1251,6 @@ export default function WhatsAppConexao() {
           .select()
 
         if (error) throw error
-        console.log('✅ Template atualizado:', data)
 
         // Atualizar estado local imediatamente
         setTemplatesAgrupados(prev => ({
@@ -1261,7 +1259,6 @@ export default function WhatsAppConexao() {
         }))
       } else {
         // Create new
-        console.log('📝 Criando novo template:', tipoTemplateSelecionado)
         const { error, data } = await supabase
           .from('templates')
           .insert({
@@ -1275,7 +1272,6 @@ export default function WhatsAppConexao() {
           .select()
 
         if (error) throw error
-        console.log('✅ Template criado:', data)
 
         // Atualizar estado local imediatamente
         if (data && data[0]) {
@@ -2433,10 +2429,7 @@ export default function WhatsAppConexao() {
               </div>
 
               <button
-                onClick={() => {
-                  console.log('🟢 Botão Salvar clicado!', { templateEditLocked })
-                  if (!templateEditLocked) salvarTemplate()
-                }}
+                onClick={salvarTemplate}
                 disabled={templateEditLocked}
                 style={{
                   width: '100%',
