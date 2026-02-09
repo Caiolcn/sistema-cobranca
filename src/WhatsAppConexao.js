@@ -1222,15 +1222,20 @@ export default function WhatsAppConexao() {
   }
 
   const salvarTemplate = async () => {
+    console.log('🔵 salvarTemplate() chamado!', { tipoTemplateSelecionado, tituloTemplate: tituloTemplate.substring(0, 30) })
+
     if (!tituloTemplate.trim() || !mensagemTemplate.trim()) {
+      console.log('❌ Campos vazios - abortando')
       setFeedbackModal({ isOpen: true, type: 'warning', title: 'Atenção', message: 'Preencha o título e a mensagem do template' })
       return
     }
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
+      console.log('👤 Usuário:', user?.id)
 
       const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
+      console.log('📋 Template existente:', templateExistente?.id, templateExistente?.is_padrao)
 
       if (templateExistente) {
         // Update existing - marcar como customizado (não padrão)
@@ -2428,7 +2433,10 @@ export default function WhatsAppConexao() {
               </div>
 
               <button
-                onClick={salvarTemplate}
+                onClick={() => {
+                  console.log('🟢 Botão Salvar clicado!', { templateEditLocked })
+                  if (!templateEditLocked) salvarTemplate()
+                }}
                 disabled={templateEditLocked}
                 style={{
                   width: '100%',
