@@ -199,11 +199,19 @@ export default function WhatsAppConexao() {
         }
 
         // 4. Processar Templates
+        // Priorizar templates customizados (is_padrao = false) sobre os padrões
         const templates = templatesResult.data || []
+        const findBestTemplate = (tipo) => {
+          // Primeiro tenta encontrar um template customizado (editado pelo usuário)
+          const customizado = templates.find(t => t.tipo === tipo && t.is_padrao === false)
+          if (customizado) return customizado
+          // Se não encontrar customizado, usa o padrão
+          return templates.find(t => t.tipo === tipo) || null
+        }
         let agrupados = {
-          pre_due_3days: templates.find(t => t.tipo === 'pre_due_3days') || null,
-          due_day: templates.find(t => t.tipo === 'due_day') || null,
-          overdue: templates.find(t => t.tipo === 'overdue') || null
+          pre_due_3days: findBestTemplate('pre_due_3days'),
+          due_day: findBestTemplate('due_day'),
+          overdue: findBestTemplate('overdue')
         }
 
         // 4.1 Criar templates que não existem automaticamente
@@ -1161,11 +1169,16 @@ export default function WhatsAppConexao() {
 
       if (error) throw error
 
-      // Group templates by type
+      // Group templates by type - priorizar customizados sobre padrões
+      const findBestTemplate = (tipo) => {
+        const customizado = templates?.find(t => t.tipo === tipo && t.is_padrao === false)
+        if (customizado) return customizado
+        return templates?.find(t => t.tipo === tipo) || null
+      }
       const agrupados = {
-        pre_due_3days: templates?.find(t => t.tipo === 'pre_due_3days') || null,
-        due_day: templates?.find(t => t.tipo === 'due_day') || null,
-        overdue: templates?.find(t => t.tipo === 'overdue') || null
+        pre_due_3days: findBestTemplate('pre_due_3days'),
+        due_day: findBestTemplate('due_day'),
+        overdue: findBestTemplate('overdue')
       }
 
       setTemplatesAgrupados(agrupados)
@@ -1220,12 +1233,13 @@ export default function WhatsAppConexao() {
       const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
 
       if (templateExistente) {
-        // Update existing
+        // Update existing - marcar como customizado (não padrão)
         const { error } = await supabase
           .from('templates')
           .update({
             titulo: tituloTemplate,
             mensagem: mensagemTemplate,
+            is_padrao: false,
             updated_at: new Date().toISOString()
           })
           .eq('id', templateExistente.id)
