@@ -199,11 +199,11 @@ export default function WhatsAppConexao() {
         }
 
         // 4. Processar Templates
-        // Priorizar templates customizados (is_padrao = false) sobre os padrões
+        // Priorizar templates customizados (is_padrao !== true) sobre os padrões
         const templates = templatesResult.data || []
         const findBestTemplate = (tipo) => {
-          // Primeiro tenta encontrar um template customizado (editado pelo usuário)
-          const customizado = templates.find(t => t.tipo === tipo && t.is_padrao === false)
+          // Primeiro tenta encontrar um template customizado (is_padrao = false ou null)
+          const customizado = templates.find(t => t.tipo === tipo && t.is_padrao !== true)
           if (customizado) return customizado
           // Se não encontrar customizado, usa o padrão
           return templates.find(t => t.tipo === tipo) || null
@@ -1171,7 +1171,7 @@ export default function WhatsAppConexao() {
 
       // Group templates by type - priorizar customizados sobre padrões
       const findBestTemplate = (tipo) => {
-        const customizado = templates?.find(t => t.tipo === tipo && t.is_padrao === false)
+        const customizado = templates?.find(t => t.tipo === tipo && t.is_padrao !== true)
         if (customizado) return customizado
         return templates?.find(t => t.tipo === tipo) || null
       }
@@ -1234,7 +1234,8 @@ export default function WhatsAppConexao() {
 
       if (templateExistente) {
         // Update existing - marcar como customizado (não padrão)
-        const { error } = await supabase
+        console.log('📝 Atualizando template existente:', templateExistente.id, tipoTemplateSelecionado)
+        const { error, data } = await supabase
           .from('templates')
           .update({
             titulo: tituloTemplate,
@@ -1243,11 +1244,20 @@ export default function WhatsAppConexao() {
             updated_at: new Date().toISOString()
           })
           .eq('id', templateExistente.id)
+          .select()
 
         if (error) throw error
+        console.log('✅ Template atualizado:', data)
+
+        // Atualizar estado local imediatamente
+        setTemplatesAgrupados(prev => ({
+          ...prev,
+          [tipoTemplateSelecionado]: { ...templateExistente, titulo: tituloTemplate, mensagem: mensagemTemplate, is_padrao: false }
+        }))
       } else {
         // Create new
-        const { error } = await supabase
+        console.log('📝 Criando novo template:', tipoTemplateSelecionado)
+        const { error, data } = await supabase
           .from('templates')
           .insert({
             user_id: user.id,
@@ -1257,12 +1267,21 @@ export default function WhatsAppConexao() {
             ativo: true,
             is_padrao: false
           })
+          .select()
 
         if (error) throw error
+        console.log('✅ Template criado:', data)
+
+        // Atualizar estado local imediatamente
+        if (data && data[0]) {
+          setTemplatesAgrupados(prev => ({
+            ...prev,
+            [tipoTemplateSelecionado]: data[0]
+          }))
+        }
       }
 
       setFeedbackModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Template salvo com sucesso!' })
-      await carregarTemplates()
     } catch (error) {
       console.error('Erro ao salvar template:', error)
       setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar template: ' + error.message })
