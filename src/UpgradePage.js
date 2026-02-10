@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTrialStatus } from './useTrialStatus'
 import { mercadoPagoService } from './services/mercadoPagoService'
 import { supabase } from './supabaseClient'
+import { trackInitiateCheckout, trackPurchase } from './utils/metaPixel'
 
 export default function UpgradePage() {
   const navigate = useNavigate()
@@ -46,6 +47,10 @@ export default function UpgradePage() {
             clearInterval(pollingRef.current)
             setVerificandoPagamento(false)
             setPagamentoConfirmado(true)
+
+            // Meta Pixel: Compra confirmada
+            const precos = { starter: 49.90, pro: 99.90, premium: 149.90 }
+            trackPurchase(precos[usuario.plano] || 99.90, usuario.plano)
           }
         } catch (error) {
           console.error('Erro ao verificar pagamento:', error)
@@ -85,6 +90,10 @@ export default function UpgradePage() {
       const data = await mercadoPagoService.criarPagamentoPix(planoId)
       console.log('✅ Pix gerado:', data.payment_id)
       setPixData(data)
+
+      // Meta Pixel: Início de checkout
+      const precos = { starter: 49.90, pro: 99.90, premium: 149.90 }
+      trackInitiateCheckout(precos[planoId] || 99.90, planoId)
       setLoading(false)
     } catch (error) {
       console.error('❌ Erro ao gerar Pix:', error)

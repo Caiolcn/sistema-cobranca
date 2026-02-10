@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import PlanCard from './components/PlanCard'
+import { trackLead, trackCompleteRegistration, trackStartTrial } from './utils/metaPixel'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -177,6 +178,7 @@ export default function Signup() {
     }
 
     // Se tudo válido, avança para etapa 2
+    trackLead() // Meta Pixel: Lead gerado
     setEtapa(2)
   }
 
@@ -250,8 +252,12 @@ export default function Signup() {
 
       if (controleError) throw controleError
 
-      // 5. Login automático já está ativo (sessão criada pelo signUp)
-      // 6. Redirecionar para onboarding
+      // 5. Meta Pixel: Cadastro completo e início de trial
+      trackCompleteRegistration()
+      trackStartTrial()
+
+      // 6. Login automático já está ativo (sessão criada pelo signUp)
+      // 7. Redirecionar para onboarding
       navigate('/app/onboarding')
 
     } catch (error) {
