@@ -154,15 +154,12 @@ export default function WhatsAppConexao() {
             .eq('ativo', true)
             .order('created_at', { ascending: false }),
 
-          // Configurações de automação do usuário
+          // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
-            .from('config')
-            .select('chave, valor')
-            .in('chave', [
-              `${user.id}_automacao_3dias_ativa`,
-              `${user.id}_automacao_nodia_ativa`,
-              `${user.id}_automacao_3diasdepois_ativa`
-            ]),
+            .from('configuracoes_cobranca')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois')
+            .eq('user_id', user.id)
+            .maybeSingle(),
 
           // Dados do usuário (chave PIX)
           supabase
@@ -258,17 +255,12 @@ export default function WhatsAppConexao() {
           setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
         }
 
-        // 5. Processar Automações (novo fluxo: 3 dias antes, no dia, 3 dias depois)
-        const automacoesMap = {}
-        automacoesResult.data?.forEach(item => {
-          const chaveSimples = item.chave.replace(`${user.id}_`, '')
-          automacoesMap[chaveSimples] = item.valor
-        })
-
-        setAutomacao3DiasAtiva(automacoesMap['automacao_3dias_ativa'] === 'true')
-        // No Dia vem ativo por padrão se não houver configuração
-        setAutomacaoNoDiaAtiva(automacoesMap['automacao_nodia_ativa'] !== 'false')
-        setAutomacao3DiasDepoisAtiva(automacoesMap['automacao_3diasdepois_ativa'] === 'true')
+        // 5. Processar Automações (da tabela configuracoes_cobranca)
+        const configCobranca = automacoesResult.data
+        // Se não existir configuração, "No Dia" vem ativo por padrão
+        setAutomacao3DiasAtiva(configCobranca?.enviar_3_dias_antes === true)
+        setAutomacaoNoDiaAtiva(configCobranca?.enviar_no_dia !== false)
+        setAutomacao3DiasDepoisAtiva(configCobranca?.enviar_3_dias_depois === true)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -478,48 +470,48 @@ export default function WhatsAppConexao() {
     }
   }
 
-  // Salvar configuração de automação
+  // Salvar configuração de automação na tabela configuracoes_cobranca
   const salvarConfiguracaoAutomacao = async (chave, valor) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Usuário não autenticado' })
-        return
+        return false
       }
 
-      let descricao = ''
-      if (chave === 'automacao_3dias_ativa') {
-        descricao = 'Automação de mensagens 3 dias antes do vencimento'
-      } else if (chave === 'automacao_5dias_ativa') {
-        descricao = 'Automação de mensagens 5 dias antes do vencimento'
-      } else if (chave === 'automacao_ematraso_ativa') {
-        descricao = 'Automação de mensagens para mensalidades em atraso'
+      // Mapear chave do React para coluna da tabela configuracoes_cobranca
+      const mapeamentoColunas = {
+        'automacao_3dias_ativa': 'enviar_3_dias_antes',
+        'automacao_nodia_ativa': 'enviar_no_dia',
+        'automacao_3diasdepois_ativa': 'enviar_3_dias_depois'
       }
 
-      // Chave única por usuário: prefixar com user_id
-      const chaveUnica = `${user.id}_${chave}`
+      const coluna = mapeamentoColunas[chave]
+      if (!coluna) {
+        console.error('Chave de automação inválida:', chave)
+        return false
+      }
 
-      // Primeiro tentar atualizar
+      // Verificar se já existe registro para este usuário
       const { data: existing, error: selectError } = await supabase
-        .from('config')
+        .from('configuracoes_cobranca')
         .select('id')
-        .eq('chave', chaveUnica)
+        .eq('user_id', user.id)
         .maybeSingle()
 
-      if (selectError) {
+      if (selectError && selectError.code !== 'PGRST116') {
         console.error('Erro ao verificar configuração:', selectError)
       }
 
       if (existing) {
         // Atualizar registro existente
         const { error } = await supabase
-          .from('config')
+          .from('configuracoes_cobranca')
           .update({
-            valor: valor.toString(),
-            descricao: descricao,
+            [coluna]: valor,
             updated_at: new Date().toISOString()
           })
-          .eq('chave', chaveUnica)
+          .eq('user_id', user.id)
 
         if (error) {
           console.error('Erro ao atualizar configuração:', error)
@@ -529,13 +521,10 @@ export default function WhatsAppConexao() {
       } else {
         // Inserir novo registro
         const { error } = await supabase
-          .from('config')
+          .from('configuracoes_cobranca')
           .insert({
             user_id: user.id,
-            chave: chaveUnica,
-            valor: valor.toString(),
-            descricao: descricao,
-            updated_at: new Date().toISOString()
+            [coluna]: valor
           })
 
         if (error) {
