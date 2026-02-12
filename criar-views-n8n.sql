@@ -47,6 +47,8 @@ DROP VIEW IF EXISTS vw_parcelas_em_atraso;
 -- ==========================================
 -- View 1: Parcelas para lembrete 3 dias ANTES (TODOS os planos)
 -- Envia apenas 1x - quando enviado_3dias = false
+-- CORRIGIDO: INNER JOIN para dependencias obrigatorias (mensallizap, configuracoes_cobranca)
+--            LEFT JOIN para opcionais (controle_planos, templates)
 -- ==========================================
 CREATE VIEW vw_parcelas_lembrete_3dias AS
 SELECT
@@ -72,22 +74,21 @@ SELECT
 FROM mensalidades m
 INNER JOIN devedores d ON m.devedor_id = d.id
 INNER JOIN usuarios u ON d.user_id = u.id
-LEFT JOIN mensallizap mz ON mz.user_id = d.user_id
-LEFT JOIN configuracoes_cobranca cc ON cc.user_id = d.user_id
+INNER JOIN mensallizap mz ON mz.user_id = d.user_id AND mz.conectado = true
+INNER JOIN configuracoes_cobranca cc ON cc.user_id = d.user_id AND cc.enviar_3_dias_antes = true
 LEFT JOIN controle_planos cp ON cp.user_id = d.user_id
 LEFT JOIN templates t ON t.user_id = d.user_id AND t.tipo = 'pre_due_3days' AND t.ativo = true
 WHERE m.status = 'pendente'
   AND m.enviado_3dias = false
   AND m.data_vencimento = CURRENT_DATE + INTERVAL '3 days'
-  AND cc.enviar_3_dias_antes = true
   AND d.assinatura_ativa = true
   AND (d.lixo IS NULL OR d.lixo = false)
-  AND (cp.usage_count < cp.limite_mensal OR cp.limite_mensal IS NULL)
-  AND mz.conectado = true;
+  AND (cp.usage_count < cp.limite_mensal OR cp.limite_mensal IS NULL);
 
 -- ==========================================
 -- View 2: Parcelas para lembrete NO DIA do vencimento (TODOS os planos)
 -- Envia apenas 1x - quando enviado_no_dia = false
+-- CORRIGIDO: INNER JOIN para dependencias obrigatorias
 -- ==========================================
 CREATE VIEW vw_parcelas_no_dia AS
 SELECT
@@ -113,22 +114,22 @@ SELECT
 FROM mensalidades m
 INNER JOIN devedores d ON m.devedor_id = d.id
 INNER JOIN usuarios u ON d.user_id = u.id
-LEFT JOIN mensallizap mz ON mz.user_id = d.user_id
-LEFT JOIN configuracoes_cobranca cc ON cc.user_id = d.user_id
+INNER JOIN mensallizap mz ON mz.user_id = d.user_id AND mz.conectado = true
+INNER JOIN configuracoes_cobranca cc ON cc.user_id = d.user_id AND cc.enviar_no_dia = true
 LEFT JOIN controle_planos cp ON cp.user_id = d.user_id
 LEFT JOIN templates t ON t.user_id = d.user_id AND t.tipo = 'due_day' AND t.ativo = true
 WHERE m.status = 'pendente'
   AND m.enviado_no_dia = false
   AND m.data_vencimento = CURRENT_DATE
-  AND cc.enviar_no_dia = true
   AND d.assinatura_ativa = true
   AND (d.lixo IS NULL OR d.lixo = false)
-  AND (cp.usage_count < cp.limite_mensal OR cp.limite_mensal IS NULL)
-  AND mz.conectado = true;
+  AND (cp.usage_count < cp.limite_mensal OR cp.limite_mensal IS NULL);
 
 -- ==========================================
 -- View 3: Parcelas em atraso - 3 dias DEPOIS do vencimento (TODOS os planos)
 -- Envia apenas 1x - quando enviado_vencimento = false
+-- CORRIGIDO: INNER JOIN para dependencias obrigatorias
+--            Adicionado filtro enviar_3_dias_depois para respeitar config do usuario
 -- ==========================================
 CREATE VIEW vw_parcelas_em_atraso AS
 SELECT
@@ -154,8 +155,8 @@ SELECT
 FROM mensalidades m
 INNER JOIN devedores d ON m.devedor_id = d.id
 INNER JOIN usuarios u ON d.user_id = u.id
-LEFT JOIN mensallizap mz ON mz.user_id = d.user_id
-LEFT JOIN configuracoes_cobranca cc ON cc.user_id = d.user_id
+INNER JOIN mensallizap mz ON mz.user_id = d.user_id AND mz.conectado = true
+INNER JOIN configuracoes_cobranca cc ON cc.user_id = d.user_id AND cc.enviar_3_dias_depois = true
 LEFT JOIN controle_planos cp ON cp.user_id = d.user_id
 LEFT JOIN templates t ON t.user_id = d.user_id AND t.tipo = 'overdue' AND t.ativo = true
 WHERE m.status = 'pendente'
@@ -163,8 +164,7 @@ WHERE m.status = 'pendente'
   AND m.data_vencimento = CURRENT_DATE - INTERVAL '3 days'
   AND d.assinatura_ativa = true
   AND (d.lixo IS NULL OR d.lixo = false)
-  AND (cp.usage_count < cp.limite_mensal OR cp.limite_mensal IS NULL)
-  AND mz.conectado = true;
+  AND (cp.usage_count < cp.limite_mensal OR cp.limite_mensal IS NULL);
 
 -- ==========================================
 -- Habilitar Security Invoker nas Views

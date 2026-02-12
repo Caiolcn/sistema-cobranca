@@ -184,33 +184,33 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Início</span>}
           </div>
 
-          {/* Financeiro */}
+          {/* Horários */}
           <div
-            onClick={() => { navigate('/app/financeiro'); if (isMobile) setMenuAberto(false) }}
+            onClick={() => { navigate('/app/horarios'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
               height: '40px',
-              backgroundColor: telaAtiva === 'financeiro' ? '#333' : 'transparent',
+              backgroundColor: telaAtiva === 'horarios' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: isMobile ? 'flex-start' : 'center',
               gap: isMobile ? '12px' : '0',
               paddingLeft: isMobile ? '12px' : '0',
-              color: telaAtiva === 'financeiro' ? 'white' : '#666',
+              color: telaAtiva === 'horarios' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              if (telaAtiva !== 'financeiro') e.currentTarget.style.backgroundColor = '#f5f5f5'
+              if (telaAtiva !== 'horarios') e.currentTarget.style.backgroundColor = '#f5f5f5'
             }}
             onMouseLeave={(e) => {
-              if (telaAtiva !== 'financeiro') e.currentTarget.style.backgroundColor = 'transparent'
+              if (telaAtiva !== 'horarios') e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            <Icon icon="solar:chat-round-money-outline" width="22" height="22" />
-            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Financeiro</span>}
+            <Icon icon="fluent:calendar-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Horários</span>}
           </div>
 
           {/* Clientes */}
@@ -240,6 +240,35 @@ export default function Dashboard() {
           >
             <Icon icon="fluent:people-24-regular" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Clientes</span>}
+          </div>
+
+          {/* Financeiro */}
+          <div
+            onClick={() => { navigate('/app/financeiro'); if (isMobile) setMenuAberto(false) }}
+            style={{
+              width: isMobile ? '100%' : '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'financeiro' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'financeiro' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'financeiro') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'financeiro') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="solar:chat-round-money-outline" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Financeiro</span>}
           </div>
 
           {/* WhatsApp */}

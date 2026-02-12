@@ -60,7 +60,16 @@ Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar
 💰 Valor: {{valorMensalidade}}
 🔑 Chave Pix: {{chavePix}}
 
-Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
+Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`,
+
+  class_reminder: `Olá, {{nomeCliente}}!
+
+Lembrete: sua aula de {{descricaoAula}} começa em 1 hora! 🕐
+
+⏰ Horário: {{horarioAula}}
+📍 Local: {{nomeEmpresa}}
+
+Até já! 💪`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -105,6 +114,7 @@ export default function WhatsAppConexao() {
   const [automacao3DiasAtiva, setAutomacao3DiasAtiva] = useState(false)
   const [automacaoNoDiaAtiva, setAutomacaoNoDiaAtiva] = useState(true) // Ativo por padrão
   const [automacao3DiasDepoisAtiva, setAutomacao3DiasDepoisAtiva] = useState(false)
+  const [automacaoLembreteAulaAtiva, setAutomacaoLembreteAulaAtiva] = useState(false)
 
   // Estado para Chave PIX
   const [chavePix, setChavePix] = useState('')
@@ -157,7 +167,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula')
             .eq('user_id', user.id)
             .maybeSingle(),
 
@@ -210,7 +220,8 @@ export default function WhatsAppConexao() {
         let agrupados = {
           pre_due_3days: findBestTemplate('pre_due_3days'),
           due_day: findBestTemplate('due_day'),
-          overdue: findBestTemplate('overdue')
+          overdue: findBestTemplate('overdue'),
+          class_reminder: findBestTemplate('class_reminder')
         }
 
         // 4.1 Criar templates que não existem automaticamente
@@ -261,6 +272,7 @@ export default function WhatsAppConexao() {
         setAutomacao3DiasAtiva(configCobranca?.enviar_3_dias_antes === true)
         setAutomacaoNoDiaAtiva(configCobranca?.enviar_no_dia !== false)
         setAutomacao3DiasDepoisAtiva(configCobranca?.enviar_3_dias_depois === true)
+        setAutomacaoLembreteAulaAtiva(configCobranca?.enviar_lembrete_aula === true)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -483,7 +495,8 @@ export default function WhatsAppConexao() {
       const mapeamentoColunas = {
         'automacao_3dias_ativa': 'enviar_3_dias_antes',
         'automacao_nodia_ativa': 'enviar_no_dia',
-        'automacao_3diasdepois_ativa': 'enviar_3_dias_depois'
+        'automacao_3diasdepois_ativa': 'enviar_3_dias_depois',
+        'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula'
       }
 
       const coluna = mapeamentoColunas[chave]
@@ -707,7 +720,8 @@ export default function WhatsAppConexao() {
       const titulos = {
         pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
         due_day: 'Lembrete - Vencimento Hoje',
-        overdue: 'Cobrança - 3 Dias Após o Vencimento'
+        overdue: 'Cobrança - 3 Dias Após o Vencimento',
+        class_reminder: 'Lembrete de Aula'
       }
 
       // Se já existe, verificar se precisa atualizar
@@ -861,6 +875,36 @@ export default function WhatsAppConexao() {
           type: 'success',
           title: 'Automação Ativada',
           message: 'Cobranças de 3 dias após o vencimento serão enviadas automaticamente! O template padrão foi configurado.'
+        })
+      }
+    }
+  }
+
+  const toggleAutomacaoLembreteAula = async () => {
+    const novoValor = !automacaoLembreteAulaAtiva
+
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('class_reminder')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_lembrete_aula_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoLembreteAulaAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Lembrete de Aula Ativado',
+          message: 'Lembretes de aula serão enviados 1 hora antes via WhatsApp! Configure os horários na página Horários.'
         })
       }
     }
@@ -1086,7 +1130,8 @@ export default function WhatsAppConexao() {
     const titulos = {
       pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
       due_day: 'Lembrete - Vencimento Hoje',
-      overdue: 'Cobrança - 3 Dias Após o Vencimento'
+      overdue: 'Cobrança - 3 Dias Após o Vencimento',
+      class_reminder: 'Lembrete de Aula'
     }
     return titulos[tipo] || ''
   }
@@ -1174,7 +1219,8 @@ export default function WhatsAppConexao() {
       const agrupados = {
         pre_due_3days: findBestTemplate('pre_due_3days'),
         due_day: findBestTemplate('due_day'),
-        overdue: findBestTemplate('overdue')
+        overdue: findBestTemplate('overdue'),
+        class_reminder: findBestTemplate('class_reminder')
       }
 
       setTemplatesAgrupados(agrupados)
@@ -1919,6 +1965,80 @@ export default function WhatsAppConexao() {
                     </button>
                   )}
                 </div>
+
+                {/* Toggle Lembrete de Aula - BLOQUEADO para Starter */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  marginTop: '8px',
+                  border: '1px solid #e0e0e0',
+                  opacity: automacaoLocked ? 0.7 : 1,
+                  position: 'relative'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:clock-alert-outline" width="20" style={{ color: '#6366f1' }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
+                        Lembrete de Aula
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999' }}>
+                        Enviar lembrete 1 hora antes da aula
+                      </div>
+                    </div>
+                  </div>
+                  {automacaoLocked ? (
+                    <button
+                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Lembrete de Aula' })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        backgroundColor: '#fff3e0',
+                        border: '1px solid #ffcc80',
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        color: '#e65100'
+                      }}
+                    >
+                      <Icon icon="mdi:lock" width="14" />
+                      Pro
+                    </button>
+                  ) : (
+                    <button
+                      onClick={toggleAutomacaoLembreteAula}
+                      style={{
+                        position: 'relative',
+                        width: '50px',
+                        height: '26px',
+                        backgroundColor: automacaoLembreteAulaAtiva ? '#4CAF50' : '#ccc',
+                        borderRadius: '13px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s',
+                        padding: 0
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: '3px',
+                        left: automacaoLembreteAulaAtiva ? '26px' : '3px',
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: 'white',
+                        borderRadius: '50%',
+                        transition: 'left 0.3s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Método de Pagamento nas Mensagens */}
@@ -2154,6 +2274,55 @@ export default function WhatsAppConexao() {
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
+
+                  {/* Botão Lembrete de Aula - BLOQUEADO para Starter */}
+                  <button
+                    disabled={!automacaoLembreteAulaAtiva || automacaoLocked}
+                    onClick={() => {
+                      if (automacaoLocked) {
+                        setUpgradeModal({ isOpen: true, featureName: 'Template Lembrete de Aula' })
+                        return
+                      }
+                      if (!automacaoLembreteAulaAtiva) return
+                      setTipoTemplateSelecionado('class_reminder')
+                      const template = templatesAgrupados.class_reminder
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('class_reminder'))
+                        setMensagemTemplate(getMensagemDefault('class_reminder'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'class_reminder' && !automacaoLocked ? '#6366f1' : 'white',
+                      color: tipoTemplateSelecionado === 'class_reminder' && !automacaoLocked ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'class_reminder' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: automacaoLocked ? 'pointer' : (automacaoLembreteAulaAtiva ? 'pointer' : 'not-allowed'),
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      opacity: automacaoLocked ? 0.6 : (automacaoLembreteAulaAtiva ? 1 : 0.5),
+                      position: 'relative'
+                    }}
+                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacaoLembreteAulaAtiva ? 'Ative o Lembrete de Aula para editar este template' : '')}
+                  >
+                    {automacaoLocked && (
+                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
+                    )}
+                    <Icon icon="mdi:clock-alert-outline" width="20" />
+                    <span>Lembrete Aula</span>
+                    {templatesAgrupados.class_reminder && automacaoLembreteAulaAtiva && !automacaoLocked && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'class_reminder' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -2280,137 +2449,175 @@ export default function WhatsAppConexao() {
                   Variáveis Disponíveis (clique para copiar):
                 </h5>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  <code
-                    onClick={() => {
-                      navigator.clipboard.writeText('{{nomeCliente}}')
-                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeCliente}} copiado para a área de transferência' })
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#e3f2fd',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: '#8867A1',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {`{{nomeCliente}}`}
-                  </code>
-                  <code
-                    onClick={() => {
-                      navigator.clipboard.writeText('{{valorMensalidade}}')
-                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{valorMensalidade}} copiado para a área de transferência' })
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#e3f2fd',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: '#8867A1',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {`{{valorMensalidade}}`}
-                  </code>
-                  <code
-                    onClick={() => {
-                      navigator.clipboard.writeText('{{dataVencimento}}')
-                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{dataVencimento}} copiado para a área de transferência' })
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#e3f2fd',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: '#8867A1',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {`{{dataVencimento}}`}
-                  </code>
-                  {tipoTemplateSelecionado === 'overdue' && (
-                    <code
-                      onClick={() => {
-                        navigator.clipboard.writeText('{{diasAtraso}}')
-                        setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{diasAtraso}} copiado para a área de transferência' })
-                      }}
-                      style={{
-                        padding: '4px 8px',
-                        backgroundColor: '#ffebee',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        color: '#8867A1',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}
-                    >
-                      {`{{diasAtraso}}`}
-                    </code>
+                  {tipoTemplateSelecionado === 'class_reminder' ? (
+                    <>
+                      {[
+                        { var: '{{nomeCliente}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' },
+                        { var: '{{descricaoAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
+                        { var: '{{horarioAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
+                        { var: '{{nomeEmpresa}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' }
+                      ].map(v => (
+                        <code
+                          key={v.var}
+                          onClick={() => {
+                            navigator.clipboard.writeText(v.var)
+                            setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: `${v.var} copiado para a área de transferência` })
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: v.bg,
+                            border: `1px solid ${v.border}`,
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            color: v.color,
+                            cursor: 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          {v.var}
+                        </code>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{nomeCliente}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeCliente}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{nomeCliente}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{valorMensalidade}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{valorMensalidade}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{valorMensalidade}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{dataVencimento}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{dataVencimento}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{dataVencimento}}`}
+                      </code>
+                      {tipoTemplateSelecionado === 'overdue' && (
+                        <code
+                          onClick={() => {
+                            navigator.clipboard.writeText('{{diasAtraso}}')
+                            setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{diasAtraso}} copiado para a área de transferência' })
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ffebee',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            color: '#8867A1',
+                            cursor: 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          {`{{diasAtraso}}`}
+                        </code>
+                      )}
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{nomeEmpresa}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeEmpresa}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{nomeEmpresa}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{chavePix}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{chavePix}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e8f5e9',
+                          border: '1px solid #81c784',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#2e7d32',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{chavePix}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{linkPagamento}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{linkPagamento}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#fff3e0',
+                          border: '1px solid #ffb74d',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#e65100',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                        title="Gera automaticamente um link de pagamento PIX com QR Code"
+                      >
+                        {`{{linkPagamento}}`}
+                      </code>
+                    </>
                   )}
-                  <code
-                    onClick={() => {
-                      navigator.clipboard.writeText('{{nomeEmpresa}}')
-                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeEmpresa}} copiado para a área de transferência' })
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#e3f2fd',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: '#8867A1',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {`{{nomeEmpresa}}`}
-                  </code>
-                  <code
-                    onClick={() => {
-                      navigator.clipboard.writeText('{{chavePix}}')
-                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{chavePix}} copiado para a área de transferência' })
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#e8f5e9',
-                      border: '1px solid #81c784',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: '#2e7d32',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {`{{chavePix}}`}
-                  </code>
-                  <code
-                    onClick={() => {
-                      navigator.clipboard.writeText('{{linkPagamento}}')
-                      setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{linkPagamento}} copiado para a área de transferência' })
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#fff3e0',
-                      border: '1px solid #ffb74d',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      color: '#e65100',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                    title="Gera automaticamente um link de pagamento PIX com QR Code"
-                  >
-                    {`{{linkPagamento}}`}
-                  </code>
                 </div>
-                {tipoTemplateSelecionado !== 'overdue' && (
+                {tipoTemplateSelecionado === 'class_reminder' && (
+                  <p style={{ fontSize: '11px', color: '#6366f1', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    Variáveis exclusivas para lembrete de aula
+                  </p>
+                )}
+                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && (
                   <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
                     Nota: {`{{diasAtraso}}`} não está disponível para mensagens pré-vencimento
                   </p>
