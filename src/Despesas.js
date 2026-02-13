@@ -185,6 +185,35 @@ export default function Despesas({ embedded = false }) {
       resultado = resultado.filter(d => d.data_vencimento <= filtroDataFim)
     }
 
+    // Ordenar: vencidos primeiro (antigo→recente), depois pendentes (antigo→recente), depois pagos (recente→antigo)
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+
+    resultado.sort((a, b) => {
+      const vencA = new Date(a.data_vencimento + 'T00:00:00')
+      const vencB = new Date(b.data_vencimento + 'T00:00:00')
+      const aVencido = a.status === 'pendente' && vencA < hoje
+      const bVencido = b.status === 'pendente' && vencB < hoje
+      const aPendente = a.status === 'pendente' && vencA >= hoje
+      const bPendente = b.status === 'pendente' && vencB >= hoje
+      const aPago = a.status === 'pago'
+      const bPago = b.status === 'pago'
+
+      // Grupo: vencido=0, pendente=1, pago=2, cancelado=3
+      const grupoA = aVencido ? 0 : aPendente ? 1 : aPago ? 2 : 3
+      const grupoB = bVencido ? 0 : bPendente ? 1 : bPago ? 2 : 3
+
+      if (grupoA !== grupoB) return grupoA - grupoB
+
+      // Dentro do grupo: vencidos e pendentes = mais antigo primeiro, pagos = mais recente primeiro
+      if (aPago && bPago) {
+        const pagtoA = a.data_pagamento ? new Date(a.data_pagamento + 'T00:00:00') : vencA
+        const pagtoB = b.data_pagamento ? new Date(b.data_pagamento + 'T00:00:00') : vencB
+        return pagtoB - pagtoA
+      }
+      return vencA - vencB
+    })
+
     setDespesasFiltradas(resultado)
     setPaginaAtual(1)
     calcularTotais(resultado)
@@ -246,7 +275,7 @@ export default function Despesas({ embedded = false }) {
     setQuantidadePagoMes(qtdPagoMes)
     setTotalMes(totalDoMes)
     setPercentualPendente(Math.round((qtdPendente / total) * 100))
-    setPercentualPago(totalDoMes > 0 ? Math.round((pagoMes / totalDoMes) * 100) : 0)
+    setPercentualPago(totalDoMes > 0 ? Math.min(100, Math.round((pagoMes / totalDoMes) * 100)) : 0)
     setVencemHoje(qtdHoje)
     setVencemProximos7(qtd7Dias)
     setTotalProximosVencimentos(totalProx)

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import PlanCard from './components/PlanCard'
 import { trackLead, trackCompleteRegistration, trackStartTrial } from './utils/metaPixel'
 
 export default function Signup() {
@@ -19,7 +18,6 @@ export default function Signup() {
   // Estados de controle
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [etapa, setEtapa] = useState(1) // 1 = dados, 2 = plano
 
   // Função para aplicar máscara de telefone
   const formatarTelefone = (value) => {
@@ -139,49 +137,6 @@ export default function Signup() {
     return error.message || 'Erro ao criar conta. Tente novamente mais tarde.'
   }
 
-  const handleProximaEtapa = (e) => {
-    e.preventDefault()
-    setErro('')
-
-    // Validar apenas os campos da etapa 1
-    if (!nomeCompleto || nomeCompleto.trim().length < 3) {
-      setErro('Nome deve ter pelo menos 3 caracteres')
-      return
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setErro('Email inválido')
-      return
-    }
-
-    if (senha.length < 8) {
-      setErro('Senha deve ter pelo menos 8 caracteres')
-      return
-    }
-
-    if (senha !== confirmarSenha) {
-      setErro('Senhas não conferem')
-      return
-    }
-
-    const telefoneNumeros = telefone.replace(/\D/g, '')
-    if (telefoneNumeros.length < 10 || telefoneNumeros.length > 11) {
-      setErro('Telefone inválido (DDD + número)')
-      return
-    }
-
-    const cpfCnpjNumeros = cpfCnpj.replace(/\D/g, '')
-    if (cpfCnpjNumeros.length !== 11 && cpfCnpjNumeros.length !== 14) {
-      setErro('CPF/CNPJ inválido')
-      return
-    }
-
-    // Se tudo válido, avança para etapa 2
-    trackLead() // Meta Pixel: Lead gerado
-    setEtapa(2)
-  }
-
   const handleCadastro = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -252,7 +207,8 @@ export default function Signup() {
 
       if (controleError) throw controleError
 
-      // 5. Meta Pixel: Cadastro completo e início de trial
+      // 5. Meta Pixel: Lead, Cadastro completo e início de trial
+      trackLead()
       trackCompleteRegistration()
       trackStartTrial()
 
@@ -294,10 +250,10 @@ export default function Signup() {
         width: '100%'
       }}>
         <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
-          {etapa === 1 ? 'Criar Conta' : 'Escolha seu plano'}
+          Criar Conta
         </h2>
         <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666', fontSize: '14px' }}>
-          {etapa === 1 ? 'Preencha os dados abaixo para começar' : 'Teste grátis por 3 dias, sem compromisso'}
+          Preencha os dados abaixo para começar
         </p>
 
         {erro && (
@@ -314,9 +270,7 @@ export default function Signup() {
           </div>
         )}
 
-        {/* ETAPA 1: Dados Pessoais */}
-        {etapa === 1 && (
-          <form onSubmit={handleProximaEtapa}>
+        <form onSubmit={handleCadastro}>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
                 Nome Completo
@@ -447,127 +401,25 @@ export default function Signup() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: '#29BF68',
+                backgroundColor: loading ? '#ccc' : '#29BF68',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
                 fontSize: '16px',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'background-color 0.2s'
               }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#22a559'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#29BF68'}
+              onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#22a559' }}
+              onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#29BF68' }}
             >
-              Próximo: Escolher Plano →
+              {loading ? 'Criando conta...' : 'Iniciar Teste Grátis'}
             </button>
           </form>
-        )}
-
-        {/* ETAPA 2: Escolher Plano */}
-        {etapa === 2 && (
-          <form onSubmit={handleCadastro}>
-            <div style={{ marginBottom: '24px' }}>
-              <PlanCard
-                plano="Starter"
-                limite="200"
-                preco="R$ 49,90/mês"
-                descricao="50 clientes ativos"
-                selected={planoSelecionado === 'starter'}
-                onClick={() => setPlanoSelecionado('starter')}
-              />
-              <PlanCard
-                plano="Pro"
-                limite="600"
-                preco="R$ 99,90/mês"
-                descricao="150 clientes ativos"
-                popular={true}
-                selected={planoSelecionado === 'pro'}
-                onClick={() => setPlanoSelecionado('pro')}
-              />
-              <PlanCard
-                plano="Premium"
-                limite="3.000"
-                preco="R$ 149,90/mês"
-                descricao="500 clientes ativos"
-                selected={planoSelecionado === 'premium'}
-                onClick={() => setPlanoSelecionado('premium')}
-              />
-            </div>
-
-            {/* Info do trial */}
-            <div style={{
-              backgroundColor: '#f0fdf4',
-              border: '1px solid #86efac',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <span style={{ fontSize: '20px' }}>🎁</span>
-              <div>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#166534' }}>
-                  3 dias grátis para testar
-                </p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>
-                  Você só será cobrado após o período de teste
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                type="button"
-                onClick={() => setEtapa(1)}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  backgroundColor: '#f5f5f5',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#e0e0e0'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-              >
-                ← Voltar
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  flex: 2,
-                  padding: '14px',
-                  backgroundColor: loading ? '#ccc' : '#22c55e',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => {
-                  if (!loading) e.target.style.backgroundColor = '#16a34a'
-                }}
-                onMouseOut={(e) => {
-                  if (!loading) e.target.style.backgroundColor = '#22c55e'
-                }}
-              >
-                {loading ? 'Criando conta...' : 'Iniciar Teste Grátis'}
-              </button>
-            </div>
-          </form>
-        )}
 
         <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
           Já tem uma conta?

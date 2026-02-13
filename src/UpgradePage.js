@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Icon } from '@iconify/react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTrialStatus } from './useTrialStatus'
 import { mercadoPagoService } from './services/mercadoPagoService'
 import { supabase } from './supabaseClient'
@@ -8,6 +8,7 @@ import { trackInitiateCheckout, trackPurchase } from './utils/metaPixel'
 
 export default function UpgradePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { diasRestantes, isExpired } = useTrialStatus()
   const [loading, setLoading] = useState(false)
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(null)
@@ -19,11 +20,21 @@ export default function UpgradePage() {
   const [pagamentoConfirmado, setPagamentoConfirmado] = useState(false) // Tela de sucesso
   const [verificandoPagamento, setVerificandoPagamento] = useState(false)
   const pollingRef = useRef(null)
+  const autoCheckoutRef = useRef(false)
 
   // Verificar se já tem assinatura ativa
   useEffect(() => {
     verificarAssinatura()
   }, [])
+
+  // Auto-checkout: se veio com ?plano=xxx, gerar PIX direto
+  useEffect(() => {
+    const planoParam = searchParams.get('plano')
+    if (planoParam && ['starter', 'pro', 'premium'].includes(planoParam) && !autoCheckoutRef.current) {
+      autoCheckoutRef.current = true
+      handleSelecionarPlano(planoParam)
+    }
+  }, [searchParams])
 
   // Polling para verificar pagamento Pix
   useEffect(() => {
@@ -33,24 +44,21 @@ export default function UpgradePage() {
       // Verificar a cada 5 segundos
       pollingRef.current = setInterval(async () => {
         try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user) return
-
-          // Verificar se o usuário foi ativado
-          const { data: usuario } = await supabase
-            .from('usuarios')
-            .select('plano_pago, plano')
-            .eq('id', user.id)
+          // Verificar status do pagamento especifico (evita falso positivo se plano_pago ja era true)
+          const { data: pagamento } = await supabase
+            .from('pagamentos_mercadopago')
+            .select('status')
+            .eq('payment_id', pixData.payment_id.toString())
             .single()
 
-          if (usuario?.plano_pago) {
+          if (pagamento?.status === 'approved') {
             clearInterval(pollingRef.current)
             setVerificandoPagamento(false)
             setPagamentoConfirmado(true)
 
             // Meta Pixel: Compra confirmada
             const precos = { starter: 49.90, pro: 99.90, premium: 149.90 }
-            trackPurchase(precos[usuario.plano] || 99.90, usuario.plano)
+            trackPurchase(precos[pixData.plano] || 99.90, pixData.plano)
           }
         } catch (error) {
           console.error('Erro ao verificar pagamento:', error)
@@ -465,6 +473,73 @@ export default function UpgradePage() {
   }
 
   // Tela de seleção de método removida - vai direto para Pix
+
+  // Tela de loading quando veio do banner (auto-checkout)
+  if (loading && searchParams.get('plano')) {
+    const planoNome = (planoSelecionado || searchParams.get('plano'))
+    const planoNomeFormatado = planoNome ? planoNome.charAt(0).toUpperCase() + planoNome.slice(1) : ''
+    return (
+      <div style={{
+        padding: '40px 24px',
+        maxWidth: '500px',
+        margin: '0 auto',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '60px 40px',
+          borderRadius: '16px',
+          border: '1px solid #e0e0e0',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          textAlign: 'center',
+          width: '100%'
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            backgroundColor: '#e3f2fd',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            position: 'relative'
+          }}>
+            <Icon icon="mdi:qrcode" width="40" style={{ color: '#00b894' }} />
+            <div style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              border: '3px solid #e0e0e0',
+              borderTop: '3px solid #00b894',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+          </div>
+
+          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>
+            Gerando seu PIX...
+          </h2>
+          <p style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
+            Plano {planoNomeFormatado}
+          </p>
+          <p style={{ fontSize: '14px', color: '#999' }}>
+            Aguarde enquanto preparamos seu pagamento
+          </p>
+        </div>
+
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   // Tela principal - Seleção de Plano
   return (

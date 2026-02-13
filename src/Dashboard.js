@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'
 import { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
 import PerfilUsuario from './PerfilUsuario'
 import TrialExpiredModal from './TrialExpiredModal'
+import PlanExpirationBanner from './PlanExpirationBanner'
 import { useTrialStatus } from './useTrialStatus'
 import { useUser } from './contexts/UserContext'
 import { usePaymentNotifications } from './hooks/usePaymentNotifications'
@@ -485,11 +486,14 @@ export default function Dashboard() {
         marginLeft: isMobile ? 0 : '70px',
         width: isMobile ? '100%' : 'calc(100% - 70px)',
         height: '100vh',
-        overflow: 'auto',
         display: 'flex',
+        flexDirection: 'column',
         paddingTop: isMobile ? '70px' : '0'
       }}>
-        <Outlet />
+        <PlanExpirationBanner />
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
+          <Outlet />
+        </div>
       </div>
 
       {/* Modal de Perfil */}

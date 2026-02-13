@@ -1115,7 +1115,7 @@ Equipe ${nomeEmpresa}`
               }}
               title="Importar clientes via CSV"
             >
-              <Icon icon="ph:upload-simple-light" width="18" height="18" />
+              <Icon icon="iconoir:import" width="18" height="18" />
             </button>
             <button
               onClick={() => exportarClientes(clientesFiltrados)}

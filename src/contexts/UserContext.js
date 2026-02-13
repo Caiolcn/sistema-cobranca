@@ -86,19 +86,32 @@ export function UserProvider({ children }) {
     setUserData(data)
   }, [user])
 
-  // Calcular status do trial uma vez (evita query duplicada no useTrialStatus)
+  // Calcular status do trial/plano uma vez (evita query duplicada no useTrialStatus)
   const trialStatus = useMemo(() => {
     if (!userData) return { isExpired: false, diasRestantes: 0, planoPago: false, trialFim: null }
 
-    // Se tem plano pago, trial não se aplica
-    if (userData.plano_pago) {
-      return { isExpired: false, diasRestantes: -1, planoPago: true, trialFim: null }
-    }
-
-    // Calcular dias restantes
     const agora = new Date()
     const trialFim = userData.trial_fim ? new Date(userData.trial_fim) : null
 
+    // Se tem plano pago, calcular dias ate expirar o plano (trial_fim reutilizado como data de expiracao)
+    if (userData.plano_pago) {
+      if (!trialFim) {
+        return { isExpired: false, diasRestantes: -1, planoPago: true, trialFim: null }
+      }
+
+      const diffMs = trialFim - agora
+      const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+      const isExpired = diffDias <= 0
+
+      return {
+        isExpired,
+        diasRestantes: isExpired ? 0 : diffDias,
+        planoPago: true,
+        trialFim: userData.trial_fim
+      }
+    }
+
+    // Trial: calcular dias restantes
     if (!trialFim) {
       return { isExpired: false, diasRestantes: 0, planoPago: false, trialFim: null }
     }
