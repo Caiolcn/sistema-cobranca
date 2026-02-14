@@ -233,10 +233,15 @@ class WhatsAppService {
       const ddd = somenteNumero.substring(0, 2)
       const restante = somenteNumero.substring(2)
 
-      // Se tem 10 dígitos (celular sem o 9), adiciona o 9
-      if (restante.length === 10 && !restante.startsWith('9')) {
-        console.log('⚠️ Número parece estar faltando o 9º dígito. Corrigindo...')
-        numero = '55' + ddd + '9' + restante
+      // Se tem 8 dígitos (celular sem o 9), adiciona o 9
+      // Celulares brasileiros (sem o 9) começam com dígito >= 6
+      // Fixos começam com 2-5 e não devem receber o 9
+      if (restante.length === 8 && !restante.startsWith('9')) {
+        const primeiroDigito = parseInt(restante.charAt(0), 10)
+        if (primeiroDigito >= 6) {
+          console.log('⚠️ Número celular parece estar faltando o 9º dígito. Corrigindo...')
+          numero = '55' + ddd + '9' + restante
+        }
       }
     }
 

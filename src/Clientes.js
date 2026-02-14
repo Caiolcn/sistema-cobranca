@@ -957,6 +957,10 @@ Equipe ${nomeEmpresa}`
 
             if (resultado.sucesso) {
               showToast('Cliente criado e mensagem de boas-vindas enviada!', 'success')
+            } else if (resultado.erro && resultado.erro.includes('desconectado')) {
+              showToast('Cliente criado! Boas-vindas não enviada: WhatsApp desconectado. Reconecte em WhatsApp > Conexão.', 'warning')
+            } else if (resultado.erro && resultado.erro.includes('não existe no WhatsApp')) {
+              showToast('Cliente criado! Boas-vindas não enviada: número não tem WhatsApp.', 'warning')
             } else {
               showToast('Cliente criado! (Não foi possível enviar boas-vindas: ' + resultado.erro + ')', 'warning')
             }

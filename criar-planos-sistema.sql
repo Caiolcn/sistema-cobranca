@@ -288,16 +288,16 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'nome_completo', NEW.email),
-    'starter',  -- Novo usuário começa como starter
-    200         -- Limite padrão do starter (200 mensagens)
+    'pro',      -- Novo usuário começa como pro
+    600         -- Limite padrão do pro (600 mensagens)
   );
 
   -- Criar registro em controle_planos também
   INSERT INTO public.controle_planos (user_id, plano, limite_mensal, usage_count)
   VALUES (
     NEW.id::TEXT,
-    'starter',
-    200,
+    'pro',
+    600,
     0
   );
 

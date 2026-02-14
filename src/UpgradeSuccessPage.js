@@ -248,7 +248,7 @@ export default function UpgradeSuccessPage() {
             }}>
               Precisa de ajuda? Entre em contato pelo WhatsApp: <br />
               <a
-                href="https://wa.me/5562982466639"
+                href="https://wa.me/5562981618862"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -89,6 +89,7 @@ export default function WhatsAppConexao() {
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [config, setConfig] = useState({ apiKey: '', apiUrl: '', instanceName: '' })
+  const configRef = useRef(config)
   const [tempoRestante, setTempoRestante] = useState(120) // Contador de 2 minutos (120 segundos)
 
   // Estados para templates
@@ -137,6 +138,11 @@ export default function WhatsAppConexao() {
   useEffect(() => {
     updateGlobalStatus(status)
   }, [status])
+
+  // Manter configRef sincronizado
+  useEffect(() => {
+    configRef.current = config
+  }, [config])
 
   // Carregar tudo em paralelo para melhorar performance
   useEffect(() => {
@@ -335,7 +341,7 @@ export default function WhatsAppConexao() {
           descricao: 'Nome da instância conectada na Evolution API',
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'chave'
+          onConflict: 'user_id,chave'
         })
         .select()
 
@@ -356,7 +362,7 @@ export default function WhatsAppConexao() {
           descricao: 'Status de conexão do WhatsApp',
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'chave'
+          onConflict: 'user_id,chave'
         })
         .select()
 
@@ -938,7 +944,22 @@ export default function WhatsAppConexao() {
         console.log(`📊 Estado da instância: ${estadoInstancia}`)
       }
 
-      // 2. Se não existe, criar
+      // 2. Se já está conectada, não precisa gerar QR Code
+      if (instanciaExiste && estadoInstancia === 'open') {
+        console.log('✅ Instância já está conectada! Pulando QR Code.')
+        setStatus('connected')
+        setQrCode(null)
+        await salvarConexaoNoBanco()
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Já Conectado',
+          message: 'Seu WhatsApp já está conectado! Não é necessário escanear o QR Code novamente.'
+        })
+        return
+      }
+
+      // 3. Se não existe, criar
       if (!instanciaExiste) {
         console.log('🔄 Criando instância...')
         const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
@@ -1001,15 +1022,18 @@ export default function WhatsAppConexao() {
 
   // POLLING SIMPLIFICADO
   useEffect(() => {
-    if (status !== 'connecting' || !qrCode || !config.apiKey) return
+    if (status !== 'connecting' || !qrCode) return
+
+    const currentConfig = configRef.current
+    if (!currentConfig.apiKey) return
 
     console.log('🔄 Iniciando polling...')
 
     const intervalId = setInterval(async () => {
       try {
         const response = await fetch(
-          `${config.apiUrl}/instance/connectionState/${config.instanceName}`,
-          { headers: { 'apikey': config.apiKey } }
+          `${currentConfig.apiUrl}/instance/connectionState/${currentConfig.instanceName}`,
+          { headers: { 'apikey': currentConfig.apiKey } }
         )
 
         if (response.ok) {
@@ -1058,7 +1082,8 @@ export default function WhatsAppConexao() {
       clearInterval(countdownId)
       clearTimeout(timeoutId)
     }
-  }, [status, qrCode, config])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, qrCode])
 
   // Desconectar
   const desconectar = async () => {
@@ -1081,7 +1106,7 @@ export default function WhatsAppConexao() {
             descricao: 'Status de conexão do WhatsApp',
             updated_at: new Date().toISOString()
           }, {
-            onConflict: 'chave'
+            onConflict: 'user_id,chave'
           })
 
         // Atualizar tabela mensallizap (marcar como desconectado)

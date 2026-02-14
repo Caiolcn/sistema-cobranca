@@ -1846,7 +1846,7 @@ function Configuracao() {
   }
 
   const handleSuporteWhatsApp = () => {
-    window.open('https://wa.me/5562982466639?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
+    window.open('https://wa.me/5562981618862?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
   }
 
   const renderUpgrade = () => (

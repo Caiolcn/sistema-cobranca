@@ -1477,7 +1477,7 @@ export default function LandingPage() {
 
       {/* Botão flutuante do WhatsApp */}
       <a
-        href="https://wa.me/5562982466639"
+        href="https://wa.me/5562981618862"
         target="_blank"
         rel="noopener noreferrer"
         style={{

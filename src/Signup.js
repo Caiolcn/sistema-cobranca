@@ -13,7 +13,7 @@ export default function Signup() {
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [telefone, setTelefone] = useState('')
   const [cpfCnpj, setCpfCnpj] = useState('')
-  const [planoSelecionado, setPlanoSelecionado] = useState('starter')
+  const [planoSelecionado, setPlanoSelecionado] = useState('pro')
 
   // Estados de controle
   const [loading, setLoading] = useState(false)
