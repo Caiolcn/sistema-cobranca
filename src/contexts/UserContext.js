@@ -8,6 +8,10 @@ export function UserProvider({ children }) {
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Admin: estado para visualizar como outro usuário
+  const [adminViewingAs, setAdminViewingAs] = useState(null)
+  const [adminClientData, setAdminClientData] = useState(null)
+
   // Carregar usuário UMA vez ao iniciar
   const loadUser = useCallback(async () => {
     try {
@@ -25,7 +29,7 @@ export function UserProvider({ children }) {
       // Buscar dados adicionais do usuário (incluindo trial_fim para evitar query duplicada)
       let { data: usuarioData, error } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
         .eq('id', authUser.id)
         .maybeSingle()
 
@@ -33,7 +37,7 @@ export function UserProvider({ children }) {
       if (error && !usuarioData) {
         const { data: fallback } = await supabase
           .from('usuarios')
-          .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim')
+          .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
           .eq('id', authUser.id)
           .maybeSingle()
         usuarioData = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -69,7 +73,7 @@ export function UserProvider({ children }) {
 
     let { data, error } = await supabase
       .from('usuarios')
-      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step')
+      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -77,7 +81,7 @@ export function UserProvider({ children }) {
     if (error && !data) {
       const { data: fallback } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim')
+        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
         .eq('id', user.id)
         .maybeSingle()
       data = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -85,6 +89,28 @@ export function UserProvider({ children }) {
 
     setUserData(data)
   }, [user])
+
+  // Admin: verificar se é admin
+  const isAdmin = userData?.role === 'admin'
+
+  // Admin: função para selecionar cliente a visualizar
+  const setAdminClient = useCallback(async (clientUserId) => {
+    if (!clientUserId) {
+      setAdminViewingAs(null)
+      setAdminClientData(null)
+      return
+    }
+
+    setAdminViewingAs(clientUserId)
+
+    const { data } = await supabase
+      .from('usuarios')
+      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim')
+      .eq('id', clientUserId)
+      .maybeSingle()
+
+    setAdminClientData(data)
+  }, [])
 
   // Calcular status do trial/plano uma vez (evita query duplicada no useTrialStatus)
   const trialStatus = useMemo(() => {
@@ -128,20 +154,28 @@ export function UserProvider({ children }) {
     }
   }, [userData])
 
+  // Dados efetivos: se admin está visualizando um cliente, usa os dados do cliente
+  const effectiveData = (isAdmin && adminViewingAs && adminClientData) ? adminClientData : userData
+
   const value = useMemo(() => ({
     user,
     userData,
     loading,
     refreshUserData,
-    // Helpers úteis
-    userId: user?.id,
-    plano: userData?.plano || 'starter',
-    nomeEmpresa: userData?.nome_empresa || '',
-    nomeCompleto: userData?.nome_completo || '',
-    chavePix: userData?.chave_pix || '',
+    // Helpers úteis - usa dados efetivos (cliente selecionado ou próprio usuário)
+    userId: (isAdmin && adminViewingAs) ? adminViewingAs : user?.id,
+    plano: effectiveData?.plano || 'starter',
+    nomeEmpresa: effectiveData?.nome_empresa || '',
+    nomeCompleto: effectiveData?.nome_completo || '',
+    chavePix: effectiveData?.chave_pix || '',
     // Trial status (calculado uma vez, evita query duplicada)
-    trialStatus
-  }), [user, userData, loading, refreshUserData, trialStatus])
+    trialStatus,
+    // Admin
+    isAdmin,
+    adminViewingAs,
+    setAdminClient,
+    realUserId: user?.id
+  }), [user, userData, loading, refreshUserData, trialStatus, isAdmin, adminViewingAs, setAdminClient, effectiveData])
 
   return (
     <UserContext.Provider value={value}>

@@ -24,10 +24,14 @@ export default function Dashboard() {
 
   // Hook para verificar status do trial
   const { isExpired, diasRestantes, planoPago, loading } = useTrialStatus()
-  const { userData, userId } = useUser()
+  const { userData, userId, isAdmin, adminViewingAs, setAdminClient, realUserId } = useUser()
+
+  // Admin: lista de clientes para o dropdown
+  const [adminClientes, setAdminClientes] = useState([])
+  const [adminBarVisivel, setAdminBarVisivel] = useState(true)
 
   // Notificacoes em tempo real de pagamentos
-  usePaymentNotifications(userId)
+  usePaymentNotifications(realUserId || userId)
 
   // Determinar tela ativa pela rota atual
   const telaAtiva = location.pathname.replace('/app/', '') || 'home'
@@ -42,6 +46,23 @@ export default function Dashboard() {
     return unsubscribe
   }, [])
 
+  // Admin: carregar lista de todos os clientes
+  useEffect(() => {
+    if (!isAdmin) return
+
+    const carregarClientes = async () => {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('id, email, nome_empresa, nome_completo, plano')
+        .neq('role', 'admin')
+        .order('nome_empresa', { ascending: true, nullsFirst: false })
+
+      if (data) setAdminClientes(data)
+    }
+
+    carregarClientes()
+  }, [isAdmin])
+
   // Mostrar modal se trial expirou
   useEffect(() => {
     if (!loading && isExpired && !planoPago) {
@@ -54,13 +75,13 @@ export default function Dashboard() {
     window.location.reload()
   }
 
-  // Redirecionar para onboarding se não completou
-  if (!loading && userData && userData.onboarding_completed === false) {
+  // Redirecionar para onboarding se não completou (admin nunca é redirecionado)
+  if (!loading && userData && userData.onboarding_completed === false && !isAdmin) {
     return <Navigate to="/app/onboarding" replace />
   }
 
-  // Se trial expirou, bloquear acesso
-  if (isExpired && !planoPago && !loading) {
+  // Se trial expirou, bloquear acesso (admin nunca é bloqueado)
+  if (isExpired && !planoPago && !loading && !isAdmin) {
     return (
       <>
         <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden', filter: 'blur(5px)', pointerEvents: 'none' }}>
@@ -490,6 +511,86 @@ export default function Dashboard() {
         flexDirection: 'column',
         paddingTop: isMobile ? '70px' : '0'
       }}>
+        {/* Barra Admin: seletor de cliente */}
+        {isAdmin && adminBarVisivel && (
+          <div style={{
+            padding: '8px 20px',
+            backgroundColor: '#1a1a2e',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexShrink: 0
+          }}>
+            <span style={{ color: '#a0a0b0', fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+              ADMIN
+            </span>
+            <select
+              value={adminViewingAs || ''}
+              onChange={(e) => setAdminClient(e.target.value || null)}
+              style={{
+                flex: 1,
+                maxWidth: '400px',
+                padding: '6px 10px',
+                backgroundColor: '#16213e',
+                color: 'white',
+                border: '1px solid #2a2a4a',
+                borderRadius: '6px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="">Minha conta</option>
+              {adminClientes.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.nome_empresa || c.nome_completo || c.email} ({c.plano})
+                </option>
+              ))}
+            </select>
+            {adminViewingAs && (
+              <span style={{ color: '#ffd700', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                Visualizando cliente
+              </span>
+            )}
+            <div
+              onClick={() => setAdminBarVisivel(false)}
+              style={{ cursor: 'pointer', padding: '2px 6px', borderRadius: '4px', color: '#666', fontSize: '16px' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+              title="Esconder barra admin"
+            >
+              <Icon icon="mdi:eye-off-outline" width="18" height="18" />
+            </div>
+          </div>
+        )}
+        {/* Botão para reabrir a barra admin (quando escondida) */}
+        {isAdmin && !adminBarVisivel && (
+          <div
+            onClick={() => setAdminBarVisivel(true)}
+            style={{
+              position: 'fixed',
+              bottom: '16px',
+              right: '16px',
+              width: '36px',
+              height: '36px',
+              backgroundColor: '#1a1a2e',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 50,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              opacity: 0.6,
+              transition: 'opacity 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+            title="Mostrar barra admin"
+          >
+            <Icon icon="mdi:shield-crown-outline" width="18" height="18" color="white" />
+          </div>
+        )}
         <PlanExpirationBanner />
         <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
           <Outlet />
