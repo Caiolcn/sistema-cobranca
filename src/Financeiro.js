@@ -171,11 +171,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           .or('lixo.is.null,lixo.eq.false')
           .order('data_vencimento', { ascending: true }),
 
-        // 2. Clientes com assinaturas para MRR (consolidado)
+        // 2. Clientes com assinaturas para MRR (consolidado, excluindo deletados)
         supabase
           .from('devedores')
           .select('id, nome, assinatura_ativa, plano:planos(valor)')
           .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false')
           .order('nome', { ascending: true })
       ])
 
