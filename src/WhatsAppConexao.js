@@ -92,6 +92,11 @@ export default function WhatsAppConexao() {
   const configRef = useRef(config)
   const [tempoRestante, setTempoRestante] = useState(120) // Contador de 2 minutos (120 segundos)
 
+  // Estados para conexão por código de pareamento (alternativa ao QR Code para celular)
+  const [modoConexao, setModoConexao] = useState('qrcode') // 'qrcode' | 'pairing'
+  const [pairingCode, setPairingCode] = useState(null)
+  const [telefoneParear, setTelefoneParear] = useState('')
+
   // Estados para templates
   const [templates, setTemplates] = useState([])
   const [templateAtual, setTemplateAtual] = useState({
@@ -984,32 +989,69 @@ export default function WhatsAppConexao() {
         console.log('✅ Instância criada/já existe')
       }
 
-      // 3. Gerar QR Code
-      console.log('📡 Gerando QR Code...')
-      const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}`, {
-        headers: { 'apikey': config.apiKey }
-      })
+      // 3. Gerar QR Code ou Código de Pareamento
+      if (modoConexao === 'pairing') {
+        // Modo código de pareamento (para celular)
+        const telefoneLimpo = telefoneParear.replace(/\D/g, '')
+        if (telefoneLimpo.length < 10) {
+          throw new Error('Digite seu número de telefone com DDD (ex: 11999999999)')
+        }
 
-      if (!connectResponse.ok) {
-        const errorData = await connectResponse.json().catch(() => ({}))
-        throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
+        const numeroCompleto = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`
+        console.log('📱 Gerando código de pareamento para:', numeroCompleto)
+
+        const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
+          headers: { 'apikey': config.apiKey }
+        })
+
+        if (!connectResponse.ok) {
+          const errorData = await connectResponse.json().catch(() => ({}))
+          throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
+        }
+
+        const data = await connectResponse.json()
+        console.log('📦 Resposta completa da API:', data)
+
+        const code = data.pairingCode
+        if (!code) {
+          console.error('❌ Código de pareamento não encontrado. Resposta:', Object.keys(data))
+          throw new Error('Código de pareamento não foi gerado. Tente novamente ou use o QR Code.')
+        }
+
+        console.log('✅ Código de pareamento gerado:', code)
+        setPairingCode(code)
+        setQrCode(null)
+        setStatus('connecting')
+        setTempoRestante(120)
+      } else {
+        // Modo QR Code (padrão)
+        console.log('📡 Gerando QR Code...')
+        const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}`, {
+          headers: { 'apikey': config.apiKey }
+        })
+
+        if (!connectResponse.ok) {
+          const errorData = await connectResponse.json().catch(() => ({}))
+          throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
+        }
+
+        const data = await connectResponse.json()
+        console.log('📦 Resposta completa da API:', data)
+
+        // Tentar extrair QR Code de múltiplos formatos
+        const qr = data.base64 || data.qrcode?.base64 || data.code || data.qr
+
+        if (!qr) {
+          console.error('❌ QR Code não encontrado. Estrutura da resposta:', Object.keys(data))
+          throw new Error('QR Code não foi gerado pela API. Abra o console (F12) para ver detalhes.')
+        }
+
+        console.log('✅ QR Code gerado!')
+        setQrCode(qr)
+        setPairingCode(null)
+        setStatus('connecting')
+        setTempoRestante(120)
       }
-
-      const data = await connectResponse.json()
-      console.log('📦 Resposta completa da API:', data)
-
-      // Tentar extrair QR Code de múltiplos formatos
-      const qr = data.base64 || data.qrcode?.base64 || data.code || data.qr
-
-      if (!qr) {
-        console.error('❌ QR Code não encontrado. Estrutura da resposta:', Object.keys(data))
-        throw new Error('QR Code não foi gerado pela API. Abra o console (F12) para ver detalhes.')
-      }
-
-      console.log('✅ QR Code gerado!')
-      setQrCode(qr)
-      setStatus('connecting')
-      setTempoRestante(120) // Resetar contador para 2 minutos
 
     } catch (error) {
       console.error('❌ Erro completo:', error)
@@ -1022,7 +1064,7 @@ export default function WhatsAppConexao() {
 
   // POLLING SIMPLIFICADO
   useEffect(() => {
-    if (status !== 'connecting' || !qrCode) return
+    if (status !== 'connecting' || (!qrCode && !pairingCode)) return
 
     const currentConfig = configRef.current
     if (!currentConfig.apiKey) return
@@ -1046,6 +1088,7 @@ export default function WhatsAppConexao() {
             console.log('✅ Conectado!')
             setStatus('connected')
             setQrCode(null)
+            setPairingCode(null)
 
             // Salvar conexão no banco de dados
             await salvarConexaoNoBanco()
@@ -1067,13 +1110,14 @@ export default function WhatsAppConexao() {
     }, 1000)
 
     const timeoutId = setTimeout(() => {
-      console.log('⏱️ QR Code expirado')
+      console.log('⏱️ Código expirado')
       clearInterval(intervalId)
       clearInterval(countdownId)
       setQrCode(null)
+      setPairingCode(null)
       setStatus('disconnected')
       setTempoRestante(120)
-      setErro('QR Code expirou. Clique em "Conectar WhatsApp" novamente.')
+      setErro('Tempo expirado. Clique em "Conectar WhatsApp" novamente.')
     }, 120000)
 
     return () => {
@@ -1083,7 +1127,7 @@ export default function WhatsAppConexao() {
       clearTimeout(timeoutId)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, qrCode])
+  }, [status, qrCode, pairingCode])
 
   // Desconectar
   const desconectar = async () => {
@@ -1496,6 +1540,111 @@ export default function WhatsAppConexao() {
                   Seu WhatsApp está conectado e pronto para enviar mensagens automáticas.
                 </p>
               </div>
+            ) : pairingCode ? (
+              // ESTADO 2B: CONECTANDO (Código de Pareamento visível)
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+                  Digite este código no WhatsApp
+                </h3>
+                <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
+                  Abra seu WhatsApp e siga os passos abaixo
+                </p>
+
+                {/* Código de pareamento grande */}
+                <div style={{
+                  display: 'inline-block',
+                  padding: '20px 36px',
+                  backgroundColor: '#f0faf4',
+                  borderRadius: '12px',
+                  border: '2px solid #25D366',
+                  marginBottom: '24px'
+                }}>
+                  <span style={{
+                    fontSize: isSmallScreen ? '28px' : '36px',
+                    fontWeight: '700',
+                    fontFamily: 'monospace',
+                    letterSpacing: '4px',
+                    color: '#344848'
+                  }}>
+                    {pairingCode.slice(0, 4)}-{pairingCode.slice(4)}
+                  </span>
+                </div>
+
+                {/* Instruções passo a passo */}
+                <div style={{
+                  textAlign: 'left',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '8px',
+                  padding: '16px 20px',
+                  marginBottom: '24px'
+                }}>
+                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#666', lineHeight: '2' }}>
+                    <li>Abra o <strong>WhatsApp</strong> no seu celular</li>
+                    <li>Vá em <strong>Dispositivos conectados</strong></li>
+                    <li>Toque em <strong>Conectar dispositivo</strong></li>
+                    <li>Toque em <strong>"Conectar com número de telefone"</strong></li>
+                    <li>Digite o código <strong>{pairingCode.slice(0, 4)}-{pairingCode.slice(4)}</strong></li>
+                  </ol>
+                </div>
+
+                {/* Contador de tempo */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    backgroundColor: tempoRestante <= 30 ? '#fff3cd' : '#f5f5f5',
+                    borderRadius: '20px',
+                    border: `1px solid ${tempoRestante <= 30 ? '#ffc107' : '#e0e0e0'}`
+                  }}>
+                    <Icon icon="mdi:clock-outline" width="18" height="18" style={{ color: tempoRestante <= 30 ? '#ff9800' : '#666' }} />
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: tempoRestante <= 30 ? '#856404' : '#666' }}>
+                      {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }}>
+                  <button
+                    onClick={() => {
+                      setPairingCode(null)
+                      setStatus('disconnected')
+                      setTempoRestante(120)
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: 'white',
+                      color: '#666',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+
+                {status === 'connecting' && (
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#e3f2fd',
+                    border: '1px solid #2196F3',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px'
+                  }}>
+                    <Icon icon="eos-icons:loading" width="20" height="20" style={{ color: '#2196F3' }} />
+                    <span style={{ fontSize: '14px', color: '#2196F3', fontWeight: '500' }}>
+                      Aguardando pareamento...
+                    </span>
+                  </div>
+                )}
+              </div>
             ) : qrCode ? (
               // ESTADO 2: CONECTANDO (QR Code visível)
               <div style={{ textAlign: 'center' }}>
@@ -1590,22 +1739,133 @@ export default function WhatsAppConexao() {
                   Conectar WhatsApp
                 </h3>
 
-                <div style={{ marginBottom: '30px' }}>
-                  <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                    Para conectar seu WhatsApp:
-                  </p>
-                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
-                    <li>Abra o WhatsApp no seu celular</li>
-                    <li>Toque em Mais opções (⋮) ou Configurações (⚙)</li>
-                    <li>Toque em Dispositivos conectados</li>
-                    <li>Toque em Conectar dispositivo</li>
-                    <li>Clique no botão abaixo e escaneie o QR Code que aparecer</li>
-                  </ol>
+                {/* Toggle QR Code / Código de Pareamento */}
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '4px',
+                  marginBottom: '24px',
+                  gap: '4px'
+                }}>
+                  <button
+                    onClick={() => setModoConexao('qrcode')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      backgroundColor: modoConexao === 'qrcode' ? 'white' : 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: modoConexao === 'qrcode' ? '600' : '400',
+                      color: modoConexao === 'qrcode' ? '#344848' : '#888',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: modoConexao === 'qrcode' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Icon icon="mdi:qrcode" width="18" height="18" />
+                    QR Code
+                  </button>
+                  <button
+                    onClick={() => setModoConexao('pairing')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      backgroundColor: modoConexao === 'pairing' ? 'white' : 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: modoConexao === 'pairing' ? '600' : '400',
+                      color: modoConexao === 'pairing' ? '#344848' : '#888',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: modoConexao === 'pairing' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Icon icon="mdi:cellphone-link" width="18" height="18" />
+                    Código (celular)
+                  </button>
                 </div>
+
+                {modoConexao === 'qrcode' ? (
+                  <div style={{ marginBottom: '30px' }}>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      Para conectar seu WhatsApp:
+                    </p>
+                    <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
+                      <li>Abra o WhatsApp no seu celular</li>
+                      <li>Toque em Mais opções (⋮) ou Configurações (⚙)</li>
+                      <li>Toque em Dispositivos conectados</li>
+                      <li>Toque em Conectar dispositivo</li>
+                      <li>Clique no botão abaixo e escaneie o QR Code que aparecer</li>
+                    </ol>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '30px' }}>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      Ideal para quem está acessando pelo celular:
+                    </p>
+                    <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
+                      <li>Digite seu número de telefone abaixo</li>
+                      <li>Clique em "Conectar WhatsApp"</li>
+                      <li>Um código de 8 caracteres será exibido</li>
+                      <li>No WhatsApp, vá em Dispositivos conectados</li>
+                      <li>Toque em "Conectar dispositivo"</li>
+                      <li>Toque em "Conectar com número de telefone"</li>
+                      <li>Digite o código exibido na tela</li>
+                    </ol>
+
+                    {/* Campo de telefone */}
+                    <div style={{ marginTop: '20px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#344848', marginBottom: '8px' }}>
+                        Seu número com DDD:
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="(11) 99999-9999"
+                        value={telefoneParear}
+                        onChange={(e) => {
+                          // Máscara de telefone
+                          let v = e.target.value.replace(/\D/g, '')
+                          if (v.length > 11) v = v.slice(0, 11)
+                          if (v.length > 6) {
+                            v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`
+                          } else if (v.length > 2) {
+                            v = `(${v.slice(0, 2)}) ${v.slice(2)}`
+                          } else if (v.length > 0) {
+                            v = `(${v}`
+                          }
+                          setTelefoneParear(v)
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          fontSize: '16px',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '8px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                        onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={conectarWhatsApp}
-                  disabled={loading}
+                  disabled={loading || (modoConexao === 'pairing' && telefoneParear.replace(/\D/g, '').length < 10)}
                   style={{
                     width: '100%',
                     padding: '14px',
@@ -1613,14 +1873,14 @@ export default function WhatsAppConexao() {
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
+                    cursor: (loading || (modoConexao === 'pairing' && telefoneParear.replace(/\D/g, '').length < 10)) ? 'not-allowed' : 'pointer',
                     fontSize: '16px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '10px',
-                    opacity: loading ? 0.7 : 1,
+                    opacity: (loading || (modoConexao === 'pairing' && telefoneParear.replace(/\D/g, '').length < 10)) ? 0.7 : 1,
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#20BA5A')}
@@ -1633,7 +1893,7 @@ export default function WhatsAppConexao() {
                     </>
                   ) : (
                     <>
-                      <Icon icon="mdi:qrcode" width="24" height="24" />
+                      <Icon icon={modoConexao === 'qrcode' ? 'mdi:qrcode' : 'mdi:cellphone-link'} width="24" height="24" />
                       Conectar WhatsApp
                     </>
                   )}
