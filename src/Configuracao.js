@@ -12,6 +12,7 @@ import {
 import { asaasService } from './services/asaasService'
 import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
+import { useUser } from './contexts/UserContext'
 
 // Templates padrão para criação automática
 const TEMPLATES_PADRAO = {
@@ -54,7 +55,7 @@ function Configuracao() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'empresa')
   const [loading, setLoading] = useState(false)
-  const [user, setUser] = useState(null)
+  const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
 
   // Company data
   const [dadosEmpresa, setDadosEmpresa] = useState({
@@ -128,7 +129,7 @@ function Configuracao() {
 
   useEffect(() => {
     carregarDados()
-  }, [])
+  }, [contextUserId])
 
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
@@ -141,18 +142,15 @@ function Configuracao() {
   const carregarDados = async () => {
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      if (!contextUserId) return
 
-      if (user) {
-        await Promise.all([
-          carregarDadosEmpresa(user.id),
-          carregarConfigCobranca(user.id),
-          carregarPlanos(user.id),
-          carregarUsoSistema(user.id),
-          carregarConfigAsaas()
-        ])
-      }
+      await Promise.all([
+        carregarDadosEmpresa(contextUserId),
+        carregarConfigCobranca(contextUserId),
+        carregarPlanos(contextUserId),
+        carregarUsoSistema(contextUserId),
+        carregarConfigAsaas()
+      ])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
       showToast('Erro ao carregar configurações', 'error')
@@ -211,7 +209,7 @@ function Configuracao() {
     setUploadingLogo(true)
     try {
       const ext = file.name.split('.').pop()
-      const fileName = `${user.id}/logo.${ext}`
+      const fileName = `${contextUserId}/logo.${ext}`
 
       // Upload para Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -228,7 +226,7 @@ function Configuracao() {
       const logoUrl = urlData.publicUrl
 
       // Salvar URL no banco
-      await supabase.from('usuarios').update({ logo_url: logoUrl }).eq('id', user.id)
+      await supabase.from('usuarios').update({ logo_url: logoUrl }).eq('id', contextUserId)
       setDadosEmpresa(prev => ({ ...prev, logoUrl }))
       showToast('Logo atualizada!', 'success')
     } catch (error) {
@@ -241,7 +239,7 @@ function Configuracao() {
 
   const removerLogo = async () => {
     try {
-      await supabase.from('usuarios').update({ logo_url: null }).eq('id', user.id)
+      await supabase.from('usuarios').update({ logo_url: null }).eq('id', contextUserId)
       setDadosEmpresa(prev => ({ ...prev, logoUrl: '' }))
       showToast('Logo removida', 'success')
     } catch (error) {
@@ -291,7 +289,7 @@ function Configuracao() {
           chave_pix: dadosEmpresa.chavePix,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)
+        .eq('id', contextUserId)
 
       if (error) throw error
       showToast('Configurações salvas!', 'success')
@@ -363,7 +361,7 @@ function Configuracao() {
       const { data: existente } = await supabase
         .from('templates')
         .select('id, ativo, mensagem')
-        .eq('user_id', user.id)
+        .eq('user_id', contextUserId)
         .eq('tipo', tipo)
         .maybeSingle()
 
@@ -397,7 +395,7 @@ function Configuracao() {
       await supabase
         .from('templates')
         .insert({
-          user_id: user.id,
+          user_id: contextUserId,
           titulo: titulos[tipo],
           mensagem: TEMPLATES_PADRAO[tipo],
           tipo: tipo,
@@ -417,7 +415,7 @@ function Configuracao() {
       const { error } = await supabase
         .from('configuracoes_cobranca')
         .upsert({
-          user_id: user.id,
+          user_id: contextUserId,
           enviar_antes_vencimento: configCobranca.enviarAntes,
           enviar_3_dias_antes: configCobranca.enviar3DiasAntes,
           enviar_no_dia: configCobranca.enviarNoDia,
@@ -512,7 +510,7 @@ function Configuracao() {
 
     try {
       const { error } = await supabase.from('planos').insert({
-        user_id: user.id,
+        user_id: contextUserId,
         nome: formPlano.nome.trim(),
         valor: parseFloat(formPlano.valor),
         ciclo_cobranca: formPlano.ciclo,
@@ -524,7 +522,7 @@ function Configuracao() {
 
       showToast('Plano criado!', 'success')
       setMostrarModalPlano(false)
-      await carregarPlanos(user.id)
+      await carregarPlanos(contextUserId)
     } catch (error) {
       console.error('Erro ao criar plano:', error)
       showToast('Erro ao criar plano: ' + error.message, 'error')
@@ -585,7 +583,7 @@ function Configuracao() {
       }
 
       setMostrarModalPlano(false)
-      await carregarPlanos(user.id)
+      await carregarPlanos(contextUserId)
     } catch (error) {
       console.error('Erro ao atualizar plano:', error)
       showToast('Erro ao atualizar plano: ' + error.message, 'error')
@@ -618,7 +616,7 @@ function Configuracao() {
 
       showToast('Plano excluído!', 'success')
       setConfirmDelete({ show: false, plano: null })
-      await carregarPlanos(user.id)
+      await carregarPlanos(contextUserId)
     } catch (error) {
       console.error('Erro ao excluir plano:', error)
       showToast('Erro ao excluir plano: ' + error.message, 'error')
@@ -637,7 +635,7 @@ function Configuracao() {
       if (error) throw error
 
       showToast(`Plano ${novoStatus ? 'ativado' : 'desativado'}!`, 'success')
-      await carregarPlanos(user.id)
+      await carregarPlanos(contextUserId)
     } catch (error) {
       console.error('Erro ao atualizar status:', error)
       showToast('Erro ao atualizar status: ' + error.message, 'error')
@@ -1757,11 +1755,11 @@ function Configuracao() {
   // Carregar plano atual do usuário
   useEffect(() => {
     const carregarPlanoAtual = async () => {
-      if (user) {
+      if (contextUserId) {
         const { data } = await supabase
           .from('usuarios')
           .select('plano')
-          .eq('id', user.id)
+          .eq('id', contextUserId)
           .single()
         if (data?.plano) {
           setPlanoAtual(data.plano)
@@ -1769,7 +1767,7 @@ function Configuracao() {
       }
     }
     carregarPlanoAtual()
-  }, [user])
+  }, [contextUserId])
 
   const planosDisponiveis = [
     {
@@ -2205,7 +2203,7 @@ function Configuracao() {
       const { error } = await supabase
         .from('usuarios')
         .update({ modo_integracao: novoModo })
-        .eq('id', user.id)
+        .eq('id', contextUserId)
 
       if (error) throw error
 
@@ -2231,7 +2229,7 @@ function Configuracao() {
       const { error } = await supabase
         .from('usuarios')
         .update({ chave_pix: dadosEmpresa.chavePix })
-        .eq('id', user.id)
+        .eq('id', contextUserId)
 
       if (error) throw error
       showToast('Chave PIX salva com sucesso!', 'success')

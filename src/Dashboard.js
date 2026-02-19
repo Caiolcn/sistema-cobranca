@@ -54,7 +54,7 @@ export default function Dashboard() {
       const { data } = await supabase
         .from('usuarios')
         .select('id, email, nome_empresa, nome_completo, plano')
-        .neq('role', 'admin')
+        .or('role.neq.admin,role.is.null')
         .order('nome_empresa', { ascending: true, nullsFirst: false })
 
       if (data) setAdminClientes(data)
@@ -543,13 +543,16 @@ export default function Dashboard() {
               <option value="">Minha conta</option>
               {adminClientes.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.nome_empresa || c.nome_completo || c.email} ({c.plano})
+                  {c.nome_empresa || c.nome_completo || c.email} ({c.plano}) — ID: {c.id.substring(0, 8)}
                 </option>
               ))}
             </select>
             {adminViewingAs && (
-              <span style={{ color: '#ffd700', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                Visualizando cliente
+              <span style={{ color: '#ffd700', fontSize: '12px', whiteSpace: 'nowrap' }}
+                title={adminViewingAs}
+                onClick={() => { navigator.clipboard.writeText(adminViewingAs) }}
+              >
+                ID: {adminViewingAs.substring(0, 8)}... (clique p/ copiar)
               </span>
             )}
             <div

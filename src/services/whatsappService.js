@@ -66,7 +66,11 @@ class WhatsAppService {
         }
 
         // Erro de servidor (5xx), tentar novamente
-        lastError = new Error(`Erro HTTP: ${response.status}`)
+        // Guardar a response para o caller tratar com mensagens amigáveis
+        if (attempt === maxRetries - 1) {
+          return response // Última tentativa: retorna a response para o caller tratar
+        }
+        lastError = new Error(`Erro ao comunicar com WhatsApp (código ${response.status})`)
       } catch (error) {
         lastError = error
 
@@ -310,11 +314,26 @@ class WhatsAppService {
           const numeroNaoExiste = errorData.response.message.some(msg => msg.exists === false)
           if (numeroNaoExiste) {
             const numeroProblema = errorData.response.message[0].number.replace('@s.whatsapp.net', '')
-            throw new Error(`❌ O número ${numeroProblema} não existe no WhatsApp ou não está ativo. Verifique se:\n• O número está correto\n• A pessoa tem WhatsApp instalado\n• O número está ativo`)
+            throw new Error(`O número ${numeroProblema} não existe no WhatsApp ou não está ativo. Verifique se:\n• O número está correto\n• A pessoa tem WhatsApp instalado\n• O número está ativo`)
           }
         }
 
-        throw new Error(errorData.message || errorText || `Erro HTTP: ${response.status}`)
+        // Erro 500 = geralmente WhatsApp desconectado ou instância com problema
+        if (response.status === 500) {
+          throw new Error('Não foi possível enviar a mensagem. Isso geralmente acontece quando o WhatsApp está desconectado. Vá em WhatsApp → Conexão e verifique se está conectado.')
+        }
+
+        // Erro 404 = instância não encontrada
+        if (response.status === 404) {
+          throw new Error('Instância do WhatsApp não encontrada. Vá em WhatsApp → Conexão e reconecte.')
+        }
+
+        // Erro 401/403 = chave de API inválida
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Falha na autenticação com a API do WhatsApp. Verifique suas credenciais em Configurações.')
+        }
+
+        throw new Error(errorData.message || errorText || `Erro ao enviar mensagem (código ${response.status}). Tente novamente.`)
       }
 
       const result = await response.json()
@@ -400,10 +419,14 @@ class WhatsAppService {
         }
 
         if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
-          throw new Error('📱 WhatsApp desconectado. Reconecte na aba WhatsApp.')
+          throw new Error('WhatsApp desconectado. Reconecte na aba WhatsApp.')
         }
 
-        throw new Error(errorData.message || errorText || `Erro HTTP: ${response.status}`)
+        if (response.status === 500) {
+          throw new Error('Não foi possível enviar o documento. Verifique se o WhatsApp está conectado.')
+        }
+
+        throw new Error(errorData.message || errorText || `Erro ao enviar documento (código ${response.status}). Tente novamente.`)
       }
 
       const result = await response.json()

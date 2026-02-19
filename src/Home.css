@@ -618,9 +618,9 @@
   overflow-y: auto;
 }
 
-/* Mensagens Recentes - altura fixa para ~4 itens visíveis */
+/* Mensagens Recentes */
 .home-mensagens-recentes {
-  max-height: 280px;
+  max-height: 500px;
   overflow-y: auto;
 }
 

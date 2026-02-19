@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
+import { useUser } from './contexts/UserContext'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 
@@ -79,6 +80,7 @@ export default function WhatsAppConexao() {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked } = useUserPlan()
+  const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
   const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [activeTab, setActiveTab] = useState('conexao')
@@ -150,14 +152,15 @@ export default function WhatsAppConexao() {
   }, [config])
 
   // Carregar tudo em paralelo para melhorar performance
+  // Recarrega quando admin troca de cliente
   useEffect(() => {
     const carregarTudo = async () => {
       try {
-        // 1. Pegar user UMA vez só
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        // Usar userId do contexto (admin pode estar visualizando outro cliente)
+        const effectiveUserId = contextUserId
+        if (!effectiveUserId) return
 
-        const instanceName = `instance_${user.id.substring(0, 8)}`
+        const instanceName = `instance_${effectiveUserId.substring(0, 8)}`
 
         // 2. Fazer TODAS as queries em paralelo
         const [configResult, templatesResult, automacoesResult, usuarioResult, metodoPagResult, asaasResult] = await Promise.all([
@@ -171,7 +174,7 @@ export default function WhatsAppConexao() {
           supabase
             .from('templates')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', effectiveUserId)
             .eq('ativo', true)
             .order('created_at', { ascending: false }),
 
@@ -179,28 +182,28 @@ export default function WhatsAppConexao() {
           supabase
             .from('configuracoes_cobranca')
             .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula')
-            .eq('user_id', user.id)
+            .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
           // Dados do usuário (chave PIX)
           supabase
             .from('usuarios')
             .select('chave_pix')
-            .eq('id', user.id)
+            .eq('id', effectiveUserId)
             .single(),
 
           // Método de pagamento WhatsApp
           supabase
             .from('config')
             .select('chave, valor')
-            .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+            .eq('chave', `${effectiveUserId}_metodo_pagamento_whatsapp`)
             .maybeSingle(),
 
           // Verificar se Asaas está configurado
           supabase
             .from('usuarios')
             .select('asaas_api_key, modo_integracao')
-            .eq('id', user.id)
+            .eq('id', effectiveUserId)
             .single()
         ])
 
@@ -248,7 +251,7 @@ export default function WhatsAppConexao() {
             const { data: novoTemplate, error: erroInsert } = await supabase
               .from('templates')
               .insert({
-                user_id: user.id,
+                user_id: effectiveUserId,
                 titulo: tmpl.titulo,
                 mensagem: tmpl.mensagem,
                 tipo: tmpl.tipo,
@@ -321,26 +324,25 @@ export default function WhatsAppConexao() {
     }
 
     carregarTudo()
-  }, [])
+  }, [contextUserId])
 
   // Salvar conexão WhatsApp no banco de dados (na tabela config E mensallizap)
   const salvarConexaoNoBanco = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      if (!contextUserId) {
         console.error('Usuário não autenticado')
         return
       }
 
       console.log('🔍 Salvando conexão WhatsApp...')
-      console.log('User ID:', user.id)
+      console.log('User ID:', contextUserId)
       console.log('Instance Name:', config.instanceName)
 
       // Salvar instance_name na tabela config (GLOBAL para o usuário)
       const { data: dataInstanceName, error: errorInstanceName } = await supabase
         .from('config')
         .upsert({
-          user_id: user.id,
+          user_id: contextUserId,
           chave: 'evolution_instance_name',
           valor: config.instanceName,
           descricao: 'Nome da instância conectada na Evolution API',
@@ -361,7 +363,7 @@ export default function WhatsAppConexao() {
       const { data: dataStatus, error: errorStatus } = await supabase
         .from('config')
         .upsert({
-          user_id: user.id,
+          user_id: contextUserId,
           chave: 'whatsapp_conectado',
           valor: 'true',
           descricao: 'Status de conexão do WhatsApp',
@@ -396,7 +398,7 @@ export default function WhatsAppConexao() {
       const { data: usuarioData, error: usuarioError } = await supabase
         .from('usuarios')
         .select('nome_completo, email, telefone, plano')
-        .eq('id', user.id)
+        .eq('id', contextUserId)
         .single()
 
       if (usuarioError) {
@@ -425,9 +427,9 @@ export default function WhatsAppConexao() {
       const { data: mensallizapData, error: mensallizapError } = await supabase
         .from('mensallizap')
         .upsert({
-          user_id: user.id,
+          user_id: contextUserId,
           nome_completo: usuarioData?.nome_completo || null,
-          email: usuarioData?.email || user.email,
+          email: usuarioData?.email || '',
           telefone: usuarioData?.telefone || null,
           plano: usuarioData?.plano || 'starter',
           whatsapp_numero: whatsappNumero,
@@ -457,14 +459,13 @@ export default function WhatsAppConexao() {
   // Carregar configurações de automação
   const carregarConfiguracoesAutomacao = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!contextUserId) return
 
       // Chaves únicas por usuário (prefixadas com user_id)
       const chaves = [
-        `${user.id}_automacao_3dias_ativa`,
-        `${user.id}_automacao_5dias_ativa`,
-        `${user.id}_automacao_ematraso_ativa`
+        `${contextUserId}_automacao_3dias_ativa`,
+        `${contextUserId}_automacao_5dias_ativa`,
+        `${contextUserId}_automacao_ematraso_ativa`
       ]
 
       const { data, error } = await supabase
@@ -480,7 +481,7 @@ export default function WhatsAppConexao() {
       const configMap = {}
       data?.forEach(item => {
         // Remover o prefixo do user_id para facilitar o acesso
-        const chaveSimples = item.chave.replace(`${user.id}_`, '')
+        const chaveSimples = item.chave.replace(`${contextUserId}_`, '')
         configMap[chaveSimples] = item.valor
       })
 
@@ -496,8 +497,7 @@ export default function WhatsAppConexao() {
   // Salvar configuração de automação na tabela configuracoes_cobranca
   const salvarConfiguracaoAutomacao = async (chave, valor) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      if (!contextUserId) {
         setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Usuário não autenticado' })
         return false
       }
@@ -520,7 +520,7 @@ export default function WhatsAppConexao() {
       const { data: existing, error: selectError } = await supabase
         .from('configuracoes_cobranca')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', contextUserId)
         .maybeSingle()
 
       if (selectError && selectError.code !== 'PGRST116') {
@@ -535,7 +535,7 @@ export default function WhatsAppConexao() {
             [coluna]: valor,
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', user.id)
+          .eq('user_id', contextUserId)
 
         if (error) {
           console.error('Erro ao atualizar configuração:', error)
@@ -547,7 +547,7 @@ export default function WhatsAppConexao() {
         const { error } = await supabase
           .from('configuracoes_cobranca')
           .insert({
-            user_id: user.id,
+            user_id: contextUserId,
             [coluna]: valor
           })
 
@@ -570,14 +570,13 @@ export default function WhatsAppConexao() {
   // Também troca os labels associados para manter consistência
   const atualizarVariavelTemplates = async (de, para) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!contextUserId) return
 
       // Buscar templates que contenham a variável antiga OU os labels antigos
       const { data: templatesParaAtualizar } = await supabase
         .from('templates')
         .select('id, mensagem')
-        .eq('user_id', user.id)
+        .eq('user_id', contextUserId)
 
       const temAlteracao = templatesParaAtualizar?.filter(t =>
         t.mensagem.includes(de) ||
@@ -611,7 +610,7 @@ export default function WhatsAppConexao() {
         const { data: templatesAtualizados } = await supabase
           .from('templates')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', contextUserId)
           .eq('ativo', true)
           .order('created_at', { ascending: false })
 
@@ -643,12 +642,11 @@ export default function WhatsAppConexao() {
   // Salvar método de pagamento (PIX Manual ou Link Asaas)
   const salvarMetodoPagamento = async (metodo) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!contextUserId) return
 
       setMetodoPagamento(metodo)
 
-      const chaveUnica = `${user.id}_metodo_pagamento_whatsapp`
+      const chaveUnica = `${contextUserId}_metodo_pagamento_whatsapp`
 
       // Verificar se já existe
       const { data: existing } = await supabase
@@ -666,7 +664,7 @@ export default function WhatsAppConexao() {
         await supabase
           .from('config')
           .insert({
-            user_id: user.id,
+            user_id: contextUserId,
             chave: chaveUnica,
             valor: metodo,
             descricao: 'Método de pagamento nas mensagens WhatsApp',
@@ -711,14 +709,13 @@ export default function WhatsAppConexao() {
   // Função para criar ou atualizar template padrão automaticamente ao ativar toggle
   const criarTemplatePadraoSeNaoExiste = async (tipo) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return false
+      if (!contextUserId) return false
 
       // Verificar se já existe template deste tipo (ativo ou inativo)
       const { data: existente, error: erroBusca } = await supabase
         .from('templates')
         .select('id, ativo, mensagem')
-        .eq('user_id', user.id)
+        .eq('user_id', contextUserId)
         .eq('tipo', tipo)
         .maybeSingle()
 
@@ -770,7 +767,7 @@ export default function WhatsAppConexao() {
       const { error: erroInsert } = await supabase
         .from('templates')
         .insert({
-          user_id: user.id,
+          user_id: contextUserId,
           titulo: titulos[tipo],
           mensagem: TEMPLATES_PADRAO[tipo],
           tipo: tipo,
@@ -1139,12 +1136,11 @@ export default function WhatsAppConexao() {
       })
 
       // Atualizar status no banco de dados (tabela config)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      if (contextUserId) {
         await supabase
           .from('config')
           .upsert({
-            user_id: user.id,
+            user_id: contextUserId,
             chave: 'whatsapp_conectado',
             valor: 'false',
             descricao: 'Status de conexão do WhatsApp',
@@ -1162,7 +1158,7 @@ export default function WhatsAppConexao() {
             ultima_desconexao: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', user.id)
+          .eq('user_id', contextUserId)
 
         if (mensallizapError) {
           console.error('❌ Erro ao atualizar mensallizap:', mensallizapError)
@@ -1226,7 +1222,6 @@ export default function WhatsAppConexao() {
 
     // Salvar no banco automaticamente
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
 
       if (templateExistente) {
@@ -1247,7 +1242,7 @@ export default function WhatsAppConexao() {
         const { error } = await supabase
           .from('templates')
           .insert({
-            user_id: user.id,
+            user_id: contextUserId,
             titulo: novoTitulo,
             mensagem: novaMensagem,
             tipo: tipoTemplateSelecionado,
@@ -1268,12 +1263,12 @@ export default function WhatsAppConexao() {
 
   const carregarTemplates = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      if (!contextUserId) return
 
       const { data: templates, error } = await supabase
         .from('templates')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', contextUserId)
         .eq('ativo', true)
         .order('created_at', { ascending: false })
 
@@ -1312,13 +1307,12 @@ export default function WhatsAppConexao() {
   const salvarChavePix = async () => {
     try {
       setSalvandoPix(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!contextUserId) return
 
       const { error } = await supabase
         .from('usuarios')
         .update({ chave_pix: chavePix })
-        .eq('id', user.id)
+        .eq('id', contextUserId)
 
       if (error) throw error
 
@@ -1338,7 +1332,6 @@ export default function WhatsAppConexao() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
 
       if (templateExistente) {
@@ -1366,7 +1359,7 @@ export default function WhatsAppConexao() {
         const { error, data } = await supabase
           .from('templates')
           .insert({
-            user_id: user.id,
+            user_id: contextUserId,
             titulo: tituloTemplate,
             mensagem: mensagemTemplate,
             tipo: tipoTemplateSelecionado,
