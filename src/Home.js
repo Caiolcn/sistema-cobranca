@@ -60,7 +60,7 @@ function Home() {
       const hoje = new Date();
       const hojeStr = hoje.toISOString().split('T')[0];
 
-      // Período: mês atual (fixo)
+      // Período: mês atual
       const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
       const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
 
@@ -410,10 +410,6 @@ function Home() {
         <div className="home-welcome">
           <h1>{getHoraSaudacao()}! 👋</h1>
           <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
-        </div>
-        <div className="home-header-month">
-          <Icon icon="material-symbols:calendar-today-outline" width="18" />
-          <span>{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}</span>
         </div>
       </div>
 

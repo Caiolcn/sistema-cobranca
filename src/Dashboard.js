@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [mostrarModalTrial, setMostrarModalTrial] = useState(false)
   const [menuAberto, setMenuAberto] = useState(false)
   const [configSubmenuAberto, setConfigSubmenuAberto] = useState(false)
+  const [perfilMenuAberto, setPerfilMenuAberto] = useState(false)
 
   const { isMobile, isTablet } = useWindowSize()
 
@@ -177,6 +178,8 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '25px', width: isMobile ? '100%' : 'auto' }}>
           {/* Home */}
           <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Início"
             onClick={() => { navigate('/app/home'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
@@ -206,6 +209,8 @@ export default function Dashboard() {
 
           {/* Horários */}
           <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Horários"
             onClick={() => { navigate('/app/horarios'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
@@ -235,6 +240,8 @@ export default function Dashboard() {
 
           {/* Clientes */}
           <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Alunos"
             onClick={() => { navigate('/app/clientes'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
@@ -264,6 +271,8 @@ export default function Dashboard() {
 
           {/* Financeiro */}
           <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Financeiro"
             onClick={() => { navigate('/app/financeiro'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
@@ -293,6 +302,8 @@ export default function Dashboard() {
 
           {/* Relatórios */}
           <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Relatórios"
             onClick={() => { navigate('/app/relatorios'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
@@ -322,6 +333,8 @@ export default function Dashboard() {
 
           {/* WhatsApp */}
           <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="WhatsApp"
             onClick={() => { navigate('/app/whatsapp'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
@@ -444,6 +457,8 @@ export default function Dashboard() {
           ) : (
             /* Desktop: Item simples */
             <div
+              className="sidebar-tooltip"
+              data-tooltip="Configurações"
               onClick={() => navigate('/app/configuracao')}
               style={{
                 width: '40px',
@@ -470,7 +485,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Ícones de perfil e sair (fixos na parte inferior) */}
+        {/* Ícones inferiores: Ajuda, Perfil, Sair */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '15px', alignItems: isMobile ? 'flex-start' : 'center', width: isMobile ? '100%' : 'auto' }}>
           {/* Divisória */}
           <div style={{
@@ -479,52 +494,120 @@ export default function Dashboard() {
             backgroundColor: '#e0e0e0'
           }} />
 
-          {/* Perfil */}
+          {/* Ajuda */}
           <div
-            onClick={() => { setMostrarPerfil(true); if (isMobile) setMenuAberto(false) }}
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Ajuda"
+            onClick={() => { navigate('/app/ajuda'); if (isMobile) setMenuAberto(false) }}
             style={{
               width: isMobile ? '100%' : '40px',
               height: '40px',
+              backgroundColor: telaAtiva === 'ajuda' ? '#333' : 'transparent',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: isMobile ? 'flex-start' : 'center',
               gap: isMobile ? '12px' : '0',
               paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'ajuda' ? 'white' : '#666',
               fontSize: '20px',
               cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              color: '#666'
+              transition: 'all 0.2s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'ajuda') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'ajuda') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
           >
-            <Icon icon="material-symbols-light:frame-person-outline-rounded" width="22" height="22" />
-            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Meu Perfil</span>}
+            <Icon icon="fluent:question-circle-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Ajuda</span>}
           </div>
 
-          {/* Sair */}
-          <div
-            onClick={handleLogout}
-            style={{
-              width: isMobile ? '100%' : '40px',
-              height: '40px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isMobile ? 'flex-start' : 'center',
-              gap: isMobile ? '12px' : '0',
-              paddingLeft: isMobile ? '12px' : '0',
-              fontSize: '20px',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              color: '#666'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <Icon icon="iconoir:log-out" width="22" height="22" />
-            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: '#f44336' }}>Sair</span>}
+          {/* Perfil */}
+          <div style={{ position: 'relative' }}>
+            <div
+              className={!isMobile && !perfilMenuAberto ? 'sidebar-tooltip' : ''}
+              data-tooltip="Meu Perfil"
+              onClick={() => {
+                if (isMobile) {
+                  setPerfilMenuAberto(!perfilMenuAberto)
+                } else {
+                  setPerfilMenuAberto(!perfilMenuAberto)
+                }
+              }}
+              style={{
+                width: isMobile ? '100%' : '40px',
+                height: '40px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isMobile ? 'flex-start' : 'center',
+                gap: isMobile ? '12px' : '0',
+                paddingLeft: isMobile ? '12px' : '0',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                color: '#666',
+                backgroundColor: perfilMenuAberto ? '#f5f5f5' : 'transparent'
+              }}
+              onMouseEnter={(e) => { if (!perfilMenuAberto) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
+              onMouseLeave={(e) => { if (!perfilMenuAberto) e.currentTarget.style.backgroundColor = 'transparent' }}
+            >
+              <Icon icon="material-symbols-light:frame-person-outline-rounded" width="22" height="22" />
+              {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Meu Perfil</span>}
+            </div>
+
+            {/* Popup do Perfil */}
+            {perfilMenuAberto && (
+              <>
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 199 }}
+                  onClick={() => setPerfilMenuAberto(false)}
+                />
+                <div style={{
+                  position: 'absolute',
+                  [isMobile ? 'top' : 'bottom']: isMobile ? '44px' : '0',
+                  left: isMobile ? '0' : '50px',
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  padding: '6px',
+                  minWidth: '160px',
+                  zIndex: 200
+                }}>
+                  <div
+                    onClick={() => { setPerfilMenuAberto(false); setMostrarPerfil(true); if (isMobile) setMenuAberto(false) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '10px 14px', borderRadius: '7px', cursor: 'pointer',
+                      fontSize: '14px', color: '#374151', transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <Icon icon="fluent:person-20-regular" width="18" />
+                    Meu Perfil
+                  </div>
+                  <div style={{ height: '1px', background: '#e5e7eb', margin: '2px 8px' }} />
+                  <div
+                    onClick={() => { setPerfilMenuAberto(false); handleLogout() }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '10px 14px', borderRadius: '7px', cursor: 'pointer',
+                      fontSize: '14px', color: '#ef4444', transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <Icon icon="iconoir:log-out" width="18" />
+                    Sair
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

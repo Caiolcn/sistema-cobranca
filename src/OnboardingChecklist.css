@@ -1,0 +1,247 @@
+/* Floating Panel */
+.onboarding-panel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 370px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 900;
+  animation: panelSlideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes panelSlideIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header */
+.onboarding-panel-header {
+  background: linear-gradient(135deg, #3b5bdb, #5b4ee8);
+  padding: 22px 22px 18px;
+  border-radius: 20px 20px 0 0;
+}
+
+.onboarding-panel-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.onboarding-panel-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.2px;
+}
+
+.onboarding-panel-close {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: background 0.2s;
+}
+
+.onboarding-panel-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Progress inside header */
+.onboarding-panel-header-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.onboarding-panel-progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.onboarding-panel-progress-fill {
+  height: 100%;
+  background: white;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.onboarding-panel-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+/* Steps */
+.onboarding-panel-steps {
+  padding: 14px 14px 18px;
+  max-height: 460px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Card per step */
+.onboarding-panel-card {
+  display: flex;
+  gap: 14px;
+  padding: 18px 16px;
+  background: #F9FAFB;
+  border-radius: 14px;
+  border: 1px solid #e8ebf0;
+  align-items: flex-start;
+  transition: box-shadow 0.2s;
+}
+
+.onboarding-panel-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.onboarding-panel-card.done {
+  padding: 14px 16px;
+  background: #F9FAFB;
+  border-color: #edf0f4;
+}
+
+/* Circle */
+.onboarding-panel-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #dde1e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s;
+  background: white;
+}
+
+.onboarding-panel-circle.done {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+/* Card content */
+.onboarding-panel-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-panel-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1f36;
+  line-height: 34px;
+}
+
+.onboarding-panel-card-title.done {
+  color: #9ca3af;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.onboarding-panel-card-desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.onboarding-panel-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 7px 16px;
+  background: #3b5bdb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.onboarding-panel-card-btn:hover {
+  background: #2b4bc6;
+}
+
+/* FAB (Floating Action Button) - collapsed pill */
+.onboarding-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  height: 44px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #3b5bdb, #5b4ee8);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 20px rgba(59, 91, 219, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 18px;
+  z-index: 900;
+  transition: transform 0.2s, box-shadow 0.2s;
+  animation: fabPop 0.3s ease-out;
+}
+
+.onboarding-fab:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 24px rgba(59, 91, 219, 0.5);
+}
+
+@keyframes fabPop {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.onboarding-fab-text {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.onboarding-fab-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 14px;
+  white-space: nowrap;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .onboarding-panel {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
+  .onboarding-fab {
+    bottom: 16px;
+    right: 16px;
+  }
+}

@@ -26,6 +26,7 @@ const PortalCliente = lazy(() => import('./pages/PortalCliente'))
 const Onboarding = lazy(() => import('./Onboarding'))
 const GradeHorarios = lazy(() => import('./GradeHorarios'))
 const Relatorios = lazy(() => import('./Relatorios'))
+const Ajuda = lazy(() => import('./Ajuda'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -92,6 +93,7 @@ function App() {
                     <Route path="relatorios" element={<Relatorios />} />
                     <Route path="whatsapp" element={<WhatsAppConexao />} />
                     <Route path="configuracao" element={<Configuracao />} />
+                    <Route path="ajuda" element={<Ajuda />} />
                   </Route>
                 </>
               ) : (
