@@ -311,6 +311,18 @@ export default function WhatsAppConexao() {
               const state = data.instance?.state || 'close'
               if (state === 'open') {
                 setStatus('connected')
+                // Sincronizar mensallizap para que o onboarding checklist reflita a conexão
+                supabase
+                  .from('mensallizap')
+                  .upsert({
+                    user_id: effectiveUserId,
+                    conectado: true,
+                    instance_name: instanceName,
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'user_id' })
+                  .then(({ error }) => {
+                    if (error) console.warn('Erro ao sincronizar mensallizap:', error)
+                  })
               }
             }
           } catch (error) {
@@ -1389,14 +1401,15 @@ export default function WhatsAppConexao() {
   // ========== RENDER ==========
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '16px' : '25px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Icon icon="mdi:whatsapp" width={isSmallScreen ? 28 : 32} height={isSmallScreen ? 28 : 32} style={{ color: '#25D366' }} />
@@ -1416,7 +1429,8 @@ export default function WhatsAppConexao() {
         backgroundColor: 'white',
         borderRadius: '8px',
         marginBottom: isSmallScreen ? '16px' : '25px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none',
         display: 'flex',
         gap: '4px',
         padding: '4px'
@@ -1476,7 +1490,8 @@ export default function WhatsAppConexao() {
             borderRadius: '8px',
             padding: isSmallScreen ? '12px 16px' : '16px 20px',
             marginBottom: isSmallScreen ? '16px' : '25px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none',
             display: 'flex',
             flexDirection: isSmallScreen ? 'column' : 'row',
             justifyContent: 'space-between',
@@ -1520,7 +1535,8 @@ export default function WhatsAppConexao() {
             backgroundColor: 'white',
             borderRadius: '8px',
             padding: isSmallScreen ? '20px' : '40px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none'
           }}>
             {status === 'connected' ? (
               // ESTADO 1: CONECTADO
@@ -1747,7 +1763,7 @@ export default function WhatsAppConexao() {
                       flex: 1,
                       padding: '10px 12px',
                       backgroundColor: modoConexao === 'qrcode' ? 'white' : 'transparent',
-                      border: 'none',
+                      border: modoConexao === 'qrcode' ? '1px solid #e5e7eb' : 'none',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px',
@@ -1757,7 +1773,7 @@ export default function WhatsAppConexao() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
-                      boxShadow: modoConexao === 'qrcode' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      boxShadow: 'none',
                       transition: 'all 0.2s'
                     }}
                   >
@@ -1770,7 +1786,7 @@ export default function WhatsAppConexao() {
                       flex: 1,
                       padding: '10px 12px',
                       backgroundColor: modoConexao === 'pairing' ? 'white' : 'transparent',
-                      border: 'none',
+                      border: modoConexao === 'pairing' ? '1px solid #e5e7eb' : 'none',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px',
@@ -1780,7 +1796,7 @@ export default function WhatsAppConexao() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
-                      boxShadow: modoConexao === 'pairing' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      boxShadow: 'none',
                       transition: 'all 0.2s'
                     }}
                   >
@@ -1945,7 +1961,8 @@ export default function WhatsAppConexao() {
           backgroundColor: 'white',
           borderRadius: '8px',
           padding: isSmallScreen ? '16px' : '30px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+          border: '1px solid #e5e7eb',
+          boxShadow: 'none'
         }}>
           <div style={{ marginBottom: isSmallScreen ? '20px' : '30px' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
@@ -2114,7 +2131,8 @@ export default function WhatsAppConexao() {
                         backgroundColor: 'white',
                         borderRadius: '50%',
                         transition: 'left 0.3s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        border: '1px solid #e5e7eb',
+                        boxShadow: 'none'
                       }} />
                     </button>
                   )}
@@ -2165,7 +2183,8 @@ export default function WhatsAppConexao() {
                       backgroundColor: 'white',
                       borderRadius: '50%',
                       transition: 'left 0.3s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      border: '1px solid #e5e7eb',
+                      boxShadow: 'none'
                     }} />
                   </button>
                 </div>
@@ -2238,7 +2257,8 @@ export default function WhatsAppConexao() {
                         backgroundColor: 'white',
                         borderRadius: '50%',
                         transition: 'left 0.3s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        border: '1px solid #e5e7eb',
+                        boxShadow: 'none'
                       }} />
                     </button>
                   )}
@@ -2312,7 +2332,8 @@ export default function WhatsAppConexao() {
                         backgroundColor: 'white',
                         borderRadius: '50%',
                         transition: 'left 0.3s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        border: '1px solid #e5e7eb',
+                        boxShadow: 'none'
                       }} />
                     </button>
                   )}

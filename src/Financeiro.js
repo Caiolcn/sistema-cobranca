@@ -359,7 +359,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       if (!devedor) {
         console.error('Erro: devedor não encontrado na mensalidade')
-        showToast('Erro ao criar próxima parcela: cliente não encontrado', 'error')
+        showToast('Erro ao criar próxima parcela: aluno não encontrado', 'error')
         return
       }
 
@@ -604,7 +604,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     if (!mensalidadePaga) return
 
     const dadosRecibo = {
-      nomeCliente: mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Cliente',
+      nomeCliente: mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Aluno',
       telefoneCliente: mensalidadePaga.devedor?.telefone || mensalidadePaga.devedores?.telefone || '',
       valor: mensalidadePaga.valor,
       dataVencimento: mensalidadePaga.data_vencimento,
@@ -653,7 +653,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           mensalidade_id: mensalidade.id,
           token: token,
           valor: mensalidade.valor,
-          cliente_nome: mensalidade.devedor?.nome || 'Cliente',
+          cliente_nome: mensalidade.devedor?.nome || 'Aluno',
           data_vencimento: mensalidade.data_vencimento,
           nome_empresa: nomeEmpresa || 'Empresa',
           chave_pix: chavePix
@@ -680,7 +680,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         url: `${baseUrl}/pagar/${token}`,
         pixCode: codigoPix,
         valor: mensalidade.valor,
-        cliente: mensalidade.devedor?.nome || 'Cliente',
+        cliente: mensalidade.devedor?.nome || 'Aluno',
         vencimento: mensalidade.data_vencimento
       })
 
@@ -721,7 +721,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   const enviarLinkWhatsApp = async () => {
     if (!linkPagamentoData || !mensalidadeDetalhes?.devedor?.telefone) {
-      showToast('Telefone do cliente não encontrado', 'error')
+      showToast('Telefone do aluno não encontrado', 'error')
       return
     }
 
@@ -736,7 +736,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
     try {
       const telefone = mensalidadeDetalhes.devedor.telefone
-      const nomeCliente = mensalidadeDetalhes.devedor?.nome?.split(' ')[0] || 'Cliente'
+      const nomeCliente = mensalidadeDetalhes.devedor?.nome?.split(' ')[0] || 'Aluno'
       const valorFormatado = parseFloat(linkPagamentoData.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       const vencimentoFormatado = new Date(linkPagamentoData.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
 
@@ -782,12 +782,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         devedorId: mensalidade.devedor_id,
         valor: mensalidade.valor,
         dataVencimento: mensalidade.data_vencimento,
-        descricao: `Mensalidade - ${mensalidade.devedor?.nome || 'Cliente'}`
+        descricao: `Mensalidade - ${mensalidade.devedor?.nome || 'Aluno'}`
       })
 
       setBoletoData({
         ...resultado,
-        cliente: mensalidade.devedor?.nome || 'Cliente',
+        cliente: mensalidade.devedor?.nome || 'Aluno',
         vencimento: mensalidade.data_vencimento
       })
 
@@ -910,7 +910,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   const enviarBoletoWhatsApp = async () => {
     if (!boletoData || !mensalidadeDetalhes?.devedor?.telefone) {
-      showToast('Telefone do cliente não encontrado', 'error')
+      showToast('Telefone do aluno não encontrado', 'error')
       return
     }
 
@@ -925,7 +925,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
     try {
       const telefone = mensalidadeDetalhes.devedor.telefone
-      const nomeCliente = mensalidadeDetalhes.devedor?.nome?.split(' ')[0] || 'Cliente'
+      const nomeCliente = mensalidadeDetalhes.devedor?.nome?.split(' ')[0] || 'Aluno'
       const valorFormatado = parseFloat(boletoData.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       const vencimentoFormatado = new Date(boletoData.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
       const linkPagamento = boletoData.invoice_url || boletoData.boleto_url
@@ -994,7 +994,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
     setBoletoData({
       ...boleto,
-      cliente: mensalidade.devedor?.nome || 'Cliente',
+      cliente: mensalidade.devedor?.nome || 'Aluno',
       vencimento: boleto.data_vencimento
     })
     setMostrarModalBoleto(true)
@@ -1106,7 +1106,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   if (loading) {
     return (
-      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
         {/* Cards skeleton */}
         <div style={{
           display: 'grid',
@@ -1129,14 +1129,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   }
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Menu de Abas */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: isSmallScreen ? '6px' : '8px',
         marginBottom: isSmallScreen ? '12px' : '16px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none',
         display: 'flex',
         gap: '4px',
         overflowX: 'auto'
@@ -1181,7 +1182,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         borderRadius: '8px',
         padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '12px' : '16px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
         <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0' }}>
           {/* Título */}
@@ -1303,7 +1305,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 {isSmallScreen && (
                   <div style={{
                     padding: '16px 20px',
-                    borderBottom: '1px solid #e0e0e0',
+                    borderBottom: '1px solid #e5e7eb',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -1336,7 +1338,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   {/* Filtro por Nome */}
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', fontSize: '14px', color: '#333', marginBottom: '8px', fontWeight: '600' }}>
-                      Nome do Cliente
+                      Nome do Aluno
                     </label>
                     <div style={{ position: 'relative' }}>
                       <Icon
@@ -1538,7 +1540,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none',
         padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '16px' : '20px'
       }}>
@@ -1724,7 +1727,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       <div style={{
         backgroundColor: isSmallScreen ? 'transparent' : 'white',
         borderRadius: isSmallScreen ? 0 : '8px',
-        boxShadow: isSmallScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+        border: isSmallScreen ? 'none' : '1px solid #e5e7eb',
+        boxShadow: 'none',
         overflow: 'hidden',
         marginBottom: '40px'
       }}>
@@ -1749,7 +1753,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   backgroundColor: 'white',
                   borderRadius: '8px',
                   padding: '16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  boxShadow: 'none',
                   cursor: 'pointer',
                   borderLeft: `4px solid ${
                     mensalidade.statusCalculado === 'atrasado' ? '#f44336' :
@@ -1827,9 +1831,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
+                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e5e7eb' }}>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Cliente
+                    Aluno
                   </th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
                     Vencimento
@@ -1859,7 +1863,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   <tr
                     key={mensalidade.id}
                     onClick={() => abrirDetalhesMensalidade(mensalidade)}
-                    style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s', cursor: 'pointer' }}
+                    style={{ borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s', cursor: 'pointer' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                   >
@@ -2056,7 +2060,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             {/* Header */}
             <div style={{
               padding: '20px 24px',
-              borderBottom: '1px solid #e8e8e8',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -2083,7 +2087,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <div style={{ padding: '24px', flex: 1, overflow: 'auto' }}>
               {/* Cliente */}
               <div style={{ marginBottom: '20px' }}>
-                <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Cliente</p>
+                <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Aluno</p>
                 <p style={{ fontSize: '16px', fontWeight: '600', color: '#333', margin: 0 }}>
                   {mensalidadeDetalhes.devedor?.nome || 'N/A'}
                 </p>
@@ -2320,7 +2324,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             {/* Header */}
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #e8e8e8',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -2485,7 +2489,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             </h3>
 
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
-              {mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Cliente'} -{' '}
+              {mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Aluno'} -{' '}
               <strong>
                 R$ {parseFloat(mensalidadePaga.valor || 0).toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
@@ -2605,9 +2609,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             </div>
 
             {/* Detalhes */}
-            <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#888', fontSize: '14px' }}>Cliente</span>
+                <span style={{ color: '#888', fontSize: '14px' }}>Aluno</span>
                 <span style={{ fontWeight: '500', color: '#333' }}>{linkPagamentoData.cliente}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -2802,7 +2806,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             {/* Header */}
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #e8e8e8',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -3089,7 +3093,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </h3>
             </div>
             <p style={{ color: '#666', marginBottom: '16px', fontSize: '14px', lineHeight: '1.5' }}>
-              O Asaas exige o CPF do cliente para emitir boletos.
+              O Asaas exige o CPF do aluno para emitir boletos.
               Informe o CPF de <strong style={{ color: '#344848' }}>{mensalidadeParaBoleto?.devedor?.nome}</strong>:
             </p>
             <input

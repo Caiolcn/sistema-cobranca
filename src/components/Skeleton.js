@@ -46,7 +46,7 @@ export const SkeletonCard = React.memo(function SkeletonCard({ style = {} }) {
           backgroundColor: 'white',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          border: '1px solid #e5e7eb', boxShadow: 'none',
           ...style
         }}
       >
@@ -62,7 +62,7 @@ export const SkeletonTableRow = React.memo(function SkeletonTableRow({ columns =
   return (
     <>
       <style>{shimmerStyle}</style>
-      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
         {Array.from({ length: columns }).map((_, i) => (
           <td key={i} style={{ padding: '16px 20px' }}>
             <Skeleton width={i === 0 ? '120px' : '80px'} height="16px" />
@@ -82,7 +82,7 @@ export const SkeletonListItem = React.memo(function SkeletonListItem() {
           backgroundColor: 'white',
           borderRadius: '8px',
           padding: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          border: '1px solid #e5e7eb', boxShadow: 'none',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -119,7 +119,7 @@ export const SkeletonDashboard = React.memo(function SkeletonDashboard() {
         backgroundColor: 'white',
         borderRadius: '12px',
         padding: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb', boxShadow: 'none'
       }}>
         <Skeleton width="30%" height="20px" style={{ marginBottom: '20px' }} />
         <Skeleton width="100%" height="200px" borderRadius="8px" />

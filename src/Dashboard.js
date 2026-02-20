@@ -75,10 +75,8 @@ export default function Dashboard() {
     window.location.reload()
   }
 
-  // Redirecionar para onboarding se não completou (admin nunca é redirecionado)
-  if (!loading && userData && userData.onboarding_completed === false && !isAdmin) {
-    return <Navigate to="/app/onboarding" replace />
-  }
+  // Onboarding checklist agora é mostrado na Home (não bloqueia mais)
+  // A rota /app/onboarding continua funcionando por backward compatibility
 
   // Se trial expirou, bloquear acesso (admin nunca é bloqueado)
   if (isExpired && !planoPago && !loading && !isAdmin) {
@@ -261,7 +259,7 @@ export default function Dashboard() {
             }}
           >
             <Icon icon="fluent:people-24-regular" width="22" height="22" />
-            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Clientes</span>}
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Alunos</span>}
           </div>
 
           {/* Financeiro */}
@@ -291,6 +289,35 @@ export default function Dashboard() {
           >
             <Icon icon="solar:chat-round-money-outline" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Financeiro</span>}
+          </div>
+
+          {/* Relatórios */}
+          <div
+            onClick={() => { navigate('/app/relatorios'); if (isMobile) setMenuAberto(false) }}
+            style={{
+              width: isMobile ? '100%' : '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'relatorios' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'relatorios' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'relatorios') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'relatorios') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="fluent:chart-multiple-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Relatórios</span>}
           </div>
 
           {/* WhatsApp */}
@@ -361,7 +388,7 @@ export default function Dashboard() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
+                  <Icon icon="fluent:settings-20-regular" width="22" height="22" />
                   <span style={{ fontSize: '14px', fontWeight: '500' }}>Configurações</span>
                 </div>
                 <Icon
@@ -438,7 +465,7 @@ export default function Dashboard() {
                 if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = 'transparent'
               }}
             >
-              <Icon icon="material-symbols:settings-outline-rounded" width="22" height="22" />
+              <Icon icon="fluent:settings-20-regular" width="22" height="22" />
             </div>
           )}
         </div>
@@ -595,7 +622,7 @@ export default function Dashboard() {
           </div>
         )}
         <PlanExpirationBanner />
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', backgroundColor: '#ffffff' }}>
           <Outlet />
         </div>
       </div>

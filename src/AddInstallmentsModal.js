@@ -69,7 +69,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
   const handleCreate = () => {
     // Validation
     if (!selectedClient) {
-      showToast('Por favor, selecione um cliente', 'warning')
+      showToast('Por favor, selecione um aluno', 'warning')
       return
     }
 
@@ -148,12 +148,12 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
 
     // Validação
     if (!novoClienteNome.trim()) {
-      setErroNome('Por favor, insira o nome do cliente')
+      setErroNome('Por favor, insira o nome do aluno')
       return
     }
 
     if (!novoClienteTelefone.trim()) {
-      setErroTelefone('Por favor, insira o telefone do cliente')
+      setErroTelefone('Por favor, insira o telefone do aluno')
       return
     }
 
@@ -176,7 +176,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
         .single()
 
       if (clienteExistente) {
-        setErroTelefone(`Já existe um cliente cadastrado com este telefone: ${clienteExistente.nome}`)
+        setErroTelefone(`Já existe um aluno cadastrado com este telefone: ${clienteExistente.nome}`)
         return
       }
 
@@ -209,10 +209,10 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
         onClienteAdicionado()
       }
 
-      showToast('Cliente adicionado com sucesso!', 'success')
+      showToast('Aluno adicionado com sucesso!', 'success')
     } catch (error) {
-      console.error('Erro ao adicionar cliente:', error)
-      showToast('Erro ao adicionar cliente: ' + error.message, 'error')
+      console.error('Erro ao adicionar aluno:', error)
+      showToast('Erro ao adicionar aluno: ' + error.message, 'error')
     }
   }
 
@@ -255,7 +255,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
         {/* Header */}
         <div style={{
           padding: '20px',
-          borderBottom: '1px solid #e8e8e8',
+          borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -283,7 +283,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
           {/* Client Selection */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-              Cliente *
+              Aluno *
             </label>
             <select
               value={selectedClient}
@@ -305,14 +305,14 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
                 boxSizing: 'border-box'
               }}
             >
-              <option value="">Selecione um cliente</option>
+              <option value="">Selecione um aluno</option>
               {clientes.map((cliente) => (
                 <option key={cliente.id} value={cliente.id}>
                   {cliente.nome}
                 </option>
               ))}
               <option value="__adicionar_novo__" style={{ color: '#007bff', fontWeight: '500' }}>
-                + Adicionar Novo Cliente
+                + Adicionar Novo Aluno
               </option>
             </select>
           </div>
@@ -385,7 +385,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
                       display: 'flex',
                       justifyContent: 'space-between',
                       padding: '8px 0',
-                      borderBottom: '1px solid #e8e8e8',
+                      borderBottom: '1px solid #e5e7eb',
                       fontSize: '13px'
                     }}
                   >
@@ -482,13 +482,13 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
             {/* Header */}
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #e8e8e8',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
-                Adicionar Novo Cliente
+                Adicionar Novo Aluno
               </h3>
               <button
                 onClick={() => {
@@ -516,7 +516,7 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
               {/* Nome */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-                  Nome do Cliente *
+                  Nome do Aluno *
                 </label>
                 <input
                   type="text"

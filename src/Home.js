@@ -2,22 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
-import DateRangePicker from './DateRangePicker';
 import whatsappService from './services/whatsappService';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useUserPlan } from './hooks/useUserPlan';
 import { useUser } from './contexts/UserContext';
-import FeatureLocked from './FeatureLocked';
 import ConfirmModal from './ConfirmModal';
 import { SkeletonDashboard } from './components/Skeleton';
+import OnboardingChecklist from './OnboardingChecklist';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
-  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, loading: loadingUser } = useUser();
-  const { isLocked, loading: loadingPlan } = useUserPlan();
+  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, chavePix, isAdmin, adminViewingAs, userData, loading: loadingUser } = useUser();
   const [loading, setLoading] = useState(true);
-  const [periodo, setPeriodo] = useState('mes_atual');
 
   // Estado unificado para todos os dados do dashboard
   const [dashboardData, setDashboardData] = useState({
@@ -25,26 +20,8 @@ function Home() {
     assinaturasAtivas: 0,
     recebimentosMes: 0,
     valorEmAtraso: 0,
-    clientesInadimplentes: 0,
-    receitaProjetadaMes: 0,
-    taxaCancelamento: 0,
-    mensalidadesVencer7Dias: 0,
-    mensagensEnviadasAuto: 0,
-    statusAcesso: {
-      emDia: { valor: 0, clientes: 0 },
-      atrasoRecente: { valor: 0, clientes: 0 },
-      bloqueado: { valor: 0, clientes: 0 },
-      inativo: { valor: 0, clientes: 0 }
-    },
-    graficoRecebimentoVsVencimento: [],
-    distribuicaoStatus: { emDia: 0, aVencer: 0, atrasadas: 0, canceladas: 0 },
     filaWhatsapp: [],
-    mensagensRecentes: [],
-    pagamentosHoje: 0,
-    valorPagamentosHoje: 0,
-    despesasPagoMes: 0,
-    despesasPendenteMes: 0,
-    despesasTotalMes: 0
+    mensagensRecentes: []
   });
 
   // Estado para mensagens não enviadas (falhas de automação)
@@ -62,41 +39,17 @@ function Home() {
   const [mensagemEditavel, setMensagemEditavel] = useState('');
   const [carregandoPreview, setCarregandoPreview] = useState(false);
 
-  // Um único useEffect para carregar dados quando userId ou periodo mudam
+  // Onboarding checklist
+  const [mostrarChecklist, setMostrarChecklist] = useState(false);
+  const [onboardingSteps, setOnboardingSteps] = useState({ empresa: false, pix: false, whatsapp: false, cliente: false });
+
+  // Carregar dados quando userId mudar
   useEffect(() => {
     if (userId) {
       carregarDados();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, periodo]);
-
-  const obterDatasPeriodo = () => {
-    const hoje = new Date();
-    let inicio, fim;
-
-    if (periodo === 'mes_atual') {
-      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
-      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
-    } else if (periodo === 'mes_anterior') {
-      inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().split('T')[0];
-      fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().split('T')[0];
-    } else if (periodo === 'ultimos_3_meses') {
-      inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1).toISOString().split('T')[0];
-      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
-    } else if (periodo === 'ultimos_6_meses') {
-      inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1).toISOString().split('T')[0];
-      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
-    } else if (periodo === 'este_ano') {
-      inicio = new Date(hoje.getFullYear(), 0, 1).toISOString().split('T')[0];
-      fim = new Date(hoje.getFullYear(), 11, 31).toISOString().split('T')[0];
-    } else {
-      // Default: mês atual
-      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
-      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
-    }
-
-    return { inicio, fim };
-  };
+  }, [userId]);
 
   const carregarDados = useCallback(async () => {
     if (!userId) return;
@@ -104,51 +57,42 @@ function Home() {
     try {
       setLoading(true);
 
-      const { inicio, fim } = obterDatasPeriodo();
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = new Date();
+      const hojeStr = hoje.toISOString().split('T')[0];
+
+      // Período: mês atual (fixo)
+      const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+      const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
 
       // Data de 3 dias à frente para fila de WhatsApp (alinhado com automação)
       const tresDiasFrente = new Date();
       tresDiasFrente.setDate(tresDiasFrente.getDate() + 3);
       const tresDiasFrenteStr = tresDiasFrente.toISOString().split('T')[0];
 
-      // Calcular datas para queries
-      const seteDiasFrente = new Date();
-      seteDiasFrente.setDate(seteDiasFrente.getDate() + 7);
-      const seteDiasFrenteStr = seteDiasFrente.toISOString().split('T')[0];
-
-      const tresMesesAtras = new Date();
-      tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
-      const tresMesesAtrasInicio = new Date(tresMesesAtras.getFullYear(), tresMesesAtras.getMonth(), 1).toISOString().split('T')[0];
-      const mesAtualFim = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
-
-      // OTIMIZAÇÃO: Reduzido de 15 para 8 queries essenciais
-      // Consolidamos queries que buscavam dados similares
+      // 6 queries essenciais (reduzido de 8)
       const [
-        { data: todasMensalidades },      // Query única para todas as métricas de mensalidades
-        { data: todosClientes },          // Clientes e assinaturas
-        { data: fila },                   // Fila WhatsApp
-        { data: mensagens },              // Mensagens recentes
-        { count: countMensagensEnviadas }, // Count de mensagens (count vem direto, não em data)
-        { data: todasDespesas, error: erroDespesas },  // Despesas (para Resultado Financeiro)
-        { data: falhasEnvio }             // Mensagens não enviadas (falhas de automação)
+        { data: todasMensalidades },
+        { data: todosClientes },
+        { data: fila },
+        { data: mensagens },
+        { data: falhasEnvio },
+        { data: whatsappConectado }
       ] = await Promise.all([
-        // 1. TODAS as mensalidades - processamos tudo no cliente (excluindo deletadas)
+        // 1. Mensalidades - para KPIs
         supabase
           .from('mensalidades')
-          .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at')
+          .select('id, valor, data_vencimento, status, devedor_id, updated_at')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
-        // 2. Todos os clientes com assinaturas e planos (excluindo deletados)
+        // 2. Clientes com assinaturas e planos
         supabase
           .from('devedores')
           .select('id, assinatura_ativa, lixo, plano:planos(valor)')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
-        // 3. Fila de WhatsApp (inclui vencidas + vencendo em até 3 dias)
-        // Alinhado com automação que envia 3 dias antes do vencimento
+        // 3. Fila de WhatsApp
         supabase
           .from('mensalidades')
           .select(`
@@ -164,7 +108,7 @@ function Home() {
           .order('data_vencimento', { ascending: true })
           .limit(20),
 
-        // 4. Mensagens recentes (precisa de join com devedores)
+        // 4. Mensagens recentes
         supabase
           .from('logs_mensagens')
           .select(`
@@ -175,215 +119,82 @@ function Home() {
           .order('enviado_em', { ascending: false })
           .limit(8),
 
-        // 5. Count de mensagens enviadas
-        supabase
-          .from('logs_mensagens')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .eq('status', 'enviado'),
-
-        // 6. Despesas (para Resultado Financeiro)
-        supabase
-          .from('despesas')
-          .select('id, valor, status, data_vencimento, data_pagamento')
-          .eq('user_id', userId),
-
-        // 7. Mensagens não enviadas (view de falhas de automação)
+        // 5. Mensagens não enviadas (falhas de automação)
         supabase
           .from('vw_mensagens_nao_enviadas')
           .select('mensalidade_id, nome_cliente, telefone, valor, data_vencimento, tipo_mensagem_pendente, descricao_pendencia, dias_desde_falha')
           .eq('user_id', userId)
           .order('data_vencimento', { ascending: false })
-          .limit(50)
+          .limit(50),
+
+        // 6. Status WhatsApp conectado (para onboarding checklist)
+        supabase
+          .from('mensallizap')
+          .select('conectado')
+          .eq('user_id', userId)
+          .eq('conectado', true)
+          .maybeSingle()
       ]);
 
-      // ========== PROCESSAMENTO LOCAL (mais eficiente) ==========
+      // ========== PROCESSAMENTO LOCAL ==========
 
-      // Criar Set de IDs de clientes ativos (não deletados) para filtrar métricas
       const clientesAtivosSet = new Set(todosClientes?.map(c => c.id) || []);
 
-      // Métricas de mensalidades - tudo processado de uma vez
       let recebidoMes = 0;
       let valorAtraso = 0;
-      const clientesAtrasadosSet = new Set();
-      let aReceberMes = 0;
-      const clientesComMensalidadeSet = new Set();
-      let vencer7Dias = 0;
-      const recebidosPorMes = {};
-      const vencidosPorMes = {};
-      let emDia = 0, aVencer = 0, atrasadas = 0, canceladas = 0;
-      let pagamentosHojeCount = 0, valorPagamentosHojeTotal = 0;
-      const mensalidadesPorCliente = {};
 
       todasMensalidades?.forEach(p => {
         const valor = parseFloat(p.valor || 0);
         const dataVenc = p.data_vencimento;
-        const mesAnoVenc = dataVenc?.substring(0, 7);
-        const mesAnoUpdate = p.updated_at?.substring(0, 7);
 
-        // Recebimentos do mês (status pago, updated_at no período)
+        // Recebimentos do mês (status pago, updated_at no mês atual)
         if (p.status === 'pago' && p.updated_at >= `${inicio}T00:00:00` && p.updated_at <= `${fim}T23:59:59`) {
           recebidoMes += valor;
         }
 
         // Valor em atraso (pendente com vencimento < hoje) - apenas clientes ativos
-        if (p.status === 'pendente' && dataVenc < hoje && clientesAtivosSet.has(p.devedor_id)) {
+        if (p.status === 'pendente' && dataVenc < hojeStr && clientesAtivosSet.has(p.devedor_id)) {
           valorAtraso += valor;
-          clientesAtrasadosSet.add(p.devedor_id);
-        }
-
-        // Pendentes no mês para receita projetada
-        if (['pendente', 'atrasado'].includes(p.status) && dataVenc >= inicio && dataVenc <= fim) {
-          aReceberMes += valor;
-        }
-
-        // Clientes com mensalidades ativas
-        if (p.is_mensalidade && ['pendente', 'atrasado', 'pago'].includes(p.status)) {
-          clientesComMensalidadeSet.add(p.devedor_id);
-        }
-
-        // Mensalidades a vencer 7 dias
-        if (['pendente', 'atrasado'].includes(p.status) && dataVenc >= hoje && dataVenc <= seteDiasFrenteStr) {
-          vencer7Dias += valor;
-        }
-
-        // Gráfico recebidos (últimos 3 meses)
-        if (p.status === 'pago' && p.updated_at >= `${tresMesesAtrasInicio}T00:00:00` && p.updated_at <= `${mesAtualFim}T23:59:59`) {
-          if (!recebidosPorMes[mesAnoUpdate]) recebidosPorMes[mesAnoUpdate] = 0;
-          recebidosPorMes[mesAnoUpdate] += valor;
-        }
-
-        // Gráfico vencidos (últimos 3 meses)
-        if (dataVenc >= tresMesesAtrasInicio && dataVenc <= mesAtualFim) {
-          if (!vencidosPorMes[mesAnoVenc]) vencidosPorMes[mesAnoVenc] = 0;
-          vencidosPorMes[mesAnoVenc] += valor;
-        }
-
-        // Distribuição de status
-        if (p.status === 'pago') {
-          emDia++;
-        } else if (p.status === 'cancelado') {
-          canceladas++;
-        } else if (p.status === 'pendente' && dataVenc < hoje) {
-          atrasadas++;
-        } else if (p.status === 'pendente') {
-          aVencer++;
-        }
-
-        // Pagamentos de hoje
-        if (p.status === 'pago' && p.updated_at?.substring(0, 10) === hoje) {
-          pagamentosHojeCount++;
-          valorPagamentosHojeTotal += valor;
-        }
-
-        // Status de acesso (mensalidades mais recentes por cliente)
-        if (p.is_mensalidade) {
-          if (!mensalidadesPorCliente[p.devedor_id] ||
-              new Date(dataVenc) > new Date(mensalidadesPorCliente[p.devedor_id].data_vencimento)) {
-            mensalidadesPorCliente[p.devedor_id] = p;
-          }
         }
       });
-
-      // Processamento de despesas (para Resultado Financeiro)
-      if (erroDespesas) console.error('Erro ao buscar despesas:', erroDespesas);
-      let despPagoMes = 0, despPendenteMes = 0, despTotalMes = 0;
-      (todasDespesas || []).forEach(d => {
-        const valor = parseFloat(d.valor || 0);
-        const dataRef = d.status === 'pago' && d.data_pagamento
-          ? d.data_pagamento
-          : d.data_vencimento;
-        if (dataRef >= inicio && dataRef <= fim) {
-          despTotalMes += valor;
-          if (d.status === 'pago') despPagoMes += valor;
-          if (d.status === 'pendente') despPendenteMes += valor;
-        }
-      });
-
-      // Calcular gráfico dos últimos 3 meses
-      const graficoMeses = [];
-      for (let i = 2; i >= 0; i--) {
-        const mesData = new Date();
-        mesData.setMonth(mesData.getMonth() - i);
-        const mesAno = `${mesData.getFullYear()}-${String(mesData.getMonth() + 1).padStart(2, '0')}`;
-        graficoMeses.push({
-          mes: mesData.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-          recebido: recebidosPorMes[mesAno] || 0,
-          vencido: vencidosPorMes[mesAno] || 0
-        });
-      }
-
-      // Taxa de cancelamento (clientes com assinatura desativada)
-      const totalClientesGeral = todosClientes?.length || 0;
-      const clientesCancelados = todosClientes?.filter(c => c.assinatura_ativa === false).length || 0;
-      const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
 
       // MRR
       const assinaturasAtivasList = todosClientes?.filter(c => c.assinatura_ativa && c.plano?.valor) || [];
       const ativas = assinaturasAtivasList.length;
       const mrrCalculado = assinaturasAtivasList.reduce((sum, assin) => sum + (parseFloat(assin.plano?.valor) || 0), 0);
 
-      // Status Operacional de Acesso
-      const statusData = {
-        emDia: { valor: 0, clientes: new Set() },
-        atrasoRecente: { valor: 0, clientes: new Set() },
-        bloqueado: { valor: 0, clientes: new Set() },
-        inativo: { valor: 0, clientes: new Set() }
-      };
-
-      Object.values(mensalidadesPorCliente).forEach(m => {
-        const valor = parseFloat(m.valor || 0);
-
-        if (m.status === 'pago') {
-          statusData.emDia.valor += valor;
-          statusData.emDia.clientes.add(m.devedor_id);
-        } else {
-          const diasAtraso = calcularDiasAtraso(m.data_vencimento);
-
-          if (diasAtraso >= 1 && diasAtraso <= 7) {
-            statusData.atrasoRecente.valor += valor;
-            statusData.atrasoRecente.clientes.add(m.devedor_id);
-          } else if (diasAtraso > 7 && diasAtraso <= 30) {
-            statusData.bloqueado.valor += valor;
-            statusData.bloqueado.clientes.add(m.devedor_id);
-          } else if (diasAtraso > 30) {
-            statusData.inativo.valor += valor;
-            statusData.inativo.clientes.add(m.devedor_id);
-          }
-        }
-      });
-
-      // Mensagens não enviadas (filtrar nulls do CASE)
+      // Mensagens não enviadas
       setMensagensNaoEnviadas(
         (falhasEnvio || []).filter(f => f.tipo_mensagem_pendente !== null)
       );
 
-      // UM ÚNICO setState com todos os dados
+      // Onboarding checklist
+      const steps = {
+        empresa: !!(nomeEmpresaContext && nomeEmpresaContext.trim()),
+        pix: !!(chavePix && chavePix.trim()),
+        whatsapp: !!whatsappConectado,
+        cliente: (todosClientes?.length || 0) > 0
+      };
+      setOnboardingSteps(steps);
+
+      const todasCompletas = steps.empresa && steps.pix && steps.whatsapp && steps.cliente;
+      const isViewingAsClient = isAdmin && adminViewingAs;
+      if (!todasCompletas && (isViewingAsClient || (!isAdmin && userData?.onboarding_completed !== true))) {
+        setMostrarChecklist(true);
+      } else {
+        setMostrarChecklist(false);
+      }
+      if (todasCompletas && !isAdmin && userData?.onboarding_completed !== true) {
+        supabase.from('usuarios').update({ onboarding_completed: true, onboarding_step: 4 }).eq('id', userId);
+      }
+
       setDashboardData({
         mrr: mrrCalculado,
         assinaturasAtivas: ativas,
         recebimentosMes: recebidoMes,
         valorEmAtraso: valorAtraso,
-        clientesInadimplentes: clientesAtrasadosSet.size,
-        receitaProjetadaMes: recebidoMes + aReceberMes,
-        taxaCancelamento: taxaCancel,
-        mensalidadesVencer7Dias: vencer7Dias,
-        mensagensEnviadasAuto: countMensagensEnviadas || 0,
-        statusAcesso: {
-          emDia: { valor: statusData.emDia.valor, clientes: statusData.emDia.clientes.size },
-          atrasoRecente: { valor: statusData.atrasoRecente.valor, clientes: statusData.atrasoRecente.clientes.size },
-          bloqueado: { valor: statusData.bloqueado.valor, clientes: statusData.bloqueado.clientes.size },
-          inativo: { valor: statusData.inativo.valor, clientes: statusData.inativo.clientes.size }
-        },
-        graficoRecebimentoVsVencimento: graficoMeses,
-        distribuicaoStatus: { emDia, aVencer, atrasadas, canceladas },
         filaWhatsapp: fila || [],
-        mensagensRecentes: mensagens || [],
-        pagamentosHoje: pagamentosHojeCount,
-        valorPagamentosHoje: valorPagamentosHojeTotal,
-        despesasPagoMes: despPagoMes,
-        despesasPendenteMes: despPendenteMes,
-        despesasTotalMes: despTotalMes
+        mensagensRecentes: mensagens || []
       });
 
     } catch (error) {
@@ -392,20 +203,13 @@ function Home() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, periodo]);
+  }, [userId]);
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(valor);
-  };
-
-  const calcularDiasAtraso = (dataVencimento) => {
-    const hoje = new Date();
-    const vencimento = new Date(dataVencimento);
-    const diff = Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
   };
 
   const getHoraSaudacao = () => {
@@ -432,11 +236,9 @@ function Home() {
       'De volta ao comando'
     ];
 
-    // Dia da semana
     const diasSemana = ['Bom domingo', 'Boa segunda-feira', 'Boa terça-feira', 'Boa quarta-feira', 'Boa quinta-feira', 'Boa sexta-feira', 'Bom sábado'];
     frases.push(diasSemana[diaSemana]);
 
-    // Frases especiais por dia
     if (diaSemana === 1) frases.push('Bom início de semana');
     if (diaSemana === 4) frases.push('Quase lá, sexta tá chegando');
     if (diaSemana === 5) frases.push('Sextou');
@@ -446,7 +248,7 @@ function Home() {
 
   const [subtitulo] = useState(getSubtitulo);
 
-  // Reenviar mensagem que falhou (reutiliza o modal de WhatsApp existente)
+  // Reenviar mensagem que falhou
   const handleReenviarFalha = (item) => {
     handleEnviarWhatsApp({
       id: item.mensalidade_id,
@@ -455,7 +257,7 @@ function Home() {
     });
   };
 
-  // Descartar falha (marcar TODAS as flags como true para a mensalidade inteira)
+  // Descartar falha
   const confirmarDescarteFalha = async () => {
     const item = confirmDescarte.item;
     if (!item) return;
@@ -473,7 +275,6 @@ function Home() {
 
       if (error) throw error;
 
-      // Remover TODAS as pendências desta mensalidade do state local
       setMensagensNaoEnviadas(prev =>
         prev.filter(f => f.mensalidade_id !== item.mensalidade_id)
       );
@@ -515,7 +316,6 @@ function Home() {
     setEnviandoWhatsapp(true);
 
     try {
-      // Passa a mensagem customizada se foi editada
       const resultado = await whatsappService.enviarCobranca(item.id, mensagemParaEnviar);
 
       setEnviandoWhatsapp(false);
@@ -529,7 +329,6 @@ function Home() {
         });
         await carregarDados();
       } else {
-        // Verifica se é bloqueio (config desativada ou plano) ou erro técnico
         const isBloqueio = resultado.bloqueado === true;
         setFeedbackModal({
           isOpen: true,
@@ -563,7 +362,6 @@ function Home() {
     setConfirmModalCancelar({ isOpen: false, mensalidadeId: null });
 
     try {
-      // Marcar cancelado_envio = true para remover permanentemente da fila
       const { error } = await supabase
         .from('mensalidades')
         .update({ cancelado_envio: true })
@@ -571,7 +369,6 @@ function Home() {
 
       if (error) throw error;
 
-      // Atualizar lista local removendo o item
       setDashboardData(prev => ({
         ...prev,
         filaWhatsapp: prev.filaWhatsapp.filter(item => item.id !== mensalidadeId)
@@ -594,7 +391,7 @@ function Home() {
     }
   };
 
-  if (loading || loadingPlan || loadingUser) {
+  if (loading || loadingUser) {
     return (
       <div className="home-container" style={{ padding: '24px' }}>
         <SkeletonDashboard />
@@ -602,20 +399,9 @@ function Home() {
     );
   }
 
-  // Desestruturar dados do dashboard para uso no JSX
-  const {
-    mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, clientesInadimplentes,
-    receitaProjetadaMes, taxaCancelamento, mensalidadesVencer7Dias, mensagensEnviadasAuto,
-    statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus, filaWhatsapp, mensagensRecentes,
-    pagamentosHoje, valorPagamentosHoje,
-    despesasPagoMes, despesasPendenteMes, despesasTotalMes
-  } = dashboardData;
+  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, filaWhatsapp, mensagensRecentes } = dashboardData;
 
-  // Usar nome da empresa do contexto
   const nomeEmpresa = nomeEmpresaContext || 'Empresa';
-
-  // Verificar se features estão bloqueadas para plano Starter
-  const proLocked = isLocked('pro');
 
   return (
     <div className="home-container">
@@ -625,88 +411,15 @@ function Home() {
           <h1>{getHoraSaudacao()}! 👋</h1>
           <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
         </div>
-
-        {/* Filtro de Período */}
-        <DateRangePicker
-          value={periodo}
-          onChange={setPeriodo}
-        />
+        <div className="home-header-month">
+          <Icon icon="material-symbols:calendar-today-outline" width="18" />
+          <span>{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}</span>
+        </div>
       </div>
 
-      {/* Resultado Financeiro */}
-      <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Resultado Financeiro">
-        <div className="home-section" style={{ marginBottom: '24px' }}>
-          <div className="section-header">
-            <Icon icon="material-symbols:account-balance-wallet-outline" width="24" />
-            <h2>Resultado Financeiro</h2>
-          </div>
-          <div className="home-cards-tertiary">
-            {/* Receita do Período */}
-            <div className="home-card" style={{ borderLeft: '4px solid #2196F3' }}>
-              <div className="card-header">
-                <span className="card-label">Receita</span>
-                <div className="card-icon" style={{ background: '#E3F2FD', color: '#2196F3' }}>
-                  <Icon icon="material-symbols:trending-up" width="20" />
-                </div>
-              </div>
-              <div className="card-body">
-                <span className="card-value" style={{ color: '#2196F3' }}>{formatarMoeda(recebimentosMes)}</span>
-                <span className="card-subtitle">Pagamentos recebidos</span>
-              </div>
-            </div>
-
-            {/* Despesas do Período */}
-            <div className="home-card" style={{ borderLeft: '4px solid #f44336' }}>
-              <div className="card-header">
-                <span className="card-label">Despesas</span>
-                <div className="card-icon" style={{ background: '#FFEBEE', color: '#f44336' }}>
-                  <Icon icon="material-symbols:receipt-long-outline" width="20" />
-                </div>
-              </div>
-              <div className="card-body">
-                <span className="card-value" style={{ color: '#f44336' }}>{formatarMoeda(despesasPagoMes)}</span>
-                <span className="card-subtitle">
-                  {despesasPendenteMes > 0
-                    ? `+ ${formatarMoeda(despesasPendenteMes)} pendente`
-                    : 'Despesas pagas no período'}
-                </span>
-              </div>
-            </div>
-
-            {/* Resultado */}
-            <div className="home-card" style={{
-              borderLeft: `4px solid ${(recebimentosMes - despesasPagoMes) >= 0 ? '#4CAF50' : '#f44336'}`
-            }}>
-              <div className="card-header">
-                <span className="card-label">Resultado</span>
-                <div className="card-icon" style={{
-                  background: (recebimentosMes - despesasPagoMes) >= 0 ? '#E8F5E9' : '#FFEBEE',
-                  color: (recebimentosMes - despesasPagoMes) >= 0 ? '#4CAF50' : '#f44336'
-                }}>
-                  <Icon icon={(recebimentosMes - despesasPagoMes) >= 0
-                    ? 'material-symbols:thumb-up-outline'
-                    : 'material-symbols:thumb-down-outline'}
-                    width="20" />
-                </div>
-              </div>
-              <div className="card-body">
-                <span className="card-value" style={{
-                  color: (recebimentosMes - despesasPagoMes) >= 0 ? '#4CAF50' : '#f44336'
-                }}>
-                  {formatarMoeda(recebimentosMes - despesasPagoMes)}
-                </span>
-                <span className="card-subtitle">
-                  {(recebimentosMes - despesasPagoMes) >= 0 ? 'Lucro no período' : 'Prejuízo no período'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </FeatureLocked>
-
-      {/* Cards Principais - Linha 1 */}
-      <div className="home-cards-grid">
-        {/* 1. MRR (Receita Mensal Recorrente) */}
+      {/* KPIs Principais - 3 Cards */}
+      <div className="home-cards-grid home-cards-3">
+        {/* 1. MRR */}
         <div className="home-card card-mrr">
           <div className="card-header">
             <span className="card-label">Receita Mensal Recorrente</span>
@@ -764,355 +477,58 @@ function Home() {
             </button>
           </div>
         </div>
-
-        {/* 4. Taxa de Cancelamento */}
-        <div className="home-card card-taxa-cancelamento">
-          <div className="card-header">
-            <span className="card-label">Taxa de Cancelamento</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:cancel-outline" width="20" />
-            </div>
-          </div>
-          <div className="card-body">
-            <span className="card-value" style={{ color: taxaCancelamento > 10 ? '#f44336' : '#4CAF50' }}>
-              {taxaCancelamento.toFixed(1)}%
-            </span>
-            <span className={`card-status ${taxaCancelamento < 5 ? 'success' : taxaCancelamento < 10 ? 'warning' : 'danger'}`}>
-              {taxaCancelamento < 5 ? 'Excelente' : taxaCancelamento < 10 ? 'Atenção' : 'Crítico'}
-            </span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/clientes?assinatura=desativada')}>
-              Ver
-            </button>
-          </div>
-        </div>
-
-        {/* 5. Ticket Médio */}
-        <div className="home-card card-ticket-medio">
-          <div className="card-header">
-            <span className="card-label">Ticket Médio</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:person-pin-circle-outline" width="20" />
-            </div>
-          </div>
-          <div className="card-body">
-            <span className="card-value">{formatarMoeda(assinaturasAtivas > 0 ? mrr / assinaturasAtivas : 0)}</span>
-            <span className="card-subtitle">Por cliente ativo</span>
-          </div>
-        </div>
       </div>
 
-      {/* Cards Secundários - Linha 2 */}
-      <div className="home-cards-secondary">
-        {/* 1. Pagamentos de Hoje */}
-        <div className="home-card card-pagamentos-hoje">
-          <div className="card-header">
-            <span className="card-label">Pagamentos de Hoje</span>
-            <div className="card-icon">
-              <Icon icon="material-symbols:payments-outline" width="20" />
+      {/* Ações Rápidas */}
+      <div className="home-quick-actions home-quick-actions-3">
+        {/* Card destaque: Criar Aluno e Mensalidade */}
+        <div className="quick-action-card highlighted" onClick={() => navigate('/app/clientes?novo=true')}>
+          <div className="quick-action-card-top">
+            <div className="quick-action-icon" style={{ backgroundColor: '#dcfce7', color: '#16a34a' }}>
+              <Icon icon="material-symbols:person-add-outline" width="24" />
+            </div>
+            <div className="quick-action-card-info">
+              <p className="quick-action-card-title">Criar Aluno e Mensalidade</p>
+              <p className="quick-action-card-desc">Cadastre um novo aluno e crie sua mensalidade</p>
             </div>
           </div>
-          <div className="card-body">
-            <span className="card-value positive">{formatarMoeda(valorPagamentosHoje)}</span>
-            <span className="card-subtitle">{pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''} confirmado{pagamentosHoje !== 1 ? 's' : ''}</span>
-          </div>
+          <button className="quick-action-card-btn primary" onClick={(e) => { e.stopPropagation(); navigate('/app/clientes?novo=true'); }}>
+            <Icon icon="material-symbols:add" width="16" /> Adicionar Aluno
+          </button>
         </div>
 
-        {/* 2. Mensalidades a Vencer */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Mensalidades a Vencer">
-          <div className="home-card card-vencer-7-dias">
-            <div className="card-header">
-              <span className="card-label">Mensalidades a Vencer</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:calendar-clock" width="20" />
-              </div>
+        {/* Gerenciar Alunos */}
+        <div className="quick-action-card" onClick={() => navigate('/app/clientes')}>
+          <div className="quick-action-card-top">
+            <div className="quick-action-icon" style={{ backgroundColor: '#EEF2FF', color: '#4F46E5' }}>
+              <Icon icon="fluent:people-24-regular" width="24" />
             </div>
-            <div className="card-body">
-              <span className="card-value">{formatarMoeda(mensalidadesVencer7Dias)}</span>
-              <span className="card-subtitle">Próximos 7 dias</span>
+            <div className="quick-action-card-info">
+              <p className="quick-action-card-title">Gerenciar Alunos</p>
+              <p className="quick-action-card-desc">Visualizar, editar e gerenciar seus alunos</p>
             </div>
           </div>
-        </FeatureLocked>
-
-        {/* 3. Clientes Inadimplentes */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Clientes Inadimplentes">
-          <div className="home-card card-inadimplentes">
-            <div className="card-header">
-              <span className="card-label">Clientes Inadimplentes</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:person-alert-outline" width="20" />
-              </div>
-            </div>
-            <div className="card-body">
-              <span className="card-value">{clientesInadimplentes}</span>
-              <span className="card-subtitle">Com mensalidades atrasadas</span>
-            </div>
-            <div className="card-footer">
-              <button className="btn-ver" onClick={() => navigate('/app/clientes?inadimplente=true')}>
-                Ver
-              </button>
-            </div>
-          </div>
-        </FeatureLocked>
-
-        {/* 4. Receita Projetada do Mês */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Receita Projetada">
-          <div className="home-card card-receita-projetada">
-            <div className="card-header">
-              <span className="card-label">Receita Projetada do Mês</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:analytics-outline" width="20" />
-              </div>
-            </div>
-            <div className="card-body">
-              <span className="card-value">{formatarMoeda(receitaProjetadaMes)}</span>
-              <span className="card-subtitle">Recebido + A receber</span>
-            </div>
-          </div>
-        </FeatureLocked>
-
-        {/* 5. Mensagens Enviadas Automaticamente */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Mensagens Enviadas">
-          <div className="home-card card-mensagens-auto">
-            <div className="card-header">
-              <span className="card-label">Mensagens Enviadas</span>
-              <div className="card-icon">
-                <Icon icon="material-symbols:send-outline" width="20" />
-              </div>
-            </div>
-            <div className="card-body">
-              <span className="card-value">{mensagensEnviadasAuto}</span>
-              <span className="card-subtitle">Automáticas pelo sistema</span>
-            </div>
-          </div>
-        </FeatureLocked>
-      </div>
-
-      {/* Gráficos em 2 Colunas */}
-      <div className="home-two-columns">
-        {/* Gráfico: Recebimento vs Vencimento (Gráfico de Linhas) */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Gráfico de Recebimento vs Vencimento">
-          <div className="home-section">
-            <div className="section-header">
-              <Icon icon="material-symbols:show-chart" width="24" />
-              <h2>Recebimento vs Vencimento</h2>
-            </div>
-            <div className="home-grafico-recharts">
-              {graficoRecebimentoVsVencimento.length === 0 ? (
-                <div className="empty-state">Sem dados para exibir</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={graficoRecebimentoVsVencimento} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="mes"
-                      tick={{ fill: '#666', fontSize: 12 }}
-                      stroke="#d1d5db"
-                    />
-                    <YAxis
-                      tick={{ fill: '#666', fontSize: 12 }}
-                      stroke="#d1d5db"
-                      tickFormatter={(value) => formatarMoeda(value)}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}
-                      formatter={(value) => formatarMoeda(value)}
-                      labelStyle={{ color: '#333', fontWeight: 600 }}
-                    />
-                    <Legend
-                      wrapperStyle={{ paddingTop: '10px' }}
-                      iconType="circle"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="recebido"
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      dot={{ fill: '#10b981', r: 5 }}
-                      activeDot={{ r: 7 }}
-                      name="Recebido"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="vencido"
-                      stroke="#f59e0b"
-                      strokeWidth={3}
-                      dot={{ fill: '#f59e0b', r: 5 }}
-                      activeDot={{ r: 7 }}
-                      name="Vencido"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </FeatureLocked>
-
-        {/* Gráfico: Status das Mensalidades (Donut Chart) */}
-        <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Gráfico de Status das Mensalidades">
-          <div className="home-section">
-          <div className="section-header">
-            <Icon icon="material-symbols:pie-chart" width="24" />
-            <h2>Status das Mensalidades</h2>
-          </div>
-          <div className="home-grafico-recharts">
-            {(() => {
-              const total = (distribuicaoStatus.emDia || 0) + (distribuicaoStatus.aVencer || 0) +
-                           (distribuicaoStatus.atrasadas || 0) + (distribuicaoStatus.canceladas || 0);
-
-              if (total === 0) {
-                return (
-                  <div className="empty-state">
-                    <p>Nenhuma mensalidade no período</p>
-                  </div>
-                );
-              }
-
-              const dados = [
-                { name: 'Em dia', value: distribuicaoStatus.emDia || 0, color: '#10b981' },
-                { name: 'A vencer', value: distribuicaoStatus.aVencer || 0, color: '#3b82f6' },
-                { name: 'Atrasadas', value: distribuicaoStatus.atrasadas || 0, color: '#ef4444' },
-                { name: 'Canceladas', value: distribuicaoStatus.canceladas || 0, color: '#6b7280' }
-              ].filter(d => d.value > 0);
-
-              const COLORS = dados.map(d => d.color);
-
-              const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-
-                if (percent < 0.05) return null; // Não mostrar label para segmentos muito pequenos
-
-                return (
-                  <text
-                    x={x}
-                    y={y}
-                    fill="white"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize="12"
-                    fontWeight="600"
-                  >
-                    {`${(percent * 100).toFixed(0)}%`}
-                  </text>
-                );
-              };
-
-              return (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={dados}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={renderCustomLabel}
-                      outerRadius={100}
-                      innerRadius={60}
-                      fill="#8884d8"
-                      dataKey="value"
-                      paddingAngle={2}
-                    >
-                      {dados.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}
-                      formatter={(value, name) => [`${value} mensalidades`, name]}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      iconType="circle"
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              );
-            })()}
-          </div>
-          </div>
-        </FeatureLocked>
-      </div>
-
-      {/* Status Operacional de Acesso */}
-      <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Status de Acesso dos Clientes">
-        <div className="home-section aging-section">
-          <div className="section-header">
-            <Icon icon="material-symbols:lock-person-outline" width="24" />
-            <h2>Status de Acesso dos Clientes</h2>
-          </div>
-          <div className="aging-container">
-            <div className="aging-card status-em-dia">
-              <div className="aging-header">
-                <span className="aging-label">Em dia</span>
-                <div className="card-icon">
-                  <Icon icon="material-symbols:check-circle-outline" width="20" />
-                </div>
-              </div>
-              <div className="aging-body">
-                <span className="aging-value">{formatarMoeda(statusAcesso.emDia.valor)}</span>
-                <span className="aging-clientes">{statusAcesso.emDia.clientes} cliente{statusAcesso.emDia.clientes !== 1 ? 's' : ''}</span>
-                <span className="aging-status-desc">Acesso liberado</span>
-              </div>
-            </div>
-
-            <div className="aging-card status-atraso-recente">
-              <div className="aging-header">
-                <span className="aging-label">Atraso recente</span>
-                <div className="card-icon">
-                  <Icon icon="material-symbols:schedule" width="20" />
-                </div>
-              </div>
-              <div className="aging-body">
-                <span className="aging-value">{formatarMoeda(statusAcesso.atrasoRecente.valor)}</span>
-                <span className="aging-clientes">{statusAcesso.atrasoRecente.clientes} cliente{statusAcesso.atrasoRecente.clientes !== 1 ? 's' : ''}</span>
-                <span className="aging-status-desc">1-7 dias • Enviar mensagem</span>
-              </div>
-            </div>
-
-            <div className="aging-card status-bloqueado">
-              <div className="aging-header">
-                <span className="aging-label">Bloqueado</span>
-                <div className="card-icon">
-                  <Icon icon="material-symbols:block" width="20" />
-                </div>
-              </div>
-              <div className="aging-body">
-                <span className="aging-value">{formatarMoeda(statusAcesso.bloqueado.valor)}</span>
-                <span className="aging-clientes">{statusAcesso.bloqueado.clientes} cliente{statusAcesso.bloqueado.clientes !== 1 ? 's' : ''}</span>
-                <span className="aging-status-desc">7-30 dias • Acesso suspenso</span>
-              </div>
-            </div>
-
-            <div className="aging-card status-inativo">
-              <div className="aging-header">
-                <span className="aging-label">Inativo</span>
-                <div className="card-icon">
-                  <Icon icon="material-symbols:person-off-outline" width="20" />
-                </div>
-              </div>
-              <div className="aging-body">
-                <span className="aging-value">{formatarMoeda(statusAcesso.inativo.valor)}</span>
-                <span className="aging-clientes">{statusAcesso.inativo.clientes} cliente{statusAcesso.inativo.clientes !== 1 ? 's' : ''}</span>
-                <span className="aging-status-desc">+30 dias • Abandono</span>
-              </div>
-            </div>
-          </div>
+          <button className="quick-action-card-btn outline" onClick={(e) => { e.stopPropagation(); navigate('/app/clientes'); }}>
+            Ver Alunos <Icon icon="mdi:arrow-right" width="16" />
+          </button>
         </div>
-      </FeatureLocked>
+
+        {/* Mensalidades e Despesas */}
+        <div className="quick-action-card" onClick={() => navigate('/app/financeiro')}>
+          <div className="quick-action-card-top">
+            <div className="quick-action-icon" style={{ backgroundColor: '#F0F9FF', color: '#0284C7' }}>
+              <Icon icon="material-symbols:receipt-outline" width="24" />
+            </div>
+            <div className="quick-action-card-info">
+              <p className="quick-action-card-title">Mensalidades e Despesas</p>
+              <p className="quick-action-card-desc">Gerencie cobranças, pagamentos e despesas</p>
+            </div>
+          </div>
+          <button className="quick-action-card-btn outline" onClick={(e) => { e.stopPropagation(); navigate('/app/financeiro'); }}>
+            Ver Financeiro <Icon icon="mdi:arrow-right" width="16" />
+          </button>
+        </div>
+      </div>
 
       {/* Alerta: Mensagens Não Enviadas */}
       {mensagensNaoEnviadas.length > 0 && (
@@ -1149,7 +565,7 @@ function Home() {
               </div>
               <div>
                 <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>
-                  {mensagensNaoEnviadas.length} {mensagensNaoEnviadas.length !== 1 ? 'mensagens n\u00e3o enviadas' : 'mensagem n\u00e3o enviada'}
+                  {mensagensNaoEnviadas.length} {mensagensNaoEnviadas.length !== 1 ? 'mensagens não enviadas' : 'mensagem não enviada'}
                 </span>
                 <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '2px' }}>
                   Clique para ver detalhes
@@ -1207,7 +623,7 @@ function Home() {
                         {item.telefone}
                       </span>
                       <span>Venc. {new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                      <span style={{ color: '#d97706' }}>h&#225; {item.dias_desde_falha} dia{item.dias_desde_falha !== 1 ? 's' : ''}</span>
+                      <span style={{ color: '#d97706' }}>há {item.dias_desde_falha} dia{item.dias_desde_falha !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -1264,7 +680,7 @@ function Home() {
         </div>
       )}
 
-      {/* Layout em 2 Colunas */}
+      {/* Layout em 2 Colunas: Fila de WhatsApp + Mensagens Recentes */}
       <div className="home-two-columns">
         {/* Fila de WhatsApp */}
         <div className="home-section">
@@ -1288,11 +704,9 @@ function Home() {
                   const diffMs = vencimento - hoje;
                   const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-                  // Determinar status do vencimento
                   let statusVencimento = null;
                   let statusClass = '';
                   if (diffDias < 0) {
-                    // Atrasado
                     const diasAtraso = Math.abs(diffDias);
                     statusVencimento = `${diasAtraso} dia${diasAtraso > 1 ? 's' : ''} atraso`;
                     statusClass = 'fila-atraso';
@@ -1694,6 +1108,11 @@ function Home() {
             <p style={{ margin: 0, fontSize: '14px', color: '#333' }}>Enviando mensagem...</p>
           </div>
         </div>
+      )}
+
+      {/* Onboarding Checklist - painel flutuante */}
+      {mostrarChecklist && (
+        <OnboardingChecklist completedSteps={onboardingSteps} />
       )}
     </div>
   );

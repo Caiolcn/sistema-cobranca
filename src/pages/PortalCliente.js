@@ -303,7 +303,7 @@ export default function PortalCliente() {
         <div style={{
           background: '#ffffff', borderRadius: 16, padding: 24,
           margin: '20px 0 0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06)',
+          boxShadow: 'none',
           border: '1px solid #e2e8f0'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

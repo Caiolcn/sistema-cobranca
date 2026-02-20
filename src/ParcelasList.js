@@ -129,7 +129,7 @@ export default function ParcelasList({ devedor }) {
               const diasAtraso = Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24))
 
               return (
-                <tr key={parcela.id} style={{ borderBottom: '1px solid #eee' }}>
+                <tr key={parcela.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '12px' }}>
                     <strong>#{parcela.numero_parcela}</strong>
                     {parcela.descricao && <div style={{ fontSize: '12px', color: '#666' }}>{parcela.descricao}</div>}

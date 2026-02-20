@@ -12,7 +12,7 @@ const STEPS = [
   { num: 1, title: 'Sua Empresa', icon: 'mdi:office-building-outline' },
   { num: 2, title: 'Chave PIX', icon: 'mdi:qrcode' },
   { num: 3, title: 'Primeiro Plano', icon: 'mdi:package-variant-closed' },
-  { num: 4, title: 'Clientes', icon: 'mdi:account-group-outline' }
+  { num: 4, title: 'Alunos', icon: 'mdi:account-group-outline' }
 ]
 
 export default function Onboarding() {
@@ -136,7 +136,7 @@ export default function Onboarding() {
   // Step 4: Adicionar cliente manual
   const handleAdicionarCliente = async () => {
     if (!clienteNome.trim()) {
-      showToast('Informe o nome do cliente', 'warning')
+      showToast('Informe o nome do aluno', 'warning')
       return
     }
     if (!validarTelefone(clienteTelefone)) {
@@ -160,9 +160,9 @@ export default function Onboarding() {
       setClientesCriados(prev => [...prev, data[0]])
       setClienteNome('')
       setClienteTelefone('')
-      showToast('Cliente adicionado!', 'success')
+      showToast('Aluno adicionado!', 'success')
     } else {
-      showToast('Erro ao adicionar cliente', 'error')
+      showToast('Erro ao adicionar aluno', 'error')
     }
     setSaving(false)
   }
@@ -199,7 +199,7 @@ export default function Onboarding() {
             <div className="onboarding-step-content">
               <div className="onboarding-step-header">
                 <h2>Como se chama sua empresa?</h2>
-                <p>Esse nome aparecerá nas cobranças enviadas aos seus clientes.</p>
+                <p>Esse nome aparecerá nas cobranças enviadas aos seus alunos.</p>
               </div>
               <div className="onboarding-field">
                 <label>Nome da Empresa</label>
@@ -267,7 +267,7 @@ export default function Onboarding() {
             <div className="onboarding-step-content">
               <div className="onboarding-step-header">
                 <h2>Crie seu primeiro plano</h2>
-                <p>Defina o plano de cobrança que você oferece aos clientes.</p>
+                <p>Defina o plano de cobrança que você oferece aos alunos.</p>
               </div>
               <div className="onboarding-fields-row">
                 <div className="onboarding-field" style={{ flex: 2 }}>
@@ -311,7 +311,7 @@ export default function Onboarding() {
           {step === 4 && (
             <div className="onboarding-step-content">
               <div className="onboarding-step-header">
-                <h2>Adicione seus clientes</h2>
+                <h2>Adicione seus alunos</h2>
                 <p>Cadastre manualmente ou importe de uma planilha.</p>
               </div>
 
@@ -329,7 +329,7 @@ export default function Onboarding() {
                         type="text"
                         value={clienteNome}
                         onChange={(e) => setClienteNome(e.target.value)}
-                        placeholder="Nome do cliente"
+                        placeholder="Nome do aluno"
                       />
                     </div>
                     <div className="onboarding-field" style={{ flex: 1 }}>
@@ -376,7 +376,7 @@ export default function Onboarding() {
                     <span>Importar planilha CSV</span>
                   </div>
                   <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6b7280' }}>
-                    Importe clientes de uma planilha Excel ou CSV
+                    Importe alunos de uma planilha Excel ou CSV
                   </p>
                 </button>
               </div>
@@ -400,7 +400,7 @@ export default function Onboarding() {
         onImportComplete={(count) => {
           setMostrarCsvImport(false)
           setClientesCriados(prev => [...prev, ...Array(count).fill({ nome: 'Importado', telefone: '' })])
-          showToast(`${count} clientes importados!`, 'success')
+          showToast(`${count} alunos importados!`, 'success')
         }}
         userId={userId}
         existingClients={clientesCriados}

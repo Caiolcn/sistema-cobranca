@@ -58,7 +58,7 @@ export default function CsvImportModal({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'modelo-importacao-clientes.csv'
+    link.download = 'modelo-importacao-alunos.csv'
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -282,7 +282,7 @@ export default function CsvImportModal({
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
-                Importar Clientes
+                Importar Alunos
               </h3>
               <span style={{ fontSize: '12px', color: '#6b7280' }}>
                 {step === 1 && 'Upload do arquivo'}
@@ -393,9 +393,9 @@ export default function CsvImportModal({
                       Ativação automática de assinatura
                     </p>
                     <p style={{ margin: 0, fontSize: '12px', color: '#3b82f6', lineHeight: '1.5' }}>
-                      Se o cliente tiver <strong>Plano</strong> e <strong>Data de Vencimento</strong> preenchidos,
+                      Se o aluno tiver <strong>Plano</strong> e <strong>Data de Vencimento</strong> preenchidos,
                       a assinatura será ativada automaticamente e a primeira mensalidade será criada.
-                      Clientes sem esses dados serão importados com assinatura inativa.
+                      Alunos sem esses dados serão importados com assinatura inativa.
                     </p>
                   </div>
                 </div>
@@ -534,7 +534,7 @@ export default function CsvImportModal({
                 }}>
                   <Icon icon="mdi:alert-outline" width="20" style={{ color: '#d97706', flexShrink: 0 }} />
                   <span style={{ fontSize: '13px', color: '#92400e' }}>
-                    Seu plano permite {limiteClientes} clientes. Você tem {clientesAtivos} ativos.
+                    Seu plano permite {limiteClientes} alunos. Você tem {clientesAtivos} ativos.
                     Apenas <strong>{availableSlots}</strong> de {validationResults.valid.length} serão importados.
                   </span>
                 </div>
@@ -583,7 +583,7 @@ export default function CsvImportModal({
                   }}
                 >
                   <Icon icon="iconoir:import" width="16" />
-                  Importar {Math.min(validationResults.valid.length, availableSlots)} clientes
+                  Importar {Math.min(validationResults.valid.length, availableSlots)} alunos
                 </button>
               </div>
             </div>
@@ -604,7 +604,7 @@ export default function CsvImportModal({
                 Importação Concluída
               </h3>
               <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#6b7280' }}>
-                <strong style={{ color: '#16a34a' }}>{importResults.imported}</strong> clientes importados
+                <strong style={{ color: '#16a34a' }}>{importResults.imported}</strong> alunos importados
                 {importResults.skipped > 0 && (
                   <span> · <strong style={{ color: '#d97706' }}>{importResults.skipped}</strong> não importados</span>
                 )}
@@ -626,7 +626,7 @@ export default function CsvImportModal({
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <Icon icon="mdi:loading" width="40" style={{ color: '#3b82f6', animation: 'spin 1s linear infinite', marginBottom: '16px' }} />
               <p style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: '500', color: '#374151' }}>
-                Importando clientes...
+                Importando alunos...
               </p>
               <div style={{
                 width: '100%', height: '8px', backgroundColor: '#e5e7eb',

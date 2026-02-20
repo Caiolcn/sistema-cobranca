@@ -39,7 +39,7 @@ export default function Clientes() {
   const [filtroInadimplente, setFiltroInadimplente] = useState(searchParams.get('inadimplente') === 'true')
   const [confirmDelete, setConfirmDelete] = useState({ show: false, cliente: null })
   const [excluirMensalidades, setExcluirMensalidades] = useState(false)
-  const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(false)
+  const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(searchParams.get('novo') === 'true')
   const [novoClienteNome, setNovoClienteNome] = useState('')
   const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
   const [novoClienteCpf, setNovoClienteCpf] = useState('')
@@ -253,7 +253,7 @@ export default function Clientes() {
       setClientes(clientesComDados)
     } catch (error) {
       console.error('Erro ao carregar clientes:', error)
-      alert('Erro ao carregar clientes: ' + error.message)
+      alert('Erro ao carregar alunos: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -310,7 +310,7 @@ export default function Clientes() {
     try {
       if (!cliente || !cliente.id) {
         console.error('Cliente inválido:', cliente)
-        showToast('Erro ao abrir ficha do cliente', 'error')
+        showToast('Erro ao abrir ficha do aluno', 'error')
         return
       }
 
@@ -412,7 +412,7 @@ export default function Clientes() {
       await carregarMensalidadesCliente(cliente.id)
     } catch (error) {
       console.error('Erro ao abrir ficha do cliente:', error)
-      showToast('Erro ao carregar dados do cliente', 'error')
+      showToast('Erro ao carregar dados do aluno', 'error')
       setMostrarModal(false)
     }
   }
@@ -454,7 +454,7 @@ export default function Clientes() {
       )
 
       if (duplicado) {
-        showToast(`Já existe um cliente com este telefone (${duplicado.nome})`, 'warning')
+        showToast(`Já existe um aluno com este telefone (${duplicado.nome})`, 'warning')
         return
       }
 
@@ -470,12 +470,12 @@ export default function Clientes() {
 
       if (error) throw error
 
-      showToast('Cliente atualizado com sucesso!', 'success')
+      showToast('Aluno atualizado com sucesso!', 'success')
       setEditando(false)
       setMostrarModal(false)
       carregarClientes()
     } catch (error) {
-      showToast('Erro ao atualizar cliente: ' + error.message, 'error')
+      showToast('Erro ao atualizar aluno: ' + error.message, 'error')
     }
   }
 
@@ -546,8 +546,8 @@ export default function Clientes() {
       if (clienteError) throw clienteError
 
       const mensagem = excluirMensalidades
-        ? 'Cliente e mensalidades excluídos com sucesso!'
-        : 'Cliente excluído com sucesso!'
+        ? 'Aluno e mensalidades excluídos com sucesso!'
+        : 'Aluno excluído com sucesso!'
       showToast(mensagem, 'success')
 
       // Fechar o modal de detalhes do cliente
@@ -561,7 +561,7 @@ export default function Clientes() {
       // Recarregar lista de clientes
       carregarClientes()
     } catch (error) {
-      showToast('Erro ao excluir cliente: ' + error.message, 'error')
+      showToast('Erro ao excluir aluno: ' + error.message, 'error')
     }
   }
 
@@ -844,7 +844,7 @@ export default function Clientes() {
     // Verificar limite de clientes do plano (apenas clientes com assinatura ativa contam)
     const clientesAtivos = clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length
     if (clientesAtivos >= limiteClientes) {
-      setErroModalNovoCliente(`Limite de ${limiteClientes} clientes ativos atingido no plano ${plano?.toUpperCase() || 'atual'}. Faça upgrade para adicionar mais clientes.`)
+      setErroModalNovoCliente(`Limite de ${limiteClientes} alunos ativos atingido no plano ${plano?.toUpperCase() || 'atual'}. Faça upgrade para adicionar mais alunos.`)
       return
     }
 
@@ -858,7 +858,7 @@ export default function Clientes() {
       )
 
       if (duplicado) {
-        setErroModalNovoCliente(`Já existe um cliente com este telefone (${duplicado.nome})`)
+        setErroModalNovoCliente(`Já existe um aluno com este telefone (${duplicado.nome})`)
         return
       }
 
@@ -956,23 +956,23 @@ Equipe ${nomeEmpresa}`
             )
 
             if (resultado.sucesso) {
-              showToast('Cliente criado e mensagem de boas-vindas enviada!', 'success')
+              showToast('Aluno criado e mensagem de boas-vindas enviada!', 'success')
             } else if (resultado.erro && resultado.erro.includes('desconectado')) {
-              showToast('Cliente criado! Boas-vindas não enviada: WhatsApp desconectado. Reconecte em WhatsApp > Conexão.', 'warning')
+              showToast('Aluno criado! Boas-vindas não enviada: WhatsApp desconectado. Reconecte em WhatsApp > Conexão.', 'warning')
             } else if (resultado.erro && resultado.erro.includes('não existe no WhatsApp')) {
-              showToast('Cliente criado! Boas-vindas não enviada: número não tem WhatsApp.', 'warning')
+              showToast('Aluno criado! Boas-vindas não enviada: número não tem WhatsApp.', 'warning')
             } else {
-              showToast('Cliente criado! (Não foi possível enviar boas-vindas: ' + resultado.erro + ')', 'warning')
+              showToast('Aluno criado! (Não foi possível enviar boas-vindas: ' + resultado.erro + ')', 'warning')
             }
           } else {
-            showToast('Cliente criado! (WhatsApp desconectado - boas-vindas não enviada)', 'warning')
+            showToast('Aluno criado! (WhatsApp desconectado - boas-vindas não enviada)', 'warning')
           }
         } catch (whatsappError) {
           console.error('Erro ao enviar boas-vindas:', whatsappError)
-          showToast('Cliente criado! (Erro ao enviar boas-vindas)', 'warning')
+          showToast('Aluno criado! (Erro ao enviar boas-vindas)', 'warning')
         }
       } else {
-        showToast('Cliente criado com sucesso!', 'success')
+        showToast('Aluno criado com sucesso!', 'success')
       }
 
       setMostrarModalNovoCliente(false)
@@ -989,7 +989,7 @@ Equipe ${nomeEmpresa}`
       setMensagemBoasVindasCustom('')
       carregarClientes()
     } catch (error) {
-      showToast('Erro ao criar cliente: ' + error.message, 'error')
+      showToast('Erro ao criar aluno: ' + error.message, 'error')
     }
   }
 
@@ -1044,7 +1044,7 @@ Equipe ${nomeEmpresa}`
 
   if (loading) {
     return (
-      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
         {isSmallScreen ? (
           <SkeletonList count={8} />
         ) : (
@@ -1059,22 +1059,23 @@ Equipe ${nomeEmpresa}`
                            filtroAssinatura !== 'todos' || filtroInadimplente
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '16px' : '25px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
         <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isSmallScreen ? '16px' : '0' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              Clientes
+              Alunos
             </h2>
             <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              {clientesFiltrados.length} de {clientes.filter(c => !c.deleted_at).length} cliente(s)
+              {clientesFiltrados.length} de {clientes.filter(c => !c.deleted_at).length} aluno(s)
               <span style={{
                 marginLeft: '10px',
                 padding: '2px 8px',
@@ -1117,7 +1118,7 @@ Equipe ${nomeEmpresa}`
                 e.currentTarget.style.borderColor = '#ddd'
                 e.currentTarget.style.color = '#333'
               }}
-              title="Importar clientes via CSV"
+              title="Importar alunos via CSV"
             >
               <Icon icon="iconoir:import" width="18" height="18" />
             </button>
@@ -1262,7 +1263,7 @@ Equipe ${nomeEmpresa}`
                 {/* Header do popover */}
                 <div style={{
                   padding: '16px',
-                  borderBottom: '1px solid #f0f0f0',
+                  borderBottom: '1px solid #e5e7eb',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -1295,7 +1296,7 @@ Equipe ${nomeEmpresa}`
                   {/* Filtro por Nome */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                      Nome do Cliente
+                      Nome do Aluno
                     </label>
                     <div style={{ position: 'relative' }}>
                       <Icon
@@ -1524,28 +1525,29 @@ Equipe ${nomeEmpresa}`
         </div>
       </div>
 
-      {/* Lista de Clientes */}
+      {/* Lista de Alunos */}
       <div style={{
         backgroundColor: isSmallScreen ? 'transparent' : 'white',
         borderRadius: isSmallScreen ? 0 : '8px',
-        boxShadow: isSmallScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+        border: isSmallScreen ? 'none' : '1px solid #e5e7eb',
+        boxShadow: 'none',
         overflow: 'hidden'
       }}>
         {clientes.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px' }}>
             <Icon icon="mdi:account-off-outline" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
             <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
-              Nenhum cliente cadastrado ainda
+              Nenhum aluno cadastrado ainda
             </p>
             <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0 0 0' }}>
-              Adicione mensalidades pela tela Financeiro para criar clientes automaticamente
+              Adicione mensalidades pela tela Financeiro para criar alunos automaticamente
             </p>
           </div>
         ) : clientesFiltrados.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px' }}>
             <Icon icon="material-symbols:search-off" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
             <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
-              Nenhum cliente encontrado
+              Nenhum aluno encontrado
             </p>
             <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0 0 0' }}>
               Tente buscar por outro nome ou telefone
@@ -1562,7 +1564,8 @@ Equipe ${nomeEmpresa}`
                   backgroundColor: 'white',
                   borderRadius: '8px',
                   padding: '16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  border: '1px solid #e5e7eb',
+                  boxShadow: 'none',
                   cursor: 'pointer'
                 }}
               >
@@ -1634,9 +1637,9 @@ Equipe ${nomeEmpresa}`
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e0e0e0' }}>
+                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e5e7eb' }}>
                   <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '22%' }}>
-                    Cliente
+                    Aluno
                   </th>
                   <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', width: '16%' }}>
                     Telefone
@@ -1661,7 +1664,7 @@ Equipe ${nomeEmpresa}`
                     key={cliente.id}
                     onClick={() => handleClienteClick(cliente)}
                     style={{
-                      borderBottom: '1px solid #f0f0f0',
+                      borderBottom: '1px solid #e5e7eb',
                       cursor: 'pointer',
                       transition: 'background-color 0.2s'
                     }}
@@ -1861,13 +1864,13 @@ Equipe ${nomeEmpresa}`
               fontSize: '14px',
               color: '#666'
             }}>
-              {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
+              {clientesFiltrados.length} aluno{clientesFiltrados.length !== 1 ? 's' : ''}
             </span>
           </div>
         )}
       </div>
 
-      {/* Modal de Detalhes do Cliente */}
+      {/* Modal de Detalhes do Aluno */}
       {mostrarModal && clienteSelecionado && (
         <div style={{
           position: 'fixed',
@@ -1897,7 +1900,7 @@ Equipe ${nomeEmpresa}`
             {/* Header do Modal */}
             <div style={{
               padding: '24px',
-              borderBottom: '1px solid #e8e8e8',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -1960,7 +1963,7 @@ Equipe ${nomeEmpresa}`
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-                    Informações do Cliente
+                    Informações do Aluno
                   </h3>
                   {!editando && (
                     <button
@@ -2177,7 +2180,7 @@ Equipe ${nomeEmpresa}`
                 </div>
               )}
 
-              {/* Indicadores do Cliente - 4 Cards */}
+              {/* Indicadores do Aluno - 4 Cards */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
@@ -2243,7 +2246,7 @@ Equipe ${nomeEmpresa}`
                           : `${clienteSelecionado.tempoDeCasa} ${clienteSelecionado.tempoDeCasa === 1 ? 'mês' : 'meses'}`
                     ) : '-'}
                   </p>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>como cliente</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#888' }}>como aluno</p>
                 </div>
 
                 {/* Card 3: Mensagens Enviadas */}
@@ -2392,7 +2395,7 @@ Equipe ${nomeEmpresa}`
                       </thead>
                       <tbody>
                         {mensalidadesCliente.map((mensalidade) => (
-                          <tr key={mensalidade.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <tr key={mensalidade.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '12px', fontSize: '14px', color: '#333' }}>
                               {formatDate(mensalidade.data_vencimento)}
                             </td>
@@ -2481,7 +2484,7 @@ Equipe ${nomeEmpresa}`
                   }}
                 >
                   <Icon icon="mdi:delete-outline" width="18" />
-                  Excluir Cliente
+                  Excluir Aluno
                 </button>
                 <button
                   onClick={() => setMostrarModal(false)}
@@ -2509,8 +2512,8 @@ Equipe ${nomeEmpresa}`
         isOpen={confirmDelete.show}
         onClose={() => { setConfirmDelete({ show: false, cliente: null }); setExcluirMensalidades(false) }}
         onConfirm={confirmarExclusao}
-        title={`Excluir cliente "${confirmDelete.cliente?.nome}"?`}
-        message={`Este cliente possui ${confirmDelete.cliente?.totalMensalidades || 0} mensalidade(s) associadas.`}
+        title={`Excluir aluno "${confirmDelete.cliente?.nome}"?`}
+        message={`Este aluno possui ${confirmDelete.cliente?.totalMensalidades || 0} mensalidade(s) associadas.`}
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"
@@ -2544,8 +2547,8 @@ Equipe ${nomeEmpresa}`
         title={confirmAssinatura.novoStatus ? 'Ativar Assinatura' : 'Desativar Assinatura'}
         message={
           confirmAssinatura.novoStatus
-            ? 'Deseja ativar a assinatura deste cliente?'
-            : 'Deseja desativar a assinatura deste cliente?'
+            ? 'Deseja ativar a assinatura deste aluno?'
+            : 'Deseja desativar a assinatura deste aluno?'
         }
         confirmText={confirmAssinatura.novoStatus ? 'Ativar' : 'Desativar'}
         cancelText="Cancelar"
@@ -2587,7 +2590,7 @@ Equipe ${nomeEmpresa}`
             {/* Header */}
             <div style={{
               padding: '20px 24px',
-              borderBottom: '1px solid #e0e0e0',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               alignItems: 'center',
               gap: '12px'
@@ -2812,7 +2815,7 @@ Equipe ${nomeEmpresa}`
         </div>
       )}
 
-      {/* Modal de novo cliente */}
+      {/* Modal de novo aluno */}
       {mostrarModalNovoCliente && (
         <div
           onClick={() => {
@@ -2859,7 +2862,7 @@ Equipe ${nomeEmpresa}`
                 fontWeight: '600',
                 color: '#1a1a1a'
               }}>
-                Adicionar Novo Cliente
+                Adicionar Novo Aluno
               </h3>
               <button
                 onClick={() => setMostrarModalNovoCliente(false)}
@@ -2910,7 +2913,7 @@ Equipe ${nomeEmpresa}`
                 type="text"
                 value={novoClienteNome}
                 onChange={(e) => setNovoClienteNome(e.target.value)}
-                placeholder="Digite o nome do cliente"
+                placeholder="Digite o nome do aluno"
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -3046,7 +3049,7 @@ Equipe ${nomeEmpresa}`
                     cursor: 'pointer'
                   }}
                 />
-                Criar assinatura para este cliente
+                Criar assinatura para este aluno
               </label>
             </div>
 
@@ -3276,7 +3279,7 @@ Equipe ${nomeEmpresa}`
                       color: '#666',
                       fontWeight: '400'
                     }}>
-                      Envia uma mensagem apresentando sua empresa e solicitando que o cliente salve o número.
+                      Envia uma mensagem apresentando sua empresa e solicitando que o aluno salve o número.
                     </p>
                   </div>
                 </label>
@@ -3368,7 +3371,7 @@ Qualquer dúvida, estamos à disposição.`}
                     color: '#888'
                   }}>
                     <Icon icon="mdi:information-outline" width="12" style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                    O nome do cliente será substituído automaticamente ao enviar.
+                    O nome do aluno será substituído automaticamente ao enviar.
                   </p>
                 </div>
               )}
@@ -3434,7 +3437,7 @@ Qualquer dúvida, estamos à disposição.`}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
               >
-                Criar Cliente
+                Criar Aluno
               </button>
             </div>
           </div>
@@ -3484,7 +3487,7 @@ Qualquer dúvida, estamos à disposição.`}
               alignItems: 'center',
               marginBottom: '20px',
               paddingBottom: '16px',
-              borderBottom: '1px solid #e8e8e8'
+              borderBottom: '1px solid #e5e7eb'
             }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>
@@ -3919,7 +3922,7 @@ Qualquer dúvida, estamos à disposição.`}
         onImportComplete={(count) => {
           setMostrarImportModal(false)
           carregarClientes()
-          showToast(`${count} clientes importados com sucesso!`, 'success')
+          showToast(`${count} alunos importados com sucesso!`, 'success')
         }}
         userId={userId}
         existingClients={clientes}

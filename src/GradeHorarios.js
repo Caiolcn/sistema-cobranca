@@ -135,7 +135,7 @@ export default function GradeHorarios() {
   // Salvar (criar ou atualizar)
   const salvarHorario = async () => {
     if (!formClienteId) {
-      showToast('Selecione um cliente', 'warning')
+      showToast('Selecione um aluno', 'warning')
       return
     }
     if (!formHorario) {
@@ -234,7 +234,7 @@ export default function GradeHorarios() {
 
   if (loading) {
     return (
-      <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
         <SkeletonList count={6} />
       </div>
     )
@@ -271,14 +271,15 @@ export default function GradeHorarios() {
     : DIAS_SEMANA.filter(d => d.valor === Number(filtroDia))
 
   return (
-    <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Header - padrão Clientes */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: isMobile ? '16px' : '20px',
         marginBottom: isMobile ? '16px' : '25px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isMobile ? '16px' : '0' }}>
           <div>
@@ -414,7 +415,8 @@ export default function GradeHorarios() {
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: isMobile ? '16px' : '20px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
 
       {/* Estado vazio */}
@@ -433,7 +435,7 @@ export default function GradeHorarios() {
           <p style={{ color: '#999', fontSize: '14px', marginBottom: '20px' }}>
             {busca || filtroDia !== 'todos'
               ? 'Tente alterar os filtros'
-              : 'Cadastre os horários de aula dos seus clientes para enviar lembretes automáticos'}
+              : 'Cadastre os horários de aula dos seus alunos para enviar lembretes automáticos'}
           </p>
           {!busca && filtroDia === 'todos' && (
             <button
@@ -572,7 +574,7 @@ export default function GradeHorarios() {
                               overflow: 'hidden',
                               textOverflow: 'ellipsis'
                             }}>
-                              {h.devedores?.nome || 'Cliente'}
+                              {h.devedores?.nome || 'Aluno'}
                             </div>
                             {/* Tipo de aula */}
                             {h.descricao && (
@@ -653,7 +655,7 @@ export default function GradeHorarios() {
         onClose={() => setConfirmDelete({ show: false, horario: null })}
         onConfirm={() => excluirHorario(confirmDelete.horario?.id)}
         title="Excluir Horário"
-        message={`Tem certeza que deseja excluir o horário de ${confirmDelete.horario?.devedores?.nome || 'este cliente'}?`}
+        message={`Tem certeza que deseja excluir o horário de ${confirmDelete.horario?.devedores?.nome || 'este aluno'}?`}
         confirmText="Excluir"
         confirmColor="#ef4444"
       />
@@ -705,7 +707,7 @@ export default function GradeHorarios() {
             {/* Cliente */}
             <div style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
-                Cliente / Aluno
+                Aluno
               </label>
               <select
                 value={formClienteId}
@@ -720,7 +722,7 @@ export default function GradeHorarios() {
                   backgroundColor: 'white'
                 }}
               >
-                <option value="">Selecione um cliente</option>
+                <option value="">Selecione um aluno</option>
                 {clientes.map(c => (
                   <option key={c.id} value={c.id}>{c.nome}</option>
                 ))}

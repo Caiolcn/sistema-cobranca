@@ -140,7 +140,7 @@ export default function AdminDashboard() {
           MensalliZap - Dashboard Admin
         </h1>
         <p style={{ color: '#666', fontSize: '14px' }}>
-          Gerencie todos os clientes conectados no sistema
+          Gerencie todos os alunos conectados no sistema
         </p>
       </div>
 
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
             <Icon icon="mdi:account-group" width="24" style={{ color: '#667eea' }} />
-            <span style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Total de Clientes</span>
+            <span style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Total de Alunos</span>
           </div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>
             {stats.total}
@@ -353,7 +353,7 @@ export default function AdminDashboard() {
           </div>
         ) : clientesFiltrados.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-            Nenhum cliente encontrado
+            Nenhum aluno encontrado
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -391,7 +391,7 @@ export default function AdminDashboard() {
                   <tr
                     key={cliente.id}
                     style={{
-                      borderBottom: '1px solid #f0f0f0',
+                      borderBottom: '1px solid #e5e7eb',
                       transition: 'background-color 0.2s'
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
@@ -481,7 +481,7 @@ export default function AdminDashboard() {
 
       {/* Rodapé com info */}
       <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '12px', color: '#999' }}>
-        Atualização automática a cada 30 segundos • {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''} exibido{clientesFiltrados.length !== 1 ? 's' : ''}
+        Atualização automática a cada 30 segundos • {clientesFiltrados.length} aluno{clientesFiltrados.length !== 1 ? 's' : ''} exibido{clientesFiltrados.length !== 1 ? 's' : ''}
       </div>
     </div>
   )

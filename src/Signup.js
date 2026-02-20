@@ -213,8 +213,8 @@ export default function Signup() {
       trackStartTrial()
 
       // 6. Login automático já está ativo (sessão criada pelo signUp)
-      // 7. Redirecionar para onboarding
-      navigate('/app/onboarding')
+      // 7. Redirecionar para home (checklist de onboarding aparece automaticamente)
+      navigate('/app/home')
 
     } catch (error) {
       console.error('Erro ao cadastrar:', error)

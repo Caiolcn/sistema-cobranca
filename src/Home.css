@@ -3,7 +3,7 @@
   flex: 1;
   padding: 24px 40px;
   width: 100%;
-  background: #f5f7fa;
+  background: #ffffff;
   box-sizing: border-box;
 }
 
@@ -23,11 +23,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: white;
+  margin-bottom: 28px;
+  padding: 22px 24px;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: white;
+}
+
+.home-header-month {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.home-header-month svg {
+  color: #6b7280;
 }
 
 .home-welcome h1 {
@@ -161,18 +178,18 @@
   background: white;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
-  border: 1px solid #f0f0f0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  border: 1px solid #e5e7eb;
   position: relative;
 }
 
 .home-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: #d1d5db;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .card-header {
@@ -184,7 +201,7 @@
 .card-icon {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -407,7 +424,8 @@
   background: white;
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
+  border: 1px solid #e5e7eb;
   margin-bottom: 24px;
 }
 
@@ -417,7 +435,7 @@
   gap: 12px;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f5f5f5;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .section-header h2 {
@@ -614,13 +632,13 @@
 
 /* Fila de WhatsApp */
 .home-fila-whatsapp {
-  max-height: 500px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
 /* Mensagens Recentes */
 .home-mensagens-recentes {
-  max-height: 500px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
@@ -1387,5 +1405,144 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* 3-column grid variant for simplified Home */
+.home-cards-3 {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
+@media (max-width: 1024px) {
+  .home-cards-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-cards-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Quick Actions */
+.home-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.home-quick-actions-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.quick-action-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 22px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.quick-action-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.quick-action-card.highlighted {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+}
+
+.quick-action-card.highlighted:hover {
+  border-color: #4ade80;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.15);
+}
+
+.quick-action-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.quick-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quick-action-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-action-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px;
+}
+
+.quick-action-card-desc {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.quick-action-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.quick-action-card-btn.primary {
+  background: #16a34a;
+  color: white;
+}
+
+.quick-action-card-btn.primary:hover {
+  background: #15803d;
+}
+
+.quick-action-card-btn.outline {
+  background: transparent;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.quick-action-card-btn.outline:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+@media (max-width: 1200px) {
+  .home-quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .home-quick-actions {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }

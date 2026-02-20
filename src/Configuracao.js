@@ -707,7 +707,7 @@ function Configuracao() {
   // ==========================================
 
   const renderDadosEmpresa = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
       {/* Header com logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
         <label style={{
@@ -1006,12 +1006,12 @@ function Configuracao() {
   )
 
   const renderConfigCobranca = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
       <h3 style={{ margin: '0 0 8px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
         Configurações de Cobrança
       </h3>
       <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
-        Configure quando enviar mensagens de lembrete para seus clientes
+        Configure quando enviar mensagens de lembrete para seus alunos
       </p>
 
       <div style={{ marginBottom: '20px' }}>
@@ -1098,7 +1098,7 @@ function Configuracao() {
                   </span>
                 </div>
                 <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
-                  Lembrete antecipado para o cliente se preparar
+                  Lembrete antecipado para o aluno se preparar
                 </p>
               </div>
             </label>
@@ -1219,7 +1219,7 @@ function Configuracao() {
 
   const renderPlanos = () => (
     <div>
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
         <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0', marginBottom: '24px' }}>
           <h3 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
             Planos de Mensalidade
@@ -1364,7 +1364,7 @@ function Configuracao() {
               {planos.map((plano) => (
                 <tr
                   key={plano.id}
-                  style={{ borderBottom: '1px solid #f0f0f0' }}
+                  style={{ borderBottom: '1px solid #e5e7eb' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                 >
@@ -1477,7 +1477,7 @@ function Configuracao() {
             {/* Header */}
             <div style={{
               padding: '20px 24px',
-              borderBottom: '1px solid #e0e0e0',
+              borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -1677,7 +1677,7 @@ function Configuracao() {
 
         <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
           {/* Card Clientes */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '48px',
@@ -1691,7 +1691,7 @@ function Configuracao() {
                 <Icon icon="mdi:account-group" width="28" style={{ color: '#2196F3' }} />
               </div>
               <div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Clientes</div>
+                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Alunos</div>
                 <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
                   {usoSistema.clientes.usado} / {usoSistema.clientes.limite}
                 </div>
@@ -1713,7 +1713,7 @@ function Configuracao() {
           </div>
 
           {/* Card Mensagens */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '48px',
@@ -2249,7 +2249,8 @@ function Configuracao() {
         borderRadius: '16px',
         padding: isSmallScreen ? '20px' : '28px',
         marginBottom: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
           <div style={{
@@ -2268,7 +2269,7 @@ function Configuracao() {
               Integrações de Pagamento
             </h2>
             <p style={{ fontSize: '14px', color: '#666', margin: '4px 0 0 0' }}>
-              Escolha como deseja receber pagamentos dos seus clientes
+              Escolha como deseja receber pagamentos dos seus alunos
             </p>
           </div>
         </div>
@@ -2280,7 +2281,8 @@ function Configuracao() {
         borderRadius: '16px',
         padding: isSmallScreen ? '20px' : '28px',
         marginBottom: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
       }}>
         <h3 style={{
           fontSize: '16px',
@@ -2306,13 +2308,13 @@ function Configuracao() {
             style={{
               padding: '24px',
               backgroundColor: modoIntegracao === 'asaas' ? '#f0f7ff' : '#fafafa',
-              border: modoIntegracao === 'asaas' ? '2px solid #2196F3' : '2px solid transparent',
+              border: modoIntegracao === 'asaas' ? '2px solid #2196F3' : '2px solid #e5e7eb',
               borderRadius: '16px',
               cursor: salvandoModo ? 'wait' : 'pointer',
               transition: 'all 0.3s ease',
               position: 'relative',
               overflow: 'hidden',
-              boxShadow: modoIntegracao === 'asaas' ? '0 4px 15px rgba(33, 150, 243, 0.2)' : '0 2px 8px rgba(0,0,0,0.04)'
+              boxShadow: modoIntegracao === 'asaas' ? '0 4px 15px rgba(33, 150, 243, 0.2)' : 'none'
             }}
           >
             {/* Badge Recomendado */}
@@ -2387,12 +2389,12 @@ function Configuracao() {
             style={{
               padding: '24px',
               backgroundColor: modoIntegracao === 'manual' ? '#fff8f0' : '#fafafa',
-              border: modoIntegracao === 'manual' ? '2px solid #FF9800' : '2px solid transparent',
+              border: modoIntegracao === 'manual' ? '2px solid #FF9800' : '2px solid #e5e7eb',
               borderRadius: '16px',
               cursor: salvandoModo ? 'wait' : 'pointer',
               transition: 'all 0.3s ease',
               position: 'relative',
-              boxShadow: modoIntegracao === 'manual' ? '0 4px 15px rgba(255, 152, 0, 0.2)' : '0 2px 8px rgba(0,0,0,0.04)'
+              boxShadow: modoIntegracao === 'manual' ? '0 4px 15px rgba(255, 152, 0, 0.2)' : 'none'
             }}
           >
             {/* Badge Simples */}
@@ -2464,7 +2466,8 @@ function Configuracao() {
             borderRadius: '16px',
             padding: isSmallScreen ? '20px' : '28px',
             marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none'
           }}>
             <div style={{
               padding: '20px',
@@ -2513,7 +2516,8 @@ function Configuracao() {
             backgroundColor: 'white',
             borderRadius: '16px',
             padding: isSmallScreen ? '20px' : '28px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none'
           }}>
             <h3 style={{
               fontSize: '16px',
@@ -2622,7 +2626,8 @@ function Configuracao() {
             backgroundColor: 'white',
             borderRadius: '16px',
             padding: isSmallScreen ? '20px' : '28px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none'
           }}>
             <h3 style={{
               fontSize: '16px',
@@ -2715,7 +2720,8 @@ function Configuracao() {
             borderRadius: '16px',
             padding: isSmallScreen ? '20px' : '28px',
             marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none'
           }}>
             <h3 style={{
               fontSize: '16px',
@@ -2797,7 +2803,8 @@ function Configuracao() {
             backgroundColor: 'white',
             borderRadius: '16px',
             padding: isSmallScreen ? '20px' : '28px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+            border: '1px solid #e5e7eb',
+            boxShadow: 'none'
           }}>
             <h3 style={{
               fontSize: '16px',
@@ -2824,8 +2831,8 @@ function Configuracao() {
 
             <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
               {[
-                { icon: 'mdi:send', text: 'Você envia um link de pagamento para o cliente via WhatsApp' },
-                { icon: 'mdi:qrcode-scan', text: 'O cliente acessa o link e vê o QR Code PIX + código copia e cola' },
+                { icon: 'mdi:send', text: 'Você envia um link de pagamento para o aluno via WhatsApp' },
+                { icon: 'mdi:qrcode-scan', text: 'O aluno acessa o link e vê o QR Code PIX + código copia e cola' },
                 { icon: 'mdi:check-decagram', text: 'Após o pagamento, você confirma manualmente no sistema' },
                 { icon: 'mdi:alert-circle', text: 'Não é possível gerar boletos neste modo', warning: true }
               ].map((item, idx) => (
@@ -2895,7 +2902,7 @@ function Configuracao() {
   const abaAtual = tabs.find(t => t.id === abaAtiva)
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Header - No mobile mostra a aba atual, no desktop mostra "Configurações" */}
       {isMobile ? (
         <div style={{ marginBottom: '16px' }}>
@@ -2954,7 +2961,7 @@ function Configuracao() {
         {/* Tabs Sidebar - só para desktop/laptop */}
         {!isSmallScreen && (
           <div style={{ width: '220px', flexShrink: 0 }}>
-            <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '12px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
               {tabs.map((tab) => (
                 <div
                   key={tab.id}

@@ -196,7 +196,7 @@ export default function PaginaPagamento() {
           borderBottom: '1px solid #eee'
         }}>
           <div style={{ marginBottom: '16px' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Cliente</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>Aluno</p>
             <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: '500', color: '#333' }}>
               {dados?.cliente_nome}
             </p>

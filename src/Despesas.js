@@ -618,7 +618,7 @@ export default function Despesas({ embedded = false }) {
         borderRadius: '12px',
         padding: '60px 40px',
         textAlign: 'center',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e5e7eb', boxShadow: 'none',
         maxWidth: '500px',
         margin: '80px auto'
       }}>
@@ -651,7 +651,7 @@ export default function Despesas({ embedded = false }) {
     )
     if (embedded) return lockContent
     return (
-      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
         {lockContent}
       </div>
     )
@@ -681,7 +681,7 @@ export default function Despesas({ embedded = false }) {
     )
     if (embedded) return loadingContent
     return (
-      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
         {loadingContent}
       </div>
     )
@@ -697,7 +697,7 @@ export default function Despesas({ embedded = false }) {
         borderRadius: '8px',
         padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '12px' : '16px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        border: '1px solid #e5e7eb', boxShadow: 'none'
       }}>
         <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0' }}>
           <div>
@@ -824,7 +824,7 @@ export default function Despesas({ embedded = false }) {
                 {/* Header filtros mobile */}
                 {isSmallScreen && (
                   <div style={{
-                    padding: '16px 20px', borderBottom: '1px solid #e0e0e0',
+                    padding: '16px 20px', borderBottom: '1px solid #e5e7eb',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1
                   }}>
@@ -942,7 +942,7 @@ export default function Despesas({ embedded = false }) {
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        border: '1px solid #e5e7eb', boxShadow: 'none',
         padding: isSmallScreen ? '16px' : '20px',
         marginBottom: isSmallScreen ? '16px' : '20px'
       }}>
@@ -1122,7 +1122,7 @@ export default function Despesas({ embedded = false }) {
       {despesasFiltradas.length === 0 ? (
         <div style={{
           backgroundColor: 'white', borderRadius: '8px', padding: '60px 20px',
-          textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+          textAlign: 'center', border: '1px solid #e5e7eb', boxShadow: 'none'
         }}>
           <Icon icon="mdi:wallet-outline" width="48" height="48" style={{ color: '#ccc', marginBottom: '12px' }} />
           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#666' }}>
@@ -1144,7 +1144,7 @@ export default function Despesas({ embedded = false }) {
               onClick={() => abrirModalEditarDespesa(despesa)}
               style={{
                 backgroundColor: 'white', borderRadius: '8px', padding: '14px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                border: '1px solid #e5e7eb', boxShadow: 'none',
                 borderLeft: `4px solid ${despesa.categorias_despesas?.cor || '#666'}`,
                 cursor: 'pointer'
               }}
@@ -1214,7 +1214,7 @@ export default function Despesas({ embedded = false }) {
         /* ===== DESKTOP: TABELA ===== */
         <div style={{
           backgroundColor: 'white', borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden'
+          border: '1px solid #e5e7eb', boxShadow: 'none', overflow: 'hidden'
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -1729,7 +1729,7 @@ export default function Despesas({ embedded = false }) {
 
   if (embedded) return content
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {content}
     </div>
   )
