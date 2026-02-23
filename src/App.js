@@ -27,6 +27,7 @@ const Onboarding = lazy(() => import('./Onboarding'))
 const GradeHorarios = lazy(() => import('./GradeHorarios'))
 const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
+const CRM = lazy(() => import('./CRM'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -94,6 +95,7 @@ function App() {
                     <Route path="whatsapp" element={<WhatsAppConexao />} />
                     <Route path="configuracao" element={<Configuracao />} />
                     <Route path="ajuda" element={<Ajuda />} />
+                    <Route path="crm" element={<CRM />} />
                   </Route>
                 </>
               ) : (

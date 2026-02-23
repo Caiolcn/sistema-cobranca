@@ -207,7 +207,20 @@ export default function Signup() {
 
       if (controleError) throw controleError
 
-      // 5. Meta Pixel: Lead, Cadastro completo e início de trial
+      // 5. Criar configurações de cobrança padrão (envio automático habilitado)
+      const { error: configError } = await supabase
+        .from('configuracoes_cobranca')
+        .insert({
+          user_id: userId,
+          enviar_no_dia: true,
+          enviar_3_dias_antes: true,
+          enviar_3_dias_depois: true,
+          envio_habilitado: true
+        })
+
+      if (configError) console.error('Erro ao criar config de cobrança:', configError)
+
+      // 6. Meta Pixel: Lead, Cadastro completo e início de trial
       trackLead()
       trackCompleteRegistration()
       trackStartTrial()

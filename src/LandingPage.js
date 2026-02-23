@@ -7,7 +7,7 @@ import {
   MdAdd, MdRemove, MdLocalFireDepartment, MdClose, MdWarning
 } from 'react-icons/md'
 import { FaWhatsapp } from 'react-icons/fa'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import useWindowSize from './hooks/useWindowSize'
 
 export default function LandingPage() {
@@ -38,14 +38,14 @@ export default function LandingPage() {
       nome: 'Roberto Carlos',
       empresa: 'Escola de Música Crescendo',
       cargo: 'Fundador',
-      texto: 'Reduzi a inadimplência em 40% no primeiro mês! Os lembretes automáticos pelo WhatsApp são mais eficientes que ligações.',
+      texto: 'Antes: 12 alunos devendo todo mês. Depois do Mensalli: máximo 3. Recuperei R$1.800/mês que estavam saindo pelo ralo.',
       foto: '/testimonials/men32.jpg'
     },
     {
       nome: 'Mariana Ferreira',
       empresa: 'Studio de Pilates Renascer',
       cargo: 'Dona',
-      texto: 'Antes eu perdia horas ligando para cobrar. Agora o sistema faz tudo sozinho e ainda consigo acompanhar quem está em dia pelo dashboard.',
+      texto: 'Gastava 3 horas por semana ligando pra cobrar. Agora gasto zero. São 12 horas por mês que voltaram pra mim — e a inadimplência caiu pela metade.',
       foto: '/testimonials/women44.jpg'
     },
     {
@@ -59,7 +59,7 @@ export default function LandingPage() {
       nome: 'Fernanda Santos',
       empresa: 'Academia Vida Ativa',
       cargo: 'Proprietária',
-      texto: 'Meus alunos adoram receber o lembrete pelo WhatsApp. A taxa de pagamento em dia subiu de 60% para 90%!',
+      texto: 'Com 80 alunos, eu perdia uns R$3.600/mês de inadimplência. Hoje perco no máximo R$900. O sistema se paga em 1 dia.',
       foto: '/testimonials/women68.jpg'
     },
     {
@@ -79,6 +79,13 @@ export default function LandingPage() {
   ]
 
   const [depoimentoIndex, setDepoimentoIndex] = useState(0)
+
+  // Calculadora de ROI
+  const [roiClientes, setRoiClientes] = useState(50)
+  const [roiValorMedio, setRoiValorMedio] = useState(150)
+  const [roiInadimplencia, setRoiInadimplencia] = useState(30)
+  const roiPerdaMensal = useMemo(() => roiClientes * roiValorMedio * (roiInadimplencia / 100), [roiClientes, roiValorMedio, roiInadimplencia])
+  const roiRecuperacao = useMemo(() => roiPerdaMensal * 0.7, [roiPerdaMensal])
 
   const faqs = [
     {
@@ -112,6 +119,14 @@ export default function LandingPage() {
     {
       pergunta: 'Funciona com WhatsApp Business?',
       resposta: 'Sim! Recomendamos WhatsApp Business para separar uso pessoal do profissional, mas funciona com WhatsApp comum também.'
+    },
+    {
+      pergunta: 'Quanto custa cada mensagem enviada?',
+      resposta: 'Depende do plano: de R$0,05 (Premium) a R$0,25 (Starter) por mensagem. Muito menos que o custo do seu tempo ligando ou enviando mensagens manualmente.'
+    },
+    {
+      pergunta: 'Existe algum sistema mais barato?',
+      resposta: 'Existem disparadores de mensagem por R$29/mês, mas enviam apenas 50 mensagens e não têm gestão financeira, dashboard, aging report ou automação inteligente. O Mensalli é um sistema completo de gestão de cobranças, não apenas um disparador de mensagens.'
     }
   ]
 
@@ -204,8 +219,8 @@ export default function LandingPage() {
             fontWeight: '600',
             marginBottom: '32px'
           }}>
-            <MdCheckCircle size={16} />
-            A partir de R$ 49,90/mês
+            <FaWhatsapp size={16} />
+            98% de taxa de abertura — seu cliente vai ler
           </div>
 
           <h1 style={{
@@ -216,7 +231,7 @@ export default function LandingPage() {
             letterSpacing: '-1.5px',
             color: '#1a1a1a'
           }}>
-            Mensalidades em dia,
+            Seus alunos esquecem de pagar?
             <br />
             <span style={{
               background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
@@ -224,7 +239,7 @@ export default function LandingPage() {
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text'
             }}>
-              automaticamente
+              O WhatsApp deles não.
             </span>
           </h1>
 
@@ -236,7 +251,7 @@ export default function LandingPage() {
             maxWidth: '650px',
             margin: '0 auto 40px'
           }}>
-            Deixe o Mensalli cobrar por você via WhatsApp. Configure uma vez, receba em dia sempre.
+            O Mensalli envia cobranças automáticas pelo WhatsApp dos seus clientes — com seu tom de voz, no horário certo. Sem constrangimento, sem planilha, sem esquecimento.
           </p>
 
           <div style={{
@@ -319,7 +334,7 @@ export default function LandingPage() {
             marginBottom: '32px',
             fontWeight: '500'
           }}>
-            Mais de 500 negócios já automatizaram suas cobranças
+            Números que falam por si
           </p>
 
           {/* Métricas */}
@@ -331,18 +346,18 @@ export default function LandingPage() {
           }}>
             <div>
               <p style={{ fontSize: isSmallScreen ? '36px' : '48px', fontWeight: '800', color: '#1a1a1a', margin: '0 0 8px' }}>
-                2.400+
+                R$ 847 mil
               </p>
               <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
-                Mensalidades cobradas este mês
+                Já ajudamos a cobrar em mensalidades
               </p>
             </div>
             <div>
               <p style={{ fontSize: isSmallScreen ? '36px' : '48px', fontWeight: '800', color: '#25D366', margin: '0 0 8px' }}>
-                70%
+                4,7 min
               </p>
               <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
-                Redução média em inadimplência
+                Tempo médio de resposta dos clientes
               </p>
             </div>
             <div>
@@ -407,6 +422,7 @@ export default function LandingPage() {
               { label: 'Tempo gasto', manual: '2-5h/semana', banco: 'Setup complexo', mensallizap: '5 min/mês' },
               { label: 'Relacionamento', manual: 'Constrangedor', banco: 'Impessoal', mensallizap: 'Tom amigável' },
               { label: 'Custo', manual: 'Seu tempo vale mais', banco: 'R$ 200-500/mês', mensallizap: 'A partir de R$ 49' },
+              { label: 'Custo/mensagem', manual: 'Seu tempo', banco: 'R$1-2/boleto', mensallizap: 'R$0,05 a R$0,25', icons: { manual: MdClose, banco: MdWarning, mensallizap: MdCheck } },
               { label: 'Automação', manual: 'Zero', banco: 'Emails ignorados', mensallizap: 'WhatsApp (98% abertura)', icons: { manual: MdClose, banco: MdWarning, mensallizap: MdCheck } },
               { label: 'Dashboard', manual: 'Planilhas manuais', banco: 'Complexo', mensallizap: 'Visual e simples', icons: { manual: MdClose, banco: MdWarning, mensallizap: MdCheck } }
             ].map((row, i) => (
@@ -734,6 +750,174 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Calculadora de ROI */}
+      <section style={{
+        padding: isSmallScreen ? '60px 24px' : '100px 24px',
+        backgroundColor: '#fafafa',
+        borderTop: '1px solid #eee',
+        borderBottom: '1px solid #eee'
+      }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <h2 style={{
+              fontSize: isSmallScreen ? '28px' : '40px',
+              fontWeight: '800',
+              marginBottom: '16px',
+              letterSpacing: '-1px',
+              color: '#1a1a1a'
+            }}>
+              Quanto você perde com inadimplência?
+            </h2>
+            <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
+              Descubra em 10 segundos quanto dinheiro está ficando para trás
+            </p>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: isSmallScreen ? '24px' : '40px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            border: '1px solid #eee'
+          }}>
+            {/* Inputs */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '32px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#344848', marginBottom: '8px' }}>
+                  Quantos clientes você tem?
+                </label>
+                <input
+                  type="number"
+                  value={roiClientes}
+                  onChange={(e) => setRoiClientes(Math.max(0, parseInt(e.target.value) || 0))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '16px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#344848', marginBottom: '8px' }}>
+                  Valor médio da mensalidade (R$)
+                </label>
+                <input
+                  type="number"
+                  value={roiValorMedio}
+                  onChange={(e) => setRoiValorMedio(Math.max(0, parseInt(e.target.value) || 0))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '16px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#344848', marginBottom: '8px' }}>
+                  % de inadimplência atual
+                </label>
+                <input
+                  type="number"
+                  value={roiInadimplencia}
+                  onChange={(e) => setRoiInadimplencia(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '16px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+            </div>
+
+            {/* Resultado */}
+            <div style={{
+              backgroundColor: '#fef2f2',
+              borderRadius: '12px',
+              padding: '20px 24px',
+              marginBottom: '16px',
+              border: '1px solid #fecaca'
+            }}>
+              <p style={{ fontSize: '14px', color: '#991b1b', margin: '0 0 4px', fontWeight: '500' }}>
+                Você perde por mês:
+              </p>
+              <p style={{ fontSize: isSmallScreen ? '28px' : '36px', fontWeight: '800', color: '#dc2626', margin: 0 }}>
+                R$ {roiPerdaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              borderRadius: '12px',
+              padding: '20px 24px',
+              marginBottom: '24px',
+              border: '1px solid #bbf7d0'
+            }}>
+              <p style={{ fontSize: '14px', color: '#166534', margin: '0 0 4px', fontWeight: '500' }}>
+                Com Mensalli, recupere até 70%:
+              </p>
+              <p style={{ fontSize: isSmallScreen ? '28px' : '36px', fontWeight: '800', color: '#16a34a', margin: '0 0 8px' }}>
+                +R$ {roiRecuperacao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês
+              </p>
+              <p style={{ fontSize: '13px', color: '#166534', margin: 0 }}>
+                O plano Pro (R$ 99/mês) se paga {roiRecuperacao >= 99 ? `em ${Math.max(1, Math.ceil(99 / (roiRecuperacao / 30)))} dia${Math.ceil(99 / (roiRecuperacao / 30)) > 1 ? 's' : ''}` : 'rapidamente'}.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate('/signup')}
+              style={{
+                width: '100%',
+                padding: '16px',
+                backgroundColor: '#25D366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(37,211,102,0.3)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              Começar a recuperar agora
+              <MdArrowForward size={20} />
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section id="precos" style={{
         padding: isSmallScreen ? '60px 24px' : '100px 24px',
@@ -788,6 +972,7 @@ export default function LandingPage() {
               <div style={{ marginBottom: '24px' }}>
                 <span style={{ fontSize: '42px', fontWeight: '800', color: '#1a1a1a' }}>R$49</span>
                 <span style={{ fontSize: '16px', color: '#999' }}>/mês</span>
+                <p style={{ fontSize: '12px', color: '#25D366', fontWeight: '600', margin: '8px 0 0' }}>apenas R$0,25 por mensagem</p>
               </div>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
                 {[
@@ -883,6 +1068,7 @@ export default function LandingPage() {
               <div style={{ marginBottom: '24px' }}>
                 <span style={{ fontSize: '42px', fontWeight: '800' }}>R$99</span>
                 <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.7)' }}>/mês</span>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)', fontWeight: '600', margin: '8px 0 0' }}>apenas R$0,17 por mensagem</p>
               </div>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
                 {[
@@ -968,6 +1154,7 @@ export default function LandingPage() {
               <div style={{ marginBottom: '24px' }}>
                 <span style={{ fontSize: '42px', fontWeight: '800', color: '#1a1a1a' }}>R$149</span>
                 <span style={{ fontSize: '16px', color: '#999' }}>/mês</span>
+                <p style={{ fontSize: '12px', color: '#25D366', fontWeight: '600', margin: '8px 0 0' }}>apenas R$0,05 por mensagem</p>
               </div>
               <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
                 {[
@@ -1365,7 +1552,7 @@ export default function LandingPage() {
             color: 'white',
             letterSpacing: '-1px'
           }}>
-            Pronto para automatizar suas cobranças?
+            Enquanto você lê isso, seus clientes estão esquecendo de pagar
           </h2>
           <p style={{
             fontSize: '17px',
@@ -1373,7 +1560,7 @@ export default function LandingPage() {
             marginBottom: '32px',
             lineHeight: '1.6'
           }}>
-            Comece hoje mesmo. Sem compromisso. Configure sua primeira cobrança automática em minutos.
+            Cada dia sem automação é dinheiro que você não recebe. Configure em 5 minutos e comece a receber amanhã.
           </p>
           <button
             onClick={() => navigate('/signup')}
