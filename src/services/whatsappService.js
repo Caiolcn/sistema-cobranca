@@ -221,9 +221,9 @@ class WhatsAppService {
 
   /**
    * Formata número de telefone para o padrão internacional
+   * Retorna o número SEM o sufixo @s.whatsapp.net (apenas dígitos com 55)
    */
-  formatarTelefone(telefone) {
-    // Remove caracteres não numéricos
+  formatarTelefoneBase(telefone) {
     let numero = telefone.replace(/\D/g, '')
 
     // Se não tem código do país, adiciona Brasil (55)
@@ -231,123 +231,252 @@ class WhatsAppService {
       numero = '55' + numero
     }
 
-    // Validação e correção de números brasileiros
-    if (numero.startsWith('55')) {
-      const somenteNumero = numero.substring(2) // Remove o 55
-      const ddd = somenteNumero.substring(0, 2)
-      const restante = somenteNumero.substring(2)
-
-      // Se tem 8 dígitos (celular sem o 9), adiciona o 9
-      // Celulares brasileiros (sem o 9) começam com dígito >= 6
-      // Fixos começam com 2-5 e não devem receber o 9
-      if (restante.length === 8 && !restante.startsWith('9')) {
-        const primeiroDigito = parseInt(restante.charAt(0), 10)
-        if (primeiroDigito >= 6) {
-          console.log('⚠️ Número celular parece estar faltando o 9º dígito. Corrigindo...')
-          numero = '55' + ddd + '9' + restante
-        }
-      }
-    }
-
-    console.log('📱 Número formatado final:', numero)
-
-    // Garante que tem o formato correto para WhatsApp
-    return numero + '@s.whatsapp.net'
+    return numero
   }
 
   /**
-   * Envia mensagem via Evolution API
+   * Gera variantes do número (com e sem o 9º dígito) para verificação
+   * Retorna array de números no formato 55DDXXXXXXXXX
    */
-  async enviarMensagem(telefone, mensagem) {
-    await this.ensureInitialized()
+  gerarVariantesNumero(telefone) {
+    const numero = this.formatarTelefoneBase(telefone)
+    const variantes = [numero]
 
-    try {
-      const numeroFormatado = this.formatarTelefone(telefone)
+    if (numero.startsWith('55') && numero.length >= 12) {
+      const ddd = numero.substring(2, 4)
+      const restante = numero.substring(4)
 
-      console.log('📡 Enviando para Evolution API...')
-      console.log('🔗 URL:', `${this.apiUrl}/message/sendText/${this.instanceName}`)
-      console.log('📞 Número formatado:', numeroFormatado)
-      console.log('💬 Mensagem:', mensagem)
-
-      const payload = {
-        number: numeroFormatado,
-        text: mensagem
+      if (restante.length === 9 && restante.startsWith('9')) {
+        // Número tem 9 dígitos (com o 9): gerar variante SEM o 9
+        const semNove = '55' + ddd + restante.substring(1)
+        variantes.push(semNove)
+        console.log(`📱 Variantes geradas: COM 9 = ${numero}, SEM 9 = ${semNove}`)
+      } else if (restante.length === 8) {
+        // Número tem 8 dígitos (sem o 9): gerar variante COM o 9
+        const comNove = '55' + ddd + '9' + restante
+        variantes.push(comNove)
+        console.log(`📱 Variantes geradas: SEM 9 = ${numero}, COM 9 = ${comNove}`)
       }
+    }
 
-      console.log('📦 Payload completo:', JSON.stringify(payload, null, 2))
+    return variantes
+  }
 
-      const response = await this.fetchWithRetry(
-        `${this.apiUrl}/message/sendText/${this.instanceName}`,
+  /**
+   * Verifica qual versão do número existe no WhatsApp via Evolution API
+   * Testa todas as variantes (com/sem 9) e retorna o número válido
+   */
+  async verificarNumeroWhatsApp(telefone, instanceNameOverride = null) {
+    const instanceName = instanceNameOverride || this.instanceName
+    const variantes = this.gerarVariantesNumero(telefone)
+
+    // Se só tem uma variante, retorna direto
+    if (variantes.length === 1) {
+      return variantes[0] + '@s.whatsapp.net'
+    }
+
+    // Verificar qual número existe no WhatsApp
+    try {
+      const numerosParaVerificar = variantes.map(n => n + '@s.whatsapp.net')
+      console.log('🔍 Verificando números no WhatsApp:', numerosParaVerificar)
+
+      const response = await fetch(
+        `${this.apiUrl}/chat/whatsappNumbers/${instanceName}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': this.apiKey
           },
-          body: JSON.stringify(payload)
-        },
-        2, // 2 tentativas (1 original + 1 retry)
-        2000 // 2 segundos de delay base
+          body: JSON.stringify({ numbers: numerosParaVerificar }),
+          signal: AbortSignal.timeout(10000)
+        }
       )
 
-      console.log('📊 Status da resposta:', response.status)
+      if (response.ok) {
+        const resultado = await response.json()
+        console.log('🔍 Resultado da verificação:', resultado)
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Resposta de erro (texto):', errorText)
+        // Procurar o número que existe
+        const encontrados = (Array.isArray(resultado) ? resultado : resultado?.response || [])
+        const valido = encontrados.find(r => r.exists === true)
 
-        let errorData = {}
-        try {
-          errorData = JSON.parse(errorText)
-          console.error('❌ Resposta de erro (JSON):', errorData)
-        } catch (e) {
-          // Não é JSON válido
+        if (valido) {
+          const numeroValido = valido.jid || valido.number
+          console.log('✅ Número válido encontrado:', numeroValido)
+          return numeroValido.includes('@') ? numeroValido : numeroValido + '@s.whatsapp.net'
         }
 
-        // Verificar se é erro de conexão fechada (WhatsApp desconectado)
-        if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
-          throw new Error('📱 Seu WhatsApp está desconectado. Vá em WhatsApp → Conexão e escaneie o QR Code para reconectar.')
+        console.log('⚠️ Nenhuma variante encontrada no WhatsApp, usando número original')
+      } else {
+        console.warn('⚠️ Falha na verificação de número, usando número original')
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao verificar número no WhatsApp:', error.message)
+    }
+
+    // Fallback: retorna o primeiro número (original)
+    return variantes[0] + '@s.whatsapp.net'
+  }
+
+  /**
+   * Formata número de telefone para o padrão WhatsApp (compatibilidade)
+   * Mantido para casos que não passam pela verificação
+   */
+  formatarTelefone(telefone) {
+    const numero = this.formatarTelefoneBase(telefone)
+    console.log('📱 Número formatado (sem verificação):', numero)
+    return numero + '@s.whatsapp.net'
+  }
+
+  /**
+   * Retorna o nome da instância para um userId específico
+   */
+  getInstanceNameForUser(userId) {
+    return `instance_${userId.substring(0, 8)}`
+  }
+
+  /**
+   * Executa o envio real de mensagem via Evolution API (sem auto-recovery)
+   * @param {string} instanceNameOverride - Nome da instância do dono da mensalidade (para admin viewing)
+   * @returns {{ sucesso: boolean, messageId?: string, dados?: object, erro?: string, connectionClosed?: boolean }}
+   */
+  async _executarEnvio(telefone, mensagem, instanceNameOverride = null) {
+    const instanceName = instanceNameOverride || this.instanceName
+    const numeroFormatado = await this.verificarNumeroWhatsApp(telefone, instanceNameOverride)
+
+    console.log('📡 Enviando para Evolution API...')
+    console.log('🔗 URL:', `${this.apiUrl}/message/sendText/${instanceName}`)
+    console.log('📞 Número verificado:', numeroFormatado)
+
+    const payload = {
+      number: numeroFormatado,
+      text: mensagem
+    }
+
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/message/sendText/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.apiKey
+        },
+        body: JSON.stringify(payload)
+      },
+      2, // 2 tentativas (1 original + 1 retry)
+      2000 // 2 segundos de delay base
+    )
+
+    console.log('📊 Status da resposta:', response.status)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Resposta de erro (texto):', errorText)
+
+      let errorData = {}
+      try {
+        errorData = JSON.parse(errorText)
+        console.error('❌ Resposta de erro (JSON):', errorData)
+      } catch (e) {
+        // Não é JSON válido
+      }
+
+      // Verificar se é erro de conexão fechada (WhatsApp desconectado)
+      if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
+        return { sucesso: false, erro: 'Connection Closed', connectionClosed: true }
+      }
+
+      // Erro 500 = geralmente WhatsApp desconectado ou instância com problema
+      if (response.status === 500) {
+        return { sucesso: false, erro: 'Connection Closed', connectionClosed: true }
+      }
+
+      // Verificar se é erro de número não existe
+      if (errorData.response?.message && Array.isArray(errorData.response.message)) {
+        const numeroNaoExiste = errorData.response.message.some(msg => msg.exists === false)
+        if (numeroNaoExiste) {
+          const numeroProblema = errorData.response.message[0].number.replace('@s.whatsapp.net', '')
+          throw new Error(`O número ${numeroProblema} não existe no WhatsApp ou não está ativo. Verifique se:\n• O número está correto\n• A pessoa tem WhatsApp instalado\n• O número está ativo`)
+        }
+      }
+
+      // Erro 404 = instância não encontrada
+      if (response.status === 404) {
+        throw new Error('Instância do WhatsApp não encontrada. Vá em WhatsApp → Conexão e reconecte.')
+      }
+
+      // Erro 401/403 = chave de API inválida
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Falha na autenticação com a API do WhatsApp. Verifique suas credenciais em Configurações.')
+      }
+
+      throw new Error(errorData.message || errorText || `Erro ao enviar mensagem (código ${response.status}). Tente novamente.`)
+    }
+
+    const result = await response.json()
+    console.log('✅ Resposta de sucesso:', result)
+
+    return {
+      sucesso: true,
+      messageId: result.key?.id || null,
+      dados: result
+    }
+  }
+
+  /**
+   * Envia mensagem via Evolution API com auto-recovery
+   * Se detectar "Connection Closed", tenta reiniciar a instância e reenviar
+   * @param {string} telefone
+   * @param {string} mensagem
+   * @param {string|null} instanceNameOverride - Instância do dono da mensalidade (para admin viewing)
+   */
+  async enviarMensagem(telefone, mensagem, instanceNameOverride = null) {
+    await this.ensureInitialized()
+
+    try {
+      // Primeira tentativa de envio
+      const resultado = await this._executarEnvio(telefone, mensagem, instanceNameOverride)
+
+      // Se conexão fechada, tentar auto-recovery
+      if (resultado.connectionClosed) {
+        console.log('🔄 Conexão fechada detectada. Tentando auto-recovery...')
+
+        // Salvar instanceName original e usar o override para restart
+        const originalInstanceName = this.instanceName
+        if (instanceNameOverride) {
+          this.instanceName = instanceNameOverride
         }
 
-        // Verificar se é erro de número não existe
-        if (errorData.response?.message && Array.isArray(errorData.response.message)) {
-          const numeroNaoExiste = errorData.response.message.some(msg => msg.exists === false)
-          if (numeroNaoExiste) {
-            const numeroProblema = errorData.response.message[0].number.replace('@s.whatsapp.net', '')
-            throw new Error(`O número ${numeroProblema} não existe no WhatsApp ou não está ativo. Verifique se:\n• O número está correto\n• A pessoa tem WhatsApp instalado\n• O número está ativo`)
+        const reconectou = await this.restartInstance()
+
+        // Restaurar instanceName original
+        this.instanceName = originalInstanceName
+
+        if (reconectou) {
+          console.log('✅ Instância reconectada! Reenviando mensagem...')
+          const retryResult = await this._executarEnvio(telefone, mensagem, instanceNameOverride)
+
+          if (retryResult.connectionClosed) {
+            return {
+              sucesso: false,
+              erro: '📱 Tentamos reconectar automaticamente mas não foi possível enviar. Vá em WhatsApp → Conexão e escaneie o QR Code para reconectar.'
+            }
           }
+
+          return retryResult
         }
 
-        // Erro 500 = geralmente WhatsApp desconectado ou instância com problema
-        if (response.status === 500) {
-          throw new Error('Não foi possível enviar a mensagem. Isso geralmente acontece quando o WhatsApp está desconectado. Vá em WhatsApp → Conexão e verifique se está conectado.')
+        return {
+          sucesso: false,
+          erro: '📱 Seu WhatsApp está desconectado e não foi possível reconectar automaticamente. Vá em WhatsApp → Conexão e escaneie o QR Code para reconectar.'
         }
-
-        // Erro 404 = instância não encontrada
-        if (response.status === 404) {
-          throw new Error('Instância do WhatsApp não encontrada. Vá em WhatsApp → Conexão e reconecte.')
-        }
-
-        // Erro 401/403 = chave de API inválida
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('Falha na autenticação com a API do WhatsApp. Verifique suas credenciais em Configurações.')
-        }
-
-        throw new Error(errorData.message || errorText || `Erro ao enviar mensagem (código ${response.status}). Tente novamente.`)
       }
 
-      const result = await response.json()
-      console.log('✅ Resposta de sucesso:', result)
-
-      return {
-        sucesso: true,
-        messageId: result.key?.id || null,
-        dados: result
-      }
+      return resultado
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error)
 
-      // Tratar erro de timeout
       if (error.name === 'AbortError') {
         return {
           sucesso: false,
@@ -370,73 +499,112 @@ class WhatsAppService {
    * @param {string} fileName - Nome do arquivo (ex: "boleto.pdf")
    * @param {string} mediaType - Tipo: "document", "image", "video", "audio"
    */
-  async enviarDocumento(telefone, mediaUrl, caption = '', fileName = 'documento.pdf', mediaType = 'document') {
+  /**
+   * Executa o envio real de documento (sem auto-recovery)
+   */
+  async _executarEnvioDocumento(telefone, mediaUrl, caption, fileName, mediaType, instanceNameOverride = null) {
+    const instanceName = instanceNameOverride || this.instanceName
+    const numeroFormatado = await this.verificarNumeroWhatsApp(telefone, instanceNameOverride)
+
+    console.log('📄 Enviando documento via Evolution API...')
+    console.log('🔗 URL do arquivo:', mediaUrl)
+    console.log('📞 Número:', numeroFormatado)
+
+    const payload = {
+      number: numeroFormatado,
+      mediatype: mediaType,
+      mimetype: mediaType === 'document' ? 'application/pdf' : 'image/png',
+      caption: caption,
+      media: mediaUrl,
+      fileName: fileName
+    }
+
+    const response = await this.fetchWithRetry(
+      `${this.apiUrl}/message/sendMedia/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.apiKey
+        },
+        body: JSON.stringify(payload)
+      },
+      2,
+      3000
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Erro ao enviar documento:', errorText)
+
+      let errorData = {}
+      try {
+        errorData = JSON.parse(errorText)
+      } catch (e) {
+        // Não é JSON válido
+      }
+
+      if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed') || response.status === 500) {
+        return { sucesso: false, erro: 'Connection Closed', connectionClosed: true }
+      }
+
+      throw new Error(errorData.message || errorText || `Erro ao enviar documento (código ${response.status}). Tente novamente.`)
+    }
+
+    const result = await response.json()
+    console.log('✅ Documento enviado:', result)
+
+    return {
+      sucesso: true,
+      messageId: result.key?.id || null,
+      dados: result
+    }
+  }
+
+  /**
+   * Envia documento via Evolution API com auto-recovery
+   */
+  async enviarDocumento(telefone, mediaUrl, caption = '', fileName = 'documento.pdf', mediaType = 'document', instanceNameOverride = null) {
     await this.ensureInitialized()
 
     try {
-      const numeroFormatado = this.formatarTelefone(telefone)
+      const resultado = await this._executarEnvioDocumento(telefone, mediaUrl, caption, fileName, mediaType, instanceNameOverride)
 
-      console.log('📄 Enviando documento via Evolution API...')
-      console.log('🔗 URL do arquivo:', mediaUrl)
-      console.log('📞 Número:', numeroFormatado)
+      if (resultado.connectionClosed) {
+        console.log('🔄 Conexão fechada detectada no envio de documento. Tentando auto-recovery...')
 
-      const payload = {
-        number: numeroFormatado,
-        mediatype: mediaType,
-        mimetype: mediaType === 'document' ? 'application/pdf' : 'image/png',
-        caption: caption,
-        media: mediaUrl,
-        fileName: fileName
-      }
-
-      console.log('📦 Payload:', JSON.stringify(payload, null, 2))
-
-      const response = await this.fetchWithRetry(
-        `${this.apiUrl}/message/sendMedia/${this.instanceName}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': this.apiKey
-          },
-          body: JSON.stringify(payload)
-        },
-        2,
-        3000 // 3 segundos de delay (arquivos podem demorar mais)
-      )
-
-      console.log('📊 Status da resposta:', response.status)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Erro ao enviar documento:', errorText)
-
-        let errorData = {}
-        try {
-          errorData = JSON.parse(errorText)
-        } catch (e) {
-          // Não é JSON válido
+        // Usar instância correta para restart
+        const originalInstanceName = this.instanceName
+        if (instanceNameOverride) {
+          this.instanceName = instanceNameOverride
         }
 
-        if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
-          throw new Error('WhatsApp desconectado. Reconecte na aba WhatsApp.')
+        const reconectou = await this.restartInstance()
+
+        // Restaurar instanceName original
+        this.instanceName = originalInstanceName
+
+        if (reconectou) {
+          console.log('✅ Instância reconectada! Reenviando documento...')
+          const retryResult = await this._executarEnvioDocumento(telefone, mediaUrl, caption, fileName, mediaType, instanceNameOverride)
+
+          if (retryResult.connectionClosed) {
+            return {
+              sucesso: false,
+              erro: '📱 Não foi possível reconectar automaticamente. Vá em WhatsApp → Conexão e escaneie o QR Code.'
+            }
+          }
+
+          return retryResult
         }
 
-        if (response.status === 500) {
-          throw new Error('Não foi possível enviar o documento. Verifique se o WhatsApp está conectado.')
+        return {
+          sucesso: false,
+          erro: '📱 WhatsApp desconectado. Não foi possível reconectar automaticamente. Vá em WhatsApp → Conexão e reconecte.'
         }
-
-        throw new Error(errorData.message || errorText || `Erro ao enviar documento (código ${response.status}). Tente novamente.`)
       }
 
-      const result = await response.json()
-      console.log('✅ Documento enviado:', result)
-
-      return {
-        sucesso: true,
-        messageId: result.key?.id || null,
-        dados: result
-      }
+      return resultado
     } catch (error) {
       console.error('❌ Erro ao enviar documento:', error)
       return {
@@ -553,8 +721,6 @@ class WhatsAppService {
    */
   async gerarPreviewMensagem(mensalidadeId) {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-
       // Buscar dados da mensalidade
       const { data: mensalidade, error } = await supabase
         .from('mensalidades')
@@ -564,11 +730,14 @@ class WhatsAppService {
 
       if (error || !mensalidade) throw new Error('Mensalidade não encontrada')
 
-      // Buscar dados do usuário
+      // Usar o user_id da mensalidade (dono real, não o admin logado)
+      const ownerId = mensalidade.user_id
+
+      // Buscar dados do usuário (dono da mensalidade)
       const { data: usuario } = await supabase
         .from('usuarios')
         .select('nome_empresa, chave_pix')
-        .eq('id', user.id)
+        .eq('id', ownerId)
         .maybeSingle()
 
       const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
@@ -581,12 +750,12 @@ class WhatsAppService {
       const portalToken = mensalidade.devedor?.portal_token
       const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
 
-      // Buscar template
+      // Buscar template (do dono da mensalidade)
       const tipoMensagem = this.calcularTipoMensagem(mensalidade.data_vencimento)
       const { data: template } = await supabase
         .from('templates')
         .select('mensagem')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .eq('tipo', tipoMensagem)
         .eq('ativo', true)
         .limit(1)
@@ -704,8 +873,6 @@ class WhatsAppService {
     await this.ensureInitialized()
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-
       // Buscar dados da mensalidade com informações do devedor
       const { data: mensalidade, error: mensalidadeError } = await supabase
         .from('mensalidades')
@@ -719,9 +886,12 @@ class WhatsAppService {
       if (mensalidadeError) throw mensalidadeError
       if (!mensalidade) throw new Error('Mensalidade não encontrada')
 
+      // Usar o user_id da mensalidade (dono real), não o admin logado
+      const ownerId = mensalidade.user_id
+
       // VALIDAÇÕES DE ENVIO
       const tipoMensagem = this.calcularTipoMensagem(mensalidade.data_vencimento)
-      const validacao = await this.validarEnvio(user.id, tipoMensagem)
+      const validacao = await this.validarEnvio(ownerId, tipoMensagem)
 
       if (!validacao.permitido) {
         return {
@@ -731,11 +901,11 @@ class WhatsAppService {
         }
       }
 
-      // Buscar dados do usuário/empresa incluindo chave PIX
+      // Buscar dados do usuário/empresa incluindo chave PIX (do dono da mensalidade)
       const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
         .select('nome_empresa, chave_pix')
-        .eq('id', user.id)
+        .eq('id', ownerId)
         .maybeSingle()
 
       if (usuarioError) console.error('❌ Erro ao buscar usuário:', usuarioError)
@@ -743,11 +913,11 @@ class WhatsAppService {
       const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
       const chavePix = usuario?.chave_pix || ''
 
-      // Buscar template baseado no tipo de mensagem calculado
+      // Buscar template baseado no tipo de mensagem calculado (do dono da mensalidade)
       const { data: template } = await supabase
         .from('templates')
         .select('mensagem')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerId)
         .eq('tipo', tipoMensagem)
         .eq('ativo', true)
         .limit(1)
@@ -820,7 +990,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         const { data: configMetodo } = await supabase
           .from('config')
           .select('chave, valor')
-          .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+          .eq('chave', `${ownerId}_metodo_pagamento_whatsapp`)
           .maybeSingle()
 
         const metodoPagamento = configMetodo?.valor || 'pix_manual'
@@ -850,7 +1020,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           const { data: configMetodo } = await supabase
             .from('config')
             .select('chave, valor')
-            .eq('chave', `${user.id}_metodo_pagamento_whatsapp`)
+            .eq('chave', `${ownerId}_metodo_pagamento_whatsapp`)
             .maybeSingle()
 
           const metodoPagamento = configMetodo?.valor || 'pix_manual'
@@ -872,13 +1042,14 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       }
       console.log('📨 Mensagem final após substituição:', mensagemFinal)
 
-      // Enviar via Evolution API
-      const resultado = await this.enviarMensagem(mensalidade.devedor.telefone, mensagemFinal)
+      // Enviar via Evolution API (usando instância do dono da mensalidade)
+      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const resultado = await this.enviarMensagem(mensalidade.devedor.telefone, mensagemFinal, ownerInstanceName)
 
       // Registrar log no banco
       console.log('💾 Salvando log no Supabase...')
       console.log('📝 Dados do log:', {
-        user_id: user.id,
+        user_id: ownerId,
         devedor_id: mensalidade.devedor_id,
         mensalidade_id: mensalidade.id,
         telefone: mensalidade.devedor.telefone,
@@ -888,7 +1059,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const { data: logData, error: logError } = await supabase
         .from('logs_mensagens')
         .insert({
-          user_id: user.id,
+          user_id: ownerId,
           devedor_id: mensalidade.devedor_id,
           mensalidade_id: mensalidade.id,
           telefone: mensalidade.devedor.telefone,
@@ -921,11 +1092,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           console.error('Erro ao atualizar mensalidade:', updateError)
         }
 
-        // Incrementar contador de uso no controle_planos
+        // Incrementar contador de uso no controle_planos (do dono)
         const { data: controleAtual, error: controleError } = await supabase
           .from('controle_planos')
           .select('usage_count')
-          .eq('user_id', user.id)
+          .eq('user_id', ownerId)
           .maybeSingle()
 
         if (controleError) {
@@ -938,7 +1109,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
               usage_count: (controleAtual.usage_count || 0) + 1,
               updated_at: new Date().toISOString()
             })
-            .eq('user_id', user.id)
+            .eq('user_id', ownerId)
 
           if (updateUsageError) {
             console.error('Erro ao incrementar usage_count:', updateUsageError)
@@ -950,7 +1121,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           const { error: insertUsageError } = await supabase
             .from('controle_planos')
             .insert({
-              user_id: user.id,
+              user_id: ownerId,
               usage_count: 1,
               limite_mensal: 100,
               updated_at: new Date().toISOString()
@@ -1037,12 +1208,14 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const empresa = usuario?.nome_empresa || ''
       const mensagemTexto = `Olá, ${mensalidade.devedores.nome}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
 
-      const resultado = await this.enviarMensagem(mensalidade.devedores.telefone, mensagemTexto)
+      // Usar instância do dono da mensalidade (não do admin logado)
+      const ownerId = mensalidade.user_id
+      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const resultado = await this.enviarMensagem(mensalidade.devedores.telefone, mensagemTexto, ownerInstanceName)
 
-      // Logar envio
-      const { data: { user } } = await supabase.auth.getUser()
+      // Logar envio (sempre com user_id do dono da mensalidade)
       await supabase.from('logs_mensagens').insert({
-        user_id: user?.id || mensalidade.user_id,
+        user_id: ownerId,
         devedor_id: mensalidade.devedores.id,
         mensalidade_id: mensalidadeId,
         tipo: 'payment_confirmed',
@@ -1097,6 +1270,48 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       }
 
       return { conectado: false, estado: 'erro', erro: error.message }
+    }
+  }
+
+  /**
+   * Tenta reiniciar a instância do WhatsApp na Evolution API
+   * Útil quando a conexão aparece como "open" mas está travada
+   * @returns {Promise<boolean>} true se reconectou com sucesso
+   */
+  async restartInstance() {
+    await this.ensureInitialized()
+
+    try {
+      console.log('🔄 Tentando restart da instância:', this.instanceName)
+
+      const response = await this.fetchWithTimeout(
+        `${this.apiUrl}/instance/restart/${this.instanceName}`,
+        {
+          method: 'PUT',
+          headers: {
+            'apikey': this.apiKey
+          }
+        },
+        15000
+      )
+
+      if (!response.ok) {
+        console.warn('⚠️ Restart retornou status:', response.status)
+        return false
+      }
+
+      // Aguardar a instância reiniciar
+      console.log('⏳ Aguardando instância reiniciar (5s)...')
+      await new Promise(resolve => setTimeout(resolve, 5000))
+
+      // Verificar se reconectou
+      const status = await this.verificarStatus()
+      console.log('📡 Status após restart:', status.estado)
+
+      return status.conectado
+    } catch (error) {
+      console.error('❌ Erro ao reiniciar instância:', error)
+      return false
     }
   }
 }
