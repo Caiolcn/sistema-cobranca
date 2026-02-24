@@ -38,7 +38,8 @@ export function useUserPlan() {
     }
 
     // Mapear planos antigos para novos (caso ainda não migrado)
-    let planoAtual = userData.plano || planoFromContext || 'starter'
+    // planoFromContext já considera adminViewingAs (effectiveData), então tem prioridade
+    let planoAtual = planoFromContext || userData.plano || 'starter'
     if (planoAtual === 'basico') planoAtual = 'starter'
     if (planoAtual === 'enterprise') planoAtual = 'premium'
     if (planoAtual === 'business') planoAtual = 'premium'

@@ -142,7 +142,7 @@
         "options": {
           "response": {
             "response": {
-              "fullResponse": false
+              "fullResponse": true
             }
           },
           "includeInputFields": true
@@ -152,7 +152,8 @@
       "name": "Enviar 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 200]
+      "position": [1000, 200],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -173,7 +174,7 @@
         "options": {
           "response": {
             "response": {
-              "fullResponse": false
+              "fullResponse": true
             }
           },
           "includeInputFields": true
@@ -183,7 +184,8 @@
       "name": "Enviar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 400]
+      "position": [1000, 400],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -204,7 +206,7 @@
         "options": {
           "response": {
             "response": {
-              "fullResponse": false
+              "fullResponse": true
             }
           },
           "includeInputFields": true
@@ -214,12 +216,46 @@
       "name": "Enviar Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 600]
+      "position": [1000, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar resultado do envio - Fluxo 3 Dias\nconst items = $input.all();\nconst sucesso = [];\nconst falha = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hasError = data.error || data.statusCode >= 400;\n  const errorMsg = data.error?.message || data.response?.message || 'Erro desconhecido';\n  const isConnectionClosed = errorMsg.includes('Connection Closed') || (data.statusCode === 500);\n\n  if (hasError) {\n    falha.push({\n      json: {\n        ...data,\n        envio_sucesso: false,\n        erro_mensagem: isConnectionClosed ? 'WhatsApp desconectado (Connection Closed)' : errorMsg,\n        erro_tipo: isConnectionClosed ? 'connection_closed' : 'outro'\n      }\n    });\n  } else {\n    sucesso.push({\n      json: {\n        ...data,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\n// Output 0 = sucesso, Output 1 = falha\nreturn [sucesso, falha];"
+      },
+      "id": "check-resultado-3dias",
+      "name": "Check 3 Dias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 200],
+      "outputs": ["main", "main"]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar resultado do envio - Fluxo No Dia\nconst items = $input.all();\nconst sucesso = [];\nconst falha = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hasError = data.error || data.statusCode >= 400;\n  const errorMsg = data.error?.message || data.response?.message || 'Erro desconhecido';\n  const isConnectionClosed = errorMsg.includes('Connection Closed') || (data.statusCode === 500);\n\n  if (hasError) {\n    falha.push({\n      json: {\n        ...data,\n        envio_sucesso: false,\n        erro_mensagem: isConnectionClosed ? 'WhatsApp desconectado (Connection Closed)' : errorMsg,\n        erro_tipo: isConnectionClosed ? 'connection_closed' : 'outro'\n      }\n    });\n  } else {\n    sucesso.push({\n      json: {\n        ...data,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\nreturn [sucesso, falha];"
+      },
+      "id": "check-resultado-no-dia",
+      "name": "Check No Dia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400],
+      "outputs": ["main", "main"]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar resultado do envio - Fluxo Atraso\nconst items = $input.all();\nconst sucesso = [];\nconst falha = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hasError = data.error || data.statusCode >= 400;\n  const errorMsg = data.error?.message || data.response?.message || 'Erro desconhecido';\n  const isConnectionClosed = errorMsg.includes('Connection Closed') || (data.statusCode === 500);\n\n  if (hasError) {\n    falha.push({\n      json: {\n        ...data,\n        envio_sucesso: false,\n        erro_mensagem: isConnectionClosed ? 'WhatsApp desconectado (Connection Closed)' : errorMsg,\n        erro_tipo: isConnectionClosed ? 'connection_closed' : 'outro'\n      }\n    });\n  } else {\n    sucesso.push({\n      json: {\n        ...data,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\nreturn [sucesso, falha];"
+      },
+      "id": "check-resultado-atraso",
+      "name": "Check Atraso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 600],
+      "outputs": ["main", "main"]
     },
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Msg 3 Dias').item.json.parcela_id }}",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $json.parcela_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -243,19 +279,19 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"enviado_3dias\": true,\n  \"total_envios\": {{ ($('Criar Msg 3 Dias').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "jsonBody": "={\n  \"enviado_3dias\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "id": "marcar-3dias",
       "name": "Marcar 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 200]
+      "position": [1500, 150]
     },
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Msg No Dia').item.json.parcela_id }}",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $json.parcela_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -279,19 +315,19 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"enviado_no_dia\": true,\n  \"total_envios\": {{ ($('Criar Msg No Dia').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "jsonBody": "={\n  \"enviado_no_dia\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "id": "marcar-no-dia",
       "name": "Marcar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 400]
+      "position": [1500, 350]
     },
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Msg Atraso').item.json.parcela_id }}",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $json.parcela_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -315,14 +351,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"enviado_vencimento\": true,\n  \"total_envios\": {{ ($('Criar Msg Atraso').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "jsonBody": "={\n  \"enviado_vencimento\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "id": "marcar-atraso",
       "name": "Marcar Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 600]
+      "position": [1500, 550]
     },
     {
       "parameters": {
@@ -351,14 +387,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg 3 Dias').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg 3 Dias').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg 3 Dias').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg 3 Dias').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg 3 Dias').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg 3 Dias').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
       "id": "log-3dias",
       "name": "Log 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 200]
+      "position": [1750, 150]
     },
     {
       "parameters": {
@@ -387,14 +423,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg No Dia').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg No Dia').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg No Dia').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg No Dia').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg No Dia').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg No Dia').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
       "id": "log-no-dia",
       "name": "Log No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 400]
+      "position": [1750, 350]
     },
     {
       "parameters": {
@@ -423,14 +459,122 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Criar Msg Atraso').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Criar Msg Atraso').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Criar Msg Atraso').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Criar Msg Atraso').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Criar Msg Atraso').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Criar Msg Atraso').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
       "id": "log-atraso",
       "name": "Log Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 600]
+      "position": [1750, 550]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio automático') }}\n}",
+        "options": {}
+      },
+      "id": "log-falha-3dias",
+      "name": "Log Falha 3d",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 250]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio automático') }}\n}",
+        "options": {}
+      },
+      "id": "log-falha-no-dia",
+      "name": "Log Falha Dia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio automático') }}\n}",
+        "options": {}
+      },
+      "id": "log-falha-atraso",
+      "name": "Log Falha Atr",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 650]
     },
     {
       "parameters": {
@@ -455,14 +599,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Msg 3 Dias').item.json.user_id }}\"\n}",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $json.user_id }}\"\n}",
         "options": {}
       },
       "id": "incrementar-3dias",
       "name": "Incrementar 3d",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1750, 200]
+      "position": [2000, 150]
     },
     {
       "parameters": {
@@ -487,14 +631,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Msg No Dia').item.json.user_id }}\"\n}",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $json.user_id }}\"\n}",
         "options": {}
       },
       "id": "incrementar-no-dia",
       "name": "Incrementar Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1750, 400]
+      "position": [2000, 350]
     },
     {
       "parameters": {
@@ -519,202 +663,88 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Criar Msg Atraso').item.json.user_id }}\"\n}",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $json.user_id }}\"\n}",
         "options": {}
       },
       "id": "incrementar-atraso",
       "name": "Incrementar Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1750, 600]
+      "position": [2000, 550]
     }
   ],
   "connections": {
     "Disparo Diário (9h)": {
       "main": [
         [
-          {
-            "node": "1. Buscar 3 Dias Antes",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "2. Buscar No Dia",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "3. Buscar 3 Dias Depois",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "1. Buscar 3 Dias Antes", "type": "main", "index": 0 },
+          { "node": "2. Buscar No Dia", "type": "main", "index": 0 },
+          { "node": "3. Buscar 3 Dias Depois", "type": "main", "index": 0 }
         ]
       ]
     },
     "1. Buscar 3 Dias Antes": {
-      "main": [
-        [
-          {
-            "node": "Criar Msg 3 Dias",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Criar Msg 3 Dias", "type": "main", "index": 0 } ]]
     },
     "2. Buscar No Dia": {
-      "main": [
-        [
-          {
-            "node": "Criar Msg No Dia",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Criar Msg No Dia", "type": "main", "index": 0 } ]]
     },
     "3. Buscar 3 Dias Depois": {
-      "main": [
-        [
-          {
-            "node": "Criar Msg Atraso",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Criar Msg Atraso", "type": "main", "index": 0 } ]]
     },
     "Criar Msg 3 Dias": {
-      "main": [
-        [
-          {
-            "node": "Enviar 3 Dias",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Enviar 3 Dias", "type": "main", "index": 0 } ]]
     },
     "Criar Msg No Dia": {
-      "main": [
-        [
-          {
-            "node": "Enviar No Dia",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Enviar No Dia", "type": "main", "index": 0 } ]]
     },
     "Criar Msg Atraso": {
-      "main": [
-        [
-          {
-            "node": "Enviar Atraso",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Enviar Atraso", "type": "main", "index": 0 } ]]
     },
     "Enviar 3 Dias": {
-      "main": [
-        [
-          {
-            "node": "Marcar 3 Dias",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Check 3 Dias", "type": "main", "index": 0 } ]]
     },
     "Enviar No Dia": {
-      "main": [
-        [
-          {
-            "node": "Marcar No Dia",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Check No Dia", "type": "main", "index": 0 } ]]
     },
     "Enviar Atraso": {
+      "main": [[ { "node": "Check Atraso", "type": "main", "index": 0 } ]]
+    },
+    "Check 3 Dias": {
       "main": [
-        [
-          {
-            "node": "Marcar Atraso",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [ { "node": "Marcar 3 Dias", "type": "main", "index": 0 } ],
+        [ { "node": "Log Falha 3d", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Check No Dia": {
+      "main": [
+        [ { "node": "Marcar No Dia", "type": "main", "index": 0 } ],
+        [ { "node": "Log Falha Dia", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Check Atraso": {
+      "main": [
+        [ { "node": "Marcar Atraso", "type": "main", "index": 0 } ],
+        [ { "node": "Log Falha Atr", "type": "main", "index": 0 } ]
       ]
     },
     "Marcar 3 Dias": {
-      "main": [
-        [
-          {
-            "node": "Log 3 Dias",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Log 3 Dias", "type": "main", "index": 0 } ]]
     },
     "Marcar No Dia": {
-      "main": [
-        [
-          {
-            "node": "Log No Dia",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Log No Dia", "type": "main", "index": 0 } ]]
     },
     "Marcar Atraso": {
-      "main": [
-        [
-          {
-            "node": "Log Atraso",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Log Atraso", "type": "main", "index": 0 } ]]
     },
     "Log 3 Dias": {
-      "main": [
-        [
-          {
-            "node": "Incrementar 3d",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Incrementar 3d", "type": "main", "index": 0 } ]]
     },
     "Log No Dia": {
-      "main": [
-        [
-          {
-            "node": "Incrementar Dia",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Incrementar Dia", "type": "main", "index": 0 } ]]
     },
     "Log Atraso": {
-      "main": [
-        [
-          {
-            "node": "Incrementar Atraso",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[ { "node": "Incrementar Atraso", "type": "main", "index": 0 } ]]
     }
   },
   "settings": {
@@ -729,6 +759,6 @@
     }
   ],
   "triggerCount": 1,
-  "updatedAt": "2026-01-19T00:00:00.000Z",
-  "versionId": "1"
+  "updatedAt": "2026-02-23T00:00:00.000Z",
+  "versionId": "2"
 }

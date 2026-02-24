@@ -99,7 +99,8 @@ function Relatorios() {
         { data: todasMensalidades },
         { data: todosClientes },
         { count: countMensagensEnviadas },
-        { data: todasDespesas, error: erroDespesas }
+        { data: todasDespesas, error: erroDespesas },
+        { data: todasVendas }
       ] = await Promise.all([
         supabase
           .from('mensalidades')
@@ -122,7 +123,13 @@ function Relatorios() {
         supabase
           .from('despesas')
           .select('id, valor, status, data_vencimento, data_pagamento')
+          .eq('user_id', userId),
+
+        supabase
+          .from('cobrancas_avulsas')
+          .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false')
       ]);
 
       // ========== PROCESSAMENTO ==========
@@ -192,6 +199,51 @@ function Relatorios() {
               new Date(dataVenc) > new Date(mensalidadesPorCliente[p.devedor_id].data_vencimento)) {
             mensalidadesPorCliente[p.devedor_id] = p;
           }
+        }
+      });
+
+      // Incluir vendas (cobranças avulsas) nos KPIs
+      (todasVendas || []).forEach(v => {
+        const valor = parseFloat(v.valor || 0);
+        const dataVenc = v.data_vencimento;
+        const dataPgto = v.data_pagamento;
+        const mesAnoVenc = dataVenc?.substring(0, 7);
+        const mesAnoPgto = dataPgto?.substring(0, 7);
+
+        if (v.status === 'pago' && dataPgto >= inicio && dataPgto <= fim) {
+          recebidoMes += valor;
+        }
+
+        if (v.status === 'pendente' && dataVenc && dataVenc < hoje) {
+          valorAtraso += valor;
+        }
+
+        if (v.status === 'pendente' && dataVenc >= inicio && dataVenc <= fim) {
+          aReceberMes += valor;
+        }
+
+        if (v.status === 'pendente' && dataVenc >= hoje && dataVenc <= seteDiasFrenteStr) {
+          vencer7Dias += valor;
+        }
+
+        if (v.status === 'pago' && dataPgto >= tresMesesAtrasInicio && dataPgto <= mesAtualFim) {
+          if (!recebidosPorMes[mesAnoPgto]) recebidosPorMes[mesAnoPgto] = 0;
+          recebidosPorMes[mesAnoPgto] += valor;
+        }
+
+        if (dataVenc && dataVenc >= tresMesesAtrasInicio && dataVenc <= mesAtualFim) {
+          if (!vencidosPorMes[mesAnoVenc]) vencidosPorMes[mesAnoVenc] = 0;
+          vencidosPorMes[mesAnoVenc] += valor;
+        }
+
+        if (v.status === 'pago') emDia++;
+        else if (v.status === 'cancelado') canceladas++;
+        else if (v.status === 'pendente' && dataVenc && dataVenc < hoje) atrasadas++;
+        else if (v.status === 'pendente') aVencer++;
+
+        if (v.status === 'pago' && dataPgto === hoje) {
+          pagamentosHojeCount++;
+          valorPagamentosHojeTotal += valor;
         }
       });
 

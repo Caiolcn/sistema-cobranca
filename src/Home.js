@@ -69,14 +69,15 @@ function Home() {
       tresDiasFrente.setDate(tresDiasFrente.getDate() + 3);
       const tresDiasFrenteStr = tresDiasFrente.toISOString().split('T')[0];
 
-      // 6 queries essenciais (reduzido de 8)
+      // 7 queries essenciais
       const [
         { data: todasMensalidades },
         { data: todosClientes },
         { data: fila },
         { data: mensagens },
         { data: falhasEnvio },
-        { data: whatsappConectado }
+        { data: whatsappConectado },
+        { data: vendasData }
       ] = await Promise.all([
         // 1. Mensalidades - para KPIs
         supabase
@@ -133,7 +134,14 @@ function Home() {
           .select('conectado')
           .eq('user_id', userId)
           .eq('conectado', true)
-          .maybeSingle()
+          .maybeSingle(),
+
+        // 7. Vendas (cobranças avulsas) - para incluir nos KPIs financeiros
+        supabase
+          .from('cobrancas_avulsas')
+          .select('id, valor, data_vencimento, status, data_pagamento')
+          .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false')
       ]);
 
       // ========== PROCESSAMENTO LOCAL ==========
@@ -154,6 +162,20 @@ function Home() {
 
         // Valor em atraso (pendente com vencimento < hoje) - apenas clientes ativos
         if (p.status === 'pendente' && dataVenc < hojeStr && clientesAtivosSet.has(p.devedor_id)) {
+          valorAtraso += valor;
+        }
+      });
+
+      // Incluir vendas (cobranças avulsas) nos KPIs
+      vendasData?.forEach(v => {
+        const valor = parseFloat(v.valor || 0);
+        const dataVenc = v.data_vencimento;
+
+        if (v.status === 'pago' && v.data_pagamento >= inicio && v.data_pagamento <= fim) {
+          recebidoMes += valor;
+        }
+
+        if (v.status === 'pendente' && dataVenc && dataVenc < hojeStr) {
           valorAtraso += valor;
         }
       });

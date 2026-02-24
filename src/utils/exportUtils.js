@@ -115,6 +115,25 @@ export const exportarDespesas = (despesas) => {
 };
 
 /**
+ * Exporta lista de cobranças avulsas
+ */
+export const exportarCobrancasAvulsas = (cobrancas) => {
+  const dados = cobrancas.map(c => ({
+    'Descrição': c.descricao || '',
+    'Aluno': c.devedores?.nome || '',
+    'Categoria': c.categoria || 'Outros',
+    'Valor': formatarMoedaExport(c.valor),
+    'Status': c.status === 'pago' ? 'Pago' : c.status === 'pendente' ? 'Pendente' : 'Cancelado',
+    'Data Vencimento': formatarDataExport(c.data_vencimento),
+    'Forma Pagamento': c.forma_pagamento || '',
+    'Data Pagamento': c.data_pagamento ? formatarDataExport(c.data_pagamento) : '',
+    'Observações': c.observacoes || ''
+  }));
+
+  exportToCSV(dados, 'cobrancas_avulsas');
+};
+
+/**
  * Exporta resumo do dashboard
  */
 export const exportarResumoDashboard = (dados) => {

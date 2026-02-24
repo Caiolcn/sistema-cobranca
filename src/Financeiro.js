@@ -13,6 +13,7 @@ import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
+import CobrancasAvulsas from './CobrancasAvulsas'
 import ConfirmModal from './ConfirmModal'
 import { validarCPF } from './utils/validators'
 
@@ -141,7 +142,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       // Executar todas as queries em paralelo
       const [
         { data: mensalidadesData, error: mensalidadesError },
-        { data: clientesData, error: clientesError }
+        { data: clientesData, error: clientesError },
+        { data: vendasData, error: vendasError }
       ] = await Promise.all([
         // 1. Mensalidades com dados do devedor e boleto (se existir)
         supabase
@@ -177,11 +179,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           .select('id, nome, assinatura_ativa, plano:planos(valor)')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false')
-          .order('nome', { ascending: true })
+          .order('nome', { ascending: true }),
+
+        // 3. Vendas (cobranças avulsas) para incluir nos totais
+        supabase
+          .from('cobrancas_avulsas')
+          .select('id, valor, data_vencimento, status, data_pagamento')
+          .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false')
       ])
 
       if (mensalidadesError) throw mensalidadesError
       if (clientesError) throw clientesError
+      if (vendasError) throw vendasError
 
       // Processar mensalidades
       const mensalidadesComStatus = (mensalidadesData || []).map(p => ({
@@ -190,7 +200,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }))
 
       setMensalidades(mensalidadesComStatus)
-      calcularTotais(mensalidadesComStatus)
+      calcularTotais(mensalidadesComStatus, vendasData || [])
 
       // Calcular MRR a partir dos clientes já carregados
       const assinaturasAtivasList = clientesData?.filter(c => c.assinatura_ativa && c.plano?.valor) || []
@@ -222,7 +232,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     return 'aberto'
   }
 
-  const calcularTotais = (lista) => {
+  const calcularTotais = (lista, vendas = []) => {
     let emAtraso = 0
     let emAberto = 0
     let recebido = 0
@@ -262,7 +272,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }
     })
 
-    const total = lista.length || 1
+    // Incluir vendas (cobranças avulsas) nos totais
+    vendas.forEach(v => {
+      const valor = parseFloat(v.valor) || 0
+      const venc = new Date(v.data_vencimento)
+      venc.setHours(0, 0, 0, 0)
+      const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
+
+      if (v.status === 'pago') {
+        recebido += valor
+        qtdRecebido++
+      } else if (v.status === 'pendente' && venc < hoje) {
+        emAtraso += valor
+        qtdAtraso++
+      } else if (v.status === 'pendente') {
+        emAberto += valor
+        if (diffDias === 0) { qtdHoje++; totalProx += valor }
+        if (diffDias >= 0 && diffDias <= 7) { qtd7Dias++ }
+      }
+    })
+
+    const total = (lista.length + vendas.length) || 1
     setTotalEmAtraso(emAtraso)
     setTotalEmAberto(emAberto)
     setTotalRecebido(recebido)
@@ -1144,6 +1174,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }}>
         {[
           { id: 'mensalidades', label: 'Mensalidades', icon: 'fluent:receipt-20-regular' },
+          { id: 'avulsas', label: 'Vendas', icon: 'mdi:cart-outline' },
           { id: 'despesas', label: 'Despesas', icon: 'mdi:wallet-outline' }
         ].map(aba => (
           <button
@@ -1170,6 +1201,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </button>
         ))}
       </div>
+
+      {/* ========== ABA: COBRANÇAS AVULSAS ========== */}
+      {abaAtiva === 'avulsas' && <CobrancasAvulsas embedded />}
 
       {/* ========== ABA: DESPESAS ========== */}
       {abaAtiva === 'despesas' && <Despesas embedded />}

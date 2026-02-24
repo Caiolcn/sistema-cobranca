@@ -37,12 +37,12 @@ export default function CRM() {
       ] = await Promise.all([
         supabase
           .from('usuarios')
-          .select('id, email, nome_empresa, nome_completo, plano, plano_pago, trial_fim, role')
+          .select('id, email, nome_empresa, nome_completo, telefone, plano, plano_pago, plano_vencimento, trial_fim, role')
           .neq('role', 'admin')
           .order('nome_empresa', { ascending: true, nullsFirst: false }),
         supabase
           .from('mensallizap')
-          .select('user_id, conectado, ultima_conexao, total_mensagens_enviadas, mensagens_mes_atual'),
+          .select('user_id, telefone, whatsapp_numero, conectado, ultima_conexao, total_mensagens_enviadas, mensagens_mes_atual'),
         supabase
           .from('controle_planos')
           .select('user_id, usage_count, limite_mensal, mes_referencia'),
@@ -81,7 +81,7 @@ export default function CRM() {
     const pagos = clientes.filter(c => c.plano_pago === true).length
     const emTrial = clientes.filter(c => !c.plano_pago && c.trial_fim && new Date(c.trial_fim) > hoje).length
     const trialExpirado = clientes.filter(c => !c.plano_pago && c.trial_fim && new Date(c.trial_fim) <= hoje).length
-    const whatsappConectado = clientes.filter(c => c.wc?.status === 'connected').length
+    const whatsappConectado = clientes.filter(c => c.mz?.conectado === true).length
     const mensagensMes = clientes.reduce((sum, c) => sum + (c.cp?.usage_count || 0), 0)
 
     return { total, pagos, emTrial, trialExpirado, whatsappConectado, mensagensMes }
@@ -109,8 +109,8 @@ export default function CRM() {
     if (filtro === 'pagos') result = result.filter(c => c.plano_pago === true)
     else if (filtro === 'trial') result = result.filter(c => !c.plano_pago && c.trial_fim && new Date(c.trial_fim) > hoje)
     else if (filtro === 'expirados') result = result.filter(c => !c.plano_pago && c.trial_fim && new Date(c.trial_fim) <= hoje)
-    else if (filtro === 'conectados') result = result.filter(c => c.wc?.status === 'connected')
-    else if (filtro === 'desconectados') result = result.filter(c => c.wc && c.wc.status !== 'connected')
+    else if (filtro === 'conectados') result = result.filter(c => c.mz?.conectado === true)
+    else if (filtro === 'desconectados') result = result.filter(c => c.mz && c.mz.conectado !== true)
 
     // Busca por texto
     if (buscaTexto) {
@@ -362,7 +362,7 @@ export default function CRM() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                  {['Empresa/Nome', 'Email', 'Plano', 'Pagamento', 'WhatsApp', 'Mensagens', 'Última Conexão'].map(col => (
+                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'WhatsApp', 'Mensagens', 'Última Conexão'].map(col => (
                     <th key={col} style={{
                       padding: '12px 14px', textAlign: 'left', fontSize: '12px',
                       fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px'
@@ -379,7 +379,7 @@ export default function CRM() {
                   const usageCount = cliente.cp?.usage_count || 0
                   const limiteMsg = cliente.cp?.limite_mensal || 0
                   const usagePct = limiteMsg > 0 ? Math.min((usageCount / limiteMsg) * 100, 100) : 0
-                  const wcConectado = cliente.wc?.status === 'connected'
+                  const wcConectado = cliente.mz?.conectado === true
 
                   return (
                     <tr
@@ -400,9 +400,45 @@ export default function CRM() {
                         )}
                       </td>
 
+                      {/* Telefone */}
+                      <td style={{ padding: '12px 14px' }}>
+                        {(() => {
+                          const tel = cliente.telefone || cliente.mz?.telefone || cliente.mz?.whatsapp_numero
+                          if (!tel) return <span style={{ fontSize: '13px', color: '#666' }}>-</span>
+                          return (
+                            <span
+                              onClick={() => { navigator.clipboard.writeText(tel) }}
+                              title="Clique para copiar"
+                              style={{
+                                fontSize: '13px', color: '#666', cursor: 'pointer',
+                                padding: '2px 6px', borderRadius: '4px',
+                                backgroundColor: '#f5f5f5'
+                              }}
+                            >
+                              {tel}
+                            </span>
+                          )
+                        })()}
+                      </td>
+
                       {/* Email */}
                       <td style={{ padding: '12px 14px', fontSize: '13px', color: '#666' }}>
                         {cliente.email || '-'}
+                      </td>
+
+                      {/* User ID */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <span
+                          onClick={() => { navigator.clipboard.writeText(cliente.id); }}
+                          title="Clique para copiar"
+                          style={{
+                            fontSize: '11px', color: '#999', fontFamily: 'monospace',
+                            cursor: 'pointer', padding: '2px 6px', borderRadius: '4px',
+                            backgroundColor: '#f5f5f5', userSelect: 'all'
+                          }}
+                        >
+                          {cliente.id?.substring(0, 8)}...
+                        </span>
                       </td>
 
                       {/* Plano */}
@@ -426,6 +462,26 @@ export default function CRM() {
                         </span>
                       </td>
 
+                      {/* Vencimento Plano */}
+                      <td style={{ padding: '12px 14px', fontSize: '12px' }}>
+                        {(() => {
+                          const dataVenc = cliente.plano_pago ? cliente.plano_vencimento : cliente.trial_fim
+                          if (!dataVenc) return <span style={{ color: '#ccc' }}>-</span>
+                          const venc = new Date(dataVenc)
+                          const hoje = new Date()
+                          const dias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
+                          const cor = dias <= 0 ? '#f44336' : dias <= 3 ? '#ff9800' : dias <= 7 ? '#ff9800' : '#666'
+                          return (
+                            <span style={{ color: cor }}>
+                              {venc.toLocaleDateString('pt-BR')}
+                              <span style={{ fontSize: '11px', marginLeft: '4px' }}>
+                                {dias <= 0 ? '(vencido)' : dias <= 7 ? `(${dias}d)` : ''}
+                              </span>
+                            </span>
+                          )
+                        })()}
+                      </td>
+
                       {/* WhatsApp */}
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{
@@ -438,7 +494,7 @@ export default function CRM() {
                             width: '7px', height: '7px', borderRadius: '50%',
                             backgroundColor: wcConectado ? '#4caf50' : '#ccc'
                           }} />
-                          {wcConectado ? 'Conectado' : cliente.wc ? 'Desconectado' : 'Nunca'}
+                          {wcConectado ? 'Conectado' : cliente.mz ? 'Desconectado' : 'Nunca'}
                         </div>
                       </td>
 
@@ -460,7 +516,7 @@ export default function CRM() {
 
                       {/* Última Conexão */}
                       <td style={{ padding: '12px 14px', fontSize: '12px', color: '#666' }}>
-                        {formatarData(cliente.wc?.last_connected_at || cliente.mz?.ultima_conexao)}
+                        {formatarData(cliente.mz?.ultima_conexao || cliente.wc?.last_connected_at)}
                       </td>
                     </tr>
                   )
