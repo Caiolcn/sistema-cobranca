@@ -6,122 +6,16 @@ import { trackLead, trackCompleteRegistration, trackStartTrial } from './utils/m
 export default function Signup() {
   const navigate = useNavigate()
 
-  // Estados do formulário
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [confirmarSenha, setConfirmarSenha] = useState('')
-  const [telefone, setTelefone] = useState('')
-  const [cpfCnpj, setCpfCnpj] = useState('')
-  const [planoSelecionado, setPlanoSelecionado] = useState('pro')
-
-  // Estados de controle
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-
-  // Função para aplicar máscara de telefone
-  const formatarTelefone = (value) => {
-    const numeros = value.replace(/\D/g, '')
-    if (numeros.length <= 2) {
-      return `(${numeros}`
-    } else if (numeros.length <= 6) {
-      return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`
-    } else if (numeros.length <= 10) {
-      return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`
-    } else {
-      return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7, 11)}`
-    }
-  }
-
-  // Função para aplicar máscara de CPF ou CNPJ
-  const formatarCpfCnpj = (value) => {
-    const numeros = value.replace(/\D/g, '')
-    if (numeros.length <= 11) {
-      // CPF: 000.000.000-00
-      if (numeros.length <= 3) {
-        return numeros
-      } else if (numeros.length <= 6) {
-        return `${numeros.slice(0, 3)}.${numeros.slice(3)}`
-      } else if (numeros.length <= 9) {
-        return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6)}`
-      } else {
-        return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6, 9)}-${numeros.slice(9)}`
-      }
-    } else {
-      // CNPJ: 00.000.000/0000-00
-      if (numeros.length <= 2) {
-        return numeros
-      } else if (numeros.length <= 5) {
-        return `${numeros.slice(0, 2)}.${numeros.slice(2)}`
-      } else if (numeros.length <= 8) {
-        return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5)}`
-      } else if (numeros.length <= 12) {
-        return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5, 8)}/${numeros.slice(8)}`
-      } else {
-        return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5, 8)}/${numeros.slice(8, 12)}-${numeros.slice(12, 14)}`
-      }
-    }
-  }
-
-  const handleTelefoneChange = (e) => {
-    const formatted = formatarTelefone(e.target.value)
-    setTelefone(formatted)
-  }
-
-  const handleCpfCnpjChange = (e) => {
-    const formatted = formatarCpfCnpj(e.target.value)
-    setCpfCnpj(formatted)
-  }
+  const [focusField, setFocusField] = useState(null)
 
   const getLimitePorPlano = (plano) => {
-    const limites = {
-      starter: 200,
-      pro: 600,
-      premium: 3000
-    }
-    return limites[plano] || 200
-  }
-
-  const validarFormulario = () => {
-    // Validar nome
-    if (!nomeCompleto || nomeCompleto.trim().length < 3) {
-      setErro('Nome deve ter pelo menos 3 caracteres')
-      return false
-    }
-
-    // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setErro('Email inválido')
-      return false
-    }
-
-    // Validar senha
-    if (senha.length < 8) {
-      setErro('Senha deve ter pelo menos 8 caracteres')
-      return false
-    }
-
-    if (senha !== confirmarSenha) {
-      setErro('Senhas não conferem')
-      return false
-    }
-
-    // Validar telefone
-    const telefoneNumeros = telefone.replace(/\D/g, '')
-    if (telefoneNumeros.length < 10 || telefoneNumeros.length > 11) {
-      setErro('Telefone inválido (DDD + número)')
-      return false
-    }
-
-    // Validar CPF/CNPJ
-    const cpfCnpjNumeros = cpfCnpj.replace(/\D/g, '')
-    if (cpfCnpjNumeros.length !== 11 && cpfCnpjNumeros.length !== 14) {
-      setErro('CPF/CNPJ inválido')
-      return false
-    }
-
-    return true
+    const limites = { starter: 200, pro: 600, premium: 3000 }
+    return limites[plano] || 600
   }
 
   const tratarErro = (error) => {
@@ -132,9 +26,9 @@ export default function Signup() {
       return 'Email inválido. Verifique e tente novamente.'
     }
     if (error.message.includes('weak password') || error.message.includes('Password should be at least')) {
-      return 'Senha muito fraca. Use pelo menos 8 caracteres.'
+      return 'Senha muito fraca. Use pelo menos 6 caracteres.'
     }
-    return error.message || 'Erro ao criar conta. Tente novamente mais tarde.'
+    return error.message || 'Erro ao criar conta. Tente novamente.'
   }
 
   const handleCadastro = async (e) => {
@@ -143,21 +37,33 @@ export default function Signup() {
     setErro('')
 
     try {
-      // 1. Validar formulário completo
-      if (!validarFormulario()) {
+      if (!nomeCompleto || nomeCompleto.trim().length < 3) {
+        setErro('Nome deve ter pelo menos 3 caracteres')
         setLoading(false)
         return
       }
 
-      // 2. Criar usuário no Supabase Auth
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        setErro('Email inválido')
+        setLoading(false)
+        return
+      }
+
+      if (senha.length < 6) {
+        setErro('Senha deve ter pelo menos 6 caracteres')
+        setLoading(false)
+        return
+      }
+
+      const planoSelecionado = 'pro'
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: senha,
         options: {
           data: {
             nome_completo: nomeCompleto,
-            telefone: telefone,
-            cpf_cnpj: cpfCnpj,
             plano: planoSelecionado
           }
         }
@@ -167,33 +73,23 @@ export default function Signup() {
 
       const userId = authData.user.id
 
-      // 3. Atualizar/criar registro completo em usuarios (UPSERT)
-      // O Supabase já cria o registro automaticamente, então vamos atualizar
       const { error: upsertError } = await supabase
         .from('usuarios')
         .upsert({
           id: userId,
           email: email,
           nome_completo: nomeCompleto,
-          telefone: telefone,
-          cpf_cnpj: cpfCnpj,
           plano: planoSelecionado,
           limite_mensal: getLimitePorPlano(planoSelecionado),
-          trial_fim: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 dias
+          trial_fim: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
           trial_ativo: true,
           plano_pago: false,
           status_conta: 'ativo'
-        }, {
-          onConflict: 'id'
-        })
+        }, { onConflict: 'id' })
 
-      if (upsertError) {
-        console.error('Erro detalhado ao salvar usuário:', upsertError)
-        throw new Error(`Database error: ${upsertError.message || upsertError.code || 'Unknown error'}`)
-      }
+      if (upsertError) throw new Error(`Database error: ${upsertError.message || upsertError.code}`)
 
-      // 4. Criar registro em controle_planos
-      const mesReferencia = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const mesReferencia = new Date().toISOString().slice(0, 7)
       const { error: controleError } = await supabase
         .from('controle_planos')
         .insert({
@@ -207,7 +103,6 @@ export default function Signup() {
 
       if (controleError) throw controleError
 
-      // 5. Criar configurações de cobrança padrão (envio automático habilitado)
       const { error: configError } = await supabase
         .from('configuracoes_cobranca')
         .insert({
@@ -220,13 +115,10 @@ export default function Signup() {
 
       if (configError) console.error('Erro ao criar config de cobrança:', configError)
 
-      // 6. Meta Pixel: Lead, Cadastro completo e início de trial
       trackLead()
       trackCompleteRegistration()
       trackStartTrial()
 
-      // 6. Login automático já está ativo (sessão criada pelo signUp)
-      // 7. Redirecionar para home (checklist de onboarding aparece automaticamente)
       navigate('/app/home')
 
     } catch (error) {
@@ -237,6 +129,19 @@ export default function Signup() {
     }
   }
 
+  const inputStyle = (field) => ({
+    width: '100%',
+    padding: '14px 16px',
+    border: `2px solid ${focusField === field ? '#25D366' : '#e8e8e8'}`,
+    borderRadius: '10px',
+    fontSize: '15px',
+    boxSizing: 'border-box',
+    outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+    backgroundColor: '#fafafa',
+    boxShadow: focusField === field ? '0 0 0 3px rgba(37, 211, 102, 0.1)' : 'none'
+  })
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -244,211 +149,179 @@ export default function Signup() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#F2F6FF',
-      padding: '20px'
+      backgroundColor: '#f8faf9',
+      padding: '20px',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      {/* Logo acima do card */}
-      <img
-        src="/Logo-Full.png"
-        alt="Mensalli"
-        style={{ height: '48px', width: 'auto', marginBottom: '24px' }}
-      />
+      <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', marginBottom: '28px' }}>
+        <img
+          src="/Logo-Full.png"
+          alt="Mensalli"
+          style={{ height: '44px', width: 'auto' }}
+        />
+      </a>
 
       <div style={{
         backgroundColor: 'white',
         padding: '40px',
-        borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-        maxWidth: '500px',
+        borderRadius: '16px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+        border: '1px solid #eee',
+        maxWidth: '440px',
         width: '100%'
       }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
-          Criar Conta
+        <h2 style={{
+          textAlign: 'center',
+          marginBottom: '8px',
+          color: '#1a1a1a',
+          fontSize: '24px',
+          fontWeight: '700'
+        }}>
+          Comece seu teste grátis
         </h2>
-        <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666', fontSize: '14px' }}>
-          Preencha os dados abaixo para começar
+        <p style={{
+          textAlign: 'center',
+          marginBottom: '28px',
+          color: '#888',
+          fontSize: '14px',
+          lineHeight: '1.5'
+        }}>
+          3 dias grátis, sem cartão de crédito
         </p>
 
         {erro && (
           <div style={{
             marginBottom: '20px',
-            padding: '12px',
-            backgroundColor: '#ffebee',
-            border: '1px solid #f44336',
-            borderRadius: '6px',
-            color: '#c62828',
-            fontSize: '14px'
+            padding: '12px 16px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '10px',
+            color: '#dc2626',
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
+            <span style={{ fontSize: '16px' }}>!</span>
             {erro}
           </div>
         )}
 
         <form onSubmit={handleCadastro}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                Nome Completo
-              </label>
-              <input
-                type="text"
-                value={nomeCompleto}
-                onChange={(e) => setNomeCompleto(e.target.value)}
-                placeholder="João Silva"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#444', fontSize: '13px', fontWeight: '600' }}>
+              Seu nome
+            </label>
+            <input
+              type="text"
+              value={nomeCompleto}
+              onChange={(e) => setNomeCompleto(e.target.value)}
+              placeholder="Como seus clientes te conhecem"
+              required
+              onFocus={() => setFocusField('nome')}
+              onBlur={() => setFocusField(null)}
+              style={inputStyle('nome')}
+            />
+          </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="joao@exemplo.com"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#444', fontSize: '13px', fontWeight: '600' }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+              onFocus={() => setFocusField('email')}
+              onBlur={() => setFocusField(null)}
+              style={inputStyle('email')}
+            />
+          </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                Senha (mínimo 8 caracteres)
-              </label>
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="••••••••"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#444', fontSize: '13px', fontWeight: '600' }}>
+              Senha
+            </label>
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              required
+              onFocus={() => setFocusField('senha')}
+              onBlur={() => setFocusField(null)}
+              style={inputStyle('senha')}
+            />
+          </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                Confirmar Senha
-              </label>
-              <input
-                type="password"
-                value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
-                placeholder="••••••••"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                Telefone (com DDD)
-              </label>
-              <input
-                type="tel"
-                value={telefone}
-                onChange={handleTelefoneChange}
-                placeholder="(11) 99999-9999"
-                maxLength={15}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                CPF ou CNPJ
-              </label>
-              <input
-                type="text"
-                value={cpfCnpj}
-                onChange={handleCpfCnpjChange}
-                placeholder="000.000.000-00"
-                maxLength={18}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: loading ? '#ccc' : '#29BF68',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#22a559' }}
-              onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#29BF68' }}
-            >
-              {loading ? 'Criando conta...' : 'Iniciar Teste Grátis'}
-            </button>
-          </form>
-
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
-          Já tem uma conta?
-          <a
-            href="/login"
+          <button
+            type="submit"
+            disabled={loading}
             style={{
-              color: '#1A1A1A',
-              marginLeft: '5px',
-              textDecoration: 'none',
-              fontWeight: '500'
+              width: '100%',
+              padding: '15px',
+              backgroundColor: loading ? '#9ca3af' : '#25D366',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: loading ? 'none' : '0 4px 14px rgba(37, 211, 102, 0.3)'
             }}
+            onMouseOver={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 211, 102, 0.4)' } }}
+            onMouseOut={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 211, 102, 0.3)' } }}
           >
-            Fazer login
-          </a>
+            {loading ? 'Criando conta...' : 'Criar conta grátis'}
+          </button>
+        </form>
+
+        <p style={{
+          textAlign: 'center',
+          marginTop: '12px',
+          fontSize: '12px',
+          color: '#aaa',
+          lineHeight: '1.5'
+        }}>
+          Ao criar sua conta, você concorda com nossos Termos de Uso
         </p>
+
+        <div style={{
+          marginTop: '20px',
+          paddingTop: '20px',
+          borderTop: '1px solid #f0f0f0',
+          textAlign: 'center'
+        }}>
+          <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
+            Já tem uma conta?{' '}
+            <a
+              href="/login"
+              style={{
+                color: '#25D366',
+                fontWeight: '600',
+                textDecoration: 'none'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+              onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
+            >
+              Entrar
+            </a>
+          </p>
+        </div>
       </div>
+
+      {/* Social proof sutil */}
+      <p style={{
+        marginTop: '24px',
+        fontSize: '13px',
+        color: '#999',
+        textAlign: 'center'
+      }}>
+        Usado por academias, escolas de música, studios e personal trainers
+      </p>
     </div>
   )
 }

@@ -192,7 +192,7 @@ export default function CRM() {
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: 'bold', color: '#333', margin: '0 0 6px 0' }}>
-            CRM MensalliZap
+            CRM Mensalli
           </h1>
           <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
             Visão geral de clientes e métricas do sistema

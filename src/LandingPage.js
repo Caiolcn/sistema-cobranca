@@ -35,46 +35,46 @@ export default function LandingPage() {
 
   const depoimentos = [
     {
-      nome: 'Roberto Carlos',
-      empresa: 'Escola de Música Crescendo',
-      cargo: 'Fundador',
-      texto: 'Antes: 12 alunos devendo todo mês. Depois do Mensalli: máximo 3. Recuperei R$1.800/mês que estavam saindo pelo ralo.',
-      foto: '/testimonials/men32.jpg'
-    },
-    {
-      nome: 'Mariana Ferreira',
-      empresa: 'Studio de Pilates Renascer',
-      cargo: 'Dona',
-      texto: 'Gastava 3 horas por semana ligando pra cobrar. Agora gasto zero. São 12 horas por mês que voltaram pra mim — e a inadimplência caiu pela metade.',
-      foto: '/testimonials/women44.jpg'
-    },
-    {
-      nome: 'Paulo Lima',
-      empresa: 'Escola de Música Cultura Musical',
-      cargo: 'Diretor',
-      texto: 'O dashboard me mostra exatamente quanto vou receber no mês. Consegui planejar melhor o fluxo de caixa da minha escola.',
-      foto: '/testimonials/men67.jpg'
-    },
-    {
-      nome: 'Fernanda Santos',
-      empresa: 'Academia Vida Ativa',
+      nome: 'Juliana M.',
+      empresa: 'Studio de Pilates',
       cargo: 'Proprietária',
-      texto: 'Com 80 alunos, eu perdia uns R$3.600/mês de inadimplência. Hoje perco no máximo R$900. O sistema se paga em 1 dia.',
-      foto: '/testimonials/women68.jpg'
+      texto: 'Gastava horas toda semana mandando mensagem pra cobrar. Agora o sistema faz tudo sozinho e minha inadimplência caiu pela metade.',
+      foto: null
     },
     {
-      nome: 'Carlos Eduardo',
-      empresa: 'Escola de Inglês GlobalSpeak',
-      cargo: 'Diretor Administrativo',
-      texto: 'O suporte é excelente e o sistema muito intuitivo. Em uma semana já estava com tudo funcionando perfeitamente.',
-      foto: '/testimonials/men45.jpg'
+      nome: 'Rafael S.',
+      empresa: 'Academia de Natação',
+      cargo: 'Dono',
+      texto: 'Com mais de 50 alunos ficava impossível controlar quem pagou. O dashboard resolve isso em segundos.',
+      foto: null
     },
     {
-      nome: 'Ana Paula',
+      nome: 'Cláudia R.',
+      empresa: 'Escola de Música',
+      cargo: 'Diretora',
+      texto: 'A mensagem vai pelo meu WhatsApp, então parece que fui eu que mandei. Meus alunos respondem na hora.',
+      foto: null
+    },
+    {
+      nome: 'Marcos A.',
       empresa: 'Personal Trainer',
-      cargo: 'Autônoma',
-      texto: 'Uso para cobrar os planos mensais dos meus alunos. Nunca mais tive problema com esquecimento de pagamento.',
-      foto: '/testimonials/women33.jpg'
+      cargo: 'Autônomo',
+      texto: 'O plano se paga no primeiro mês. Antes eu esquecia de cobrar e perdia dinheiro sem nem perceber.',
+      foto: null
+    },
+    {
+      nome: 'Tatiane L.',
+      empresa: 'Studio de Yoga',
+      cargo: 'Fundadora',
+      texto: 'Simples de usar e o suporte responde rápido. Montei tudo em uma tarde e já saiu cobrando sozinho.',
+      foto: null
+    },
+    {
+      nome: 'Diego F.',
+      empresa: 'Escola de Lutas',
+      cargo: 'Professor',
+      texto: 'Cobrar aluno era a parte que eu mais odiava. Agora não preciso mais pensar nisso, o sistema resolve.',
+      foto: null
     }
   ]
 
@@ -264,8 +264,8 @@ export default function LandingPage() {
             <button
               onClick={() => navigate('/signup')}
               style={{
-                padding: '16px 32px',
-                backgroundColor: '#1a1a1a',
+                padding: '16px 36px',
+                backgroundColor: '#25D366',
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
@@ -277,20 +277,41 @@ export default function LandingPage() {
                 alignItems: 'center',
                 gap: '10px',
                 width: isSmallScreen ? '100%' : 'auto',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(37, 211, 102, 0.3)'
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(37, 211, 102, 0.4)'
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = 'none'
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 211, 102, 0.3)'
               }}
             >
-              Começar agora
+              Testar grátis por 3 dias
               <MdArrowForward size={20} />
             </button>
+            {!isSmallScreen && (
+              <button
+                onClick={() => document.getElementById('precos').scrollIntoView({ behavior: 'smooth' })}
+                style={{
+                  padding: '16px 28px',
+                  backgroundColor: 'transparent',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#999'; e.currentTarget.style.color = '#333' }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#666' }}
+              >
+                Ver preços
+              </button>
+            )}
           </div>
 
           <p style={{
@@ -298,7 +319,7 @@ export default function LandingPage() {
             fontSize: '13px',
             color: '#999'
           }}>
-            Sem cartão • 3 dias grátis • Cancele quando quiser
+            Sem cartão de crédito • Cancele quando quiser
           </p>
 
           {/* Hero Image */}
@@ -1283,17 +1304,21 @@ export default function LandingPage() {
                     "{dep.texto}"
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img
-                      src={dep.foto}
-                      alt={dep.nome}
-                      loading="lazy"
-                      style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        objectFit: 'cover'
-                      }}
-                    />
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      backgroundColor: '#f0fdf4',
+                      color: '#25D366',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      flexShrink: 0
+                    }}>
+                      {dep.nome.charAt(0)}
+                    </div>
                     <div>
                       <p style={{ fontWeight: '600', color: '#1a1a1a', margin: 0, fontSize: '14px' }}>{dep.nome}</p>
                       <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>{dep.cargo}, {dep.empresa}</p>
@@ -1669,7 +1694,7 @@ export default function LandingPage() {
         rel="noopener noreferrer"
         style={{
           position: 'fixed',
-          bottom: '20px',
+          bottom: isSmallScreen ? '80px' : '20px',
           right: '20px',
           width: '60px',
           height: '60px',
@@ -1693,6 +1718,61 @@ export default function LandingPage() {
       >
         <FaWhatsapp size={32} color="white" />
       </a>
+
+      {/* Sticky CTA Mobile */}
+      {isSmallScreen && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'white',
+          borderTop: '1px solid #eee',
+          padding: '12px 20px',
+          zIndex: 999,
+          display: 'flex',
+          gap: '10px',
+          alignItems: 'center',
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.06)'
+        }}>
+          <button
+            onClick={() => navigate('/signup')}
+            style={{
+              flex: 1,
+              padding: '14px',
+              backgroundColor: '#25D366',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            Testar grátis
+            <MdArrowForward size={18} />
+          </button>
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              padding: '14px 20px',
+              backgroundColor: 'transparent',
+              color: '#666',
+              border: '1px solid #ddd',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Entrar
+          </button>
+        </div>
+      )}
     </div>
   )
 }
