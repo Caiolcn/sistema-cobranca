@@ -242,7 +242,8 @@ export default function WhatsAppConexao() {
           pre_due_3days: findBestTemplate('pre_due_3days'),
           due_day: findBestTemplate('due_day'),
           overdue: findBestTemplate('overdue'),
-          class_reminder: findBestTemplate('class_reminder')
+          class_reminder: findBestTemplate('class_reminder'),
+          birthday: findBestTemplate('birthday')
         }
 
         // 4.1 Criar templates que não existem automaticamente
