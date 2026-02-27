@@ -2739,6 +2739,55 @@ export default function WhatsAppConexao() {
                       <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'class_reminder' ? 'white' : '#4CAF50' }} />
                     )}
                   </button>
+
+                  {/* Botão Aniversário - BLOQUEADO para Starter */}
+                  <button
+                    disabled={!automacaoAniversarioAtiva || automacaoLocked}
+                    onClick={() => {
+                      if (automacaoLocked) {
+                        setUpgradeModal({ isOpen: true, featureName: 'Template Aniversário' })
+                        return
+                      }
+                      if (!automacaoAniversarioAtiva) return
+                      setTipoTemplateSelecionado('birthday')
+                      const template = templatesAgrupados.birthday
+                      if (template) {
+                        setTituloTemplate(template.titulo)
+                        setMensagemTemplate(template.mensagem)
+                      } else {
+                        setTituloTemplate(getTituloDefault('birthday'))
+                        setMensagemTemplate(getMensagemDefault('birthday'))
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      backgroundColor: tipoTemplateSelecionado === 'birthday' && !automacaoLocked ? '#E91E63' : 'white',
+                      color: tipoTemplateSelecionado === 'birthday' && !automacaoLocked ? 'white' : '#666',
+                      border: tipoTemplateSelecionado === 'birthday' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: automacaoLocked ? 'pointer' : (automacaoAniversarioAtiva ? 'pointer' : 'not-allowed'),
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      opacity: automacaoLocked ? 0.6 : (automacaoAniversarioAtiva ? 1 : 0.5),
+                      position: 'relative'
+                    }}
+                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacaoAniversarioAtiva ? 'Ative a automação de Aniversário para editar este template' : '')}
+                  >
+                    {automacaoLocked && (
+                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
+                    )}
+                    <Icon icon="mdi:cake-variant" width="20" />
+                    <span>Aniversário</span>
+                    {templatesAgrupados.birthday && automacaoAniversarioAtiva && !automacaoLocked && (
+                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'birthday' ? 'white' : '#4CAF50' }} />
+                    )}
+                  </button>
                 </div>
               </div>
 
