@@ -70,7 +70,13 @@ Lembrete: sua aula de {{descricaoAula}} começa em 1 hora! 🕐
 ⏰ Horário: {{horarioAula}}
 📍 Local: {{nomeEmpresa}}
 
-Até já! 💪`
+Até já! 💪`,
+
+  birthday: `Feliz aniversário, {{nomeCliente}}! 🎂🎉
+
+A equipe {{nomeEmpresa}} deseja a você um dia incrível, cheio de saúde, alegria e conquistas!
+
+Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -123,6 +129,7 @@ export default function WhatsAppConexao() {
   const [automacaoNoDiaAtiva, setAutomacaoNoDiaAtiva] = useState(true) // Ativo por padrão
   const [automacao3DiasDepoisAtiva, setAutomacao3DiasDepoisAtiva] = useState(false)
   const [automacaoLembreteAulaAtiva, setAutomacaoLembreteAulaAtiva] = useState(false)
+  const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
 
   // Estado para Chave PIX
   const [chavePix, setChavePix] = useState('')
@@ -181,7 +188,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -287,6 +294,7 @@ export default function WhatsAppConexao() {
         setAutomacaoNoDiaAtiva(configCobranca?.enviar_no_dia !== false)
         setAutomacao3DiasDepoisAtiva(configCobranca?.enviar_3_dias_depois === true)
         setAutomacaoLembreteAulaAtiva(configCobranca?.enviar_lembrete_aula === true)
+        setAutomacaoAniversarioAtiva(configCobranca?.enviar_aniversario === true)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -519,7 +527,8 @@ export default function WhatsAppConexao() {
         'automacao_3dias_ativa': 'enviar_3_dias_antes',
         'automacao_nodia_ativa': 'enviar_no_dia',
         'automacao_3diasdepois_ativa': 'enviar_3_dias_depois',
-        'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula'
+        'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula',
+        'automacao_aniversario_ativa': 'enviar_aniversario'
       }
 
       const coluna = mapeamentoColunas[chave]
@@ -741,7 +750,8 @@ export default function WhatsAppConexao() {
         pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
         due_day: 'Lembrete - Vencimento Hoje',
         overdue: 'Cobrança - 3 Dias Após o Vencimento',
-        class_reminder: 'Lembrete de Aula'
+        class_reminder: 'Lembrete de Aula',
+        birthday: 'Mensagem de Aniversário'
       }
 
       // Se já existe, verificar se precisa atualizar
@@ -925,6 +935,37 @@ export default function WhatsAppConexao() {
           type: 'success',
           title: 'Lembrete de Aula Ativado',
           message: 'Lembretes de aula serão enviados 1 hora antes via WhatsApp! Configure os horários na página Horários.'
+        })
+      }
+    }
+  }
+
+  // Toggle automação aniversário
+  const toggleAutomacaoAniversario = async () => {
+    const novoValor = !automacaoAniversarioAtiva
+
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('birthday')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_aniversario_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoAniversarioAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Aniversário Ativado',
+          message: 'Mensagens de aniversário serão enviadas automaticamente às 8h! O template padrão foi configurado.'
         })
       }
     }
@@ -1208,7 +1249,8 @@ export default function WhatsAppConexao() {
       pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
       due_day: 'Lembrete - Vencimento Hoje',
       overdue: 'Cobrança - 3 Dias Após o Vencimento',
-      class_reminder: 'Lembrete de Aula'
+      class_reminder: 'Lembrete de Aula',
+      birthday: 'Mensagem de Aniversário'
     }
     return titulos[tipo] || ''
   }
@@ -2339,6 +2381,81 @@ export default function WhatsAppConexao() {
                   )}
                 </div>
               </div>
+
+                {/* Toggle Aniversário - BLOQUEADO para Starter */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  borderRadius: '6px',
+                  marginTop: '8px',
+                  border: '1px solid #e0e0e0',
+                  opacity: automacaoLocked ? 0.7 : 1,
+                  position: 'relative'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:cake-variant" width="20" style={{ color: '#E91E63' }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
+                        Aniversário
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999' }}>
+                        Enviar parabéns no dia do aniversário (8h)
+                      </div>
+                    </div>
+                  </div>
+                  {automacaoLocked ? (
+                    <button
+                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Mensagem de Aniversário' })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        backgroundColor: '#fff3e0',
+                        border: '1px solid #ffcc80',
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        color: '#e65100'
+                      }}
+                    >
+                      <Icon icon="mdi:lock" width="14" />
+                      Pro
+                    </button>
+                  ) : (
+                    <button
+                      onClick={toggleAutomacaoAniversario}
+                      style={{
+                        position: 'relative',
+                        width: '50px',
+                        height: '26px',
+                        backgroundColor: automacaoAniversarioAtiva ? '#4CAF50' : '#ccc',
+                        borderRadius: '13px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.3s',
+                        padding: 0
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: '3px',
+                        left: automacaoAniversarioAtiva ? '26px' : '3px',
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: 'white',
+                        borderRadius: '50%',
+                        transition: 'left 0.3s',
+                        border: '1px solid #e5e7eb',
+                        boxShadow: 'none'
+                      }} />
+                    </button>
+                  )}
+                </div>
 
               {/* Método de Pagamento nas Mensagens */}
               <div style={{

@@ -46,7 +46,7 @@ BEGIN
   -- Criar nova constraint com birthday
   ALTER TABLE templates
   ADD CONSTRAINT templates_tipo_check
-  CHECK (tipo IN ('overdue', 'pre_due_3days', 'pre_due_5days', 'due_day', 'birthday'));
+  CHECK (tipo IN ('overdue', 'pre_due_3days', 'pre_due_5days', 'due_day', 'birthday', 'class_reminder'));
 
   RAISE NOTICE 'Constraint atualizada com tipo birthday!';
 END $$;
