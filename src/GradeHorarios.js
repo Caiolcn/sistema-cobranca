@@ -319,7 +319,7 @@ export default function GradeHorarios() {
               onClick={abrirModalNovo}
               style={{
                 padding: isMobile ? '10px 14px' : '10px 20px',
-                backgroundColor: '#333',
+                backgroundColor: '#344848',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -333,8 +333,8 @@ export default function GradeHorarios() {
                 transition: 'background-color 0.2s',
                 flex: isMobile ? 1 : 'none'
               }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#222'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#333'}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#283838'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#344848'}
             >
               <Icon icon="mdi:plus" width="18" />
               {!isMobile && 'Adicionar'}
@@ -467,9 +467,13 @@ export default function GradeHorarios() {
           display: 'grid',
           gridTemplateColumns: isMobile
             ? '1fr'
-            : diasParaGrid.length === 1 ? '1fr' : `repeat(${Math.min(diasParaGrid.length, 7)}, 1fr)`,
-          gap: isMobile ? '16px' : '10px',
-          alignItems: 'start'
+            : diasParaGrid.length <= 3
+              ? `repeat(${diasParaGrid.length}, 1fr)`
+              : `repeat(${Math.min(diasParaGrid.length, 7)}, minmax(130px, 1fr))`,
+          gap: isMobile ? '12px' : '10px',
+          alignItems: 'start',
+          overflowX: !isMobile && diasParaGrid.length > 5 ? 'auto' : 'visible',
+          paddingBottom: !isMobile && diasParaGrid.length > 5 ? '4px' : '0'
         }}>
           {diasParaGrid.map(dia => {
             const aulasDoDia = horariosFiltrados.filter(h => h.dia_semana === dia.valor)
@@ -520,7 +524,7 @@ export default function GradeHorarios() {
                     fontWeight: '600',
                     color: isHoje ? 'rgba(255,255,255,0.7)' : '#999'
                   }}>
-                    {aulasDoDia.length}
+                    {aulasDoDia.length} {aulasDoDia.length === 1 ? 'aula' : 'aulas'}
                   </span>
                 </div>
 
@@ -553,15 +557,35 @@ export default function GradeHorarios() {
                               opacity: h.ativo ? 1 : 0.5,
                               position: 'relative'
                             }}
-                            onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.querySelector('.aula-acoes').style.opacity = '1' }}}
-                            onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.querySelector('.aula-acoes').style.opacity = '0' }}}
+                            onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; e.currentTarget.querySelector('.aula-acoes').style.opacity = '1' }}}
+                            onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.querySelector('.aula-acoes').style.opacity = '0' }}}
                           >
+                            {/* Badge pausado */}
+                            {!h.ativo && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '4px',
+                                left: '14px',
+                                fontSize: '9px',
+                                fontWeight: '700',
+                                color: '#ef4444',
+                                backgroundColor: '#fef2f2',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid #fecaca',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase'
+                              }}>
+                                Pausado
+                              </div>
+                            )}
                             {/* Horário */}
                             <div style={{
                               fontSize: '14px',
                               fontWeight: '700',
                               color: h.ativo ? cor.text : '#999',
-                              marginBottom: '2px'
+                              marginBottom: '2px',
+                              marginTop: !h.ativo ? '14px' : '0'
                             }}>
                               {h.horario?.substring(0, 5)}
                             </div>
@@ -596,10 +620,10 @@ export default function GradeHorarios() {
                               onClick={e => e.stopPropagation()}
                               style={{
                                 position: 'absolute',
-                                top: '4px',
-                                right: '4px',
+                                top: '3px',
+                                right: '3px',
                                 display: 'flex',
-                                gap: '2px',
+                                gap: '3px',
                                 opacity: isMobile ? 1 : 0,
                                 transition: 'opacity 0.15s'
                               }}
@@ -608,31 +632,39 @@ export default function GradeHorarios() {
                                 onClick={() => toggleAtivo(h)}
                                 title={h.ativo ? 'Desativar' : 'Ativar'}
                                 style={{
-                                  padding: '3px',
+                                  padding: '5px',
                                   backgroundColor: 'white',
                                   border: '1px solid #e0e0e0',
-                                  borderRadius: '4px',
+                                  borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
-                                  lineHeight: 1
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  lineHeight: 1,
+                                  minWidth: '28px',
+                                  minHeight: '28px'
                                 }}
                               >
-                                <Icon icon={h.ativo ? 'mdi:pause' : 'mdi:play'} width="12" color="#666" />
+                                <Icon icon={h.ativo ? 'mdi:pause' : 'mdi:play'} width="14" color="#666" />
                               </button>
                               <button
                                 onClick={() => setConfirmDelete({ show: true, horario: h })}
                                 title="Excluir"
                                 style={{
-                                  padding: '3px',
+                                  padding: '5px',
                                   backgroundColor: 'white',
                                   border: '1px solid #e0e0e0',
-                                  borderRadius: '4px',
+                                  borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
-                                  lineHeight: 1
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  lineHeight: 1,
+                                  minWidth: '28px',
+                                  minHeight: '28px'
                                 }}
                               >
-                                <Icon icon="mdi:close" width="12" color="#ef4444" />
+                                <Icon icon="mdi:close" width="14" color="#ef4444" />
                               </button>
                             </div>
                           </div>

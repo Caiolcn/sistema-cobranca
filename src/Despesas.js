@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -11,7 +12,7 @@ import { useUser } from './contexts/UserContext'
 import { exportarDespesas } from './utils/exportUtils'
 import { gerarRelatorioDespesasPDF } from './utils/pdfGenerator'
 
-export default function Despesas({ embedded = false }) {
+export default function Despesas({ embedded = false, buttonsPortal = null, onCountUpdate = null }) {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked, loading: loadingPlan } = useUserPlan()
@@ -218,6 +219,11 @@ export default function Despesas({ embedded = false }) {
     setPaginaAtual(1)
     calcularTotais(resultado)
   }, [despesas, buscaDebounced, filtroCategoria, filtroStatus, filtroDataInicio, filtroDataFim])
+
+  // Callback de contagem para o Financeiro
+  useEffect(() => {
+    if (onCountUpdate) onCountUpdate(despesas.length, despesasFiltradas.length)
+  }, [despesas.length, despesasFiltradas.length, onCountUpdate])
 
   const calcularTotais = (lista) => {
     const hoje = new Date()
@@ -689,262 +695,226 @@ export default function Despesas({ embedded = false }) {
 
   // ==================== RENDER ====================
 
-  const content = (
-    <>
-      {/* ========== HEADER ========== */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: isSmallScreen ? '16px' : '20px',
-        marginBottom: isSmallScreen ? '12px' : '16px',
-        border: '1px solid #e5e7eb', boxShadow: 'none'
-      }}>
-        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              Despesas
-            </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              {despesasFiltradas.length} de {despesas.length} despesa(s)
-            </p>
-          </div>
+  const buttonsBlock = (
+    <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center', flexWrap: 'wrap' }}>
+      <button
+        onClick={handleExportarCSV}
+        title="Exportar CSV"
+        style={{
+          padding: isSmallScreen ? '10px 14px' : '10px 20px',
+          backgroundColor: 'white', color: '#333',
+          border: '1px solid #ddd', borderRadius: '6px',
+          cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '8px', transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#344848'; e.currentTarget.style.color = '#344848' }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#333' }}
+      >
+        <Icon icon="ph:export-light" width="18" height="18" />
+      </button>
 
-          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isSmallScreen ? 'stretch' : 'flex-end', flexWrap: 'wrap' }}>
-            {/* Exportar CSV */}
-            <button
-              onClick={handleExportarCSV}
-              title="Exportar CSV"
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: 'white',
-                color: '#333',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#344848'; e.currentTarget.style.color = '#344848' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#333' }}
-            >
-              <Icon icon="ph:export-light" width="18" height="18" />
-            </button>
+      <button
+        className="btn-filtrar-despesas"
+        onClick={() => setMostrarFiltros(!mostrarFiltros)}
+        style={{
+          padding: isSmallScreen ? '10px 14px' : '10px 20px',
+          backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
+          color: temFiltrosAtivos ? 'white' : '#333',
+          border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
+          borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+          fontWeight: '500', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: '8px', position: 'relative',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
+        onMouseLeave={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = temFiltrosAtivos ? '#344848' : 'white' }}
+      >
+        <Icon icon="mdi:filter-outline" width="18" height="18" />
+        {!isSmallScreen && 'Filtrar'}
+        {temFiltrosAtivos && (
+          <span style={{
+            position: 'absolute', top: '-6px', right: '-6px',
+            backgroundColor: '#f44336', color: 'white', borderRadius: '50%',
+            width: '20px', height: '20px', fontSize: '11px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: '700', border: '2px solid white'
+          }}>!</span>
+        )}
+      </button>
 
-            {/* Filtrar */}
-            <button
-              className="btn-filtrar-despesas"
-              onClick={() => setMostrarFiltros(!mostrarFiltros)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
-                color: temFiltrosAtivos ? 'white' : '#333',
-                border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                position: 'relative',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
-              onMouseLeave={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = temFiltrosAtivos ? '#344848' : 'white' }}
-            >
-              <Icon icon="mdi:filter-outline" width="18" height="18" />
-              {!isSmallScreen && 'Filtrar'}
-              {temFiltrosAtivos && (
-                <span style={{
-                  position: 'absolute', top: '-6px', right: '-6px',
-                  backgroundColor: '#f44336', color: 'white', borderRadius: '50%',
-                  width: '20px', height: '20px', fontSize: '11px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: '700', border: '2px solid white'
-                }}>!</span>
-              )}
-            </button>
+      <button
+        onClick={abrirModalNovaDespesa}
+        style={{
+          padding: isSmallScreen ? '10px 14px' : '10px 20px',
+          backgroundColor: '#344848', color: 'white',
+          border: 'none', borderRadius: '6px',
+          cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '8px', transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
+      >
+        <Icon icon="mdi:plus" width="18" height="18" />
+        {!isSmallScreen && 'Nova Despesa'}
+      </button>
 
-            {/* Nova Despesa */}
-            <button
-              onClick={abrirModalNovaDespesa}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: '#344848',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
-            >
-              <Icon icon="mdi:plus" width="18" height="18" />
-              {!isSmallScreen && 'Nova Despesa'}
-            </button>
+      {mostrarFiltros && (
+        <div
+          className="popover-filtros-despesas"
+          style={{
+            position: isSmallScreen ? 'fixed' : 'absolute',
+            top: isSmallScreen ? 0 : '50px',
+            right: isSmallScreen ? 0 : '0',
+            left: isSmallScreen ? 0 : 'auto',
+            bottom: isSmallScreen ? 0 : 'auto',
+            width: isSmallScreen ? '100%' : '340px',
+            height: isSmallScreen ? '100vh' : 'auto',
+            backgroundColor: 'white',
+            borderRadius: isSmallScreen ? 0 : '8px',
+            boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+            border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
+            zIndex: 1001, overflow: isSmallScreen ? 'auto' : 'hidden',
+            display: 'flex', flexDirection: 'column'
+          }}
+        >
+          {isSmallScreen && (
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid #e5e7eb',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1
+            }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Filtros</h3>
+              <button onClick={() => setMostrarFiltros(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                <Icon icon="mdi:close" width="24" height="24" color="#666" />
+              </button>
+            </div>
+          )}
 
-            {/* ========== POPOVER DE FILTROS ========== */}
-            {mostrarFiltros && (
-              <div
-                className="popover-filtros-despesas"
+          <div style={{ padding: '16px 20px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Buscar</label>
+              <input
+                type="text"
+                placeholder="Descrição ou categoria..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
                 style={{
-                  position: isSmallScreen ? 'fixed' : 'absolute',
-                  top: isSmallScreen ? 0 : '50px',
-                  right: isSmallScreen ? 0 : '0',
-                  left: isSmallScreen ? 0 : 'auto',
-                  bottom: isSmallScreen ? 0 : 'auto',
-                  width: isSmallScreen ? '100%' : '340px',
-                  height: isSmallScreen ? '100vh' : 'auto',
-                  backgroundColor: 'white',
-                  borderRadius: isSmallScreen ? 0 : '8px',
-                  boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-                  border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
-                  zIndex: 1001,
-                  overflow: isSmallScreen ? 'auto' : 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column'
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Categoria</label>
+              <select
+                value={filtroCategoria}
+                onChange={(e) => setFiltroCategoria(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
-                {/* Header filtros mobile */}
-                {isSmallScreen && (
-                  <div style={{
-                    padding: '16px 20px', borderBottom: '1px solid #e5e7eb',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1
-                  }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Filtros</h3>
-                    <button onClick={() => setMostrarFiltros(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
-                      <Icon icon="mdi:close" width="24" height="24" color="#666" />
-                    </button>
-                  </div>
-                )}
+                <option value="todos">Todas</option>
+                {categorias.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                ))}
+              </select>
+            </div>
 
-                <div style={{ padding: '16px 20px' }}>
-                  {/* Busca */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Buscar</label>
-                    <input
-                      type="text"
-                      placeholder="Descrição ou categoria..."
-                      value={busca}
-                      onChange={(e) => setBusca(e.target.value)}
-                      style={{
-                        width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                        borderRadius: '6px', fontSize: '14px', outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Status</label>
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  boxSizing: 'border-box', backgroundColor: 'white'
+                }}
+              >
+                <option value="todos">Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="atrasado">Atrasado</option>
+              </select>
+            </div>
 
-                  {/* Categoria */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Categoria</label>
-                    <select
-                      value={filtroCategoria}
-                      onChange={(e) => setFiltroCategoria(e.target.value)}
-                      style={{
-                        width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                        borderRadius: '6px', fontSize: '14px', outline: 'none',
-                        boxSizing: 'border-box', backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="todos">Todas</option>
-                      {categorias.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Status */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Status</label>
-                    <select
-                      value={filtroStatus}
-                      onChange={(e) => setFiltroStatus(e.target.value)}
-                      style={{
-                        width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                        borderRadius: '6px', fontSize: '14px', outline: 'none',
-                        boxSizing: 'border-box', backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="todos">Todos</option>
-                      <option value="pendente">Pendente</option>
-                      <option value="pago">Pago</option>
-                      <option value="atrasado">Atrasado</option>
-                    </select>
-                  </div>
-
-                  {/* Período */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Período</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="date"
-                        value={filtroDataInicio}
-                        onChange={(e) => setFiltroDataInicio(e.target.value)}
-                        style={{
-                          flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                          borderRadius: '6px', fontSize: '13px', outline: 'none'
-                        }}
-                      />
-                      <input
-                        type="date"
-                        value={filtroDataFim}
-                        onChange={(e) => setFiltroDataFim(e.target.value)}
-                        style={{
-                          flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                          borderRadius: '6px', fontSize: '13px', outline: 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Limpar filtros */}
-                  {temFiltrosAtivos && (
-                    <button
-                      onClick={limparFiltros}
-                      style={{
-                        width: '100%', padding: '10px', backgroundColor: '#344848',
-                        color: 'white', border: 'none', borderRadius: '6px',
-                        fontSize: '14px', cursor: 'pointer', fontWeight: '500',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
-                    >
-                      Limpar filtros
-                    </button>
-                  )}
-                </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Período</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="date"
+                  value={filtroDataInicio}
+                  onChange={(e) => setFiltroDataInicio(e.target.value)}
+                  style={{
+                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
+                    borderRadius: '6px', fontSize: '13px', outline: 'none'
+                  }}
+                />
+                <input
+                  type="date"
+                  value={filtroDataFim}
+                  onChange={(e) => setFiltroDataFim(e.target.value)}
+                  style={{
+                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
+                    borderRadius: '6px', fontSize: '13px', outline: 'none'
+                  }}
+                />
               </div>
+            </div>
+
+            {temFiltrosAtivos && (
+              <button
+                onClick={limparFiltros}
+                style={{
+                  width: '100%', padding: '10px', backgroundColor: '#344848',
+                  color: 'white', border: 'none', borderRadius: '6px',
+                  fontSize: '14px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
+              >
+                Limpar filtros
+              </button>
             )}
           </div>
         </div>
+      )}
+    </div>
+  )
+
+  const content = (
+    <>
+      {/* ========== TÍTULO (apenas quando não está embedded) ========== */}
+      {!embedded && (
+      <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
+        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+          Despesas
+        </h2>
+        <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
+          {despesasFiltradas.length} de {despesas.length} despesa(s)
+        </p>
       </div>
+      )}
+
+      {/* ========== BOTÕES ========== */}
+      {embedded && buttonsPortal ? createPortal(buttonsBlock, buttonsPortal) : (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: isSmallScreen ? '12px' : '16px' }}>
+        {buttonsBlock}
+      </div>
+      )}
 
       {/* ========== CARDS DE INDICADORES ========== */}
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb', boxShadow: 'none',
-        padding: isSmallScreen ? '16px' : '20px',
-        marginBottom: isSmallScreen ? '16px' : '20px'
+        borderRadius: '0',
+        border: 'none', boxShadow: 'none',
+        padding: isSmallScreen ? '0 0 16px 0' : '0 0 20px 0',
+        marginBottom: 0
       }}>
         <div style={{
           display: 'grid',

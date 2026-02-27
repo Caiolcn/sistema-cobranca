@@ -2965,108 +2965,47 @@ function Configuracao() {
 
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Header - No mobile mostra a aba atual, no desktop mostra "Configurações" */}
-      {isMobile ? (
-        <div style={{ marginBottom: '16px' }}>
-          <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Configurações
-          </p>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon icon={abaAtual?.icon} width="22" />
-            {abaAtual?.label}
-          </h2>
-        </div>
-      ) : (
-        <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', fontWeight: '600', color: '#333' }}>
-          Configurações
-        </h2>
-      )}
+      {/* Tabs horizontais - padrão unificado */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        marginBottom: isSmallScreen ? '16px' : '25px',
+        border: '1px solid #e5e7eb',
+        display: 'flex',
+        gap: '4px',
+        padding: '6px',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setAbaAtiva(tab.id)}
+            style={{
+              padding: isSmallScreen ? '8px 12px' : '10px 20px',
+              backgroundColor: abaAtiva === tab.id ? '#344848' : 'transparent',
+              color: abaAtiva === tab.id ? 'white' : '#666',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: isSmallScreen ? '12px' : '14px',
+              fontWeight: abaAtiva === tab.id ? '600' : '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s',
+              flexShrink: 0
+            }}
+          >
+            <Icon icon={tab.icon} width={isSmallScreen ? 16 : 18} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Tabs horizontais - apenas para tablet (não mobile, não desktop) */}
-      {isSmallScreen && !isMobile && (
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          overflowX: 'auto',
-          paddingBottom: '12px',
-          marginBottom: '16px',
-          WebkitOverflowScrolling: 'touch'
-        }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setAbaAtiva(tab.id)}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                backgroundColor: abaAtiva === tab.id ? '#333' : 'white',
-                color: abaAtiva === tab.id ? 'white' : '#666',
-                border: abaAtiva === tab.id ? 'none' : '1px solid #e0e0e0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                whiteSpace: 'nowrap',
-                fontSize: '13px',
-                fontWeight: '500',
-                flexShrink: 0
-              }}
-            >
-              <Icon icon={tab.icon} width="18" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '24px', flexDirection: isSmallScreen ? 'column' : 'row' }}>
-        {/* Tabs Sidebar - só para desktop/laptop */}
-        {!isSmallScreen && (
-          <div style={{ width: '220px', flexShrink: 0 }}>
-            <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '12px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
-              {tabs.map((tab) => (
-                <div
-                  key={tab.id}
-                  onClick={() => setAbaAtiva(tab.id)}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    backgroundColor: abaAtiva === tab.id ? '#f9f9f9' : 'transparent',
-                    borderLeft: abaAtiva === tab.id ? '3px solid #333' : '3px solid transparent',
-                    marginBottom: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (abaAtiva !== tab.id) e.currentTarget.style.backgroundColor = '#f5f5f5'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (abaAtiva !== tab.id) e.currentTarget.style.backgroundColor = 'transparent'
-                  }}
-                >
-                  <Icon
-                    icon={tab.icon}
-                    width="20"
-                    style={{ color: abaAtiva === tab.id ? '#333' : '#666' }}
-                  />
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: abaAtiva === tab.id ? '600' : '400',
-                    color: abaAtiva === tab.id ? '#333' : '#666'
-                  }}>
-                    {tab.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Content Area */}
-        <div style={{ flex: 1 }}>
+      {/* Content Area */}
+      <div>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <Icon icon="eos-icons:loading" width="48" style={{ color: '#666' }} />
@@ -3082,7 +3021,6 @@ function Configuracao() {
             </>
           )}
         </div>
-      </div>
     </div>
   )
 }

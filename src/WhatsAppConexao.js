@@ -137,6 +137,7 @@ export default function WhatsAppConexao() {
 
   // Estado para modal de feedback
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
+  const [previewModalAberto, setPreviewModalAberto] = useState(false)
 
   // Estado para modal de upgrade (recurso bloqueado)
   const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' })
@@ -1445,133 +1446,103 @@ export default function WhatsAppConexao() {
 
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: isSmallScreen ? '16px' : '20px',
-        marginBottom: isSmallScreen ? '16px' : '25px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Icon icon="mdi:whatsapp" width={isSmallScreen ? 28 : 32} height={isSmallScreen ? 28 : 32} style={{ color: '#25D366' }} />
-          <div>
-            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              WhatsApp
-            </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              Gerencie sua conexão e templates de mensagens
-            </p>
-          </div>
-        </div>
+      {/* Título */}
+      <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
+        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+          WhatsApp
+        </h2>
+        <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
+          Gerencie sua conexao e templates de mensagens
+        </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        marginBottom: isSmallScreen ? '16px' : '25px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none',
-        display: 'flex',
-        gap: '4px',
-        padding: '4px'
-      }}>
-        <button
-          onClick={() => setActiveTab('conexao')}
-          style={{
-            flex: 1,
-            padding: isSmallScreen ? '10px 12px' : '12px 20px',
-            backgroundColor: activeTab === 'conexao' ? '#25D366' : 'transparent',
-            color: activeTab === 'conexao' ? 'white' : '#666',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: isSmallScreen ? '13px' : '14px',
-            fontWeight: '500',
-            transition: 'all 0.2s',
+      {/* Menu de Abas + Status */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isSmallScreen ? '16px' : '24px', flexWrap: 'wrap' }}>
+        {/* Tabs segmented control */}
+        <div style={{
+          display: 'inline-flex',
+          gap: '4px',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '10px',
+          padding: '4px'
+        }}>
+          {[
+            { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
+            { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: isSmallScreen ? '8px 16px' : '8px 20px',
+                backgroundColor: activeTab === tab.id ? 'white' : 'transparent',
+                color: activeTab === tab.id ? '#1a1a1a' : '#555',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: isSmallScreen ? '13px' : '14px',
+                fontWeight: activeTab === tab.id ? '600' : '400',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                opacity: activeTab === tab.id ? 1 : 0.75
+              }}
+            >
+              <Icon icon={tab.icon} width={isSmallScreen ? 16 : 18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Status badge + Desconectar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-        >
-          <Icon icon="mdi:connection" width="18" />
-          {isSmallScreen ? 'Conexão' : 'Conexão'}
-        </button>
-        <button
-          onClick={() => setActiveTab('templates')}
-          style={{
-            flex: 1,
-            padding: isSmallScreen ? '10px 12px' : '12px 20px',
-            backgroundColor: activeTab === 'templates' ? '#25D366' : 'transparent',
-            color: activeTab === 'templates' ? 'white' : '#666',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: isSmallScreen ? '13px' : '14px',
-            fontWeight: '500',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-        >
-          <Icon icon="mdi:message-text" width="18" />
-          {isSmallScreen ? 'Templates' : 'Templates de Mensagens'}
-        </button>
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            backgroundColor: status === 'connected' ? '#e8f5e9' : status === 'connecting' ? '#fff3e0' : '#fef2f2',
+            border: `1px solid ${status === 'connected' ? '#c8e6c9' : status === 'connecting' ? '#ffe0b2' : '#fecaca'}`
+          }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: status === 'connected' ? '#4CAF50' : status === 'connecting' ? '#ff9800' : '#f44336'
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: '600', color: status === 'connected' ? '#2e7d32' : status === 'connecting' ? '#e65100' : '#c62828' }}>
+              {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
+            </span>
+          </div>
+          {status === 'connected' && (
+            <button
+              onClick={() => setConfirmDesconexaoModal(true)}
+              disabled={loading}
+              style={{
+                padding: '6px 14px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              Desconectar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Conteúdo */}
       {activeTab === 'conexao' ? (
         <>
-          {/* Status Badge */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: isSmallScreen ? '12px 16px' : '16px 20px',
-            marginBottom: isSmallScreen ? '16px' : '25px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none',
-            display: 'flex',
-            flexDirection: isSmallScreen ? 'column' : 'row',
-            justifyContent: 'space-between',
-            alignItems: isSmallScreen ? 'stretch' : 'center',
-            gap: isSmallScreen ? '12px' : '0'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                backgroundColor: status === 'connected' ? '#4CAF50' : status === 'connecting' ? '#ff9800' : '#f44336'
-              }} />
-              <span style={{ fontSize: '14px', fontWeight: '500', color: '#344848' }}>
-                {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
-              </span>
-            </div>
-            {status === 'connected' && (
-              <button
-                onClick={() => setConfirmDesconexaoModal(true)}
-                disabled={loading}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                Desconectar
-              </button>
-            )}
-          </div>
 
           {/* Conteúdo Principal */}
           <div style={{
@@ -1999,854 +1970,154 @@ export default function WhatsAppConexao() {
           </div>
         </>
       ) : (
-        /* Aba de Templates */
+        /* Aba de Templates - Redesign */
         <div style={{
           backgroundColor: 'white',
           borderRadius: '8px',
-          padding: isSmallScreen ? '16px' : '30px',
-          border: '1px solid #e5e7eb',
-          boxShadow: 'none'
+          padding: isSmallScreen ? '16px' : '24px',
+          border: '1px solid #e5e7eb'
         }}>
-          <div style={{ marginBottom: isSmallScreen ? '20px' : '30px' }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              Templates de Mensagens
-            </h3>
-            <p style={{ margin: 0, fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              Crie e gerencie templates de mensagens personalizadas para enviar aos seus clientes
-            </p>
-          </div>
+          {/* Layout 2 colunas */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile || isTablet ? '1fr' : '1fr 1fr', gap: isSmallScreen ? '16px' : '24px' }}>
 
-          {/* Campo Chave PIX */}
-          <div style={{
-            backgroundColor: '#f0faf9',
-            border: '1px solid #32BCAD',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: isSmallScreen ? '20px' : '30px'
-          }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#344848' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon icon="mdi:pix" width="20" style={{ color: '#32BCAD' }} />
-                Chave PIX
-              </span>
-            </label>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <input
-                type="text"
-                value={chavePix}
-                onChange={(e) => setChavePix(e.target.value)}
-                placeholder="CPF, CNPJ, E-mail, Telefone ou Chave Aleatória"
-                style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  border: '1px solid #32BCAD',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: 'white'
-                }}
-              />
-              <button
-                onClick={salvarChavePix}
-                disabled={salvandoPix}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: '#32BCAD',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: salvandoPix ? 'not-allowed' : 'pointer',
-                  opacity: salvandoPix ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                {salvandoPix ? (
-                  <>
-                    <Icon icon="mdi:loading" width="16" className="spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Icon icon="mdi:content-save" width="16" />
-                    Salvar
-                  </>
-                )}
-              </button>
-            </div>
-            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#666' }}>
-              Esta chave será usada nas mensagens automáticas (variável {`{{chavePix}}`})
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile || isTablet ? '1fr' : '1fr 1fr', gap: isSmallScreen ? '20px' : '30px', marginBottom: isSmallScreen ? '20px' : '30px' }}>
-            {/* Editor */}
+            {/* COLUNA ESQUERDA: Cards de automação + Config */}
             <div>
-              <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
-                Editor de Template
-              </h4>
-
-              {/* Toggles de Automação - MOVIDO PARA O TOPO */}
-              <div style={{
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '20px'
-              }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Icon icon="mdi:robot-outline" width="18" />
-                    Automação de Mensagens
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
-                    Ative ou desative o envio automático de mensagens
-                  </p>
-                </div>
-
-                {/* Toggle 3 Dias */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  marginBottom: '8px',
-                  border: '1px solid #e0e0e0',
-                  opacity: automacaoLocked ? 0.7 : 1,
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:calendar-clock" width="20" style={{ color: '#2196F3' }} />
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        3 Dias Antes
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar lembretes 3 dias antes do vencimento
-                      </div>
-                    </div>
-                  </div>
-                  {automacaoLocked ? (
-                    <button
-                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação 3 Dias Antes' })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        backgroundColor: '#fff3e0',
-                        border: '1px solid #ffcc80',
-                        borderRadius: '16px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: '#e65100'
-                      }}
-                    >
-                      <Icon icon="mdi:lock" width="14" />
-                      Pro
-                    </button>
-                  ) : (
-                    <button
-                      onClick={toggleAutomacao3Dias}
-                      style={{
-                        position: 'relative',
-                        width: '50px',
-                        height: '26px',
-                        backgroundColor: automacao3DiasAtiva ? '#4CAF50' : '#ccc',
-                        borderRadius: '13px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.3s',
-                        padding: 0
-                      }}
-                    >
-                      <div style={{
-                        position: 'absolute',
-                        top: '3px',
-                        left: automacao3DiasAtiva ? '26px' : '3px',
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: 'left 0.3s',
-                        border: '1px solid #e5e7eb',
-                        boxShadow: 'none'
-                      }} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Toggle No Dia - LIBERADO para todos os planos (Starter incluso) */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  border: '1px solid #e0e0e0',
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:calendar-today" width="20" style={{ color: '#ff9800' }} />
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        No Dia
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar lembrete no dia do vencimento
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={toggleAutomacaoNoDia}
-                    style={{
-                      position: 'relative',
-                      width: '50px',
-                      height: '26px',
-                      backgroundColor: automacaoNoDiaAtiva ? '#4CAF50' : '#ccc',
-                      borderRadius: '13px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.3s',
-                      padding: 0
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: automacaoNoDiaAtiva ? '26px' : '3px',
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: 'white',
-                      borderRadius: '50%',
-                      transition: 'left 0.3s',
-                      border: '1px solid #e5e7eb',
-                      boxShadow: 'none'
-                    }} />
-                  </button>
-                </div>
-
-                {/* Toggle 3 Dias Depois - BLOQUEADO para Starter */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  marginTop: '8px',
-                  border: '1px solid #e0e0e0',
-                  opacity: automacaoLocked ? 0.7 : 1,
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:alert-circle" width="20" style={{ color: '#f44336' }} />
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        3 Dias Depois
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar cobrança 3 dias após o vencimento
-                      </div>
-                    </div>
-                  </div>
-                  {automacaoLocked ? (
-                    <button
-                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Automação 3 Dias Depois' })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        backgroundColor: '#fff3e0',
-                        border: '1px solid #ffcc80',
-                        borderRadius: '16px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: '#e65100'
-                      }}
-                    >
-                      <Icon icon="mdi:lock" width="14" />
-                      Pro
-                    </button>
-                  ) : (
-                    <button
-                      onClick={toggleAutomacao3DiasDepois}
-                      style={{
-                        position: 'relative',
-                        width: '50px',
-                        height: '26px',
-                        backgroundColor: automacao3DiasDepoisAtiva ? '#4CAF50' : '#ccc',
-                        borderRadius: '13px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.3s',
-                        padding: 0
-                      }}
-                    >
-                      <div style={{
-                        position: 'absolute',
-                        top: '3px',
-                        left: automacao3DiasDepoisAtiva ? '26px' : '3px',
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: 'left 0.3s',
-                        border: '1px solid #e5e7eb',
-                        boxShadow: 'none'
-                      }} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Toggle Lembrete de Aula - BLOQUEADO para Starter */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  marginTop: '8px',
-                  border: '1px solid #e0e0e0',
-                  opacity: automacaoLocked ? 0.7 : 1,
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:clock-alert-outline" width="20" style={{ color: '#6366f1' }} />
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        Lembrete de Aula
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar lembrete 1 hora antes da aula
-                      </div>
-                    </div>
-                  </div>
-                  {automacaoLocked ? (
-                    <button
-                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Lembrete de Aula' })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        backgroundColor: '#fff3e0',
-                        border: '1px solid #ffcc80',
-                        borderRadius: '16px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: '#e65100'
-                      }}
-                    >
-                      <Icon icon="mdi:lock" width="14" />
-                      Pro
-                    </button>
-                  ) : (
-                    <button
-                      onClick={toggleAutomacaoLembreteAula}
-                      style={{
-                        position: 'relative',
-                        width: '50px',
-                        height: '26px',
-                        backgroundColor: automacaoLembreteAulaAtiva ? '#4CAF50' : '#ccc',
-                        borderRadius: '13px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.3s',
-                        padding: 0
-                      }}
-                    >
-                      <div style={{
-                        position: 'absolute',
-                        top: '3px',
-                        left: automacaoLembreteAulaAtiva ? '26px' : '3px',
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: 'left 0.3s',
-                        border: '1px solid #e5e7eb',
-                        boxShadow: 'none'
-                      }} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Toggle Aniversário - BLOQUEADO para Starter */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  marginTop: '8px',
-                  border: '1px solid #e0e0e0',
-                  opacity: automacaoLocked ? 0.7 : 1,
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon icon="mdi:cake-variant" width="20" style={{ color: '#E91E63' }} />
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '500', color: '#344848' }}>
-                        Aniversário
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#999' }}>
-                        Enviar parabéns no dia do aniversário (8h)
-                      </div>
-                    </div>
-                  </div>
-                  {automacaoLocked ? (
-                    <button
-                      onClick={() => setUpgradeModal({ isOpen: true, featureName: 'Mensagem de Aniversário' })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        backgroundColor: '#fff3e0',
-                        border: '1px solid #ffcc80',
-                        borderRadius: '16px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: '#e65100'
-                      }}
-                    >
-                      <Icon icon="mdi:lock" width="14" />
-                      Pro
-                    </button>
-                  ) : (
-                    <button
-                      onClick={toggleAutomacaoAniversario}
-                      style={{
-                        position: 'relative',
-                        width: '50px',
-                        height: '26px',
-                        backgroundColor: automacaoAniversarioAtiva ? '#4CAF50' : '#ccc',
-                        borderRadius: '13px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.3s',
-                        padding: 0
-                      }}
-                    >
-                      <div style={{
-                        position: 'absolute',
-                        top: '3px',
-                        left: automacaoAniversarioAtiva ? '26px' : '3px',
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: 'left 0.3s',
-                        border: '1px solid #e5e7eb',
-                        boxShadow: 'none'
-                      }} />
-                    </button>
-                  )}
-                </div>
+              <div style={{ marginBottom: '12px' }}>
+                <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
+                  Automações
+                </h3>
+                <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Ative e selecione para editar</p>
               </div>
-
-              {/* Método de Pagamento nas Mensagens */}
-              <div style={{
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '20px'
-              }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Icon icon="mdi:credit-card-outline" width="18" />
-                    Pagamento nas Mensagens
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
-                    Escolha como o link de pagamento aparece nas cobranças
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', flexDirection: isSmallScreen ? 'column' : 'row' }}>
-                  {/* Card PIX Manual */}
-                  <button
-                    onClick={() => salvarMetodoPagamento('pix_manual')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                {[
+                  { tipo: 'pre_due_3days', nome: '3 Dias Antes', descricao: 'Lembrete 3 dias antes do vencimento', icone: 'mdi:calendar-clock', cor: '#2196F3', ativo: automacao3DiasAtiva, toggle: toggleAutomacao3Dias, locked: automacaoLocked },
+                  { tipo: 'due_day', nome: 'No Dia', descricao: 'Lembrete no dia do vencimento', icone: 'mdi:calendar-today', cor: '#ff9800', ativo: automacaoNoDiaAtiva, toggle: toggleAutomacaoNoDia, locked: false },
+                  { tipo: 'overdue', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked },
+                  { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked },
+                  { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked }
+                ].map((item) => (
+                  <div
+                    key={item.tipo}
+                    onClick={() => {
+                      if (item.locked) { setUpgradeModal({ isOpen: true, featureName: item.nome }); return }
+                      if (!item.ativo) return
+                      setTipoTemplateSelecionado(item.tipo)
+                      const template = templatesAgrupados[item.tipo]
+                      if (template) { setTituloTemplate(template.titulo); setMensagemTemplate(template.mensagem) }
+                      else { setTituloTemplate(getTituloDefault(item.tipo)); setMensagemTemplate(getMensagemDefault(item.tipo)) }
+                    }}
                     style={{
-                      flex: 1,
-                      padding: '14px',
-                      borderRadius: '8px',
-                      border: `2px solid ${metodoPagamento === 'pix_manual' ? '#344848' : '#e0e0e0'}`,
-                      background: metodoPagamento === 'pix_manual' ? '#f0f7f7' : 'white',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.2s',
-                      fontFamily: 'inherit'
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '12px 14px', backgroundColor: tipoTemplateSelecionado === item.tipo ? `${item.cor}08` : 'white',
+                      borderRadius: '8px', border: tipoTemplateSelecionado === item.tipo ? `2px solid ${item.cor}` : '1px solid #e5e7eb',
+                      cursor: item.locked ? 'pointer' : (item.ativo ? 'pointer' : 'default'),
+                      transition: 'all 0.2s', opacity: item.locked ? 0.7 : (!item.ativo ? 0.5 : 1)
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <Icon icon="mdi:key-variant" width="20" style={{ color: metodoPagamento === 'pix_manual' ? '#344848' : '#999' }} />
-                      <span style={{ fontWeight: 600, fontSize: '13px', color: metodoPagamento === 'pix_manual' ? '#344848' : '#666' }}>
-                        PIX Manual
-                      </span>
-                      {metodoPagamento === 'pix_manual' && (
-                        <Icon icon="mdi:check-circle" width="16" style={{ color: '#4CAF50', marginLeft: 'auto' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: `${item.cor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon icon={item.icone} width="20" style={{ color: item.cor }} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {item.nome}
+                          {item.locked && <span style={{ fontSize: '10px', fontWeight: '600', color: '#e65100', backgroundColor: '#fff3e0', padding: '1px 6px', borderRadius: '4px' }}>PRO</span>}
+                          {templatesAgrupados[item.tipo] && item.ativo && !item.locked && <Icon icon="mdi:check-circle" width="14" style={{ color: '#4CAF50' }} />}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.descricao}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      {item.locked ? (
+                        <button onClick={(e) => { e.stopPropagation(); setUpgradeModal({ isOpen: true, featureName: item.nome }) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', backgroundColor: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', color: '#e65100' }}>
+                          <Icon icon="mdi:lock" width="12" /> Pro
+                        </button>
+                      ) : (
+                        <button onClick={(e) => { e.stopPropagation(); item.toggle() }}
+                          style={{ position: 'relative', width: '44px', height: '24px', backgroundColor: item.ativo ? '#4CAF50' : '#ccc', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'background-color 0.3s', padding: 0 }}>
+                          <div style={{ position: 'absolute', top: '2px', left: item.ativo ? '22px' : '2px', width: '20px', height: '20px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', border: '1px solid #e5e7eb' }} />
+                        </button>
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#999' }}>
-                      Envia sua chave PIX para pagamento
-                    </div>
-                  </button>
-
-                  {/* Card Link Asaas */}
-                  <button
-                    onClick={() => asaasConfigurado && salvarMetodoPagamento('asaas_link')}
-                    disabled={!asaasConfigurado}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      borderRadius: '8px',
-                      border: `2px solid ${metodoPagamento === 'asaas_link' ? '#344848' : '#e0e0e0'}`,
-                      background: metodoPagamento === 'asaas_link' ? '#f0f7f7' : 'white',
-                      cursor: asaasConfigurado ? 'pointer' : 'not-allowed',
-                      textAlign: 'left',
-                      opacity: asaasConfigurado ? 1 : 0.5,
-                      transition: 'all 0.2s',
-                      fontFamily: 'inherit'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <Icon icon="mdi:link-variant" width="20" style={{ color: metodoPagamento === 'asaas_link' ? '#344848' : '#999' }} />
-                      <span style={{ fontWeight: 600, fontSize: '13px', color: metodoPagamento === 'asaas_link' ? '#344848' : '#666' }}>
-                        Link Asaas
-                      </span>
-                      {metodoPagamento === 'asaas_link' && (
-                        <Icon icon="mdi:check-circle" width="16" style={{ color: '#4CAF50', marginLeft: 'auto' }} />
-                      )}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#999' }}>
-                      {asaasConfigurado
-                        ? 'Gera link de pagamento Asaas (PIX + Boleto)'
-                        : 'Configure o Asaas em Integrações'}
-                    </div>
-                  </button>
-                </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Template Type Selector */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '10px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#344848'
-                }}>
-                  Tipo de Mensagem
-                </label>
-                <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: isSmallScreen ? '8px' : '12px' }}>
-                  <button
-                    disabled={!automacao3DiasAtiva || automacaoLocked}
-                    onClick={() => {
-                      if (automacaoLocked) {
-                        setUpgradeModal({ isOpen: true, featureName: 'Template 3 Dias Antes' })
-                        return
-                      }
-                      if (!automacao3DiasAtiva) return
-                      setTipoTemplateSelecionado('pre_due_3days')
-                      const template = templatesAgrupados.pre_due_3days
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('pre_due_3days'))
-                        setMensagemTemplate(getMensagemDefault('pre_due_3days'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'pre_due_3days' && !automacaoLocked ? '#2196F3' : 'white',
-                      color: tipoTemplateSelecionado === 'pre_due_3days' && !automacaoLocked ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'pre_due_3days' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: automacaoLocked ? 'pointer' : (automacao3DiasAtiva ? 'pointer' : 'not-allowed'),
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      opacity: automacaoLocked ? 0.6 : (automacao3DiasAtiva ? 1 : 0.5),
-                      position: 'relative'
-                    }}
-                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacao3DiasAtiva ? 'Ative a automação de 3 dias para editar este template' : '')}
-                  >
-                    {automacaoLocked && (
-                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
-                    )}
-                    <Icon icon="mdi:calendar-clock" width="20" />
-                    <span>3 Dias Antes</span>
-                    {templatesAgrupados.pre_due_3days && automacao3DiasAtiva && !automacaoLocked && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'pre_due_3days' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-
-                  {/* Botão No Dia - LIBERADO para todos os planos */}
-                  <button
-                    disabled={!automacaoNoDiaAtiva}
-                    onClick={() => {
-                      if (!automacaoNoDiaAtiva) return
-                      setTipoTemplateSelecionado('due_day')
-                      const template = templatesAgrupados.due_day
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('due_day'))
-                        setMensagemTemplate(getMensagemDefault('due_day'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'due_day' ? '#ff9800' : 'white',
-                      color: tipoTemplateSelecionado === 'due_day' ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'due_day' ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: automacaoNoDiaAtiva ? 'pointer' : 'not-allowed',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      opacity: automacaoNoDiaAtiva ? 1 : 0.5,
-                      position: 'relative'
-                    }}
-                    title={!automacaoNoDiaAtiva ? 'Ative a automação No Dia para editar este template' : ''}
-                  >
-                    <Icon icon="mdi:calendar-today" width="20" />
-                    <span>No Dia</span>
-                    {templatesAgrupados.due_day && automacaoNoDiaAtiva && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'due_day' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-
-                  {/* Botão 3 Dias Depois - BLOQUEADO para Starter */}
-                  <button
-                    disabled={!automacao3DiasDepoisAtiva || automacaoLocked}
-                    onClick={() => {
-                      if (automacaoLocked) {
-                        setUpgradeModal({ isOpen: true, featureName: 'Template 3 Dias Depois' })
-                        return
-                      }
-                      if (!automacao3DiasDepoisAtiva) return
-                      setTipoTemplateSelecionado('overdue')
-                      const template = templatesAgrupados.overdue
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('overdue'))
-                        setMensagemTemplate(getMensagemDefault('overdue'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'overdue' && !automacaoLocked ? '#f44336' : 'white',
-                      color: tipoTemplateSelecionado === 'overdue' && !automacaoLocked ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'overdue' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: automacaoLocked ? 'pointer' : (automacao3DiasDepoisAtiva ? 'pointer' : 'not-allowed'),
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      opacity: automacaoLocked ? 0.6 : (automacao3DiasDepoisAtiva ? 1 : 0.5),
-                      position: 'relative'
-                    }}
-                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacao3DiasDepoisAtiva ? 'Ative a automação 3 Dias Depois para editar este template' : '')}
-                  >
-                    {automacaoLocked && (
-                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
-                    )}
-                    <Icon icon="mdi:alert-circle" width="20" />
-                    <span>3 Dias Depois</span>
-                    {templatesAgrupados.overdue && automacao3DiasDepoisAtiva && !automacaoLocked && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'overdue' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-
-                  {/* Botão Lembrete de Aula - BLOQUEADO para Starter */}
-                  <button
-                    disabled={!automacaoLembreteAulaAtiva || automacaoLocked}
-                    onClick={() => {
-                      if (automacaoLocked) {
-                        setUpgradeModal({ isOpen: true, featureName: 'Template Lembrete de Aula' })
-                        return
-                      }
-                      if (!automacaoLembreteAulaAtiva) return
-                      setTipoTemplateSelecionado('class_reminder')
-                      const template = templatesAgrupados.class_reminder
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('class_reminder'))
-                        setMensagemTemplate(getMensagemDefault('class_reminder'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'class_reminder' && !automacaoLocked ? '#6366f1' : 'white',
-                      color: tipoTemplateSelecionado === 'class_reminder' && !automacaoLocked ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'class_reminder' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: automacaoLocked ? 'pointer' : (automacaoLembreteAulaAtiva ? 'pointer' : 'not-allowed'),
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      opacity: automacaoLocked ? 0.6 : (automacaoLembreteAulaAtiva ? 1 : 0.5),
-                      position: 'relative'
-                    }}
-                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacaoLembreteAulaAtiva ? 'Ative o Lembrete de Aula para editar este template' : '')}
-                  >
-                    {automacaoLocked && (
-                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
-                    )}
-                    <Icon icon="mdi:clock-alert-outline" width="20" />
-                    <span>Lembrete Aula</span>
-                    {templatesAgrupados.class_reminder && automacaoLembreteAulaAtiva && !automacaoLocked && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'class_reminder' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-
-                  {/* Botão Aniversário - BLOQUEADO para Starter */}
-                  <button
-                    disabled={!automacaoAniversarioAtiva || automacaoLocked}
-                    onClick={() => {
-                      if (automacaoLocked) {
-                        setUpgradeModal({ isOpen: true, featureName: 'Template Aniversário' })
-                        return
-                      }
-                      if (!automacaoAniversarioAtiva) return
-                      setTipoTemplateSelecionado('birthday')
-                      const template = templatesAgrupados.birthday
-                      if (template) {
-                        setTituloTemplate(template.titulo)
-                        setMensagemTemplate(template.mensagem)
-                      } else {
-                        setTituloTemplate(getTituloDefault('birthday'))
-                        setMensagemTemplate(getMensagemDefault('birthday'))
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: tipoTemplateSelecionado === 'birthday' && !automacaoLocked ? '#E91E63' : 'white',
-                      color: tipoTemplateSelecionado === 'birthday' && !automacaoLocked ? 'white' : '#666',
-                      border: tipoTemplateSelecionado === 'birthday' && !automacaoLocked ? 'none' : '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: automacaoLocked ? 'pointer' : (automacaoAniversarioAtiva ? 'pointer' : 'not-allowed'),
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      opacity: automacaoLocked ? 0.6 : (automacaoAniversarioAtiva ? 1 : 0.5),
-                      position: 'relative'
-                    }}
-                    title={automacaoLocked ? 'Disponível no plano Pro' : (!automacaoAniversarioAtiva ? 'Ative a automação de Aniversário para editar este template' : '')}
-                  >
-                    {automacaoLocked && (
-                      <Icon icon="mdi:lock" width="14" style={{ position: 'absolute', top: '8px', right: '8px', color: '#e65100' }} />
-                    )}
-                    <Icon icon="mdi:cake-variant" width="20" />
-                    <span>Aniversário</span>
-                    {templatesAgrupados.birthday && automacaoAniversarioAtiva && !automacaoLocked && (
-                      <Icon icon="mdi:check-circle" width="16" style={{ color: tipoTemplateSelecionado === 'birthday' ? 'white' : '#4CAF50' }} />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Aviso de bloqueio para Starter */}
-              {templateEditLocked && (
-                <div style={{
-                  padding: '12px 16px',
-                  backgroundColor: '#fff3e0',
-                  border: '1px solid #ffcc80',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
-                  <Icon icon="mdi:lock" width="20" style={{ color: '#ff9800', flexShrink: 0 }} />
+              {/* Config Rápida: PIX + Pagamento */}
+              <details style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                <summary style={{ padding: '12px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#555', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                  <Icon icon="mdi:cog-outline" width="16" style={{ color: '#888' }} />
+                  Configurações de Pagamento
+                  <Icon icon="mdi:chevron-down" width="16" style={{ color: '#888', marginLeft: 'auto' }} />
+                </summary>
+                <div style={{ padding: '0 14px 14px' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Chave PIX</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value={chavePix} onChange={(e) => setChavePix(e.target.value)}
+                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                      <button onClick={salvarChavePix} disabled={salvandoPix}
+                        style={{ padding: '8px 14px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: salvandoPix ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
+                        {salvandoPix ? '...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </div>
                   <div>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#e65100' }}>
-                      Template bloqueado para edição
-                    </span>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
-                      Este template está disponível apenas para planos Pro e Premium. Selecione "No Dia" para personalizar.
-                    </p>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Método nas mensagens</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => salvarMetodoPagamento('pix_manual')}
+                        style={{ flex: 1, padding: '8px', fontSize: '12px', fontWeight: '600', backgroundColor: metodoPagamento !== 'asaas_link' ? '#e8f5e9' : 'white', color: metodoPagamento !== 'asaas_link' ? '#2e7d32' : '#666', border: metodoPagamento !== 'asaas_link' ? '2px solid #4CAF50' : '1px solid #e0e0e0', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                        PIX Manual
+                      </button>
+                      <button onClick={() => asaasConfigurado ? salvarMetodoPagamento('asaas_link') : navigate('/app/configuracao?aba=integracoes')}
+                        style={{ flex: 1, padding: '8px', fontSize: '12px', fontWeight: '600', backgroundColor: metodoPagamento === 'asaas_link' ? '#e3f2fd' : 'white', color: metodoPagamento === 'asaas_link' ? '#1565c0' : (asaasConfigurado ? '#666' : '#bbb'), border: metodoPagamento === 'asaas_link' ? '2px solid #2196F3' : '1px solid #e0e0e0', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s', opacity: asaasConfigurado ? 1 : 0.6, position: 'relative' }}
+                        title={!asaasConfigurado ? 'Clique para configurar o Asaas em Integrações' : ''}>
+                        Link Asaas
+                      </button>
+                    </div>
+                    {!asaasConfigurado && (
+                      <button onClick={() => navigate('/app/configuracao?aba=integracoes')}
+                        style={{ marginTop: '6px', background: 'none', border: 'none', padding: 0, fontSize: '11px', color: '#2196F3', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}>
+                        <Icon icon="mdi:open-in-new" width="12" />
+                        Configurar Asaas em Integrações
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
+              </details>
+            </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
-                  Título do Template
-                </label>
-                <input
-                  type="text"
-                  value={tituloTemplate}
-                  onChange={(e) => setTituloTemplate(e.target.value)}
-                  disabled={templateEditLocked}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    backgroundColor: templateEditLocked ? '#f5f5f5' : 'white',
-                    cursor: templateEditLocked ? 'not-allowed' : 'text',
-                    opacity: templateEditLocked ? 0.7 : 1
-                  }}
-                  placeholder="Ex: Lembrete de Cobrança"
-                />
-              </div>
+            {/* COLUNA DIREITA: Editor (sticky) */}
+            <div style={{ position: isMobile || isTablet ? 'static' : 'sticky', top: '20px', alignSelf: 'start' }}>
+              {!tipoTemplateSelecionado ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px dashed #ddd' }}>
+                  <Icon icon="mdi:cursor-default-click" width="48" style={{ color: '#ccc', marginBottom: '12px' }} />
+                  <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>Selecione uma automação ativa para editar o template</p>
+                </div>
+              ) : (
+                <>
+                  {/* Aviso de bloqueio para Starter */}
+                  {templateEditLocked && (
+                    <div style={{ padding: '12px 16px', backgroundColor: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Icon icon="mdi:lock" width="20" style={{ color: '#ff9800', flexShrink: 0 }} />
+                      <div>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#e65100' }}>Template bloqueado para edição</span>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>Disponível apenas para planos Pro e Premium.</p>
+                      </div>
+                    </div>
+                  )}
 
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '500', color: '#666' }}>
-                    Mensagem
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
+                        Mensagem
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Edite o template selecionado</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={restaurarMensagemPadrao}
                     disabled={templateEditLocked}
@@ -2880,7 +2151,52 @@ export default function WhatsAppConexao() {
                     <Icon icon="material-symbols:refresh" width="14" />
                     Restaurar Padrão
                   </button>
-                </div>
+                  <button
+                    onClick={() => setPreviewModalAberto(true)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: 'white',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: '#666',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f5f5f5'; e.currentTarget.style.borderColor = '#ccc' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#e0e0e0' }}
+                  >
+                    <Icon icon="mdi:eye-outline" width="14" />
+                    Preview
+                  </button>
+                  <button
+                    onClick={salvarTemplate}
+                    disabled={templateEditLocked}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: templateEditLocked ? '#ccc' : '#25D366',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: 'white',
+                      cursor: templateEditLocked ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      opacity: templateEditLocked ? 0.7 : 1
+                    }}
+                  >
+                    <Icon icon={templateEditLocked ? 'mdi:lock' : 'mdi:content-save'} width="14" />
+                    Salvar
+                  </button>
+                    </div>
+                  </div>
+
                 <textarea
                   value={mensagemTemplate}
                   onChange={(e) => setMensagemTemplate(e.target.value)}
@@ -2903,7 +2219,6 @@ export default function WhatsAppConexao() {
                   }}
                   placeholder="Digite sua mensagem aqui..."
                 />
-              </div>
 
               <div style={{
                 padding: '14px',
@@ -2915,7 +2230,34 @@ export default function WhatsAppConexao() {
                   Variáveis Disponíveis (clique para copiar):
                 </h5>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {tipoTemplateSelecionado === 'class_reminder' ? (
+                  {tipoTemplateSelecionado === 'birthday' ? (
+                    <>
+                      {[
+                        { var: '{{nomeCliente}}', bg: '#fce4ec', border: '#f48fb1', color: '#c2185b' },
+                        { var: '{{nomeEmpresa}}', bg: '#fce4ec', border: '#f48fb1', color: '#c2185b' }
+                      ].map(v => (
+                        <code
+                          key={v.var}
+                          onClick={() => {
+                            navigator.clipboard.writeText(v.var)
+                            setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: `${v.var} copiado para a área de transferência` })
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: v.bg,
+                            border: `1px solid ${v.border}`,
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            color: v.color,
+                            cursor: 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          {v.var}
+                        </code>
+                      ))}
+                    </>
+                  ) : tipoTemplateSelecionado === 'class_reminder' ? (
                     <>
                       {[
                         { var: '{{nomeCliente}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' },
@@ -3078,124 +2420,130 @@ export default function WhatsAppConexao() {
                     </>
                   )}
                 </div>
+                {tipoTemplateSelecionado === 'birthday' && (
+                  <p style={{ fontSize: '11px', color: '#E91E63', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    Variáveis exclusivas para mensagem de aniversário
+                  </p>
+                )}
                 {tipoTemplateSelecionado === 'class_reminder' && (
                   <p style={{ fontSize: '11px', color: '#6366f1', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
                     Variáveis exclusivas para lembrete de aula
                   </p>
                 )}
-                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && (
+                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && tipoTemplateSelecionado !== 'birthday' && (
                   <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
                     Nota: {`{{diasAtraso}}`} não está disponível para mensagens pré-vencimento
                   </p>
                 )}
               </div>
 
-              <button
-                onClick={salvarTemplate}
-                disabled={templateEditLocked}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: templateEditLocked ? '#ccc' : '#25D366',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: templateEditLocked ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: templateEditLocked ? 0.7 : 1
-                }}
-              >
-                <Icon icon={templateEditLocked ? 'mdi:lock' : 'mdi:content-save'} width="18" />
-                {templateEditLocked ? 'Template disponível no Pro+' : 'Salvar Template'}
-              </button>
-            </div>
-
-            {/* Preview WhatsApp */}
-            <div>
-              <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
-                Preview da Mensagem
-              </h4>
-
-              <div style={{
-                backgroundColor: '#e5ddd5',
-                backgroundImage: 'url(/whatsapp-bg.png)',
-                backgroundSize: 'contain',
-                backgroundRepeat: 'repeat',
-                backgroundPosition: 'center',
-                borderRadius: '8px',
-                padding: '20px',
-                minHeight: '500px',
-                boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                <div style={{
-                  backgroundColor: '#dcf8c6',
-                  borderRadius: '8px',
-                  padding: '10px 14px',
-                  position: 'relative',
-                  maxWidth: '85%',
-                  marginLeft: 'auto',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  wordWrap: 'break-word'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    right: '-6px',
-                    bottom: '6px',
-                    width: '0',
-                    height: '0',
-                    borderLeft: '8px solid #dcf8c6',
-                    borderRight: '8px solid transparent',
-                    borderTop: '4px solid transparent',
-                    borderBottom: '4px solid transparent'
-                  }} />
-
-                  <div style={{
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: '#303030',
-                    whiteSpace: 'pre-wrap',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-                  }}>
-                    {gerarPreview(mensagemTemplate)}
-                  </div>
-
-                  <div style={{
-                    fontSize: '11px',
-                    color: '#667781',
-                    marginTop: '6px',
-                    textAlign: 'right',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: '4px',
-                    height: '16px'
-                  }}>
-                    <span style={{ lineHeight: '16px' }}>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    <Icon icon="mdi:check-all" width="16" height="16" style={{ color: '#53bdeb', display: 'block' }} />
-                  </div>
-                </div>
-
-                <div style={{
-                  marginTop: '20px',
-                  padding: '12px',
-                  backgroundColor: 'rgba(255,255,255,0.7)',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  color: '#666',
-                  lineHeight: '1.5'
-                }}>
-                  <Icon icon="mdi:information" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-                  <strong>Exemplo:</strong> As variáveis foram substituídas por dados de exemplo para você visualizar como ficará a mensagem real.
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+
+      {/* Modal de Preview WhatsApp */}
+      {previewModalAberto && (
+        <>
+          <div
+            onClick={() => setPreviewModalAberto(false)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 10000,
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              zIndex: 10001,
+              width: '90vw',
+              maxWidth: '420px',
+              animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#344848' }}>Preview da Mensagem</h4>
+              <button
+                onClick={() => setPreviewModalAberto(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex' }}
+              >
+                <Icon icon="mdi:close" width="20" style={{ color: '#999' }} />
+              </button>
+            </div>
+            <div style={{
+              backgroundColor: '#e5ddd5',
+              backgroundImage: 'url(/whatsapp-bg.png)',
+              backgroundSize: 'contain',
+              backgroundRepeat: 'repeat',
+              backgroundPosition: 'center',
+              borderRadius: '8px',
+              padding: '16px',
+              maxHeight: '60vh',
+              overflowY: 'auto'
+            }}>
+              <div style={{
+                backgroundColor: '#dcf8c6',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                position: 'relative',
+                maxWidth: '90%',
+                marginLeft: 'auto',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                wordWrap: 'break-word'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  right: '-6px',
+                  bottom: '6px',
+                  width: '0', height: '0',
+                  borderLeft: '8px solid #dcf8c6',
+                  borderRight: '8px solid transparent',
+                  borderTop: '4px solid transparent',
+                  borderBottom: '4px solid transparent'
+                }} />
+                <div style={{
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: '#303030',
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+                }}>
+                  {gerarPreview(mensagemTemplate)}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#667781',
+                  marginTop: '6px',
+                  textAlign: 'right',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: '4px'
+                }}>
+                  <span>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <Icon icon="mdi:check-all" width="16" height="16" style={{ color: '#53bdeb', display: 'block' }} />
+                </div>
+              </div>
+            </div>
+            <p style={{ margin: '10px 0 0 0', fontSize: '11px', color: '#999', textAlign: 'center' }}>
+              As variáveis foram substituídas por dados de exemplo
+            </p>
+          </div>
+        </>
       )}
 
       {/* Modal de Feedback */}

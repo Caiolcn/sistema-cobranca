@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -37,6 +37,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   // Aba ativa do menu financeiro
   const [abaAtiva, setAbaAtiva] = useState('mensalidades')
+
+  // Portal para botões das abas embarcadas + contagens
+  const buttonsPortalRef = useRef(null)
+  const [portalReady, setPortalReady] = useState(false)
+  const [vendasCount, setVendasCount] = useState({ total: 0, filtered: 0 })
+  const [despesasCount, setDespesasCount] = useState({ total: 0, filtered: 0 })
 
   // Debounce do filtro de nome (300ms)
   useEffect(() => {
@@ -1160,78 +1166,94 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Menu de Abas */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: isSmallScreen ? '6px' : '8px',
-        marginBottom: isSmallScreen ? '12px' : '16px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none',
-        display: 'flex',
-        gap: '4px',
-        overflowX: 'auto'
-      }}>
-        {[
-          { id: 'mensalidades', label: 'Mensalidades', icon: 'fluent:receipt-20-regular' },
-          { id: 'avulsas', label: 'Vendas', icon: 'mdi:cart-outline' },
-          { id: 'despesas', label: 'Despesas', icon: 'mdi:wallet-outline' }
-        ].map(aba => (
-          <button
-            key={aba.id}
-            onClick={() => setAbaAtiva(aba.id)}
-            style={{
-              padding: isSmallScreen ? '8px 14px' : '10px 20px',
-              backgroundColor: abaAtiva === aba.id ? '#344848' : 'transparent',
-              color: abaAtiva === aba.id ? 'white' : '#666',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: isSmallScreen ? '13px' : '14px',
-              fontWeight: abaAtiva === aba.id ? '600' : '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s'
-            }}
-          >
-            <Icon icon={aba.icon} width={isSmallScreen ? 16 : 18} />
-            {aba.label}
-          </button>
-        ))}
+      {/* Título dinâmico por aba */}
+      <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
+        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+          {abaAtiva === 'mensalidades' && 'Mensalidades'}
+          {abaAtiva === 'avulsas' && 'Cobranças Avulsas'}
+          {abaAtiva === 'despesas' && 'Despesas'}
+        </h2>
+        <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
+          {abaAtiva === 'mensalidades' && `${mensalidadesFiltradas.length} de ${mensalidades.length} mensalidade(s)`}
+          {abaAtiva === 'avulsas' && `${vendasCount.filtered} de ${vendasCount.total} cobrança(s)`}
+          {abaAtiva === 'despesas' && `${despesasCount.filtered} de ${despesasCount.total} despesa(s)`}
+        </p>
       </div>
 
-      {/* ========== ABA: COBRANÇAS AVULSAS ========== */}
-      {abaAtiva === 'avulsas' && <CobrancasAvulsas embedded />}
+      {/* Menu de Abas + Botões */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isSmallScreen ? '16px' : '24px', flexWrap: 'wrap' }}>
+        {/* Tabs segmented control */}
+        <div style={{
+          display: 'inline-flex',
+          gap: '4px',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '10px',
+          padding: '4px'
+        }}>
+          {[
+            { id: 'mensalidades', label: 'Mensalidades', icon: 'fluent:receipt-20-regular' },
+            { id: 'avulsas', label: 'Vendas', icon: 'mdi:cart-outline' },
+            { id: 'despesas', label: 'Despesas', icon: 'mdi:wallet-outline' }
+          ].map(aba => (
+            <button
+              key={aba.id}
+              onClick={() => setAbaAtiva(aba.id)}
+              style={{
+                padding: isSmallScreen ? '8px 16px' : '8px 20px',
+                backgroundColor: abaAtiva === aba.id ? 'white' : 'transparent',
+                color: abaAtiva === aba.id ? '#1a1a1a' : '#555',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: isSmallScreen ? '13px' : '14px',
+                fontWeight: abaAtiva === aba.id ? '600' : '400',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                boxShadow: abaAtiva === aba.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                opacity: abaAtiva === aba.id ? 1 : 0.75
+              }}
+            >
+              <Icon icon={aba.icon} width={isSmallScreen ? 16 : 18} />
+              {aba.label}
+            </button>
+          ))}
+        </div>
 
-      {/* ========== ABA: DESPESAS ========== */}
-      {abaAtiva === 'despesas' && <Despesas embedded />}
+        {/* Busca + Botões (apenas aba Mensalidades) */}
+        {abaAtiva === 'mensalidades' && (
+          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isSmallScreen ? 'stretch' : 'flex-end', alignItems: 'center' }}>
+            {/* Busca por nome */}
+            <div style={{ position: 'relative', flex: isSmallScreen ? 1 : 'none' }}>
+              <Icon icon="mdi:magnify" width="18" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
+              <input
+                type="text"
+                value={filtroNome}
+                onChange={(e) => setFiltroNome(e.target.value)}
+                placeholder="Buscar aluno..."
+                style={{
+                  width: isSmallScreen ? '100%' : '200px',
+                  padding: '9px 32px 9px 34px',
+                  fontSize: '14px',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  backgroundColor: 'white',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {filtroNome && (
+                <button
+                  onClick={() => setFiltroNome('')}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', color: '#999' }}
+                >
+                  <Icon icon="mdi:close-circle" width="16" />
+                </button>
+              )}
+            </div>
 
-      {/* ========== ABA: MENSALIDADES ========== */}
-      {abaAtiva === 'mensalidades' && (<>
-      {/* Header - Título e Botões */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: isSmallScreen ? '16px' : '20px',
-        marginBottom: isSmallScreen ? '12px' : '16px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none'
-      }}>
-        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'center', gap: isSmallScreen ? '16px' : '0' }}>
-          {/* Título */}
-          <div>
-            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              Mensalidades
-            </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              {mensalidadesFiltradas.length} de {mensalidades.length} mensalidade(s)
-            </p>
-          </div>
-
-          {/* Botões */}
-          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isSmallScreen ? 'stretch' : 'flex-end' }}>
             <button
               onClick={() => exportarMensalidades(mensalidadesFiltradas)}
               style={{
@@ -1369,63 +1391,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
                 {/* Conteúdo do popover */}
                 <div style={{ padding: '20px', flex: 1 }}>
-                  {/* Filtro por Nome */}
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '14px', color: '#333', marginBottom: '8px', fontWeight: '600' }}>
-                      Nome do Aluno
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <Icon
-                        icon="mdi:magnify"
-                        width="18"
-                        height="18"
-                        style={{
-                          position: 'absolute',
-                          left: '10px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: '#999'
-                        }}
-                      />
-                      <input
-                        type="text"
-                        value={filtroNome}
-                        onChange={(e) => setFiltroNome(e.target.value)}
-                        placeholder="Buscar por nome..."
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px 10px 36px',
-                          fontSize: '16px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                      {filtroNome && (
-                        <button
-                          onClick={() => setFiltroNome('')}
-                          style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '2px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            color: '#999'
-                          }}
-                        >
-                          <Icon icon="mdi:close-circle" width="16" height="16" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Seção Status */}
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ display: 'block', fontWeight: '600', marginBottom: '12px', fontSize: '14px', color: '#333' }}>
@@ -1567,17 +1532,28 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {/* Portal target para botões de Vendas/Despesas */}
+        <div ref={(el) => { buttonsPortalRef.current = el; if (el && !portalReady) setPortalReady(true) }} style={{ display: 'contents' }} />
       </div>
 
+      {/* ========== ABA: COBRANÇAS AVULSAS ========== */}
+      {abaAtiva === 'avulsas' && <CobrancasAvulsas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={(t, f) => setVendasCount({ total: t, filtered: f })} />}
+
+      {/* ========== ABA: DESPESAS ========== */}
+      {abaAtiva === 'despesas' && <Despesas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={(t, f) => setDespesasCount({ total: t, filtered: f })} />}
+
+      {/* ========== ABA: MENSALIDADES ========== */}
+      {abaAtiva === 'mensalidades' && (<>
       {/* Cards de Indicadores - em seção separada */}
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb',
+        borderRadius: '0',
+        border: 'none',
         boxShadow: 'none',
-        padding: isSmallScreen ? '16px' : '20px',
-        marginBottom: isSmallScreen ? '16px' : '20px'
+        padding: isSmallScreen ? '0 0 16px 0' : '0 0 20px 0',
+        marginBottom: 0
       }}>
         <div style={{
           display: 'grid',
