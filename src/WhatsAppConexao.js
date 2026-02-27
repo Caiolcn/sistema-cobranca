@@ -2380,7 +2380,6 @@ export default function WhatsAppConexao() {
                     </button>
                   )}
                 </div>
-              </div>
 
                 {/* Toggle Aniversário - BLOQUEADO para Starter */}
                 <div style={{
@@ -2456,6 +2455,7 @@ export default function WhatsAppConexao() {
                     </button>
                   )}
                 </div>
+              </div>
 
               {/* Método de Pagamento nas Mensagens */}
               <div style={{
