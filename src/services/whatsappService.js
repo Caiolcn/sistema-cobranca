@@ -696,8 +696,8 @@ class WhatsAppService {
 
     // 3. Verificar se plano Starter tentando enviar mensagem bloqueada
     // Starter só pode enviar "No Dia" (due_day)
-    // Pro/Premium pode enviar: 3 dias antes (pre_due_3days), no dia (due_day), 3 dias depois (overdue)
-    if (plano === 'starter' && (tipoMensagem === 'pre_due_3days' || tipoMensagem === 'overdue')) {
+    // Pro/Premium pode enviar: 3 dias antes (pre_due_3days), no dia (due_day), 3 dias depois (overdue), aniversário (birthday)
+    if (plano === 'starter' && (tipoMensagem === 'pre_due_3days' || tipoMensagem === 'overdue' || tipoMensagem === 'birthday')) {
       return {
         permitido: false,
         erro: 'Este tipo de mensagem está disponível apenas para planos Pro e Premium. Faça upgrade para desbloquear.'

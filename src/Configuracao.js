@@ -47,7 +47,13 @@ Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar
 💰 Valor: {{valorMensalidade}}
 🔑 Chave Pix: {{chavePix}}
 
-Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
+Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`,
+
+  birthday: `Feliz aniversário, {{nomeCliente}}! 🎂🎉
+
+A equipe {{nomeEmpresa}} deseja a você um dia incrível, cheio de saúde, alegria e conquistas!
+
+Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`
 }
 
 function Configuracao() {
@@ -80,7 +86,8 @@ function Configuracao() {
     enviarAntes: false,
     enviar3DiasAntes: false,
     enviarNoDia: false,
-    enviar3DiasDepois: false
+    enviar3DiasDepois: false,
+    enviarAniversario: false
   })
 
   // Plans
@@ -349,7 +356,8 @@ function Configuracao() {
         enviarAntes: data.enviar_antes_vencimento,
         enviar3DiasAntes: data.enviar_3_dias_antes || false,
         enviarNoDia: data.enviar_no_dia || false,
-        enviar3DiasDepois: data.enviar_3_dias_depois || false
+        enviar3DiasDepois: data.enviar_3_dias_depois || false,
+        enviarAniversario: data.enviar_aniversario || false
       })
     }
   }
@@ -368,7 +376,8 @@ function Configuracao() {
       const titulos = {
         pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
         due_day: 'Lembrete - Vencimento Hoje',
-        overdue: 'Cobrança - 3 Dias Após o Vencimento'
+        overdue: 'Cobrança - 3 Dias Após o Vencimento',
+        birthday: 'Mensagem de Aniversário'
       }
 
       // Se já existe, atualizar se necessário
@@ -420,6 +429,7 @@ function Configuracao() {
           enviar_3_dias_antes: configCobranca.enviar3DiasAntes,
           enviar_no_dia: configCobranca.enviarNoDia,
           enviar_3_dias_depois: configCobranca.enviar3DiasDepois,
+          enviar_aniversario: configCobranca.enviarAniversario,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' })
 
@@ -434,6 +444,9 @@ function Configuracao() {
       }
       if (configCobranca.enviar3DiasDepois) {
         await criarTemplatePadraoSeNaoExiste('overdue')
+      }
+      if (configCobranca.enviarAniversario) {
+        await criarTemplatePadraoSeNaoExiste('birthday')
       }
 
       showToast('Configurações salvas!', 'success')
@@ -1176,6 +1189,54 @@ function Configuracao() {
                 </p>
               </div>
             </label>
+
+            {/* Separador visual */}
+            <div style={{ borderTop: '1px dashed #e0e0e0', margin: '4px 0' }} />
+
+            {/* Checkbox aniversário */}
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              cursor: 'pointer',
+              padding: '12px',
+              backgroundColor: 'white',
+              borderRadius: '6px',
+              border: configCobranca.enviarAniversario ? '2px solid #E91E63' : '2px solid #e0e0e0',
+              transition: 'all 0.2s'
+            }}>
+              <input
+                type="checkbox"
+                checked={configCobranca.enviarAniversario}
+                onChange={(e) => setConfigCobranca({ ...configCobranca, enviarAniversario: e.target.checked })}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                  accentColor: '#E91E63'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Icon icon="mdi:cake-variant" width="20" style={{ color: '#E91E63' }} />
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    Mensagem de aniversário
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: '#E91E63',
+                    backgroundColor: '#FCE4EC',
+                    padding: '2px 6px',
+                    borderRadius: '4px'
+                  }}>PRO</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  Parabéns automático no dia do aniversário do aluno (enviado às 8h)
+                </p>
+              </div>
+            </label>
           </div>
 
           {!configCobranca.enviar3DiasAntes && !configCobranca.enviarNoDia && !configCobranca.enviar3DiasDepois && (
@@ -1796,6 +1857,7 @@ function Configuracao() {
         '3 templates personalizáveis',
         'Dashboard com gráficos completos',
         'Aging Report + Receita Projetada',
+        'Mensagem de aniversário automática',
         'Suporte WhatsApp'
       ],
       destaque: true,
