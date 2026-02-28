@@ -272,118 +272,63 @@ export default function GradeHorarios() {
 
   return (
     <div style={{ flex: 1, padding: isMobile ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Header - padrão Clientes */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: isMobile ? '16px' : '20px',
-        marginBottom: isMobile ? '16px' : '25px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none'
-      }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isMobile ? '16px' : '0' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              Grade de Horários
-            </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
-              {horariosFiltrados.length} de {totalHorarios} aula(s)
-              <span style={{
-                marginLeft: '10px',
-                padding: '2px 8px',
-                backgroundColor: '#e8f5e9',
-                color: '#2e7d32',
-                borderRadius: '10px',
-                fontSize: '11px',
-                fontWeight: '600'
-              }}>
-                {totalAtivos} ativas
-              </span>
-              <span style={{
-                marginLeft: '6px',
-                padding: '2px 8px',
-                backgroundColor: '#eef2ff',
-                color: '#4338ca',
-                borderRadius: '10px',
-                fontSize: '11px',
-                fontWeight: '600'
-              }}>
-                {totalAlunos} aluno{totalAlunos !== 1 ? 's' : ''}
-              </span>
-            </p>
-          </div>
+      {/* Título */}
+      <div style={{ marginBottom: isMobile ? '16px' : '20px' }}>
+        <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+          Grade de Horários
+        </h2>
+        <p style={{ margin: '5px 0 0 0', fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
+          {horariosFiltrados.length} de {totalHorarios} aula(s)
+          <span style={{
+            marginLeft: '10px',
+            padding: '2px 8px',
+            backgroundColor: '#e8f5e9',
+            color: '#2e7d32',
+            borderRadius: '10px',
+            fontSize: '11px',
+            fontWeight: '600'
+          }}>
+            {totalAtivos} ativas
+          </span>
+          <span style={{
+            marginLeft: '6px',
+            padding: '2px 8px',
+            backgroundColor: '#eef2ff',
+            color: '#4338ca',
+            borderRadius: '10px',
+            fontSize: '11px',
+            fontWeight: '600'
+          }}>
+            {totalAlunos} aluno{totalAlunos !== 1 ? 's' : ''}
+          </span>
+        </p>
+      </div>
 
-          {/* Botões */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={abrirModalNovo}
-              style={{
-                padding: isMobile ? '10px 14px' : '10px 20px',
-                backgroundColor: '#344848',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'background-color 0.2s',
-                flex: isMobile ? 1 : 'none'
-              }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#283838'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#344848'}
-            >
-              <Icon icon="mdi:plus" width="18" />
-              {!isMobile && 'Adicionar'}
-            </button>
-          </div>
-        </div>
-
-        {/* Busca + filtros de dia */}
+      {/* Dias da semana + Busca + Adicionar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isMobile ? '16px' : '24px', flexWrap: 'wrap' }}>
+        {/* Pills de dia - esquerda */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px'
+          display: 'inline-flex',
+          gap: '4px',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '10px',
+          padding: '4px',
+          flexWrap: 'wrap'
         }}>
-          {/* Busca */}
-          <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
-            <Icon icon="mdi:magnify" width="18" style={{
-              position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#999'
-            }} />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou aula..."
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              style={{
-                width: isMobile ? '100%' : '260px',
-                padding: '9px 12px 9px 34px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-        {/* Pills de dia */}
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
           <button
             onClick={() => setFiltroDia('todos')}
             style={{
-              padding: '5px 12px',
-              borderRadius: '20px',
-              border: filtroDia === 'todos' ? 'none' : '1px solid #ddd',
-              backgroundColor: filtroDia === 'todos' ? '#344848' : '#f5f5f5',
-              color: filtroDia === 'todos' ? 'white' : '#666',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer'
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: filtroDia === 'todos' ? 'white' : 'transparent',
+              color: filtroDia === 'todos' ? '#1a1a1a' : '#555',
+              fontSize: isMobile ? '12px' : '13px',
+              fontWeight: filtroDia === 'todos' ? '600' : '400',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: filtroDia === 'todos' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              opacity: filtroDia === 'todos' ? 1 : 0.75
             }}
           >
             Todos
@@ -393,29 +338,87 @@ export default function GradeHorarios() {
               key={dia.valor}
               onClick={() => setFiltroDia(dia.valor.toString())}
               style={{
-                padding: '5px 12px',
-                borderRadius: '20px',
-                border: filtroDia === dia.valor.toString() ? 'none' : '1px solid #ddd',
-                backgroundColor: filtroDia === dia.valor.toString() ? '#344848' : '#f5f5f5',
-                color: filtroDia === dia.valor.toString() ? 'white' : '#666',
-                fontSize: '12px',
-                fontWeight: '500',
-                cursor: 'pointer'
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: filtroDia === dia.valor.toString() ? 'white' : 'transparent',
+                color: filtroDia === dia.valor.toString() ? '#1a1a1a' : '#555',
+                fontSize: isMobile ? '12px' : '13px',
+                fontWeight: filtroDia === dia.valor.toString() ? '600' : '400',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: filtroDia === dia.valor.toString() ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                opacity: filtroDia === dia.valor.toString() ? 1 : 0.75
               }}
             >
               {dia.abrev}
             </button>
           ))}
         </div>
+
+        {/* Busca + Adicionar - direita */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <Icon icon="mdi:magnify" width="18" style={{
+              position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#999'
+            }} />
+            <input
+              type="text"
+              placeholder="Buscar aluno..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              style={{
+                width: isMobile ? '120px' : '200px',
+                padding: '9px 32px 9px 34px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+            {busca && (
+              <button
+                onClick={() => setBusca('')}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', color: '#999' }}
+              >
+                <Icon icon="mdi:close-circle" width="16" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={abrirModalNovo}
+            style={{
+              padding: isMobile ? '10px 14px' : '10px 20px',
+              backgroundColor: '#333',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#222'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#333'}
+          >
+            <Icon icon="mdi:plus" width="18" />
+            {!isMobile && 'Adicionar'}
+          </button>
+        </div>
       </div>
-      </div>{/* Fim header card */}
 
       {/* Conteúdo principal */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
-        padding: isMobile ? '16px' : '20px',
-        border: '1px solid #e5e7eb',
+        padding: '0',
+        border: 'none',
         boxShadow: 'none'
       }}>
 

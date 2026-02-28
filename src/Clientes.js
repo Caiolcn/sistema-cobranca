@@ -1063,31 +1063,86 @@ Equipe ${nomeEmpresa}`
       {/* Header */}
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: isSmallScreen ? '16px' : '20px',
+        borderRadius: '0',
+        padding: '0',
         marginBottom: isSmallScreen ? '16px' : '25px',
-        border: '1px solid #e5e7eb',
+        border: 'none',
         boxShadow: 'none'
       }}>
-        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'stretch' : 'flex-start', marginBottom: '16px', gap: isSmallScreen ? '16px' : '0' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-              Alunos
-            </h2>
-            <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-              {clientesFiltrados.length} de {clientes.filter(c => !c.deleted_at).length} aluno(s)
-              <span style={{
-                marginLeft: '10px',
-                padding: '2px 8px',
-                backgroundColor: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#ffebee' : '#e8f5e9',
-                color: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#c62828' : '#2e7d32',
-                borderRadius: '10px',
-                fontSize: '11px',
-                fontWeight: '600'
-              }}>
-                {clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length}/{limiteClientes} ativos
-              </span>
-            </p>
+        <div style={{ marginBottom: '16px' }}>
+          <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+            Alunos
+          </h2>
+          <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
+            {clientesFiltrados.length} de {clientes.filter(c => !c.deleted_at).length} aluno(s)
+            <span style={{
+              marginLeft: '10px',
+              padding: '2px 8px',
+              backgroundColor: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#ffebee' : '#e8f5e9',
+              color: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#c62828' : '#2e7d32',
+              borderRadius: '10px',
+              fontSize: '11px',
+              fontWeight: '600'
+            }}>
+              {clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length}/{limiteClientes} ativos
+            </span>
+          </p>
+        </div>
+
+        {/* Busca + Botões */}
+        <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: isSmallScreen ? 'stretch' : 'center', gap: '8px' }}>
+          {/* Campo de busca */}
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Icon
+              icon="material-symbols:search"
+              width="20"
+              height="20"
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#999'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou telefone..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px 10px 40px',
+                fontSize: '16px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                boxSizing: 'border-box'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#344848'}
+              onBlur={(e) => e.target.style.borderColor = '#ddd'}
+            />
+            {busca && (
+              <button
+                onClick={() => setBusca('')}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#999'
+                }}
+              >
+                <Icon icon="mdi:close-circle" width="18" height="18" />
+              </button>
+            )}
           </div>
 
           {/* Botões */}
@@ -1468,60 +1523,6 @@ Equipe ${nomeEmpresa}`
               </div>
             )}
           </div>
-        </div>
-
-        {/* Campo de busca */}
-        <div style={{ position: 'relative' }}>
-          <Icon
-            icon="material-symbols:search"
-            width="20"
-            height="20"
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#999'
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Buscar por nome ou telefone..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 12px 10px 40px',
-              fontSize: '16px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-              boxSizing: 'border-box'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#344848'}
-            onBlur={(e) => e.target.style.borderColor = '#ddd'}
-          />
-          {busca && (
-            <button
-              onClick={() => setBusca('')}
-              style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                color: '#999'
-              }}
-            >
-              <Icon icon="mdi:close-circle" width="18" height="18" />
-            </button>
-          )}
         </div>
       </div>
 
@@ -1988,7 +1989,7 @@ Equipe ${nomeEmpresa}`
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
                       Nome Completo
@@ -2183,7 +2184,7 @@ Equipe ${nomeEmpresa}`
               {/* Indicadores do Aluno - 4 Cards */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
                 gap: '12px',
                 marginBottom: '24px'
               }}>
@@ -2375,7 +2376,7 @@ Equipe ${nomeEmpresa}`
                     Nenhuma mensalidade encontrada
                   </p>
                 ) : (
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: isSmallScreen ? '200px' : '300px', overflowY: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                         <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '2px solid #e0e0e0' }}>
@@ -2583,7 +2584,7 @@ Equipe ${nomeEmpresa}`
               backgroundColor: 'white',
               borderRadius: '12px',
               width: '90%',
-              maxWidth: '450px',
+              maxWidth: isSmallScreen ? '100%' : '450px',
               boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
             }}
           >
@@ -3353,7 +3354,7 @@ Qualquer dúvida, estamos à disposição.`}
                     placeholder="Digite sua mensagem personalizada..."
                     style={{
                       width: '100%',
-                      minHeight: '180px',
+                      minHeight: isSmallScreen ? '120px' : '180px',
                       padding: '12px',
                       border: '1px solid #ddd',
                       borderRadius: '6px',

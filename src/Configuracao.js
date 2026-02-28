@@ -2965,15 +2965,14 @@ function Configuracao() {
 
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Tabs horizontais - padrão unificado */}
+      {/* Tabs segmented control */}
       <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        marginBottom: isSmallScreen ? '16px' : '25px',
-        border: '1px solid #e5e7eb',
-        display: 'flex',
+        display: 'inline-flex',
         gap: '4px',
-        padding: '6px',
+        backgroundColor: '#f3f4f6',
+        borderRadius: '10px',
+        padding: '4px',
+        marginBottom: isSmallScreen ? '16px' : '25px',
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch'
       }}>
@@ -2982,19 +2981,21 @@ function Configuracao() {
             key={tab.id}
             onClick={() => setAbaAtiva(tab.id)}
             style={{
-              padding: isSmallScreen ? '8px 12px' : '10px 20px',
-              backgroundColor: abaAtiva === tab.id ? '#344848' : 'transparent',
-              color: abaAtiva === tab.id ? 'white' : '#666',
+              padding: isSmallScreen ? '8px 12px' : '8px 20px',
+              backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
+              color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer',
               fontSize: isSmallScreen ? '12px' : '14px',
-              fontWeight: abaAtiva === tab.id ? '600' : '500',
+              fontWeight: abaAtiva === tab.id ? '600' : '400',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               whiteSpace: 'nowrap',
               transition: 'all 0.2s',
+              boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              opacity: abaAtiva === tab.id ? 1 : 0.75,
               flexShrink: 0
             }}
           >
