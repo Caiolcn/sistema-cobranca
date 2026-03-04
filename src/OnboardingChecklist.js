@@ -17,8 +17,8 @@ const STEPS = [
     title: 'Configure sua chave PIX',
     description: 'Adicione sua chave PIX para receber pagamentos',
     icon: 'mdi:qrcode',
-    actionLabel: 'Ir para Configurações',
-    route: '/app/configuracao?aba=empresa'
+    actionLabel: 'Ir para WhatsApp',
+    route: '/app/whatsapp'
   },
   {
     key: 'whatsapp',

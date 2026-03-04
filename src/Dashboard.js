@@ -121,35 +121,53 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Botão hamburguer - mobile only */}
+      {/* Topbar mobile */}
       {isMobile && (
-        <button
-          onClick={() => setMenuAberto(!menuAberto)}
-          style={{
-            position: 'fixed',
-            top: '16px',
-            left: '16px',
-            zIndex: 101,
-            width: '44px',
-            height: '44px',
-            backgroundColor: 'white',
-            border: '1px solid #e0e0e0',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}
-        >
-          {menuAberto ? (
-            <Icon icon="mdi:close" width="24" height="24" color="#333" />
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 6H21M3 12H21M3 18H21" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          )}
-        </button>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '56px',
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          zIndex: 101,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        }}>
+          <button
+            onClick={() => setMenuAberto(!menuAberto)}
+            style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            {menuAberto ? (
+              <Icon icon="mdi:close" width="24" height="24" color="#333" />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6H21M3 12H21M3 18H21" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+          <img
+            src="/logo-f.png"
+            alt="Mensalli"
+            style={{ height: '28px', objectFit: 'contain' }}
+          />
+          <div style={{ width: '40px', flexShrink: 0 }} />
+        </div>
       )}
 
       {/* Menu lateral */}
@@ -162,7 +180,7 @@ export default function Dashboard() {
         flexDirection: 'column',
         alignItems: isMobile ? 'flex-start' : 'center',
         justifyContent: 'space-between',
-        paddingTop: isMobile ? '70px' : '20px',
+        paddingTop: isMobile ? '64px' : '20px',
         paddingBottom: '20px',
         paddingLeft: isMobile ? '16px' : '0',
         paddingRight: isMobile ? '16px' : '0',
@@ -619,10 +637,10 @@ export default function Dashboard() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        paddingTop: isMobile ? '70px' : '0'
+        paddingTop: isMobile ? '64px' : '0'
       }}>
         {/* Barra Admin: seletor de cliente */}
-        {isAdmin && adminBarVisivel && (
+        {isAdmin && adminBarVisivel && !isMobile && (
           <div style={{
             padding: '8px 20px',
             backgroundColor: '#1a1a2e',
@@ -677,7 +695,7 @@ export default function Dashboard() {
           </div>
         )}
         {/* Botão para reabrir a barra admin (quando escondida) */}
-        {isAdmin && !adminBarVisivel && (
+        {isAdmin && !adminBarVisivel && !isMobile && (
           <div
             onClick={() => setAdminBarVisivel(true)}
             style={{
