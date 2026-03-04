@@ -12,6 +12,7 @@ import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
+import DateInput from './components/DateInput'
 
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -3005,21 +3006,11 @@ Equipe ${nomeEmpresa}`
               }}>
                 Data de Nascimento (opcional)
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={novoClienteDataNascimento}
-                onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#333'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                onChange={(val) => setNovoClienteDataNascimento(val)}
+                placeholder="dd/mm/aaaa"
+                style={{ fontSize: '16px' }}
               />
             </div>
 
@@ -3087,30 +3078,19 @@ Equipe ${nomeEmpresa}`
                   }}>
                     Data de Início *
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={dataInicioAssinatura}
-                    onChange={(e) => {
-                      setDataInicioAssinatura(e.target.value)
+                    onChange={(val) => {
+                      setDataInicioAssinatura(val)
                       // Auto-preencher data de vencimento com início + 30 dias
-                      if (e.target.value) {
-                        const inicio = new Date(e.target.value + 'T00:00:00')
+                      if (val) {
+                        const inicio = new Date(val + 'T00:00:00')
                         inicio.setDate(inicio.getDate() + 30)
                         setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
                       }
                     }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '16px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                      boxSizing: 'border-box'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                    onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                    placeholder="dd/mm/aaaa"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
 
@@ -3125,22 +3105,11 @@ Equipe ${nomeEmpresa}`
                   }}>
                     Data de Vencimento *
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={dataVencimentoAssinatura}
-                    onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '16px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                      boxSizing: 'border-box'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                    onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                    onChange={(val) => setDataVencimentoAssinatura(val)}
+                    placeholder="dd/mm/aaaa"
+                    style={{ fontSize: '16px' }}
                   />
                   <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
                     Data da primeira mensalidade. Auto-preenchido com início + 30 dias.

@@ -72,9 +72,9 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Rotas públicas */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/login" element={<Login onLogin={() => setSession(true)} />} />
+              <Route path="/" element={session ? <Navigate to="/app/home" replace /> : <LandingPage />} />
+              <Route path="/signup" element={session ? <Navigate to="/app/home" replace /> : <Signup />} />
+              <Route path="/login" element={session ? <Navigate to="/app/home" replace /> : <Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
               <Route path="/portal/:token" element={<PortalCliente />} />
