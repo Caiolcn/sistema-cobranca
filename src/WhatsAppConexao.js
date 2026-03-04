@@ -2121,8 +2121,9 @@ export default function WhatsAppConexao() {
                   <button
                     onClick={restaurarMensagemPadrao}
                     disabled={templateEditLocked}
+                    title="Restaurar Padrão"
                     style={{
-                      padding: '6px 12px',
+                      padding: isSmallScreen ? '6px 8px' : '6px 12px',
                       backgroundColor: 'white',
                       border: '1px solid #e0e0e0',
                       borderRadius: '6px',
@@ -2148,13 +2149,13 @@ export default function WhatsAppConexao() {
                       }
                     }}
                   >
-                    <Icon icon="material-symbols:refresh" width="14" />
-                    Restaurar Padrão
+                    <Icon icon="material-symbols:refresh" width={isSmallScreen ? "18" : "14"} />
+                    {!isSmallScreen && 'Restaurar Padrão'}
                   </button>
                   <button
                     onClick={() => setPreviewModalAberto(true)}
                     style={{
-                      padding: '6px 12px',
+                      padding: isSmallScreen ? '6px 8px' : '6px 12px',
                       backgroundColor: 'white',
                       border: '1px solid #e0e0e0',
                       borderRadius: '6px',
@@ -2169,8 +2170,8 @@ export default function WhatsAppConexao() {
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f5f5f5'; e.currentTarget.style.borderColor = '#ccc' }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#e0e0e0' }}
                   >
-                    <Icon icon="mdi:eye-outline" width="14" />
-                    Preview
+                    <Icon icon="mdi:eye-outline" width={isSmallScreen ? "18" : "14"} />
+                    {!isSmallScreen && 'Preview'}
                   </button>
                   <button
                     onClick={salvarTemplate}

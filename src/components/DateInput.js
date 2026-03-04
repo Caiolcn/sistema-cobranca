@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import DatePicker, { registerLocale } from 'react-datepicker'
 import { ptBR } from 'date-fns/locale'
+import useWindowSize from '../hooks/useWindowSize'
 import 'react-datepicker/dist/react-datepicker.css'
 import './DateInput.css'
 
@@ -20,6 +21,8 @@ export default function DateInput({
   onBlur,
   ...props
 }) {
+  const { isSmallScreen } = useWindowSize()
+
   // Converter string YYYY-MM-DD para Date object
   const dateValue = value ? new Date(value + 'T00:00:00') : null
 
@@ -45,6 +48,7 @@ export default function DateInput({
       onClick={onClick}
       onChange={inputOnChange}
       placeholder={placeholder}
+      readOnly
       style={{
         width: '100%',
         padding: '12px',
@@ -77,6 +81,7 @@ export default function DateInput({
       dateFormat="dd/MM/yyyy"
       customInput={<CustomInput />}
       showPopperArrow={false}
+      withPortal={isSmallScreen}
       popperPlacement="bottom-start"
       popperModifiers={[
         {

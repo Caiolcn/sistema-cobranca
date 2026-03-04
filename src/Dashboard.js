@@ -116,7 +116,7 @@ export default function Dashboard() {
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 99
+            zIndex: 9998
           }}
         />
       )}
@@ -135,7 +135,7 @@ export default function Dashboard() {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 16px',
-          zIndex: 101,
+          zIndex: 10000,
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
         }}>
           <button
@@ -188,7 +188,7 @@ export default function Dashboard() {
         position: 'fixed',
         left: isMobile ? (menuAberto ? '0' : '-260px') : '0',
         top: 0,
-        zIndex: 100,
+        zIndex: 9999,
         transition: 'left 0.3s ease',
         boxShadow: isMobile && menuAberto ? '4px 0 20px rgba(0,0,0,0.15)' : 'none'
       }}>
