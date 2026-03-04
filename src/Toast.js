@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
+import useWindowSize from './hooks/useWindowSize'
 
 // Sistema global de toast
 let toastQueue = []
@@ -32,6 +33,7 @@ export const subscribeToToasts = (callback) => {
 
 export default function Toast() {
   const [toasts, setToasts] = useState([])
+  const { isMobile } = useWindowSize()
 
   useEffect(() => {
     const unsubscribe = subscribeToToasts((newToasts) => {
@@ -45,13 +47,14 @@ export default function Toast() {
   return (
     <div style={{
       position: 'fixed',
-      top: '20px',
-      right: '20px',
-      zIndex: 9999,
+      top: isMobile ? '64px' : '20px',
+      right: isMobile ? '12px' : '20px',
+      left: isMobile ? '12px' : 'auto',
+      zIndex: 10001,
       display: 'flex',
       flexDirection: 'column',
       gap: '10px',
-      maxWidth: '400px'
+      maxWidth: isMobile ? 'none' : '400px'
     }}>
       {toasts.map(toast => (
         <ToastItem key={toast.id} toast={toast} />
@@ -117,7 +120,7 @@ const ToastItem = React.memo(function ToastItem({ toast }) {
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        minWidth: '300px',
+        minWidth: 0,
         borderLeft: `4px solid ${color}`,
         animation: isExiting ? 'slideOut 0.3s ease-out' : 'slideIn 0.3s ease-out',
         transform: isExiting ? 'translateX(100%)' : 'translateX(0)',
