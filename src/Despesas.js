@@ -11,7 +11,6 @@ import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import { exportarDespesas } from './utils/exportUtils'
 import { gerarRelatorioDespesasPDF } from './utils/pdfGenerator'
-import DateInput from './components/DateInput'
 
 export default function Despesas({ embedded = false, buttonsPortal = null, onCountUpdate = null }) {
   const navigate = useNavigate()
@@ -1435,10 +1434,16 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
             {/* Data de vencimento */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Data de vencimento *</label>
-              <DateInput
+              <input
+                type="date"
                 value={formDataVencimento}
-                onChange={(val) => setFormDataVencimento(val)}
-                style={{ padding: '10px 12px', fontSize: '14px' }}
+                onChange={(e) => setFormDataVencimento(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
               />
             </div>
 
