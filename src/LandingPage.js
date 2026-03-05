@@ -81,10 +81,10 @@ export default function LandingPage() {
   const [depoimentoIndex, setDepoimentoIndex] = useState(0)
 
   // Calculadora de ROI
-  const [roiClientes, setRoiClientes] = useState(50)
-  const [roiValorMedio, setRoiValorMedio] = useState(150)
-  const [roiInadimplencia, setRoiInadimplencia] = useState(30)
-  const roiPerdaMensal = useMemo(() => roiClientes * roiValorMedio * (roiInadimplencia / 100), [roiClientes, roiValorMedio, roiInadimplencia])
+  const [roiClientes, setRoiClientes] = useState('50')
+  const [roiValorMedio, setRoiValorMedio] = useState('150')
+  const [roiInadimplencia, setRoiInadimplencia] = useState('30')
+  const roiPerdaMensal = useMemo(() => (Number(roiClientes) || 0) * (Number(roiValorMedio) || 0) * ((Number(roiInadimplencia) || 0) / 100), [roiClientes, roiValorMedio, roiInadimplencia])
   const roiRecuperacao = useMemo(() => roiPerdaMensal * 0.7, [roiPerdaMensal])
 
   const faqs = [
@@ -810,7 +810,7 @@ export default function LandingPage() {
                 <input
                   type="number"
                   value={roiClientes}
-                  onChange={(e) => setRoiClientes(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setRoiClientes(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -832,7 +832,7 @@ export default function LandingPage() {
                 <input
                   type="number"
                   value={roiValorMedio}
-                  onChange={(e) => setRoiValorMedio(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setRoiValorMedio(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -854,7 +854,7 @@ export default function LandingPage() {
                 <input
                   type="number"
                   value={roiInadimplencia}
-                  onChange={(e) => setRoiInadimplencia(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  onChange={(e) => setRoiInadimplencia(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
