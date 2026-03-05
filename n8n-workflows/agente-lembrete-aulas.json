@@ -16,7 +16,10 @@
       "name": "Disparo a cada 15 min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 400]
+      "position": [
+        250,
+        400
+      ]
     },
     {
       "parameters": {
@@ -41,7 +44,10 @@
       "name": "1. Buscar Aulas 1h",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 400]
+      "position": [
+        500,
+        400
+      ]
     },
     {
       "parameters": {
@@ -51,7 +57,10 @@
       "name": "2. Criar Msg Aula",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [750, 400]
+      "position": [
+        750,
+        400
+      ]
     },
     {
       "parameters": {
@@ -82,7 +91,12 @@
       "name": "3. Enviar WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 400]
+      "position": [
+        1000,
+        400
+      ],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -118,7 +132,10 @@
       "name": "4. Marcar Enviado",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 400]
+      "position": [
+        1250,
+        400
+      ]
     },
     {
       "parameters": {
@@ -150,7 +167,10 @@
       "name": "5. Incrementar Uso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 400]
+      "position": [
+        1500,
+        400
+      ]
     }
   ],
   "connections": {

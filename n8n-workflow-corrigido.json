@@ -16,7 +16,10 @@
       "name": "⏰ Schedule (2x por dia)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-1024, 16]
+      "position": [
+        -1024,
+        16
+      ]
     },
     {
       "parameters": {
@@ -44,7 +47,10 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-816, 16],
+      "position": [
+        -816,
+        16
+      ],
       "id": "8c69f59b-9253-4f60-9841-a6e1e43b29c9",
       "name": "É dia 1 do mês?"
     },
@@ -56,7 +62,10 @@
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [-608, -160],
+      "position": [
+        -608,
+        -160
+      ],
       "id": "bd872e89-e2f5-4de7-9cc1-8b54928dd28e",
       "name": "Resetar Contador Mensal",
       "credentials": {
@@ -82,7 +91,10 @@
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [-400, -160],
+      "position": [
+        -400,
+        -160
+      ],
       "id": "resetar-enviado-hoje",
       "name": "Resetar Enviado Hoje",
       "credentials": {
@@ -114,7 +126,10 @@
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [-192, 16],
+      "position": [
+        -192,
+        16
+      ],
       "id": "7910e8f5-6639-4a25-924b-78b8dd5372da",
       "name": "Buscar Parcelas Vencidas",
       "credentials": {
@@ -132,7 +147,10 @@
       "name": "Processar e Validar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [32, 16]
+      "position": [
+        32,
+        16
+      ]
     },
     {
       "parameters": {
@@ -149,7 +167,10 @@
       "name": "Pode Enviar?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [256, 16]
+      "position": [
+        256,
+        16
+      ]
     },
     {
       "parameters": {
@@ -159,7 +180,10 @@
       "name": "Criar Mensagem",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, -16]
+      "position": [
+        480,
+        -16
+      ]
     },
     {
       "parameters": {
@@ -186,13 +210,18 @@
       "name": "Enviar WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [704, -16],
+      "position": [
+        704,
+        -16
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "TQHFAr8xeaBpJPNC",
           "name": "Header Auth account"
         }
-      }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -249,7 +278,10 @@
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [816, -16],
+      "position": [
+        816,
+        -16
+      ],
       "id": "registrar-log-mensagem",
       "name": "Registrar Log",
       "credentials": {
@@ -292,7 +324,10 @@
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [928, -16],
+      "position": [
+        928,
+        -16
+      ],
       "id": "atualizar-parcela",
       "name": "Atualizar Parcela",
       "credentials": {
@@ -327,7 +362,10 @@
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1152, -16],
+      "position": [
+        1152,
+        -16
+      ],
       "id": "8851823f-fc7f-4c6c-93af-96ae85492168",
       "name": "Incrementar Contador",
       "credentials": {

@@ -585,9 +585,11 @@ export default function Dashboard() {
                   onClick={() => setPerfilMenuAberto(false)}
                 />
                 <div style={{
-                  position: 'absolute',
-                  [isMobile ? 'top' : 'bottom']: isMobile ? '44px' : '0',
-                  left: isMobile ? '0' : '50px',
+                  position: isMobile ? 'fixed' : 'absolute',
+                  ...(isMobile
+                    ? { bottom: '70px', left: '16px' }
+                    : { bottom: '0', left: '50px' }
+                  ),
                   background: 'white',
                   border: '1px solid #e5e7eb',
                   borderRadius: '10px',
@@ -642,12 +644,13 @@ export default function Dashboard() {
         {/* Barra Admin: seletor de cliente */}
         {isAdmin && adminBarVisivel && !isMobile && (
           <div style={{
-            padding: '8px 20px',
+            padding: isMobile ? '8px 12px' : '8px 20px',
             backgroundColor: '#1a1a2e',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            flexShrink: 0
+            gap: isMobile ? '8px' : '12px',
+            flexShrink: 0,
+            flexWrap: isMobile ? 'wrap' : 'nowrap'
           }}>
             <span style={{ color: '#a0a0b0', fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap' }}>
               ADMIN
@@ -657,7 +660,8 @@ export default function Dashboard() {
               onChange={(e) => setAdminClient(e.target.value || null)}
               style={{
                 flex: 1,
-                maxWidth: '400px',
+                minWidth: 0,
+                maxWidth: isMobile ? '100%' : '400px',
                 padding: '6px 10px',
                 backgroundColor: '#16213e',
                 color: 'white',
@@ -675,7 +679,7 @@ export default function Dashboard() {
                 </option>
               ))}
             </select>
-            {adminViewingAs && (
+            {adminViewingAs && !isMobile && (
               <span style={{ color: '#ffd700', fontSize: '12px', whiteSpace: 'nowrap' }}
                 title={adminViewingAs}
                 onClick={() => { navigator.clipboard.writeText(adminViewingAs) }}
@@ -685,9 +689,9 @@ export default function Dashboard() {
             )}
             <div
               onClick={() => setAdminBarVisivel(false)}
-              style={{ cursor: 'pointer', padding: '2px 6px', borderRadius: '4px', color: '#666', fontSize: '16px' }}
+              style={{ cursor: 'pointer', padding: '6px 8px', borderRadius: '4px', color: '#999', fontSize: '16px', flexShrink: 0 }}
               onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
               title="Esconder barra admin"
             >
               <Icon icon="mdi:eye-off-outline" width="18" height="18" />

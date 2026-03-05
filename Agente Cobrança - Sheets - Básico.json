@@ -95,7 +95,9 @@
           "id": "TQHFAr8xeaBpJPNC",
           "name": "Header Auth account"
         }
-      }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {

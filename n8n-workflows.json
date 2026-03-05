@@ -61,7 +61,9 @@
                 }
               }
             }
-          }
+          },
+          "continueOnFail": true,
+          "onError": "continueErrorOutput"
         },
         {
           "id": "respond",
@@ -75,13 +77,37 @@
       ],
       "connections": {
         "Webhook - Receber Dados": {
-          "main": [[{ "node": "Processar Template", "type": "main", "index": 0 }]]
+          "main": [
+            [
+              {
+                "node": "Processar Template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         },
         "Processar Template": {
-          "main": [[{ "node": "Enviar via Evolution API", "type": "main", "index": 0 }]]
+          "main": [
+            [
+              {
+                "node": "Enviar via Evolution API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         },
         "Enviar via Evolution API": {
-          "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+          "main": [
+            [
+              {
+                "node": "Responder Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         }
       }
     },
@@ -146,7 +172,9 @@
                 }
               }
             }
-          }
+          },
+          "continueOnFail": true,
+          "onError": "continueErrorOutput"
         },
         {
           "id": "respond2",
@@ -160,13 +188,37 @@
       ],
       "connections": {
         "Webhook - Receber Dados": {
-          "main": [[{ "node": "Processar Template", "type": "main", "index": 0 }]]
+          "main": [
+            [
+              {
+                "node": "Processar Template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         },
         "Processar Template": {
-          "main": [[{ "node": "Enviar via Evolution API", "type": "main", "index": 0 }]]
+          "main": [
+            [
+              {
+                "node": "Enviar via Evolution API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         },
         "Enviar via Evolution API": {
-          "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+          "main": [
+            [
+              {
+                "node": "Responder Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
         }
       }
     }
@@ -188,7 +240,7 @@
       "exemplo": {
         "nome": "João Silva",
         "telefone": "5511999999999",
-        "valor": 150.00,
+        "valor": 150,
         "data_vencimento": "2026-01-20",
         "dias_restantes": 3,
         "template": "Olá {{nome}}! Sua mensalidade de {{valor}} vence em {{dias_restantes}} dias.",

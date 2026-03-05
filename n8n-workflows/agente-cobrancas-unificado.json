@@ -12,173 +12,314 @@
           ]
         }
       },
-      "id": "5f53b548-3b36-48b5-b2da-535dcc2b695d",
+      "id": "schedule-trigger",
       "name": "Disparo Diário (9h)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-1408, -112]
+      "position": [
+        250,
+        400
+      ]
     },
     {
       "parameters": {
+        "method": "GET",
         "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_lembrete_3dias",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
           ]
         },
         "options": {}
       },
-      "id": "4f7133c8-c67f-49c1-9f0c-14f4ecb45908",
+      "id": "buscar-3dias",
       "name": "1. Buscar 3 Dias Antes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-1152, -304],
-      "onError": "continueRegularOutput"
+      "position": [
+        500,
+        200
+      ]
     },
     {
       "parameters": {
+        "method": "GET",
         "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_no_dia",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
           ]
         },
         "options": {}
       },
-      "id": "c7e7630e-ab86-4ead-be96-8206c212d66f",
+      "id": "buscar-no-dia",
       "name": "2. Buscar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-1152, -112],
-      "onError": "continueRegularOutput"
+      "position": [
+        500,
+        400
+      ]
     },
     {
       "parameters": {
+        "method": "GET",
         "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_parcelas_em_atraso",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
           ]
         },
         "options": {}
       },
-      "id": "1f57840b-8d21-4ddd-8f74-c90886798fa2",
+      "id": "buscar-atraso",
       "name": "3. Buscar 3 Dias Depois",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-1152, 96],
-      "onError": "continueRegularOutput"
+      "position": [
+        500,
+        600
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// FLUXO 1: Parcelas com vencimento em 3 dias - Template pre_due_3days\nconst FALLBACK_3DIAS = 'Olá, {{nomeCliente}}!\\n\\nSua mensalidade vence em 3 dias.\\n\\n💰 Valor: {{valorMensalidade}}\\n📆 Vencimento: {{dataVencimento}}\\n\\n🔑 Chave Pix: {{chavePix}}\\n\\nEvite juros e multas, pague em dia!\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    mensagem = FALLBACK_3DIAS;\n  }\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasRestantes}}': data.dias_restantes || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: '3dias_antes',\n      flag_campo: 'enviado_3dias'\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "// FLUXO 1: Parcelas com vencimento em 3 dias - Template pre_due_3days\n// CORRIGIDO: usa template fallback se nao encontrar template no banco\nconst FALLBACK_3DIAS = 'Olá, {{nomeCliente}}!\\n\\nSua mensalidade vence em 3 dias.\\n\\n💰 Valor: {{valorMensalidade}}\\n📆 Vencimento: {{dataVencimento}}\\n\\n🔑 Chave Pix: {{chavePix}}\\n\\nEvite juros e multas, pague em dia!\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    console.log(`${data.nome_cliente}: sem template pre_due_3days, usando fallback`);\n    mensagem = FALLBACK_3DIAS;\n  }\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasRestantes}}': data.dias_restantes || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: '3dias_antes',\n      flag_campo: 'enviado_3dias'\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "de346a32-e32a-4ff8-8ce0-9367544ba755",
+      "id": "criar-msg-3dias",
       "name": "Criar Msg 3 Dias",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-896, -304],
-      "onError": "continueRegularOutput"
+      "position": [
+        750,
+        200
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// FLUXO 2: Parcelas com vencimento HOJE - Template due_day\nconst FALLBACK_DIA = 'Olá, {{nomeCliente}}!\\n\\nHoje é o dia do vencimento da sua mensalidade.\\n\\n💰 Valor: {{valorMensalidade}}\\n💳 Pix para pagamento: {{chavePix}}\\n\\nQualquer dúvida, estamos à disposição!\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    mensagem = FALLBACK_DIA;\n  }\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'no_dia',\n      flag_campo: 'enviado_no_dia'\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "// FLUXO 2: Parcelas com vencimento HOJE - Template due_day\n// CORRIGIDO: usa template fallback se nao encontrar template no banco\nconst FALLBACK_DIA = 'Olá, {{nomeCliente}}!\\n\\nHoje é o dia do vencimento da sua mensalidade.\\n\\n💰 Valor: {{valorMensalidade}}\\n💳 Pix para pagamento: {{chavePix}}\\n\\nQualquer dúvida, estamos à disposição!\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    console.log(`${data.nome_cliente}: sem template due_day, usando fallback`);\n    mensagem = FALLBACK_DIA;\n  }\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'no_dia',\n      flag_campo: 'enviado_no_dia'\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "891dcc00-9bc9-44cf-aabc-505e985f94c9",
+      "id": "criar-msg-no-dia",
       "name": "Criar Msg No Dia",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-896, -112],
-      "onError": "continueRegularOutput"
+      "position": [
+        750,
+        400
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// FLUXO 3: Parcelas vencidas - Template overdue\nconst FALLBACK_ATRASO = 'Olá, {{nomeCliente}}, como vai?\\n\\nNotamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.\\n\\n💰 Valor: {{valorMensalidade}}\\n🔑 Chave Pix: {{chavePix}}\\n\\nSe você já realizou o pagamento, por favor desconsidere esta mensagem. 🙏\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    mensagem = FALLBACK_ATRASO;\n  }\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasAtraso}}': data.dias_atraso || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'atraso',\n      flag_campo: 'enviado_vencimento'\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "// FLUXO 3: Parcelas vencidas há 3 dias - Template overdue\n// CORRIGIDO: usa template fallback se nao encontrar template no banco\nconst FALLBACK_ATRASO = 'Olá, {{nomeCliente}}, como vai?\\n\\nNotamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.\\n\\n💰 Valor: {{valorMensalidade}}\\n🔑 Chave Pix: {{chavePix}}\\n\\nSe você já realizou o pagamento, por favor desconsidere esta mensagem. 🙏\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    console.log(`${data.nome_cliente}: sem template overdue, usando fallback`);\n    mensagem = FALLBACK_ATRASO;\n  }\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente,\n    '{{valorMensalidade}}': `R$ ${parseFloat(data.valor_em_aberto).toFixed(2)}`,\n    '{{dataVencimento}}': new Date(data.data_vencimento).toLocaleDateString('pt-BR'),\n    '{{diasAtraso}}': data.dias_atraso || 3,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe',\n    '{{chavePix}}': data.chave_pix || ''\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'atraso',\n      flag_campo: 'enviado_vencimento'\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "bd7af868-85a9-4779-bd8d-0660f56f35f7",
+      "id": "criar-msg-atraso",
       "name": "Criar Msg Atraso",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-896, 96],
-      "onError": "continueRegularOutput"
+      "position": [
+        750,
+        600
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Enviar WhatsApp item por item com try/catch\n// Garante que erro em um item NUNCA para os demais\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  // Delay 1s entre envios (exceto primeiro) para não sobrecarregar\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await fetch(data.evolution_url, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: JSON.stringify({ number: data.telefone, text: data.mensagem })\n    });\n\n    if (!resp.ok) {\n      let errMsg = `HTTP ${resp.status}`;\n      try { const b = await resp.json(); errMsg = b?.response?.message || b?.message || errMsg; } catch(e) {}\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: errMsg } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "includeInputFields": true,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
       },
-      "id": "enviar-check-3dias",
+      "id": "enviar-whatsapp-3dias",
       "name": "Enviar 3 Dias",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-656, -304]
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        200
+      ],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Enviar WhatsApp item por item com try/catch\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await fetch(data.evolution_url, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: JSON.stringify({ number: data.telefone, text: data.mensagem })\n    });\n\n    if (!resp.ok) {\n      let errMsg = `HTTP ${resp.status}`;\n      try { const b = await resp.json(); errMsg = b?.response?.message || b?.message || errMsg; } catch(e) {}\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: errMsg } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "includeInputFields": true,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
       },
-      "id": "enviar-check-nodia",
+      "id": "enviar-whatsapp-no-dia",
       "name": "Enviar No Dia",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-656, -112]
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        400
+      ],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Enviar WhatsApp item por item com try/catch\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await fetch(data.evolution_url, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: JSON.stringify({ number: data.telefone, text: data.mensagem })\n    });\n\n    if (!resp.ok) {\n      let errMsg = `HTTP ${resp.status}`;\n      try { const b = await resp.json(); errMsg = b?.response?.message || b?.message || errMsg; } catch(e) {}\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: errMsg } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          },
+          "includeInputFields": true,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
       },
-      "id": "enviar-check-atraso",
+      "id": "enviar-whatsapp-atraso",
       "name": "Enviar Atraso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        600
+      ],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar resultado do envio - Fluxo 3 Dias\nconst items = $input.all();\nconst sucesso = [];\nconst falha = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hasError = data.error || data.statusCode >= 400;\n  const errorMsg = data.error?.message || data.response?.message || 'Erro desconhecido';\n  const isConnectionClosed = errorMsg.includes('Connection Closed') || (data.statusCode === 500);\n\n  if (hasError) {\n    falha.push({\n      json: {\n        ...data,\n        envio_sucesso: false,\n        erro_mensagem: isConnectionClosed ? 'WhatsApp desconectado (Connection Closed)' : errorMsg,\n        erro_tipo: isConnectionClosed ? 'connection_closed' : 'outro'\n      }\n    });\n  } else {\n    sucesso.push({\n      json: {\n        ...data,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\n// Output 0 = sucesso, Output 1 = falha\nreturn [sucesso, falha];"
+      },
+      "id": "check-resultado-3dias",
+      "name": "Check 3 Dias",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-656, 96]
+      "position": [
+        1250,
+        200
+      ],
+      "outputs": [
+        "main",
+        "main"
+      ]
     },
     {
       "parameters": {
-        "conditions": {
-          "boolean": [
-            { "value1": "={{ $json.envio_sucesso }}" }
-          ]
-        }
+        "jsCode": "// Verificar resultado do envio - Fluxo No Dia\nconst items = $input.all();\nconst sucesso = [];\nconst falha = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hasError = data.error || data.statusCode >= 400;\n  const errorMsg = data.error?.message || data.response?.message || 'Erro desconhecido';\n  const isConnectionClosed = errorMsg.includes('Connection Closed') || (data.statusCode === 500);\n\n  if (hasError) {\n    falha.push({\n      json: {\n        ...data,\n        envio_sucesso: false,\n        erro_mensagem: isConnectionClosed ? 'WhatsApp desconectado (Connection Closed)' : errorMsg,\n        erro_tipo: isConnectionClosed ? 'connection_closed' : 'outro'\n      }\n    });\n  } else {\n    sucesso.push({\n      json: {\n        ...data,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\nreturn [sucesso, falha];"
       },
-      "id": "if-3dias",
-      "name": "Envio OK 3d?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [-420, -304]
+      "id": "check-resultado-no-dia",
+      "name": "Check No Dia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        400
+      ],
+      "outputs": [
+        "main",
+        "main"
+      ]
     },
     {
       "parameters": {
-        "conditions": {
-          "boolean": [
-            { "value1": "={{ $json.envio_sucesso }}" }
-          ]
-        }
+        "jsCode": "// Verificar resultado do envio - Fluxo Atraso\nconst items = $input.all();\nconst sucesso = [];\nconst falha = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hasError = data.error || data.statusCode >= 400;\n  const errorMsg = data.error?.message || data.response?.message || 'Erro desconhecido';\n  const isConnectionClosed = errorMsg.includes('Connection Closed') || (data.statusCode === 500);\n\n  if (hasError) {\n    falha.push({\n      json: {\n        ...data,\n        envio_sucesso: false,\n        erro_mensagem: isConnectionClosed ? 'WhatsApp desconectado (Connection Closed)' : errorMsg,\n        erro_tipo: isConnectionClosed ? 'connection_closed' : 'outro'\n      }\n    });\n  } else {\n    sucesso.push({\n      json: {\n        ...data,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\nreturn [sucesso, falha];"
       },
-      "id": "if-nodia",
-      "name": "Envio OK Dia?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [-420, -112]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            { "value1": "={{ $json.envio_sucesso }}" }
-          ]
-        }
-      },
-      "id": "if-atraso",
-      "name": "Envio OK Atr?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [-420, 96]
+      "id": "check-resultado-atraso",
+      "name": "Check Atraso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        600
+      ],
+      "outputs": [
+        "main",
+        "main"
+      ]
     },
     {
       "parameters": {
@@ -187,10 +328,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -198,13 +351,14 @@
         "jsonBody": "={\n  \"enviado_3dias\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
-      "id": "6a1bbee9-1d93-467b-b4e1-d3824b155c3e",
+      "id": "marcar-3dias",
       "name": "Marcar 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, -380],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1500,
+        150
+      ]
     },
     {
       "parameters": {
@@ -213,10 +367,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -224,13 +390,14 @@
         "jsonBody": "={\n  \"enviado_no_dia\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
-      "id": "78316e16-acee-4468-98d1-632bb75457f2",
+      "id": "marcar-no-dia",
       "name": "Marcar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, -188],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1500,
+        350
+      ]
     },
     {
       "parameters": {
@@ -239,10 +406,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -250,13 +429,14 @@
         "jsonBody": "={\n  \"enviado_vencimento\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
-      "id": "27af74f2-868c-4902-8eea-49d493845978",
+      "id": "marcar-atraso",
       "name": "Marcar Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 20],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1500,
+        550
+      ]
     },
     {
       "parameters": {
@@ -265,24 +445,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK 3d?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK 3d?').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Envio OK 3d?').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Envio OK 3d?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK 3d?').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Envio OK 3d?').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
-      "id": "d3326300-cec2-45be-b783-b7884bf2405c",
+      "id": "log-3dias",
       "name": "Log 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [60, -380],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1750,
+        150
+      ]
     },
     {
       "parameters": {
@@ -291,24 +484,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK Dia?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK Dia?').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Envio OK Dia?').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Envio OK Dia?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK Dia?').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Envio OK Dia?').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
-      "id": "14278136-8148-4166-a952-4c84e2420454",
+      "id": "log-no-dia",
       "name": "Log No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [60, -188],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1750,
+        350
+      ]
     },
     {
       "parameters": {
@@ -317,24 +523,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK Atr?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK Atr?').item.json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $('Envio OK Atr?').item.json.parcela_id }}\",\n  \"telefone\": \"{{ $('Envio OK Atr?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK Atr?').item.json.mensagem) }},\n  \"valor_mensalidade\": {{ $('Envio OK Atr?').item.json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"enviado\"\n}",
         "options": {}
       },
-      "id": "a8dfcfa4-5682-4e00-8968-a2a5b7be2ee4",
+      "id": "log-atraso",
       "name": "Log Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [60, 20],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1750,
+        550
+      ]
     },
     {
       "parameters": {
@@ -343,24 +562,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio') }}\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio automático') }}\n}",
         "options": {}
       },
       "id": "log-falha-3dias",
       "name": "Log Falha 3d",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, -228],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1500,
+        250
+      ]
     },
     {
       "parameters": {
@@ -369,24 +601,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio') }}\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio automático') }}\n}",
         "options": {}
       },
-      "id": "log-falha-nodia",
+      "id": "log-falha-no-dia",
       "name": "Log Falha Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, -36],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1500,
+        450
+      ]
     },
     {
       "parameters": {
@@ -395,24 +640,37 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio') }}\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"devedor_id\": \"{{ $json.devedor_id }}\",\n  \"mensalidade_id\": \"{{ $json.parcela_id }}\",\n  \"telefone\": \"{{ $json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($json.mensagem) }},\n  \"valor_mensalidade\": {{ $json.valor_em_aberto }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem || 'Erro no envio automático') }}\n}",
         "options": {}
       },
       "id": "log-falha-atraso",
       "name": "Log Falha Atr",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 172],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        1500,
+        650
+      ]
     },
     {
       "parameters": {
@@ -421,23 +679,33 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Envio OK 3d?').item.json.user_id }}\"\n}",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $json.user_id }}\"\n}",
         "options": {}
       },
-      "id": "283755c2-449a-4061-aab4-7fcd2412223f",
+      "id": "incrementar-3dias",
       "name": "Incrementar 3d",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [300, -380],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        2000,
+        150
+      ]
     },
     {
       "parameters": {
@@ -446,23 +714,33 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Envio OK Dia?').item.json.user_id }}\"\n}",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $json.user_id }}\"\n}",
         "options": {}
       },
-      "id": "99c26f28-d5aa-45a3-8857-b278b6238864",
+      "id": "incrementar-no-dia",
       "name": "Incrementar Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [300, -188],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        2000,
+        350
+      ]
     },
     {
       "parameters": {
@@ -471,86 +749,289 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"p_user_id\": \"{{ $('Envio OK Atr?').item.json.user_id }}\"\n}",
+        "jsonBody": "={\n  \"p_user_id\": \"{{ $json.user_id }}\"\n}",
         "options": {}
       },
-      "id": "f780f34a-bb12-4bca-84e1-2180aef4fea3",
+      "id": "incrementar-atraso",
       "name": "Incrementar Atraso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [300, 20],
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [
+        2000,
+        550
+      ]
     }
   ],
-  "pinData": {},
   "connections": {
     "Disparo Diário (9h)": {
-      "main": [[
-        { "node": "1. Buscar 3 Dias Antes", "type": "main", "index": 0 },
-        { "node": "2. Buscar No Dia", "type": "main", "index": 0 },
-        { "node": "3. Buscar 3 Dias Depois", "type": "main", "index": 0 }
-      ]]
-    },
-    "1. Buscar 3 Dias Antes": { "main": [[{ "node": "Criar Msg 3 Dias", "type": "main", "index": 0 }]] },
-    "2. Buscar No Dia": { "main": [[{ "node": "Criar Msg No Dia", "type": "main", "index": 0 }]] },
-    "3. Buscar 3 Dias Depois": { "main": [[{ "node": "Criar Msg Atraso", "type": "main", "index": 0 }]] },
-    "Criar Msg 3 Dias": { "main": [[{ "node": "Enviar 3 Dias", "type": "main", "index": 0 }]] },
-    "Criar Msg No Dia": { "main": [[{ "node": "Enviar No Dia", "type": "main", "index": 0 }]] },
-    "Criar Msg Atraso": { "main": [[{ "node": "Enviar Atraso", "type": "main", "index": 0 }]] },
-    "Enviar 3 Dias": { "main": [[{ "node": "Envio OK 3d?", "type": "main", "index": 0 }]] },
-    "Enviar No Dia": { "main": [[{ "node": "Envio OK Dia?", "type": "main", "index": 0 }]] },
-    "Enviar Atraso": { "main": [[{ "node": "Envio OK Atr?", "type": "main", "index": 0 }]] },
-    "Envio OK 3d?": {
       "main": [
-        [{ "node": "Marcar 3 Dias", "type": "main", "index": 0 }],
-        [{ "node": "Log Falha 3d", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "1. Buscar 3 Dias Antes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "2. Buscar No Dia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "3. Buscar 3 Dias Depois",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Envio OK Dia?": {
+    "1. Buscar 3 Dias Antes": {
       "main": [
-        [{ "node": "Marcar No Dia", "type": "main", "index": 0 }],
-        [{ "node": "Log Falha Dia", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Criar Msg 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Envio OK Atr?": {
+    "2. Buscar No Dia": {
       "main": [
-        [{ "node": "Marcar Atraso", "type": "main", "index": 0 }],
-        [{ "node": "Log Falha Atr", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Criar Msg No Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Marcar 3 Dias": { "main": [[{ "node": "Log 3 Dias", "type": "main", "index": 0 }]] },
-    "Marcar No Dia": { "main": [[{ "node": "Log No Dia", "type": "main", "index": 0 }]] },
-    "Marcar Atraso": { "main": [[{ "node": "Log Atraso", "type": "main", "index": 0 }]] },
-    "Log 3 Dias": { "main": [[{ "node": "Incrementar 3d", "type": "main", "index": 0 }]] },
-    "Log No Dia": { "main": [[{ "node": "Incrementar Dia", "type": "main", "index": 0 }]] },
-    "Log Atraso": { "main": [[{ "node": "Incrementar Atraso", "type": "main", "index": 0 }]] }
+    "3. Buscar 3 Dias Depois": {
+      "main": [
+        [
+          {
+            "node": "Criar Msg Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Msg 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Enviar 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Msg No Dia": {
+      "main": [
+        [
+          {
+            "node": "Enviar No Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Msg Atraso": {
+      "main": [
+        [
+          {
+            "node": "Enviar Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Check 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar No Dia": {
+      "main": [
+        [
+          {
+            "node": "Check No Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Atraso": {
+      "main": [
+        [
+          {
+            "node": "Check Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Marcar 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Falha 3d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check No Dia": {
+      "main": [
+        [
+          {
+            "node": "Marcar No Dia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Falha Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Atraso": {
+      "main": [
+        [
+          {
+            "node": "Marcar Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Falha Atr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Log 3 Dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar No Dia": {
+      "main": [
+        [
+          {
+            "node": "Log No Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Atraso": {
+      "main": [
+        [
+          {
+            "node": "Log Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log 3 Dias": {
+      "main": [
+        [
+          {
+            "node": "Incrementar 3d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log No Dia": {
+      "main": [
+        [
+          {
+            "node": "Incrementar Dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Atraso": {
+      "main": [
+        [
+          {
+            "node": "Incrementar Atraso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false,
-    "timezone": "America/Sao_Paulo"
+    "executionOrder": "v1"
   },
-  "versionId": "3c991c9b-891f-445d-9781-0f7c3355b991",
-  "meta": {
-    "instanceId": "28995d812f3b917ab8d4142680d07c35b77e0f4bb3edf6733a77c6cb3886e743"
-  },
-  "id": "gdPzIzuqTqVNyCWx",
+  "staticData": null,
   "tags": [
     {
-      "updatedAt": "2026-01-16T18:03:52.562Z",
-      "createdAt": "2026-01-16T18:03:52.562Z",
-      "id": "9TgsVZASoBaCMZxW",
-      "name": "MensalliZap"
+      "name": "MensalliZap",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
     }
-  ]
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-23T00:00:00.000Z",
+  "versionId": "2"
 }

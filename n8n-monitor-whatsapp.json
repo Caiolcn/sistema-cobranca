@@ -16,7 +16,10 @@
       "name": "A cada 1 hora",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 300]
+      "position": [
+        0,
+        300
+      ]
     },
     {
       "parameters": {
@@ -49,7 +52,10 @@
       "name": "Buscar Conectados",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "notesInFlow": true,
       "notes": "Busca usuários que JÁ conectaram e ainda estão como connected"
     },
@@ -79,7 +85,10 @@
       "name": "Checar Status Evolution",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [500, 300],
+      "position": [
+        500,
+        300
+      ],
       "onError": "continueRegularOutput",
       "retryOnFail": true,
       "maxTries": 2,
@@ -112,7 +121,10 @@
       "name": "Desconectou?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     },
     {
       "parameters": {
@@ -148,7 +160,10 @@
       "name": "Atualizar whatsapp_connections",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 200],
+      "position": [
+        1050,
+        200
+      ],
       "onError": "continueRegularOutput",
       "alwaysOutputData": true
     },
@@ -186,7 +201,10 @@
       "name": "Atualizar mensallizap",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 200],
+      "position": [
+        1300,
+        200
+      ],
       "onError": "continueRegularOutput",
       "alwaysOutputData": true
     },
@@ -216,9 +234,13 @@
       "name": "Avisar Admin no WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1550, 200],
-      "onError": "continueRegularOutput",
-      "alwaysOutputData": true
+      "position": [
+        1550,
+        200
+      ],
+      "onError": "continueErrorOutput",
+      "alwaysOutputData": true,
+      "continueOnFail": true
     }
   ],
   "connections": {

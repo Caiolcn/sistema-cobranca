@@ -16,7 +16,10 @@
       "name": "Schedule (9h)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -41,7 +44,10 @@
       "name": "Buscar 3 Dias Antes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [450, 200]
+      "position": [
+        450,
+        200
+      ]
     },
     {
       "parameters": {
@@ -66,7 +72,10 @@
       "name": "Buscar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [450, 400]
+      "position": [
+        450,
+        400
+      ]
     },
     {
       "parameters": {
@@ -76,7 +85,10 @@
       "name": "Criar Msg 3 Dias",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [650, 200]
+      "position": [
+        650,
+        200
+      ]
     },
     {
       "parameters": {
@@ -86,7 +98,10 @@
       "name": "Criar Msg No Dia",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [650, 400]
+      "position": [
+        650,
+        400
+      ]
     },
     {
       "parameters": {
@@ -110,14 +125,25 @@
               "fullResponse": false
             }
           },
-          "includeInputFields": true
+          "includeInputFields": true,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
         }
       },
       "id": "enviar-whatsapp-3dias",
       "name": "Enviar WhatsApp 3d",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [850, 200]
+      "position": [
+        850,
+        200
+      ],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -141,14 +167,25 @@
               "fullResponse": false
             }
           },
-          "includeInputFields": true
+          "includeInputFields": true,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
         }
       },
       "id": "enviar-whatsapp-no-dia",
       "name": "Enviar WhatsApp Hoje",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [850, 400]
+      "position": [
+        850,
+        400
+      ],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -184,7 +221,10 @@
       "name": "Marcar 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 200]
+      "position": [
+        1050,
+        200
+      ]
     },
     {
       "parameters": {
@@ -220,7 +260,10 @@
       "name": "Marcar No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 400]
+      "position": [
+        1050,
+        400
+      ]
     },
     {
       "parameters": {
@@ -256,7 +299,10 @@
       "name": "Log 3 Dias",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 200]
+      "position": [
+        1250,
+        200
+      ]
     },
     {
       "parameters": {
@@ -292,7 +338,10 @@
       "name": "Log No Dia",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1250, 400]
+      "position": [
+        1250,
+        400
+      ]
     },
     {
       "parameters": {
@@ -324,7 +373,10 @@
       "name": "Incrementar 3d",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1450, 200]
+      "position": [
+        1450,
+        200
+      ]
     },
     {
       "parameters": {
@@ -356,7 +408,10 @@
       "name": "Incrementar Hoje",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1450, 400]
+      "position": [
+        1450,
+        400
+      ]
     }
   ],
   "connections": {
