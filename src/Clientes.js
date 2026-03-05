@@ -3076,11 +3076,14 @@ Equipe ${nomeEmpresa}`
               }}>
                 Data de Nascimento (opcional)
               </label>
-              <DateInput
+              <input
+                type="date"
                 value={novoClienteDataNascimento}
-                onChange={(val) => setNovoClienteDataNascimento(val)}
-                placeholder="dd/mm/aaaa"
-                style={{ fontSize: '16px' }}
+                onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
+                style={{
+                  width: '100%', padding: '12px', border: '1px solid #ddd',
+                  borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box'
+                }}
               />
             </div>
 
@@ -3148,19 +3151,21 @@ Equipe ${nomeEmpresa}`
                   }}>
                     Data de Início *
                   </label>
-                  <DateInput
+                  <input
+                    type="date"
                     value={dataInicioAssinatura}
-                    onChange={(val) => {
-                      setDataInicioAssinatura(val)
-                      // Auto-preencher data de vencimento com início + 30 dias
-                      if (val) {
-                        const inicio = new Date(val + 'T00:00:00')
+                    onChange={(e) => {
+                      setDataInicioAssinatura(e.target.value)
+                      if (e.target.value) {
+                        const inicio = new Date(e.target.value + 'T00:00:00')
                         inicio.setDate(inicio.getDate() + 30)
                         setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
                       }
                     }}
-                    placeholder="dd/mm/aaaa"
-                    style={{ fontSize: '16px' }}
+                    style={{
+                      width: '100%', padding: '12px', border: '1px solid #ddd',
+                      borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box'
+                    }}
                   />
                 </div>
 
@@ -3175,11 +3180,14 @@ Equipe ${nomeEmpresa}`
                   }}>
                     Data de Vencimento *
                   </label>
-                  <DateInput
+                  <input
+                    type="date"
                     value={dataVencimentoAssinatura}
-                    onChange={(val) => setDataVencimentoAssinatura(val)}
-                    placeholder="dd/mm/aaaa"
-                    style={{ fontSize: '16px' }}
+                    onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
+                    style={{
+                      width: '100%', padding: '12px', border: '1px solid #ddd',
+                      borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box'
+                    }}
                   />
                   <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
                     Data da primeira mensalidade. Auto-preenchido com início + 30 dias.

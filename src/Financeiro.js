@@ -1466,25 +1466,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       Período Personalizado
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <DateInput
+                      <input
+                        type="date"
                         value={filtroDataInicio}
-                        onChange={(val) => setFiltroDataInicio(val)}
-                        placeholder="Data início"
+                        onChange={(e) => setFiltroDataInicio(e.target.value)}
                         style={{
-                          padding: '10px 12px',
-                          fontSize: '16px',
+                          width: '100%', padding: '10px 12px', borderRadius: '6px',
+                          border: '1px solid #ddd', fontSize: '16px', outline: 'none',
+                          cursor: 'pointer', boxSizing: 'border-box'
                         }}
                       />
                       <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
                         até
                       </div>
-                      <DateInput
+                      <input
+                        type="date"
                         value={filtroDataFim}
-                        onChange={(val) => setFiltroDataFim(val)}
-                        placeholder="Data fim"
+                        onChange={(e) => setFiltroDataFim(e.target.value)}
                         style={{
-                          padding: '10px 12px',
-                          fontSize: '16px',
+                          width: '100%', padding: '10px 12px', borderRadius: '6px',
+                          border: '1px solid #ddd', fontSize: '16px', outline: 'none',
+                          cursor: 'pointer', boxSizing: 'border-box'
                         }}
                       />
                     </div>
