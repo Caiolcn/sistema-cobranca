@@ -8,6 +8,7 @@ import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { exportarCobrancasAvulsas } from './utils/exportUtils'
+import DateInput from './components/DateInput'
 
 const CATEGORIAS_PADRAO = [
   { value: 'uniforme', label: 'Uniforme', icon: 'mdi:tshirt-crew-outline', cor: '#E91E63' },
@@ -638,24 +639,22 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Período</label>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="date"
-                  value={filtroDataInicio}
-                  onChange={(e) => setFiltroDataInicio(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '13px', outline: 'none'
-                  }}
-                />
-                <input
-                  type="date"
-                  value={filtroDataFim}
-                  onChange={(e) => setFiltroDataFim(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '13px', outline: 'none'
-                  }}
-                />
+                <div style={{ flex: 1 }}>
+                  <DateInput
+                    value={filtroDataInicio}
+                    onChange={(val) => setFiltroDataInicio(val)}
+                    placeholder="Início"
+                    style={{ padding: '10px 8px', fontSize: '13px' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <DateInput
+                    value={filtroDataFim}
+                    onChange={(val) => setFiltroDataFim(val)}
+                    placeholder="Fim"
+                    style={{ padding: '10px 8px', fontSize: '13px' }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1107,16 +1106,10 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             {/* Data vencimento */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Data de vencimento <span style={{ fontWeight: '400', color: '#999' }}>(opcional)</span></label>
-              <input
-                type="date"
+              <DateInput
                 value={formDataVencimento}
-                onChange={(e) => setFormDataVencimento(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
+                onChange={(val) => setFormDataVencimento(val)}
+                style={{ padding: '10px 12px', fontSize: '14px' }}
               />
             </div>
 

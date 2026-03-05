@@ -19,12 +19,15 @@ export default function DateInput({
   style = {},
   onFocus,
   onBlur,
+  disabled = false,
+  minDate,
   ...props
 }) {
   const { isSmallScreen } = useWindowSize()
 
   // Converter string YYYY-MM-DD para Date object
   const dateValue = value ? new Date(value + 'T00:00:00') : null
+  const minDateValue = minDate ? new Date(minDate + 'T00:00:00') : null
 
   // Handler para quando a data muda
   const handleChange = (date) => {
@@ -49,13 +52,16 @@ export default function DateInput({
       onChange={inputOnChange}
       placeholder={placeholder}
       readOnly
+      disabled={disabled}
       style={{
         width: '100%',
         padding: '12px',
         border: '1px solid #ddd',
         borderRadius: '6px',
         fontSize: '14px',
-        backgroundColor: 'white',
+        backgroundColor: disabled ? '#f5f5f5' : 'white',
+        color: disabled ? '#999' : undefined,
+        cursor: disabled ? 'not-allowed' : 'pointer',
         boxSizing: 'border-box',
         outline: 'none',
         transition: 'border-color 0.2s',
@@ -82,6 +88,8 @@ export default function DateInput({
       customInput={<CustomInput />}
       showPopperArrow={false}
       withPortal={isSmallScreen}
+      disabled={disabled}
+      minDate={minDateValue}
       popperPlacement="bottom-start"
       popperModifiers={[
         {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
+import DateInput from './components/DateInput'
 
 export default function ParcelaForm({ devedor, parcela, onClose }) {
   const [numero, setNumero] = useState(1)
@@ -250,12 +251,10 @@ export default function ParcelaForm({ devedor, parcela, onClose }) {
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                   Data do Primeiro Vencimento
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   value={primeiroVencimento}
-                  onChange={(e) => setPrimeiroVencimento(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                  onChange={(val) => setPrimeiroVencimento(val)}
+                  style={{ padding: '10px' }}
                 />
                 <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
                   As próximas parcelas serão criadas a cada 30 dias
@@ -330,12 +329,10 @@ export default function ParcelaForm({ devedor, parcela, onClose }) {
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                   Data de Vencimento
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   value={vencimento}
-                  onChange={(e) => setVencimento(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                  onChange={(val) => setVencimento(val)}
+                  style={{ padding: '10px' }}
                 />
               </div>
 

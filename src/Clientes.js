@@ -30,6 +30,7 @@ export default function Clientes() {
   const [telefoneEdit, setTelefoneEdit] = useState('')
   const [cpfEdit, setCpfEdit] = useState('')
   const [dataNascimentoEdit, setDataNascimentoEdit] = useState('')
+  const [diaVencimentoEdit, setDiaVencimentoEdit] = useState('')
   const [busca, setBusca] = useState('')
 
   // Filtros
@@ -408,6 +409,9 @@ export default function Clientes() {
       setTelefoneEdit(cliente.telefone || '')
       setCpfEdit(cliente.cpf || '')
       setDataNascimentoEdit(cliente.data_nascimento || '')
+      const pendente = mensalidades.find(m => m.status === 'pendente')
+      const refMens = pendente || mensalidades[mensalidades.length - 1]
+      setDiaVencimentoEdit(refMens ? String(new Date(refMens.data_vencimento + 'T00:00:00').getDate()) : '')
       setEditando(false)
       setMostrarModal(true)
       await carregarMensalidadesCliente(cliente.id)
@@ -433,6 +437,13 @@ export default function Clientes() {
     // Validar CPF se preenchido
     if (cpfEdit.trim() && !validarCPF(cpfEdit)) {
       showToast('CPF inválido', 'warning')
+      return
+    }
+
+    // Validar dia de vencimento se preenchido
+    const diaNum = parseInt(diaVencimentoEdit, 10)
+    if (diaVencimentoEdit !== '' && (isNaN(diaNum) || diaNum < 1 || diaNum > 31)) {
+      showToast('Dia de vencimento inválido (1-31)', 'warning')
       return
     }
 
@@ -470,6 +481,33 @@ export default function Clientes() {
         .eq('id', clienteSelecionado.id)
 
       if (error) throw error
+
+      // Atualizar dia de vencimento das mensalidades pendentes
+      if (diaVencimentoEdit !== '' && !isNaN(diaNum)) {
+        const { data: pendentes } = await supabase
+          .from('mensalidades')
+          .select('id, data_vencimento')
+          .eq('devedor_id', clienteSelecionado.id)
+          .eq('status', 'pendente')
+
+        if (pendentes && pendentes.length > 0) {
+          for (const m of pendentes) {
+            const d = new Date(m.data_vencimento + 'T00:00:00')
+            const ano = d.getFullYear()
+            const mes = d.getMonth()
+            const ultimoDiaMes = new Date(ano, mes + 1, 0).getDate()
+            const diaFinal = Math.min(diaNum, ultimoDiaMes)
+            const novaData = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`
+
+            const { error: updateError } = await supabase
+              .from('mensalidades')
+              .update({ data_vencimento: novaData })
+              .eq('id', m.id)
+
+            if (updateError) throw updateError
+          }
+        }
+      }
 
       showToast('Aluno atualizado com sucesso!', 'success')
       setEditando(false)
@@ -2061,11 +2099,31 @@ Equipe ${nomeEmpresa}`
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
                       Data de Nascimento
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={dataNascimentoEdit}
-                      onChange={(e) => setDataNascimentoEdit(e.target.value)}
+                      onChange={(val) => setDataNascimentoEdit(val)}
                       disabled={!editando}
+                      style={{ padding: '10px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
+                      Dia de Vencimento
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={diaVencimentoEdit}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) {
+                          setDiaVencimentoEdit(val)
+                        }
+                      }}
+                      onFocus={(e) => e.target.select()}
+                      disabled={!editando}
+                      placeholder="1-31"
                       style={{
                         width: '100%',
                         padding: '10px',
@@ -2073,7 +2131,7 @@ Equipe ${nomeEmpresa}`
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         backgroundColor: editando ? 'white' : '#f5f5f5',
-                        color: dataNascimentoEdit ? '#333' : '#999',
+                        color: diaVencimentoEdit ? '#333' : '#999',
                         boxSizing: 'border-box'
                       }}
                     />
@@ -2089,6 +2147,9 @@ Equipe ${nomeEmpresa}`
                         setTelefoneEdit(clienteSelecionado.telefone)
                         setCpfEdit(clienteSelecionado.cpf || '')
                         setDataNascimentoEdit(clienteSelecionado.data_nascimento || '')
+                        const pend = mensalidadesCliente.find(m => m.status === 'pendente')
+                        const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]
+                        setDiaVencimentoEdit(ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '')
                       }}
                       style={{
                         padding: '8px 16px',
@@ -2688,26 +2749,17 @@ Equipe ${nomeEmpresa}`
                     }}>
                       Data de Início
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={dataInicioAssinaturaModal}
-                      onChange={(e) => {
-                        setDataInicioAssinaturaModal(e.target.value)
-                        // Auto-preencher data de vencimento com início + 30 dias
-                        if (e.target.value) {
-                          const inicio = new Date(e.target.value + 'T00:00:00')
+                      onChange={(val) => {
+                        setDataInicioAssinaturaModal(val)
+                        if (val) {
+                          const inicio = new Date(val + 'T00:00:00')
                           inicio.setDate(inicio.getDate() + 30)
                           setDataVencimentoAssinaturaModal(inicio.toISOString().split('T')[0])
                         }
                       }}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
-                      }}
+                      style={{ padding: '12px', fontSize: '14px' }}
                     />
                   </div>
 
@@ -2721,18 +2773,10 @@ Equipe ${nomeEmpresa}`
                     }}>
                       Data de Vencimento
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={dataVencimentoAssinaturaModal}
-                      onChange={(e) => setDataVencimentoAssinaturaModal(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
-                      }}
+                      onChange={(val) => setDataVencimentoAssinaturaModal(val)}
+                      style={{ padding: '12px', fontSize: '14px' }}
                     />
                     <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
                       Data da primeira mensalidade. Auto-preenchido com início + 30 dias.
