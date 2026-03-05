@@ -47,11 +47,13 @@ export default function DateInput({
     <input
       ref={ref}
       type="text"
+      inputMode="none"
       value={value}
       onClick={onClick}
+      onTouchEnd={(e) => { e.preventDefault(); onClick?.(e) }}
       onChange={inputOnChange}
+      onKeyDown={(e) => e.preventDefault()}
       placeholder={placeholder}
-      readOnly
       disabled={disabled}
       style={{
         width: '100%',
@@ -65,6 +67,7 @@ export default function DateInput({
         boxSizing: 'border-box',
         outline: 'none',
         transition: 'border-color 0.2s',
+        caretColor: 'transparent',
         ...style
       }}
       onFocus={(e) => {
