@@ -16,6 +16,7 @@ import Despesas from './Despesas'
 import CobrancasAvulsas from './CobrancasAvulsas'
 import ConfirmModal from './ConfirmModal'
 import { validarCPF } from './utils/validators'
+import DateInput from './components/DateInput'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -1465,68 +1466,74 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       Período Personalizado
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <input
-                        type="date"
+                      <DateInput
                         value={filtroDataInicio}
-                        onChange={(e) => setFiltroDataInicio(e.target.value)}
+                        onChange={(val) => setFiltroDataInicio(val)}
                         placeholder="Data início"
                         style={{
-                          width: '100%',
                           padding: '10px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid #ddd',
                           fontSize: '16px',
-                          outline: 'none',
-                          cursor: 'pointer',
-                          boxSizing: 'border-box'
                         }}
                       />
                       <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
                         até
                       </div>
-                      <input
-                        type="date"
+                      <DateInput
                         value={filtroDataFim}
-                        onChange={(e) => setFiltroDataFim(e.target.value)}
+                        onChange={(val) => setFiltroDataFim(val)}
                         placeholder="Data fim"
                         style={{
-                          width: '100%',
                           padding: '10px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid #ddd',
                           fontSize: '16px',
-                          outline: 'none',
-                          cursor: 'pointer',
-                          boxSizing: 'border-box'
                         }}
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Rodapé com botão Limpar filtros */}
+                {/* Rodapé com botões */}
                 <div style={{
                   borderTop: '1px solid #e0e0e0',
                   padding: '12px 20px',
-                  backgroundColor: '#f9f9f9'
+                  backgroundColor: '#f9f9f9',
+                  display: 'flex',
+                  gap: '10px',
+                  ...(isSmallScreen ? { position: 'sticky', bottom: 0, paddingBottom: '20px' } : {})
                 }}>
                   <button
                     onClick={limparFiltros}
                     disabled={!temFiltrosAtivos}
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      backgroundColor: temFiltrosAtivos ? '#344848' : '#e0e0e0',
-                      color: temFiltrosAtivos ? 'white' : '#999',
-                      border: 'none',
-                      borderRadius: '6px',
+                      flex: 1,
+                      padding: '12px',
+                      backgroundColor: 'white',
+                      color: temFiltrosAtivos ? '#344848' : '#999',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
                       cursor: temFiltrosAtivos ? 'pointer' : 'not-allowed',
                       fontSize: '14px',
                       fontWeight: '600',
                       transition: 'all 0.2s'
                     }}
                   >
-                    Limpar filtros
+                    Limpar
+                  </button>
+                  <button
+                    onClick={() => setMostrarFiltros(false)}
+                    style={{
+                      flex: 2,
+                      padding: '12px',
+                      backgroundColor: '#344848',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    Aplicar Filtros
                   </button>
                 </div>
               </div>

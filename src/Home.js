@@ -200,12 +200,20 @@ function Home() {
       setOnboardingSteps(steps);
 
       const todasCompletas = steps.empresa && steps.pix && steps.whatsapp && steps.cliente;
-      const isViewingAsClient = isAdmin && adminViewingAs;
-      if (!todasCompletas && (isViewingAsClient || (!isAdmin && userData?.onboarding_completed !== true))) {
+
+      // Se já completou onboarding antes, nunca mais mostrar
+      if (!isAdmin && userData?.onboarding_completed === true) {
+        setMostrarChecklist(false);
+      } else if (isAdmin && adminViewingAs) {
+        // Admin vendo cliente: mostrar se não completou
+        setMostrarChecklist(!todasCompletas);
+      } else if (!isAdmin && !todasCompletas) {
         setMostrarChecklist(true);
       } else {
         setMostrarChecklist(false);
       }
+
+      // Marcar como completado quando todas as etapas forem concluídas
       if (todasCompletas && !isAdmin && userData?.onboarding_completed !== true) {
         supabase.from('usuarios').update({ onboarding_completed: true, onboarding_step: 4 }).eq('id', userId);
       }
