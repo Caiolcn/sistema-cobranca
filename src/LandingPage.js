@@ -821,7 +821,7 @@ export default function LandingPage() {
                     boxSizing: 'border-box',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                  onFocus={(e) => { e.target.style.borderColor = '#25D366'; e.target.select() }}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
               </div>
@@ -843,7 +843,7 @@ export default function LandingPage() {
                     boxSizing: 'border-box',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                  onFocus={(e) => { e.target.style.borderColor = '#25D366'; e.target.select() }}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
               </div>
@@ -865,7 +865,7 @@ export default function LandingPage() {
                     boxSizing: 'border-box',
                     transition: 'border-color 0.2s'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#25D366'}
+                  onFocus={(e) => { e.target.style.borderColor = '#25D366'; e.target.select() }}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
               </div>
