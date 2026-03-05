@@ -550,7 +550,8 @@ export default function Dashboard() {
               data-tooltip="Meu Perfil"
               onClick={() => {
                 if (isMobile) {
-                  setPerfilMenuAberto(!perfilMenuAberto)
+                  setMostrarPerfil(true)
+                  setMenuAberto(false)
                 } else {
                   setPerfilMenuAberto(!perfilMenuAberto)
                 }
@@ -577,19 +578,17 @@ export default function Dashboard() {
               {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Meu Perfil</span>}
             </div>
 
-            {/* Popup do Perfil */}
-            {perfilMenuAberto && (
+            {/* Popup do Perfil - só no desktop */}
+            {!isMobile && perfilMenuAberto && (
               <>
                 <div
                   style={{ position: 'fixed', inset: 0, zIndex: 199 }}
                   onClick={() => setPerfilMenuAberto(false)}
                 />
                 <div style={{
-                  position: isMobile ? 'fixed' : 'absolute',
-                  ...(isMobile
-                    ? { bottom: '70px', left: '16px' }
-                    : { bottom: '0', left: '50px' }
-                  ),
+                  position: 'absolute',
+                  bottom: '0',
+                  left: '50px',
                   background: 'white',
                   border: '1px solid #e5e7eb',
                   borderRadius: '10px',
@@ -599,7 +598,7 @@ export default function Dashboard() {
                   zIndex: 200
                 }}>
                   <div
-                    onClick={() => { setPerfilMenuAberto(false); setMostrarPerfil(true); if (isMobile) setMenuAberto(false) }}
+                    onClick={() => { setPerfilMenuAberto(false); setMostrarPerfil(true) }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '10px',
                       padding: '10px 14px', borderRadius: '7px', cursor: 'pointer',
@@ -629,6 +628,33 @@ export default function Dashboard() {
               </>
             )}
           </div>
+
+          {/* Sair - direto no sidebar mobile */}
+          {isMobile && (
+            <div
+              onClick={handleLogout}
+              style={{
+                width: '100%',
+                height: '40px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: '12px',
+                paddingLeft: '12px',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                color: '#ef4444',
+                marginBottom: '16px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Icon icon="iconoir:log-out" width="22" height="22" />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Sair</span>
+            </div>
+          )}
         </div>
       </div>
 
