@@ -3,7 +3,6 @@ import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
 import { showToast } from './Toast'
 import useWindowSize from './hooks/useWindowSize'
-import DateInput from './components/DateInput'
 
 function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdicionado }) {
   const { isSmallScreen } = useWindowSize()
@@ -347,11 +346,20 @@ function AddInstallmentsModal({ isOpen, onClose, clientes, onSave, onClienteAdic
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
               Data de Início da Assinatura *
             </label>
-            <DateInput
+            <input
+              type="date"
               value={firstDueDate}
-              onChange={(val) => setFirstDueDate(val)}
-              minDate={new Date().toISOString().split('T')[0]}
-              style={{ padding: '10px', fontSize: '16px' }}
+              onChange={(e) => setFirstDueDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              style={{
+                width: '100%',
+                padding: '10px',
+                fontSize: '16px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
             />
             <span style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
               A primeira cobrança será gerada 30 dias após esta data

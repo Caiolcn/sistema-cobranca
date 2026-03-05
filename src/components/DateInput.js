@@ -19,15 +19,12 @@ export default function DateInput({
   style = {},
   onFocus,
   onBlur,
-  disabled = false,
-  minDate,
   ...props
 }) {
   const { isSmallScreen } = useWindowSize()
 
   // Converter string YYYY-MM-DD para Date object
   const dateValue = value ? new Date(value + 'T00:00:00') : null
-  const minDateValue = minDate ? new Date(minDate + 'T00:00:00') : null
 
   // Handler para quando a data muda
   const handleChange = (date) => {
@@ -47,27 +44,21 @@ export default function DateInput({
     <input
       ref={ref}
       type="text"
-      inputMode="none"
       value={value}
       onClick={onClick}
-      onTouchEnd={(e) => { e.preventDefault(); onClick?.(e) }}
       onChange={inputOnChange}
-      onKeyDown={(e) => e.preventDefault()}
       placeholder={placeholder}
-      disabled={disabled}
+      readOnly
       style={{
         width: '100%',
         padding: '12px',
         border: '1px solid #ddd',
         borderRadius: '6px',
         fontSize: '14px',
-        backgroundColor: disabled ? '#f5f5f5' : 'white',
-        color: disabled ? '#999' : undefined,
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        backgroundColor: 'white',
         boxSizing: 'border-box',
         outline: 'none',
         transition: 'border-color 0.2s',
-        caretColor: 'transparent',
         ...style
       }}
       onFocus={(e) => {
@@ -91,8 +82,6 @@ export default function DateInput({
       customInput={<CustomInput />}
       showPopperArrow={false}
       withPortal={isSmallScreen}
-      disabled={disabled}
-      minDate={minDateValue}
       popperPlacement="bottom-start"
       popperModifiers={[
         {

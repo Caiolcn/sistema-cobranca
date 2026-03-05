@@ -2099,11 +2099,21 @@ Equipe ${nomeEmpresa}`
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
                       Data de Nascimento
                     </label>
-                    <DateInput
+                    <input
+                      type="date"
                       value={dataNascimentoEdit}
-                      onChange={(val) => setDataNascimentoEdit(val)}
+                      onChange={(e) => setDataNascimentoEdit(e.target.value)}
                       disabled={!editando}
-                      style={{ padding: '10px', fontSize: '14px' }}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        backgroundColor: editando ? 'white' : '#f5f5f5',
+                        color: dataNascimentoEdit ? '#333' : '#999',
+                        boxSizing: 'border-box'
+                      }}
                     />
                   </div>
                   <div>
@@ -2749,17 +2759,25 @@ Equipe ${nomeEmpresa}`
                     }}>
                       Data de Início
                     </label>
-                    <DateInput
+                    <input
+                      type="date"
                       value={dataInicioAssinaturaModal}
-                      onChange={(val) => {
-                        setDataInicioAssinaturaModal(val)
-                        if (val) {
-                          const inicio = new Date(val + 'T00:00:00')
+                      onChange={(e) => {
+                        setDataInicioAssinaturaModal(e.target.value)
+                        if (e.target.value) {
+                          const inicio = new Date(e.target.value + 'T00:00:00')
                           inicio.setDate(inicio.getDate() + 30)
                           setDataVencimentoAssinaturaModal(inicio.toISOString().split('T')[0])
                         }
                       }}
-                      style={{ padding: '12px', fontSize: '14px' }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        backgroundColor: 'white'
+                      }}
                     />
                   </div>
 
@@ -2773,10 +2791,18 @@ Equipe ${nomeEmpresa}`
                     }}>
                       Data de Vencimento
                     </label>
-                    <DateInput
+                    <input
+                      type="date"
                       value={dataVencimentoAssinaturaModal}
-                      onChange={(val) => setDataVencimentoAssinaturaModal(val)}
-                      style={{ padding: '12px', fontSize: '14px' }}
+                      onChange={(e) => setDataVencimentoAssinaturaModal(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        backgroundColor: 'white'
+                      }}
                     />
                     <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
                       Data da primeira mensalidade. Auto-preenchido com início + 30 dias.
