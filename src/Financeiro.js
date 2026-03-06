@@ -45,6 +45,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [vendasCount, setVendasCount] = useState({ total: 0, filtered: 0 })
   const [despesasCount, setDespesasCount] = useState({ total: 0, filtered: 0 })
 
+  const handleVendasCountUpdate = useCallback((t, f) => {
+    setVendasCount(prev => (prev.total === t && prev.filtered === f) ? prev : { total: t, filtered: f })
+  }, [])
+
+  const handleDespesasCountUpdate = useCallback((t, f) => {
+    setDespesasCount(prev => (prev.total === t && prev.filtered === f) ? prev : { total: t, filtered: f })
+  }, [])
+
   // Debounce do filtro de nome (300ms)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1548,10 +1556,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       </div>
 
       {/* ========== ABA: COBRANÇAS AVULSAS ========== */}
-      {abaAtiva === 'avulsas' && <CobrancasAvulsas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={(t, f) => setVendasCount({ total: t, filtered: f })} />}
+      {abaAtiva === 'avulsas' && <CobrancasAvulsas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={handleVendasCountUpdate} />}
 
       {/* ========== ABA: DESPESAS ========== */}
-      {abaAtiva === 'despesas' && <Despesas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={(t, f) => setDespesasCount({ total: t, filtered: f })} />}
+      {abaAtiva === 'despesas' && <Despesas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={handleDespesasCountUpdate} />}
 
       {/* ========== ABA: MENSALIDADES ========== */}
       {abaAtiva === 'mensalidades' && (<>

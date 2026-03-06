@@ -754,7 +754,7 @@ export default function Dashboard() {
         )}
         <PlanExpirationBanner />
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', backgroundColor: '#ffffff' }}>
-          <Outlet key={location.pathname} />
+          <Outlet />
         </div>
       </div>
 
