@@ -694,9 +694,11 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
       )}
 
       {/* ========== BOTÕES ========== */}
+      {embedded && buttonsPortal ? createPortal(buttonsBlock, buttonsPortal) : (
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: isSmallScreen ? '12px' : '16px' }}>
         {buttonsBlock}
       </div>
+      )}
 
       {/* ========== CARDS DE INDICADORES ========== */}
       <div style={{
