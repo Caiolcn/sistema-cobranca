@@ -1438,7 +1438,8 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 onChange={(e) => setFormDataVencimento(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+                  backgroundColor: 'white', WebkitAppearance: 'none', color: '#333'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
