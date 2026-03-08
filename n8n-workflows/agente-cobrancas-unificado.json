@@ -110,7 +110,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Enviar WhatsApp item por item com try/catch\n// Garante que erro em um item NUNCA para os demais\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  // Delay 1s entre envios (exceto primeiro) para não sobrecarregar\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await fetch(data.evolution_url, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: JSON.stringify({ number: data.telefone, text: data.mensagem })\n    });\n\n    if (!resp.ok) {\n      let errMsg = `HTTP ${resp.status}`;\n      try { const b = await resp.json(); errMsg = b?.response?.message || b?.message || errMsg; } catch(e) {}\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: errMsg } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
+        "jsCode": "// Enviar WhatsApp item por item com try/catch (usa httpRequest nativo do n8n)\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const body = await this.helpers.httpRequest({\n      method: 'POST',\n      url: data.evolution_url,\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: { number: data.telefone, text: data.mensagem },\n      json: true\n    });\n\n    if (body?.key?.id) {\n      results.push({ json: { ...data, envio_sucesso: true, response_id: body.key.id } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: body?.message || 'Resposta sem key.id' } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
       },
       "id": "enviar-check-3dias",
       "name": "Enviar 3 Dias",
@@ -120,7 +120,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Enviar WhatsApp item por item com try/catch\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await fetch(data.evolution_url, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: JSON.stringify({ number: data.telefone, text: data.mensagem })\n    });\n\n    if (!resp.ok) {\n      let errMsg = `HTTP ${resp.status}`;\n      try { const b = await resp.json(); errMsg = b?.response?.message || b?.message || errMsg; } catch(e) {}\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: errMsg } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
+        "jsCode": "// Enviar WhatsApp item por item com try/catch (usa httpRequest nativo do n8n)\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const body = await this.helpers.httpRequest({\n      method: 'POST',\n      url: data.evolution_url,\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: { number: data.telefone, text: data.mensagem },\n      json: true\n    });\n\n    if (body?.key?.id) {\n      results.push({ json: { ...data, envio_sucesso: true, response_id: body.key.id } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: body?.message || 'Resposta sem key.id' } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
       },
       "id": "enviar-check-nodia",
       "name": "Enviar No Dia",
@@ -130,7 +130,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Enviar WhatsApp item por item com try/catch\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await fetch(data.evolution_url, {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: JSON.stringify({ number: data.telefone, text: data.mensagem })\n    });\n\n    if (!resp.ok) {\n      let errMsg = `HTTP ${resp.status}`;\n      try { const b = await resp.json(); errMsg = b?.response?.message || b?.message || errMsg; } catch(e) {}\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: errMsg } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
+        "jsCode": "// Enviar WhatsApp item por item com try/catch (usa httpRequest nativo do n8n)\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const body = await this.helpers.httpRequest({\n      method: 'POST',\n      url: data.evolution_url,\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: { number: data.telefone, text: data.mensagem },\n      json: true\n    });\n\n    if (body?.key?.id) {\n      results.push({ json: { ...data, envio_sucesso: true, response_id: body.key.id } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: body?.message || 'Resposta sem key.id' } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão' } });\n  }\n}\n\nreturn results;"
       },
       "id": "enviar-check-atraso",
       "name": "Enviar Atraso",
@@ -141,8 +141,8 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
-            { "value1": "={{ $json.envio_sucesso }}" }
+          "string": [
+            { "value1": "={{ $json.envio_sucesso }}", "value2": "true" }
           ]
         }
       },
@@ -155,8 +155,8 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
-            { "value1": "={{ $json.envio_sucesso }}" }
+          "string": [
+            { "value1": "={{ $json.envio_sucesso }}", "value2": "true" }
           ]
         }
       },
@@ -169,8 +169,8 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
-            { "value1": "={{ $json.envio_sucesso }}" }
+          "string": [
+            { "value1": "={{ $json.envio_sucesso }}", "value2": "true" }
           ]
         }
       },
