@@ -7,11 +7,19 @@ export default function Signup() {
   const navigate = useNavigate()
 
   const [nomeCompleto, setNomeCompleto] = useState('')
+  const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [focusField, setFocusField] = useState(null)
+
+  const formatarTelefone = (valor) => {
+    const nums = valor.replace(/\D/g, '').slice(0, 11)
+    if (nums.length <= 2) return nums
+    if (nums.length <= 7) return `(${nums.slice(0, 2)}) ${nums.slice(2)}`
+    return `(${nums.slice(0, 2)}) ${nums.slice(2, 7)}-${nums.slice(7)}`
+  }
 
   const getLimitePorPlano = (plano) => {
     const limites = { starter: 200, pro: 600, premium: 3000 }
@@ -39,6 +47,13 @@ export default function Signup() {
     try {
       if (!nomeCompleto || nomeCompleto.trim().length < 3) {
         setErro('Nome deve ter pelo menos 3 caracteres')
+        setLoading(false)
+        return
+      }
+
+      const telefoneLimpo = telefone.replace(/\D/g, '')
+      if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+        setErro('WhatsApp inválido. Use DDD + número.')
         setLoading(false)
         return
       }
@@ -79,6 +94,7 @@ export default function Signup() {
           id: userId,
           email: email,
           nome_completo: nomeCompleto,
+          telefone: telefoneLimpo,
           plano: planoSelecionado,
           limite_mensal: getLimitePorPlano(planoSelecionado),
           trial_fim: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -221,6 +237,22 @@ export default function Signup() {
               onFocus={() => setFocusField('nome')}
               onBlur={() => setFocusField(null)}
               style={inputStyle('nome')}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#444', fontSize: '13px', fontWeight: '600' }}>
+              WhatsApp
+            </label>
+            <input
+              type="tel"
+              value={telefone}
+              onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+              placeholder="(11) 99999-9999"
+              required
+              onFocus={() => setFocusField('telefone')}
+              onBlur={() => setFocusField(null)}
+              style={inputStyle('telefone')}
             />
           </div>
 

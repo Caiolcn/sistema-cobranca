@@ -3114,7 +3114,7 @@ Equipe ${nomeEmpresa}`
                     cursor: 'pointer'
                   }}
                 />
-                Criar assinatura para este aluno
+                Criar mensalidade para este aluno
               </label>
             </div>
 
@@ -3137,7 +3137,7 @@ Equipe ${nomeEmpresa}`
                   gap: '6px'
                 }}>
                   <Icon icon="mdi:card-account-details" width="18" height="18" />
-                  Detalhes da Assinatura
+                  Detalhes da Mensalidade
                 </h4>
 
                 {/* Data de início */}
