@@ -193,7 +193,7 @@ export default function Signup() {
           fontSize: '24px',
           fontWeight: '700'
         }}>
-          Comece seu teste grátis
+          Crie sua conta
         </h2>
         <p style={{
           textAlign: 'center',
@@ -202,7 +202,7 @@ export default function Signup() {
           fontSize: '14px',
           lineHeight: '1.5'
         }}>
-          3 dias grátis, sem cartão de crédito
+          Comece a automatizar suas cobranças agora
         </p>
 
         {erro && (
@@ -307,7 +307,7 @@ export default function Signup() {
             onMouseOver={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 211, 102, 0.4)' } }}
             onMouseOut={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 211, 102, 0.3)' } }}
           >
-            {loading ? 'Criando conta...' : 'Criar conta grátis'}
+            {loading ? 'Criando conta...' : 'Criar conta'}
           </button>
         </form>
 
