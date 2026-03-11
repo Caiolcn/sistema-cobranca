@@ -15,6 +15,7 @@ export default function CRM() {
   const [filtro, setFiltro] = useState('todos')
   const [buscaTexto, setBuscaTexto] = useState('')
   const [ordenacao, setOrdenacao] = useState('nome')
+  const [filtroMes, setFiltroMes] = useState('todos')
 
   // Redirecionar se não for admin
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function CRM() {
       ] = await Promise.all([
         supabase
           .from('usuarios')
-          .select('id, email, nome_empresa, nome_completo, telefone, plano, plano_pago, plano_vencimento, trial_fim, role')
+          .select('id, email, nome_empresa, nome_completo, telefone, plano, plano_pago, plano_vencimento, trial_fim, role, created_at')
           .neq('role', 'admin')
           .order('nome_empresa', { ascending: true, nullsFirst: false }),
         supabase
@@ -112,6 +113,14 @@ export default function CRM() {
     else if (filtro === 'conectados') result = result.filter(c => c.mz?.conectado === true)
     else if (filtro === 'desconectados') result = result.filter(c => c.mz && c.mz.conectado !== true)
 
+    // Filtro por mês de criação
+    if (filtroMes !== 'todos') {
+      result = result.filter(c => {
+        if (!c.created_at) return false
+        return c.created_at.slice(0, 7) === filtroMes
+      })
+    }
+
     // Busca por texto
     if (buscaTexto) {
       const busca = buscaTexto.toLowerCase()
@@ -134,11 +143,29 @@ export default function CRM() {
       if (ordenacao === 'mensagens') {
         return (b.cp?.usage_count || 0) - (a.cp?.usage_count || 0)
       }
+      if (ordenacao === 'criacao') {
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      }
       return 0
     })
 
     return result
-  }, [clientes, filtro, buscaTexto, ordenacao])
+  }, [clientes, filtro, filtroMes, buscaTexto, ordenacao])
+
+  // Meses disponíveis para filtro (baseado nas datas de criação dos clientes)
+  const mesesDisponiveis = useMemo(() => {
+    const mesesSet = new Set()
+    clientes.forEach(c => {
+      if (c.created_at) mesesSet.add(c.created_at.slice(0, 7))
+    })
+    return [...mesesSet].sort().reverse()
+  }, [clientes])
+
+  const formatarMes = (mesISO) => {
+    const [ano, mes] = mesISO.split('-')
+    const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    return `${nomes[parseInt(mes) - 1]}/${ano}`
+  }
 
   const formatarData = (dataISO) => {
     if (!dataISO) return '-'
@@ -187,7 +214,7 @@ export default function CRM() {
   ]
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1800px', margin: '0 auto' }}>
       {/* Cabeçalho */}
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
@@ -331,6 +358,20 @@ export default function CRM() {
         </div>
 
         <select
+          value={filtroMes}
+          onChange={(e) => setFiltroMes(e.target.value)}
+          style={{
+            padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px',
+            fontSize: '13px', color: '#333', backgroundColor: 'white', cursor: 'pointer'
+          }}
+        >
+          <option value="todos">Todos os meses</option>
+          {mesesDisponiveis.map(mes => (
+            <option key={mes} value={mes}>{formatarMes(mes)}</option>
+          ))}
+        </select>
+
+        <select
           value={ordenacao}
           onChange={(e) => setOrdenacao(e.target.value)}
           style={{
@@ -341,6 +382,7 @@ export default function CRM() {
           <option value="nome">Ordenar por nome</option>
           <option value="plano">Ordenar por plano</option>
           <option value="mensagens">Ordenar por mensagens</option>
+          <option value="criacao">Ordenar por criação</option>
         </select>
       </div>
 
@@ -359,13 +401,13 @@ export default function CRM() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'WhatsApp', 'Mensagens', 'Última Conexão'].map(col => (
+                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'Criação da Conta', 'WhatsApp', 'Mensagens', 'Última Conexão'].map(col => (
                     <th key={col} style={{
-                      padding: '12px 14px', textAlign: 'left', fontSize: '12px',
-                      fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px'
+                      padding: '10px 8px', textAlign: 'left', fontSize: '11px',
+                      fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap'
                     }}>
                       {col}
                     </th>
@@ -389,30 +431,30 @@ export default function CRM() {
                       onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
                     >
                       {/* Empresa/Nome */}
-                      <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                      <td style={{ padding: '8px 6px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '500', color: '#333', whiteSpace: 'nowrap' }}>
                           {cliente.nome_empresa || cliente.nome_completo || '-'}
                         </div>
                         {cliente.nome_empresa && cliente.nome_completo && (
-                          <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
+                          <div style={{ fontSize: '11px', color: '#999', marginTop: '1px' }}>
                             {cliente.nome_completo}
                           </div>
                         )}
                       </td>
 
                       {/* Telefone */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '8px 6px' }}>
                         {(() => {
                           const tel = cliente.telefone || cliente.mz?.telefone || cliente.mz?.whatsapp_numero
-                          if (!tel) return <span style={{ fontSize: '13px', color: '#666' }}>-</span>
+                          if (!tel) return <span style={{ fontSize: '12px', color: '#666' }}>-</span>
                           return (
                             <span
                               onClick={() => { navigator.clipboard.writeText(tel) }}
                               title="Clique para copiar"
                               style={{
-                                fontSize: '13px', color: '#666', cursor: 'pointer',
-                                padding: '2px 6px', borderRadius: '4px',
-                                backgroundColor: '#f5f5f5'
+                                fontSize: '12px', color: '#666', cursor: 'pointer',
+                                padding: '2px 4px', borderRadius: '4px',
+                                backgroundColor: '#f5f5f5', whiteSpace: 'nowrap'
                               }}
                             >
                               {tel}
@@ -422,18 +464,18 @@ export default function CRM() {
                       </td>
 
                       {/* Email */}
-                      <td style={{ padding: '12px 14px', fontSize: '13px', color: '#666' }}>
+                      <td style={{ padding: '8px 6px', fontSize: '12px', color: '#666', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {cliente.email || '-'}
                       </td>
 
                       {/* User ID */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '8px 6px' }}>
                         <span
                           onClick={() => { navigator.clipboard.writeText(cliente.id); }}
                           title="Clique para copiar"
                           style={{
-                            fontSize: '11px', color: '#999', fontFamily: 'monospace',
-                            cursor: 'pointer', padding: '2px 6px', borderRadius: '4px',
+                            fontSize: '10px', color: '#999', fontFamily: 'monospace',
+                            cursor: 'pointer', padding: '2px 4px', borderRadius: '4px',
                             backgroundColor: '#f5f5f5', userSelect: 'all'
                           }}
                         >
@@ -442,28 +484,28 @@ export default function CRM() {
                       </td>
 
                       {/* Plano */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '8px 6px' }}>
                         <span style={{
-                          padding: '4px 10px', borderRadius: '6px', fontSize: '12px',
+                          padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
                           fontWeight: '500', textTransform: 'capitalize',
-                          color: planoBadge.cor, backgroundColor: planoBadge.bg
+                          color: planoBadge.cor, backgroundColor: planoBadge.bg, whiteSpace: 'nowrap'
                         }}>
                           {cliente.plano || 'starter'}
                         </span>
                       </td>
 
                       {/* Status Pagamento */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '8px 6px' }}>
                         <span style={{
-                          padding: '4px 10px', borderRadius: '6px', fontSize: '12px',
-                          fontWeight: '500', color: statusPgto.cor, backgroundColor: statusPgto.bg
+                          padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
+                          fontWeight: '500', color: statusPgto.cor, backgroundColor: statusPgto.bg, whiteSpace: 'nowrap'
                         }}>
                           {statusPgto.label}
                         </span>
                       </td>
 
                       {/* Vencimento Plano */}
-                      <td style={{ padding: '12px 14px', fontSize: '12px' }}>
+                      <td style={{ padding: '8px 6px', fontSize: '11px', whiteSpace: 'nowrap' }}>
                         {(() => {
                           const dataVenc = cliente.plano_pago ? cliente.plano_vencimento : cliente.trial_fim
                           if (!dataVenc) return <span style={{ color: '#ccc' }}>-</span>
@@ -474,7 +516,7 @@ export default function CRM() {
                           return (
                             <span style={{ color: cor }}>
                               {venc.toLocaleDateString('pt-BR')}
-                              <span style={{ fontSize: '11px', marginLeft: '4px' }}>
+                              <span style={{ fontSize: '10px', marginLeft: '3px' }}>
                                 {dias <= 0 ? '(vencido)' : dias <= 7 ? `(${dias}d)` : ''}
                               </span>
                             </span>
@@ -482,29 +524,36 @@ export default function CRM() {
                         })()}
                       </td>
 
+                      {/* Criação da Conta */}
+                      <td style={{ padding: '8px 6px', fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>
+                        {cliente.created_at
+                          ? new Date(cliente.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' })
+                          : '-'}
+                      </td>
+
                       {/* WhatsApp */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '8px 6px' }}>
                         <div style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '6px',
-                          padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '500',
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '500',
                           backgroundColor: wcConectado ? '#e8f5e9' : '#f5f5f5',
-                          color: wcConectado ? '#4caf50' : '#999'
+                          color: wcConectado ? '#4caf50' : '#999', whiteSpace: 'nowrap'
                         }}>
                           <div style={{
-                            width: '7px', height: '7px', borderRadius: '50%',
+                            width: '6px', height: '6px', borderRadius: '50%',
                             backgroundColor: wcConectado ? '#4caf50' : '#ccc'
                           }} />
-                          {wcConectado ? 'Conectado' : cliente.mz ? 'Desconectado' : 'Nunca'}
+                          {wcConectado ? 'Sim' : cliente.mz ? 'Não' : '-'}
                         </div>
                       </td>
 
                       {/* Mensagens */}
-                      <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '500', color: '#333', marginBottom: '4px' }}>
-                          {usageCount} / {limiteMsg}
+                      <td style={{ padding: '8px 6px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '3px', whiteSpace: 'nowrap' }}>
+                          {usageCount}/{limiteMsg}
                         </div>
                         <div style={{
-                          width: '80px', height: '4px', backgroundColor: '#f0f0f0',
+                          width: '60px', height: '3px', backgroundColor: '#f0f0f0',
                           borderRadius: '2px', overflow: 'hidden'
                         }}>
                           <div style={{
@@ -515,7 +564,7 @@ export default function CRM() {
                       </td>
 
                       {/* Última Conexão */}
-                      <td style={{ padding: '12px 14px', fontSize: '12px', color: '#666' }}>
+                      <td style={{ padding: '8px 6px', fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>
                         {formatarData(cliente.mz?.ultima_conexao || cliente.wc?.last_connected_at)}
                       </td>
                     </tr>

@@ -29,7 +29,7 @@ export function UserProvider({ children }) {
       // Buscar dados adicionais do usuário (incluindo trial_fim para evitar query duplicada)
       let { data: usuarioData, error } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
+        .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
         .eq('id', authUser.id)
         .maybeSingle()
 
@@ -37,7 +37,7 @@ export function UserProvider({ children }) {
       if (error && !usuarioData) {
         const { data: fallback } = await supabase
           .from('usuarios')
-          .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
+          .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
           .eq('id', authUser.id)
           .maybeSingle()
         usuarioData = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -73,7 +73,7 @@ export function UserProvider({ children }) {
 
     let { data, error } = await supabase
       .from('usuarios')
-      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
+      .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -81,7 +81,7 @@ export function UserProvider({ children }) {
     if (error && !data) {
       const { data: fallback } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
+        .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
         .eq('id', user.id)
         .maybeSingle()
       data = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -117,15 +117,16 @@ export function UserProvider({ children }) {
     if (!userData) return { isExpired: false, diasRestantes: 0, planoPago: false, trialFim: null }
 
     const agora = new Date()
-    const trialFim = userData.trial_fim ? new Date(userData.trial_fim) : null
 
-    // Se tem plano pago, calcular dias ate expirar o plano (trial_fim reutilizado como data de expiracao)
+    // Se tem plano pago, usar plano_vencimento (não trial_fim)
     if (userData.plano_pago) {
-      if (!trialFim) {
+      const vencimento = userData.plano_vencimento ? new Date(userData.plano_vencimento) : null
+
+      if (!vencimento) {
         return { isExpired: false, diasRestantes: -1, planoPago: true, trialFim: null }
       }
 
-      const diffMs = trialFim - agora
+      const diffMs = vencimento - agora
       const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
       const isExpired = diffDias <= 0
 
@@ -133,9 +134,11 @@ export function UserProvider({ children }) {
         isExpired,
         diasRestantes: isExpired ? 0 : diffDias,
         planoPago: true,
-        trialFim: userData.trial_fim
+        trialFim: userData.plano_vencimento
       }
     }
+
+    const trialFim = userData.trial_fim ? new Date(userData.trial_fim) : null
 
     // Trial: calcular dias restantes
     if (!trialFim) {
