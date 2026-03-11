@@ -69,6 +69,7 @@ export default function Clientes() {
   const [dataInicioAssinaturaModal, setDataInicioAssinaturaModal] = useState('')
   const [dataVencimentoAssinaturaModal, setDataVencimentoAssinaturaModal] = useState('')
   const [erroModalNovoCliente, setErroModalNovoCliente] = useState('')
+  const [salvandoCliente, setSalvandoCliente] = useState(false)
 
   // Modal de Mensalidade
   const [mostrarModalMensalidade, setMostrarModalMensalidade] = useState(false)
@@ -856,6 +857,7 @@ export default function Clientes() {
   }
 
   const handleCriarCliente = async () => {
+    if (salvandoCliente) return
     setErroModalNovoCliente('')
 
     if (!novoClienteNome.trim() || !novoClienteTelefone.trim()) {
@@ -889,6 +891,7 @@ export default function Clientes() {
 
     if (!userId) return
 
+    setSalvandoCliente(true)
     try {
       // Verificar se já existe cliente com o mesmo telefone
       const telefoneFormatado = novoClienteTelefone.trim().replace(/\D/g, '')
@@ -1029,6 +1032,8 @@ Equipe ${nomeEmpresa}`
       carregarClientes()
     } catch (error) {
       showToast('Erro ao criar aluno: ' + error.message, 'error')
+    } finally {
+      setSalvandoCliente(false)
     }
   }
 
@@ -3471,21 +3476,23 @@ Qualquer dúvida, estamos à disposição.`}
 
               <button
                 onClick={handleCriarCliente}
+                disabled={salvandoCliente}
                 style={{
                   padding: '10px 24px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: '#333',
+                  backgroundColor: salvandoCliente ? '#999' : '#333',
                   color: 'white',
                   fontSize: '14px',
                   fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
+                  cursor: salvandoCliente ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s',
+                  opacity: salvandoCliente ? 0.7 : 1
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                onMouseEnter={(e) => { if (!salvandoCliente) e.currentTarget.style.backgroundColor = '#222' }}
+                onMouseLeave={(e) => { if (!salvandoCliente) e.currentTarget.style.backgroundColor = '#333' }}
               >
-                Criar Aluno
+                {salvandoCliente ? 'Salvando...' : 'Criar Aluno'}
               </button>
             </div>
           </div>
