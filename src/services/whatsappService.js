@@ -1190,12 +1190,37 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         return { sucesso: false, erro: 'Cliente sem telefone' }
       }
 
-      // Buscar nome da empresa
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('nome_empresa')
-        .eq('id', mensalidade.user_id)
-        .single()
+      // Verificar se automação de confirmação está ativa
+      try {
+        const { data: configCobranca } = await supabase
+          .from('configuracoes_cobranca')
+          .select('enviar_confirmacao_pagamento')
+          .eq('user_id', mensalidade.user_id)
+          .maybeSingle()
+
+        if (configCobranca?.enviar_confirmacao_pagamento === false) {
+          console.log('⏩ Confirmação WhatsApp: desativada pelo usuário')
+          return { sucesso: false, erro: 'Confirmação de pagamento desativada' }
+        }
+      } catch (e) {
+        // Coluna pode não existir ainda - continua com envio (padrão: ativo)
+      }
+
+      // Buscar nome da empresa e template personalizado em paralelo
+      const [{ data: usuario }, { data: template }] = await Promise.all([
+        supabase
+          .from('usuarios')
+          .select('nome_empresa')
+          .eq('id', mensalidade.user_id)
+          .single(),
+        supabase
+          .from('templates')
+          .select('mensagem')
+          .eq('user_id', mensalidade.user_id)
+          .eq('tipo', 'payment_confirmed')
+          .eq('ativo', true)
+          .maybeSingle()
+      ])
 
       const valor = parseFloat(mensalidade.valor || 0)
       const valorFormatado = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -1206,7 +1231,19 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         : ''
 
       const empresa = usuario?.nome_empresa || ''
-      const mensagemTexto = `Olá, ${mensalidade.devedores.nome}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
+      const nomeCliente = mensalidade.devedores.nome
+
+      // Usar template personalizado ou mensagem padrão
+      let mensagemTexto
+      if (template?.mensagem) {
+        mensagemTexto = template.mensagem
+          .replace(/\{\{nomeCliente\}\}/g, nomeCliente)
+          .replace(/\{\{valorMensalidade\}\}/g, valorFormatado)
+          .replace(/\{\{dataVencimento\}\}/g, vencimentoFormatado)
+          .replace(/\{\{nomeEmpresa\}\}/g, empresa)
+      } else {
+        mensagemTexto = `Olá, ${nomeCliente}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
+      }
 
       // Usar instância do dono da mensalidade (não do admin logado)
       const ownerId = mensalidade.user_id

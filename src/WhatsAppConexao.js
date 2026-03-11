@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
+import { showToast } from './Toast'
 import useWindowSize from './hooks/useWindowSize'
 import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
@@ -76,7 +77,16 @@ Até já! 💪`,
 
 A equipe {{nomeEmpresa}} deseja a você um dia incrível, cheio de saúde, alegria e conquistas!
 
-Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`
+Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`,
+
+  payment_confirmed: `Olá, {{nomeCliente}}! ✅
+
+Confirmamos o recebimento do seu pagamento.
+
+💰 Valor: {{valorMensalidade}}
+📅 Vencimento: {{dataVencimento}}
+
+Obrigado pela pontualidade! - {{nomeEmpresa}}`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -115,7 +125,8 @@ export default function WhatsAppConexao() {
   const [templatesAgrupados, setTemplatesAgrupados] = useState({
     pre_due_3days: null,
     due_day: null,
-    overdue: null
+    overdue: null,
+    payment_confirmed: null
   })
   const [tituloTemplate, setTituloTemplate] = useState('Lembrete - Vencimento Hoje')
   const [mensagemTemplate, setMensagemTemplate] = useState(TEMPLATES_PADRAO.due_day)
@@ -129,6 +140,7 @@ export default function WhatsAppConexao() {
   const [automacaoNoDiaAtiva, setAutomacaoNoDiaAtiva] = useState(true) // Ativo por padrão
   const [automacao3DiasDepoisAtiva, setAutomacao3DiasDepoisAtiva] = useState(false)
   const [automacaoLembreteAulaAtiva, setAutomacaoLembreteAulaAtiva] = useState(false)
+  const [automacaoConfirmacaoPgtoAtiva, setAutomacaoConfirmacaoPgtoAtiva] = useState(true) // Ativo por padrão
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
 
   // Estado para Chave PIX
@@ -244,7 +256,8 @@ export default function WhatsAppConexao() {
           due_day: findBestTemplate('due_day'),
           overdue: findBestTemplate('overdue'),
           class_reminder: findBestTemplate('class_reminder'),
-          birthday: findBestTemplate('birthday')
+          birthday: findBestTemplate('birthday'),
+          payment_confirmed: findBestTemplate('payment_confirmed')
         }
 
         // 4.1 Criar templates que não existem automaticamente
@@ -252,7 +265,8 @@ export default function WhatsAppConexao() {
         const templatesParaCriar = [
           { tipo: 'due_day', titulo: 'Lembrete - Vencimento Hoje', mensagem: TEMPLATES_PADRAO.due_day },
           { tipo: 'pre_due_3days', titulo: 'Lembrete - 3 Dias Antes do Vencimento', mensagem: TEMPLATES_PADRAO.pre_due_3days },
-          { tipo: 'overdue', titulo: 'Cobrança - 3 Dias Após o Vencimento', mensagem: TEMPLATES_PADRAO.overdue }
+          { tipo: 'overdue', titulo: 'Cobrança - 3 Dias Após o Vencimento', mensagem: TEMPLATES_PADRAO.overdue },
+          { tipo: 'payment_confirmed', titulo: 'Confirmação de Pagamento', mensagem: TEMPLATES_PADRAO.payment_confirmed }
         ]
 
         for (const tmpl of templatesParaCriar) {
@@ -297,6 +311,8 @@ export default function WhatsAppConexao() {
         setAutomacao3DiasDepoisAtiva(configCobranca?.enviar_3_dias_depois === true)
         setAutomacaoLembreteAulaAtiva(configCobranca?.enviar_lembrete_aula === true)
         setAutomacaoAniversarioAtiva(configCobranca?.enviar_aniversario === true)
+        // Confirmação de pagamento: ativo por padrão (coluna pode não existir ainda no banco)
+        setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -530,7 +546,8 @@ export default function WhatsAppConexao() {
         'automacao_nodia_ativa': 'enviar_no_dia',
         'automacao_3diasdepois_ativa': 'enviar_3_dias_depois',
         'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula',
-        'automacao_aniversario_ativa': 'enviar_aniversario'
+        'automacao_aniversario_ativa': 'enviar_aniversario',
+        'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento'
       }
 
       const coluna = mapeamentoColunas[chave]
@@ -973,6 +990,19 @@ export default function WhatsAppConexao() {
     }
   }
 
+  const toggleAutomacaoConfirmacaoPgto = async () => {
+    const novoValor = !automacaoConfirmacaoPgtoAtiva
+
+    if (novoValor) {
+      await criarTemplatePadraoSeNaoExiste('payment_confirmed')
+    }
+
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_confirmacao_pgto_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoConfirmacaoPgtoAtiva(novoValor)
+    }
+  }
+
   // FUNÇÃO UNIFICADA: Conectar WhatsApp
   const conectarWhatsApp = async () => {
     setLoading(true)
@@ -1252,7 +1282,8 @@ export default function WhatsAppConexao() {
       due_day: 'Lembrete - Vencimento Hoje',
       overdue: 'Cobrança - 3 Dias Após o Vencimento',
       class_reminder: 'Lembrete de Aula',
-      birthday: 'Mensagem de Aniversário'
+      birthday: 'Mensagem de Aniversário',
+      payment_confirmed: 'Confirmação de Pagamento'
     }
     return titulos[tipo] || ''
   }
@@ -1580,7 +1611,7 @@ export default function WhatsAppConexao() {
                   backgroundColor: '#f0faf4',
                   borderRadius: '12px',
                   border: '2px solid #25D366',
-                  marginBottom: '24px'
+                  marginBottom: isMobile ? '12px' : '24px'
                 }}>
                   <span style={{
                     fontSize: isSmallScreen ? '28px' : '36px',
@@ -1592,6 +1623,34 @@ export default function WhatsAppConexao() {
                     {pairingCode.slice(0, 4)}-{pairingCode.slice(4)}
                   </span>
                 </div>
+
+                {/* Botão copiar código - útil no mobile */}
+                {isMobile && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(pairingCode.slice(0, 4) + '-' + pairingCode.slice(4))
+                        showToast('Código copiado!', 'success')
+                      }}
+                      style={{
+                        padding: '10px 24px',
+                        backgroundColor: '#25D366',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <Icon icon="mdi:content-copy" width="18" />
+                      Copiar Código
+                    </button>
+                  </div>
+                )}
 
                 {/* Instruções passo a passo */}
                 <div style={{
@@ -1994,7 +2053,8 @@ export default function WhatsAppConexao() {
                   { tipo: 'due_day', nome: 'No Dia', descricao: 'Lembrete no dia do vencimento', icone: 'mdi:calendar-today', cor: '#ff9800', ativo: automacaoNoDiaAtiva, toggle: toggleAutomacaoNoDia, locked: false },
                   { tipo: 'overdue', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked },
                   { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked },
-                  { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked }
+                  { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked },
+                  { tipo: 'payment_confirmed', nome: 'Confirmação Pgto', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false }
                 ].map((item) => (
                   <div
                     key={item.tipo}
@@ -2431,7 +2491,12 @@ export default function WhatsAppConexao() {
                     Variáveis exclusivas para lembrete de aula
                   </p>
                 )}
-                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && tipoTemplateSelecionado !== 'birthday' && (
+                {tipoTemplateSelecionado === 'payment_confirmed' && (
+                  <p style={{ fontSize: '11px', color: '#4CAF50', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    Enviada automaticamente quando você marca uma mensalidade como paga
+                  </p>
+                )}
+                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'payment_confirmed' && (
                   <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
                     Nota: {`{{diasAtraso}}`} não está disponível para mensagens pré-vencimento
                   </p>
