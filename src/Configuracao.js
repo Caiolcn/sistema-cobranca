@@ -2965,45 +2965,77 @@ function Configuracao() {
 
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Tabs segmented control */}
-      <div style={{
-        display: 'inline-flex',
-        gap: '4px',
-        backgroundColor: '#f3f4f6',
-        borderRadius: '10px',
-        padding: '4px',
-        marginBottom: isSmallScreen ? '16px' : '25px',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch'
-      }}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setAbaAtiva(tab.id)}
+      {/* Tabs - dropdown no mobile, segmented control no desktop */}
+      {isMobile ? (
+        <div style={{
+          position: 'relative',
+          marginBottom: '16px'
+        }}>
+          <select
+            value={abaAtiva}
+            onChange={(e) => setAbaAtiva(e.target.value)}
             style={{
-              padding: isSmallScreen ? '8px 12px' : '8px 20px',
-              backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
-              color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
-              border: 'none',
-              borderRadius: '8px',
+              width: '100%',
+              padding: '12px 40px 12px 14px',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontWeight: '600',
+              color: '#1a1a1a',
               cursor: 'pointer',
-              fontSize: isSmallScreen ? '12px' : '14px',
-              fontWeight: abaAtiva === tab.id ? '600' : '400',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s',
-              boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              opacity: abaAtiva === tab.id ? 1 : 0.75,
-              flexShrink: 0
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '20px',
+              boxSizing: 'border-box'
             }}
           >
-            <Icon icon={tab.icon} width={isSmallScreen ? 16 : 18} />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+            {tabs.map((tab) => (
+              <option key={tab.id} value={tab.id}>{tab.label}</option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div style={{
+          display: 'inline-flex',
+          gap: '4px',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '10px',
+          padding: '4px',
+          marginBottom: '25px'
+        }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setAbaAtiva(tab.id)}
+              style={{
+                padding: '8px 20px',
+                backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
+                color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: abaAtiva === tab.id ? '600' : '400',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                opacity: abaAtiva === tab.id ? 1 : 0.75,
+                flexShrink: 0
+              }}
+            >
+              <Icon icon={tab.icon} width={18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content Area */}
       <div>
