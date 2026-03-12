@@ -76,6 +76,10 @@ export default function Clientes() {
   const [mensalidadeSelecionada, setMensalidadeSelecionada] = useState(null)
   const [clienteMensalidade, setClienteMensalidade] = useState(null)
 
+  // Frequência do aluno
+  const [presencasAluno, setPresencasAluno] = useState([])
+  const [mostrarFrequencia, setMostrarFrequencia] = useState(false)
+
   // Paginação
   const [paginaAtual, setPaginaAtual] = useState(1)
   const itensPorPagina = 20
@@ -404,6 +408,29 @@ export default function Clientes() {
         tempoDeCasa,
         tempoDeCasaDias
       }
+
+      // Carregar presenças do aluno
+      const { data: presencasData, error: presencasError } = await supabase
+        .from('presencas')
+        .select('*, grade_horarios(horario, descricao, dia_semana)')
+        .eq('devedor_id', cliente.id)
+        .order('data', { ascending: false })
+        .limit(50)
+
+      if (presencasError) {
+        console.error('Erro ao carregar presenças:', presencasError)
+        // Tentar sem o join caso a relação falhe
+        const { data: presencasFallback } = await supabase
+          .from('presencas')
+          .select('*')
+          .eq('devedor_id', cliente.id)
+          .order('data', { ascending: false })
+          .limit(50)
+        setPresencasAluno(presencasFallback || [])
+      } else {
+        setPresencasAluno(presencasData || [])
+      }
+      setMostrarFrequencia(false)
 
       setClienteSelecionado(clienteComEstatisticas)
       setNomeEdit(cliente.nome || '')
@@ -2442,6 +2469,118 @@ Equipe ${nomeEmpresa}`
                   </div>
                 )}
               </div>
+
+              {/* Seção de Frequência */}
+              {presencasAluno.length > 0 && (
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  marginBottom: '24px',
+                  border: '1px solid #e9ecef'
+                }}>
+                  <div
+                    onClick={() => setMostrarFrequencia(!mostrarFrequencia)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icon icon="mdi:clipboard-check-outline" width="20" style={{ color: '#344848' }} />
+                      <span style={{ fontSize: '15px', fontWeight: '600', color: '#344848' }}>
+                        Frequência
+                      </span>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        backgroundColor: (() => {
+                          const total = presencasAluno.length
+                          const presentes = presencasAluno.filter(p => p.presente).length
+                          const pct = total > 0 ? (presentes / total) * 100 : 0
+                          return pct >= 75 ? '#dcfce7' : pct >= 50 ? '#fef3c7' : '#fee2e2'
+                        })(),
+                        color: (() => {
+                          const total = presencasAluno.length
+                          const presentes = presencasAluno.filter(p => p.presente).length
+                          const pct = total > 0 ? (presentes / total) * 100 : 0
+                          return pct >= 75 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626'
+                        })(),
+                        padding: '2px 8px',
+                        borderRadius: '10px'
+                      }}>
+                        {Math.round((presencasAluno.filter(p => p.presente).length / presencasAluno.length) * 100)}% presença
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#888' }}>
+                        {presencasAluno.filter(p => p.presente).length}/{presencasAluno.length} aulas
+                      </span>
+                      <Icon icon={mostrarFrequencia ? 'mdi:chevron-up' : 'mdi:chevron-down'} width="20" color="#888" />
+                    </div>
+                  </div>
+
+                  {/* Barra de progresso */}
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ backgroundColor: '#e5e7eb', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${(presencasAluno.filter(p => p.presente).length / presencasAluno.length) * 100}%`,
+                        backgroundColor: (() => {
+                          const pct = (presencasAluno.filter(p => p.presente).length / presencasAluno.length) * 100
+                          return pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444'
+                        })(),
+                        height: '100%',
+                        borderRadius: '4px',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Lista de presenças expandida */}
+                  {mostrarFrequencia && (
+                    <div style={{ marginTop: '16px', maxHeight: '300px', overflowY: 'auto' }}>
+                      {presencasAluno.map(p => (
+                        <div key={p.id} style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '10px',
+                          padding: '10px 0',
+                          borderBottom: '1px solid #e9ecef'
+                        }}>
+                          <Icon
+                            icon={p.presente ? 'mdi:check-circle' : 'mdi:close-circle'}
+                            width="20"
+                            style={{ color: p.presente ? '#16a34a' : '#dc2626', marginTop: '1px', flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                                {new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                              </span>
+                              <span style={{ fontSize: '12px', color: '#888' }}>
+                                {p.grade_horarios?.horario?.substring(0, 5)} {p.grade_horarios?.descricao ? `— ${p.grade_horarios.descricao}` : ''}
+                              </span>
+                            </div>
+                            {p.observacao && (
+                              <p style={{
+                                margin: '4px 0 0 0',
+                                fontSize: '12px',
+                                color: '#666',
+                                lineHeight: '1.4',
+                                whiteSpace: 'pre-wrap'
+                              }}>
+                                {p.observacao}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Lista de Mensalidades */}
               <div>
