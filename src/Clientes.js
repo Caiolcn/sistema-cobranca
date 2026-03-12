@@ -2093,10 +2093,8 @@ Equipe ${nomeEmpresa}`
                           { label: 'Nascimento', value: clienteSelecionado.data_nascimento ? new Date(clienteSelecionado.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
                           { label: 'E-mail', value: clienteSelecionado.email || '—' },
                           { label: 'Dia Vencimento', value: (() => { const pend = mensalidadesCliente.find(m => m.status === 'pendente'); const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]; return ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '—' })() },
-                          ...(clienteSelecionado.responsavel_nome ? [
-                            { label: 'Responsável', value: clienteSelecionado.responsavel_nome },
-                            { label: 'Tel. Responsável', value: clienteSelecionado.responsavel_telefone || '—' },
-                          ] : []),
+                          { label: 'Responsável', value: clienteSelecionado.responsavel_nome || '—' },
+                          { label: 'Tel. Responsável', value: clienteSelecionado.responsavel_telefone || '—' },
                         ].map((item, i) => (
                           <div key={i}>
                             <p style={{ margin: 0, fontSize: '11px', color: '#888', fontWeight: '500' }}>{item.label}</p>
