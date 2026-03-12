@@ -410,6 +410,7 @@ export default function Clientes() {
       }
 
       // Carregar presenças do aluno
+      console.log('[DEBUG] Buscando presenças para devedor_id:', cliente.id)
       const { data: presencasData, error: presencasError } = await supabase
         .from('presencas')
         .select('*, grade_horarios(horario, descricao, dia_semana)')
@@ -417,15 +418,18 @@ export default function Clientes() {
         .order('data', { ascending: false })
         .limit(50)
 
+      console.log('[DEBUG] Presenças resultado:', { data: presencasData, error: presencasError })
+
       if (presencasError) {
         console.error('Erro ao carregar presenças:', presencasError)
         // Tentar sem o join caso a relação falhe
-        const { data: presencasFallback } = await supabase
+        const { data: presencasFallback, error: fallbackError } = await supabase
           .from('presencas')
           .select('*')
           .eq('devedor_id', cliente.id)
           .order('data', { ascending: false })
           .limit(50)
+        console.log('[DEBUG] Presenças fallback:', { data: presencasFallback, error: fallbackError })
         setPresencasAluno(presencasFallback || [])
       } else {
         setPresencasAluno(presencasData || [])
