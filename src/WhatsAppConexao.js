@@ -142,6 +142,7 @@ export default function WhatsAppConexao() {
   const [automacaoLembreteAulaAtiva, setAutomacaoLembreteAulaAtiva] = useState(false)
   const [automacaoConfirmacaoPgtoAtiva, setAutomacaoConfirmacaoPgtoAtiva] = useState(true) // Ativo por padrão
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
+  const [enviarDomingoAtivo, setEnviarDomingoAtivo] = useState(true)
 
   // Estado para Chave PIX
   const [chavePix, setChavePix] = useState('')
@@ -201,7 +202,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -313,6 +314,7 @@ export default function WhatsAppConexao() {
         setAutomacaoAniversarioAtiva(configCobranca?.enviar_aniversario === true)
         // Confirmação de pagamento: ativo por padrão (coluna pode não existir ainda no banco)
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
+        setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -547,7 +549,8 @@ export default function WhatsAppConexao() {
         'automacao_3diasdepois_ativa': 'enviar_3_dias_depois',
         'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula',
         'automacao_aniversario_ativa': 'enviar_aniversario',
-        'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento'
+        'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento',
+        'enviar_domingo_ativo': 'enviar_domingo'
       }
 
       const coluna = mapeamentoColunas[chave]
@@ -1000,6 +1003,22 @@ export default function WhatsAppConexao() {
     const sucesso = await salvarConfiguracaoAutomacao('automacao_confirmacao_pgto_ativa', novoValor)
     if (sucesso) {
       setAutomacaoConfirmacaoPgtoAtiva(novoValor)
+    }
+  }
+
+  const toggleEnviarDomingo = async () => {
+    const novoValor = !enviarDomingoAtivo
+    const sucesso = await salvarConfiguracaoAutomacao('enviar_domingo_ativo', novoValor)
+    if (sucesso) {
+      setEnviarDomingoAtivo(novoValor)
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: novoValor ? 'Envio no domingo ativado' : 'Envio no domingo desativado',
+        message: novoValor
+          ? 'Mensagens serão enviadas normalmente no domingo.'
+          : 'Mensagens de domingo serão enviadas na segunda-feira.'
+      })
     }
   }
 
@@ -2102,6 +2121,30 @@ export default function WhatsAppConexao() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Toggle Enviar no Domingo */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '12px 14px', backgroundColor: 'white',
+                borderRadius: '8px', border: '1px solid #e5e7eb',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon icon="mdi:calendar-weekend" width="20" style={{ color: '#7c3aed' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#344848' }}>Enviar no domingo</div>
+                    <div style={{ fontSize: '11px', color: '#888' }}>
+                      {enviarDomingoAtivo ? 'Mensagens enviadas normalmente' : 'Mensagens de domingo vão na segunda'}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={toggleEnviarDomingo}
+                  style={{ position: 'relative', width: '44px', height: '24px', backgroundColor: enviarDomingoAtivo ? '#4CAF50' : '#ccc', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'background-color 0.3s', padding: 0, flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: '2px', left: enviarDomingoAtivo ? '22px' : '2px', width: '20px', height: '20px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', border: '1px solid #e5e7eb' }} />
+                </button>
               </div>
 
               {/* Config Rápida: PIX + Pagamento */}
