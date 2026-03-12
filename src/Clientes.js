@@ -31,6 +31,9 @@ export default function Clientes() {
   const [cpfEdit, setCpfEdit] = useState('')
   const [dataNascimentoEdit, setDataNascimentoEdit] = useState('')
   const [diaVencimentoEdit, setDiaVencimentoEdit] = useState('')
+  const [emailEdit, setEmailEdit] = useState('')
+  const [responsavelNomeEdit, setResponsavelNomeEdit] = useState('')
+  const [responsavelTelefoneEdit, setResponsavelTelefoneEdit] = useState('')
   const [busca, setBusca] = useState('')
 
   // Filtros
@@ -46,6 +49,9 @@ export default function Clientes() {
   const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
   const [novoClienteCpf, setNovoClienteCpf] = useState('')
   const [novoClienteDataNascimento, setNovoClienteDataNascimento] = useState('')
+  const [novoClienteEmail, setNovoClienteEmail] = useState('')
+  const [novoClienteResponsavelNome, setNovoClienteResponsavelNome] = useState('')
+  const [novoClienteResponsavelTelefone, setNovoClienteResponsavelTelefone] = useState('')
   const [criarAssinatura, setCriarAssinatura] = useState(false)
   const [dataInicioAssinatura, setDataInicioAssinatura] = useState('')
   const [dataVencimentoAssinatura, setDataVencimentoAssinatura] = useState('')
@@ -197,6 +203,9 @@ export default function Clientes() {
             assinatura_ativa,
             plano_id,
             created_at,
+            email,
+            responsavel_nome,
+            responsavel_telefone,
             planos:plano_id (nome)
           `)
           .eq('user_id', userId)
@@ -435,6 +444,9 @@ export default function Clientes() {
       setTelefoneEdit(cliente.telefone || '')
       setCpfEdit(cliente.cpf || '')
       setDataNascimentoEdit(cliente.data_nascimento || '')
+      setEmailEdit(cliente.email || '')
+      setResponsavelNomeEdit(cliente.responsavel_nome || '')
+      setResponsavelTelefoneEdit(cliente.responsavel_telefone || '')
       const pendente = mensalidades.find(m => m.status === 'pendente')
       const refMens = pendente || mensalidades[mensalidades.length - 1]
       setDiaVencimentoEdit(refMens ? String(new Date(refMens.data_vencimento + 'T00:00:00').getDate()) : '')
@@ -502,7 +514,10 @@ export default function Clientes() {
           nome: nomeEdit.trim(),
           telefone: telefoneEdit.trim(),
           cpf: cpfEdit.trim() || null,
-          data_nascimento: dataNascimentoEdit || null
+          data_nascimento: dataNascimentoEdit || null,
+          email: emailEdit.trim() || null,
+          responsavel_nome: responsavelNomeEdit.trim() || null,
+          responsavel_telefone: responsavelTelefoneEdit.trim() || null
         })
         .eq('id', clienteSelecionado.id)
 
@@ -938,6 +953,9 @@ export default function Clientes() {
           telefone: novoClienteTelefone.trim(),
           cpf: novoClienteCpf.trim() || null,
           data_nascimento: novoClienteDataNascimento || null,
+          email: novoClienteEmail.trim() || null,
+          responsavel_nome: novoClienteResponsavelNome.trim() || null,
+          responsavel_telefone: novoClienteResponsavelTelefone.trim() || null,
           valor_devido: 0,
           data_vencimento: new Date().toISOString().split('T')[0],
           status: 'pendente',
@@ -1047,6 +1065,9 @@ Equipe ${nomeEmpresa}`
       setNovoClienteTelefone('')
       setNovoClienteCpf('')
       setNovoClienteDataNascimento('')
+      setNovoClienteEmail('')
+      setNovoClienteResponsavelNome('')
+      setNovoClienteResponsavelTelefone('')
       setCriarAssinatura(false)
       setDataInicioAssinatura('')
       setDataVencimentoAssinatura('')
@@ -2070,7 +2091,12 @@ Equipe ${nomeEmpresa}`
                           { label: 'Telefone', value: clienteSelecionado.telefone },
                           { label: 'CPF/CNPJ', value: clienteSelecionado.cpf || '—' },
                           { label: 'Nascimento', value: clienteSelecionado.data_nascimento ? new Date(clienteSelecionado.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
+                          { label: 'E-mail', value: clienteSelecionado.email || '—' },
                           { label: 'Dia Vencimento', value: (() => { const pend = mensalidadesCliente.find(m => m.status === 'pendente'); const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]; return ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '—' })() },
+                          ...(clienteSelecionado.responsavel_nome ? [
+                            { label: 'Responsável', value: clienteSelecionado.responsavel_nome },
+                            { label: 'Tel. Responsável', value: clienteSelecionado.responsavel_telefone || '—' },
+                          ] : []),
                         ].map((item, i) => (
                           <div key={i}>
                             <p style={{ margin: 0, fontSize: '11px', color: '#888', fontWeight: '500' }}>{item.label}</p>
@@ -2159,6 +2185,11 @@ Equipe ${nomeEmpresa}`
                             style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cpfEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
                         </div>
                         <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>E-mail</label>
+                          <input type="email" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} placeholder="email@exemplo.com"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: emailEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
                           <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nascimento</label>
                           <input type="date" value={dataNascimentoEdit} onChange={(e) => setDataNascimentoEdit(e.target.value)}
                             style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: dataNascimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
@@ -2170,6 +2201,16 @@ Equipe ${nomeEmpresa}`
                             onFocus={(e) => e.target.select()}
                             style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: diaVencimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
                         </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Responsável Legal</label>
+                          <input type="text" value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} placeholder="Nome do responsável"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelNomeEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tel. Responsável</label>
+                          <input type="tel" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15" placeholder="(00) 00000-0000"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelTelefoneEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
                         <button
@@ -2179,6 +2220,9 @@ Equipe ${nomeEmpresa}`
                             setTelefoneEdit(clienteSelecionado.telefone)
                             setCpfEdit(clienteSelecionado.cpf || '')
                             setDataNascimentoEdit(clienteSelecionado.data_nascimento || '')
+                            setEmailEdit(clienteSelecionado.email || '')
+                            setResponsavelNomeEdit(clienteSelecionado.responsavel_nome || '')
+                            setResponsavelTelefoneEdit(clienteSelecionado.responsavel_telefone || '')
                             const pend = mensalidadesCliente.find(m => m.status === 'pendente')
                             const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]
                             setDiaVencimentoEdit(ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '')
@@ -3027,136 +3071,137 @@ Equipe ${nomeEmpresa}`
               </div>
             )}
 
-            {/* Nome */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
+            {/* Campos principais em grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+              <div style={{ gridColumn: isSmallScreen ? '1' : '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Nome *</label>
+                <input
+                  type="text"
+                  value={novoClienteNome}
+                  onChange={(e) => setNovoClienteNome(e.target.value)}
+                  placeholder="Nome do aluno"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  onFocus={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Telefone *</label>
+                <input
+                  type="text"
+                  value={novoClienteTelefone}
+                  onChange={(e) => setNovoClienteTelefone(formatarTelefone(e.target.value))}
+                  placeholder="(00) 00000-0000"
+                  maxLength="15"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  onFocus={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
+                  CPF <span style={{ color: '#999', fontSize: '11px', fontWeight: '400' }}>(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={novoClienteCpf}
+                  onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))}
+                  placeholder="000.000.000-00"
+                  maxLength="14"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  onFocus={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
+                  Nascimento <span style={{ color: '#999', fontSize: '11px', fontWeight: '400' }}>(opcional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={novoClienteDataNascimento}
+                  onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
+                  E-mail <span style={{ color: '#999', fontSize: '11px', fontWeight: '400' }}>(opcional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={novoClienteEmail}
+                  onChange={(e) => setNovoClienteEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  onFocus={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+              </div>
+            </div>
+
+            {/* Responsável Legal - colapsável */}
+            <details style={{ marginBottom: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+              <summary style={{
+                padding: '10px 14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                listStyle: 'none',
+                userSelect: 'none',
+                fontSize: '13px',
                 fontWeight: '500',
                 color: '#333'
               }}>
-                Nome *
-              </label>
-              <input
-                type="text"
-                value={novoClienteNome}
-                onChange={(e) => setNovoClienteNome(e.target.value)}
-                placeholder="Digite o nome do aluno"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#333'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-              />
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Responsável Legal
+                  <span style={{ color: '#999', fontSize: '11px', fontWeight: '400' }}>(opcional)</span>
+                </div>
+                <Icon icon="mdi:chevron-down" width="16" style={{ color: '#888' }} />
+              </summary>
+              <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', padding: '0 14px 14px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Nome</label>
+                  <input
+                    type="text"
+                    value={novoClienteResponsavelNome}
+                    onChange={(e) => setNovoClienteResponsavelNome(e.target.value)}
+                    placeholder="Nome do responsável"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                    onFocus={(e) => e.target.style.borderColor = '#333'}
+                    onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Telefone</label>
+                  <input
+                    type="tel"
+                    value={novoClienteResponsavelTelefone}
+                    onChange={(e) => setNovoClienteResponsavelTelefone(formatarTelefone(e.target.value))}
+                    placeholder="(00) 00000-0000"
+                    maxLength="15"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                    onFocus={(e) => e.target.style.borderColor = '#333'}
+                    onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                  />
+                </div>
+              </div>
+            </details>
 
-            {/* Telefone */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                Telefone *
-              </label>
-              <input
-                type="text"
-                value={novoClienteTelefone}
-                onChange={(e) => setNovoClienteTelefone(formatarTelefone(e.target.value))}
-                placeholder="(00) 00000-0000"
-                maxLength="15"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#333'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-              />
-            </div>
-
-            {/* CPF */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                CPF <span style={{ color: '#888', fontSize: '12px', fontWeight: '400' }}>(opcional)</span>
-              </label>
-              <input
-                type="text"
-                value={novoClienteCpf}
-                onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))}
-                placeholder="000.000.000-00"
-                maxLength="14"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#333'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-              />
-            </div>
-
-            {/* Data de Nascimento */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                Data de Nascimento (opcional)
-              </label>
-              <input
-                type="date"
-                value={novoClienteDataNascimento}
-                onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
-                style={{
-                  width: '100%', padding: '12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {/* Toggle para criar assinatura */}
+            {/* Toggle para criar mensalidade */}
             <div style={{
-              marginBottom: criarAssinatura ? '20px' : '28px',
-              padding: '16px',
-              backgroundColor: '#f9f9f9',
+              marginBottom: criarAssinatura ? '16px' : '16px',
+              padding: '12px 14px',
+              backgroundColor: '#f8f9fa',
               borderRadius: '8px',
-              border: '1px solid #e0e0e0'
+              border: '1px solid #e5e7eb'
             }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '500',
                 color: '#333'
               }}>
@@ -3165,9 +3210,9 @@ Equipe ${nomeEmpresa}`
                   checked={criarAssinatura}
                   onChange={(e) => setCriarAssinatura(e.target.checked)}
                   style={{
-                    width: '18px',
-                    height: '18px',
-                    marginRight: '10px',
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '8px',
                     cursor: 'pointer'
                   }}
                 />
@@ -3178,105 +3223,45 @@ Equipe ${nomeEmpresa}`
             {/* Campos de assinatura (mostrar apenas se toggle ativo) */}
             {criarAssinatura && (
               <div style={{
-                padding: '16px',
-                backgroundColor: '#e8f4f8',
+                padding: '14px',
+                backgroundColor: '#f0f7ff',
                 borderRadius: '8px',
-                marginBottom: '28px',
-                border: '2px solid #2196F3'
+                marginBottom: '16px',
+                border: '1px solid #bbdefb'
               }}>
-                <h4 style={{
-                  margin: '0 0 16px 0',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#2196F3',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <Icon icon="mdi:card-account-details" width="18" height="18" />
-                  Detalhes da Mensalidade
-                </h4>
-
-                {/* Data de início */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#333'
-                  }}>
-                    Data de Início *
-                  </label>
-                  <input
-                    type="date"
-                    value={dataInicioAssinatura}
-                    onChange={(e) => {
-                      setDataInicioAssinatura(e.target.value)
-                      if (e.target.value) {
-                        const inicio = new Date(e.target.value + 'T00:00:00')
-                        inicio.setDate(inicio.getDate() + 30)
-                        setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
-                      }
-                    }}
-                    style={{
-                      width: '100%', padding: '12px', border: '1px solid #ddd',
-                      borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box'
-                    }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Data de Inicio *</label>
+                    <input
+                      type="date"
+                      value={dataInicioAssinatura}
+                      onChange={(e) => {
+                        setDataInicioAssinatura(e.target.value)
+                        if (e.target.value) {
+                          const inicio = new Date(e.target.value + 'T00:00:00')
+                          inicio.setDate(inicio.getDate() + 30)
+                          setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
+                        }
+                      }}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Vencimento *</label>
+                    <input
+                      type="date"
+                      value={dataVencimentoAssinatura}
+                      onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box' }}
+                    />
+                  </div>
                 </div>
-
-                {/* Data de vencimento */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#333'
-                  }}>
-                    Data de Vencimento *
-                  </label>
-                  <input
-                    type="date"
-                    value={dataVencimentoAssinatura}
-                    onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                    style={{
-                      width: '100%', padding: '12px', border: '1px solid #ddd',
-                      borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box'
-                    }}
-                  />
-                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
-                    Data da primeira mensalidade. Auto-preenchido com início + 30 dias.
-                  </p>
-                </div>
-
-                {/* Seleção de plano */}
                 <div>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#333'
-                  }}>
-                    Selecione o Plano *
-                  </label>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Plano *</label>
                   <select
                     value={planoSelecionado}
                     onChange={(e) => setPlanoSelecionado(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '16px',
-                      outline: 'none',
-                      transition: 'border-color 0.2s',
-                      cursor: 'pointer',
-                      backgroundColor: 'white',
-                      boxSizing: 'border-box'
-                    }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white', boxSizing: 'border-box' }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
                   >
@@ -3287,65 +3272,34 @@ Equipe ${nomeEmpresa}`
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setMostrarModalCriarPlano(true)}
-                    style={{
-                      marginTop: '12px',
-                      padding: '10px 16px',
-                      backgroundColor: 'transparent',
-                      color: '#2196F3',
-                      border: '2px dashed #2196F3',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      width: '100%',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#e3f2fd'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                    }}
-                  >
-                    <Icon icon="material-symbols:add" width="18" />
-                    Criar Novo Plano
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarModalCriarPlano(true)}
+                      style={{
+                        padding: '6px 12px', backgroundColor: 'transparent', color: '#2196F3',
+                        border: '1px dashed #2196F3', borderRadius: '6px', cursor: 'pointer',
+                        fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px'
+                      }}
+                    >
+                      <Icon icon="material-symbols:add" width="14" />
+                      Novo Plano
+                    </button>
+                    <span style={{ fontSize: '11px', color: '#888' }}>Vencimento auto-preenchido (inicio + 30 dias)</span>
+                  </div>
                   {planos.length === 0 && (
-                    <p style={{
-                      margin: '8px 0 0 0',
-                      fontSize: '12px',
-                      color: '#f44336'
-                    }}>
-                      Nenhum plano ativo encontrado. Crie um plano primeiro.
+                    <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#f44336' }}>
+                      Nenhum plano ativo. Crie um plano primeiro.
                     </p>
                   )}
-                </div>
-
-                <div style={{
-                  marginTop: '12px',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  color: '#666'
-                }}>
-                  <Icon icon="mdi:information" width="16" height="16" style={{ verticalAlign: 'middle', marginRight: '6px', color: '#2196F3' }} />
-                  A primeira mensalidade será criada com vencimento em 30 dias após a data de início.
                 </div>
               </div>
             )}
 
             {/* Toggle para enviar mensagem de boas-vindas */}
             <div style={{
-              marginBottom: '28px',
-              padding: '16px',
+              marginBottom: '16px',
+              padding: '14px',
               backgroundColor: '#f0f7ff',
               borderRadius: '8px',
               border: '1px solid #bbdefb'
@@ -3355,35 +3309,24 @@ Equipe ${nomeEmpresa}`
                   display: 'flex',
                   alignItems: 'flex-start',
                   cursor: 'pointer',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: '500',
                   color: '#333',
-                  gap: '10px',
+                  gap: '8px',
                   flex: 1
                 }}>
                   <input
                     type="checkbox"
                     checked={enviarBoasVindas}
                     onChange={(e) => setEnviarBoasVindas(e.target.checked)}
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      marginTop: '2px',
-                      cursor: 'pointer',
-                      accentColor: '#2196F3'
-                    }}
+                    style={{ width: '16px', height: '16px', marginTop: '2px', cursor: 'pointer', accentColor: '#2196F3' }}
                   />
                   <div>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Icon icon="mdi:whatsapp" width="18" height="18" style={{ color: '#25D366' }} />
+                      <Icon icon="mdi:whatsapp" width="16" style={{ color: '#25D366' }} />
                       Enviar mensagem de boas-vindas
                     </span>
-                    <p style={{
-                      margin: '4px 0 0 0',
-                      fontSize: '12px',
-                      color: '#666',
-                      fontWeight: '400'
-                    }}>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666', fontWeight: '400' }}>
                       Envia uma mensagem apresentando sua empresa e solicitando que o aluno salve o número.
                     </p>
                   </div>
@@ -3393,19 +3336,11 @@ Equipe ${nomeEmpresa}`
                     type="button"
                     onClick={() => setMostrarEdicaoBoasVindas(!mostrarEdicaoBoasVindas)}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      color: '#2196F3',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '12px',
-                      fontWeight: '500'
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                      color: '#2196F3', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '500'
                     }}
                   >
-                    <Icon icon={mostrarEdicaoBoasVindas ? 'mdi:chevron-up' : 'mdi:pencil'} width="16" height="16" />
+                    <Icon icon={mostrarEdicaoBoasVindas ? 'mdi:chevron-up' : 'mdi:pencil'} width="14" />
                     {mostrarEdicaoBoasVindas ? 'Fechar' : 'Editar'}
                   </button>
                 )}
@@ -3495,6 +3430,9 @@ Qualquer dúvida, estamos à disposição.`}
                   setNovoClienteTelefone('')
                   setNovoClienteCpf('')
                   setNovoClienteDataNascimento('')
+                  setNovoClienteEmail('')
+                  setNovoClienteResponsavelNome('')
+                  setNovoClienteResponsavelTelefone('')
                   setCriarAssinatura(false)
                   setDataInicioAssinatura('')
                   setPlanoSelecionado('')
