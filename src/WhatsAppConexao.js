@@ -2123,38 +2123,15 @@ export default function WhatsAppConexao() {
                 ))}
               </div>
 
-              {/* Toggle Enviar no Domingo */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '12px 14px', backgroundColor: 'white',
-                borderRadius: '8px', border: '1px solid #e5e7eb',
-                marginBottom: '16px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon icon="mdi:calendar-weekend" width="20" style={{ color: '#7c3aed' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#344848' }}>Enviar no domingo</div>
-                    <div style={{ fontSize: '11px', color: '#888' }}>
-                      {enviarDomingoAtivo ? 'Mensagens enviadas normalmente' : 'Mensagens de domingo vão na segunda'}
-                    </div>
-                  </div>
-                </div>
-                <button onClick={toggleEnviarDomingo}
-                  style={{ position: 'relative', width: '44px', height: '24px', backgroundColor: enviarDomingoAtivo ? '#4CAF50' : '#ccc', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'background-color 0.3s', padding: 0, flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: '2px', left: enviarDomingoAtivo ? '22px' : '2px', width: '20px', height: '20px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', border: '1px solid #e5e7eb' }} />
-                </button>
-              </div>
-
-              {/* Config Rápida: PIX + Pagamento */}
+              {/* Configurações */}
               <details style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
                 <summary style={{ padding: '12px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#555', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
                   <Icon icon="mdi:cog-outline" width="16" style={{ color: '#888' }} />
-                  Configurações de Pagamento
+                  Configurações
                   <Icon icon="mdi:chevron-down" width="16" style={{ color: '#888', marginLeft: 'auto' }} />
                 </summary>
                 <div style={{ padding: '0 14px 14px' }}>
+                  {/* Chave PIX */}
                   <div style={{ marginBottom: '12px' }}>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Chave PIX</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -2166,7 +2143,9 @@ export default function WhatsAppConexao() {
                       </button>
                     </div>
                   </div>
-                  <div>
+
+                  {/* Método de pagamento */}
+                  <div style={{ marginBottom: '14px' }}>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Método nas mensagens</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => salvarMetodoPagamento('pix_manual')}
@@ -2188,6 +2167,28 @@ export default function WhatsAppConexao() {
                         Configurar Asaas em Integrações
                       </button>
                     )}
+                  </div>
+
+                  {/* Divider */}
+                  <div style={{ borderTop: '1px solid #e5e7eb', marginBottom: '12px' }} />
+
+                  {/* Enviar no domingo */}
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                      <Icon icon="mdi:calendar-weekend" width="20" style={{ color: '#7c3aed' }} />
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#344848' }}>Enviar no domingo</div>
+                        <div style={{ fontSize: '11px', color: '#888' }}>
+                          {enviarDomingoAtivo ? 'Mensagens enviadas normalmente' : 'Mensagens de domingo vão na segunda'}
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={toggleEnviarDomingo}
+                      style={{ position: 'relative', width: '44px', height: '24px', backgroundColor: enviarDomingoAtivo ? '#4CAF50' : '#ccc', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'background-color 0.3s', padding: 0, flexShrink: 0 }}>
+                      <div style={{ position: 'absolute', top: '2px', left: enviarDomingoAtivo ? '22px' : '2px', width: '20px', height: '20px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', border: '1px solid #e5e7eb' }} />
+                    </button>
                   </div>
                 </div>
               </details>
