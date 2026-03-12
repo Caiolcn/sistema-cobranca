@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
@@ -49,6 +49,20 @@ export default function GradeHorarios() {
   // Salvando
   const [salvando, setSalvando] = useState(false)
 
+  // Presença
+  const [presencasHoje, setPresencasHoje] = useState({}) // { grade_horario_id: { id, presente, observacao } }
+  const [mostrarModalPresenca, setMostrarModalPresenca] = useState(false)
+  const [presencaAtual, setPresencaAtual] = useState(null) // { horario, presente, observacao }
+  const [presencaObservacao, setPresencaObservacao] = useState('')
+  const [presencaPresente, setPresencaPresente] = useState(true)
+  const [salvandoPresenca, setSalvandoPresenca] = useState(false)
+  const [presencaModoEdicao, setPresencaModoEdicao] = useState(false)
+
+  const hojeStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+
   // Carregar dados
   const carregarDados = useCallback(async () => {
     if (!userId) return
@@ -71,8 +85,22 @@ export default function GradeHorarios() {
 
     if (horariosRes.data) setHorarios(horariosRes.data)
     if (clientesRes.data) setClientes(clientesRes.data)
+
+    // Carregar presenças de hoje
+    const { data: presencasData } = await supabase
+      .from('presencas')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('data', hojeStr)
+
+    if (presencasData) {
+      const map = {}
+      presencasData.forEach(p => { map[p.grade_horario_id] = p })
+      setPresencasHoje(map)
+    }
+
     setLoading(false)
-  }, [userId])
+  }, [userId, hojeStr])
 
   useEffect(() => {
     carregarDados()
@@ -225,6 +253,83 @@ export default function GradeHorarios() {
         item.id === h.id ? { ...item, ativo: !item.ativo } : item
       ))
     }
+  }
+
+  // Abrir modal de presença
+  const abrirPresenca = (h) => {
+    const existente = presencasHoje[h.id]
+    setPresencaAtual(h)
+    setPresencaPresente(existente ? existente.presente : true)
+    setPresencaObservacao(existente ? (existente.observacao || '') : '')
+    setPresencaModoEdicao(!existente) // se já existe, abre em modo visualização
+    setMostrarModalPresenca(true)
+  }
+
+  // Salvar presença
+  const salvarPresenca = async () => {
+    if (!presencaAtual) return
+    setSalvandoPresenca(true)
+
+    const existente = presencasHoje[presencaAtual.id]
+    const dados = {
+      user_id: userId,
+      grade_horario_id: presencaAtual.id,
+      devedor_id: presencaAtual.devedor_id,
+      data: hojeStr,
+      presente: presencaPresente,
+      observacao: presencaObservacao.trim() || null,
+      updated_at: new Date().toISOString()
+    }
+
+    let result
+    if (existente) {
+      result = await supabase
+        .from('presencas')
+        .update({ presente: dados.presente, observacao: dados.observacao, updated_at: dados.updated_at })
+        .eq('id', existente.id)
+        .select()
+    } else {
+      result = await supabase
+        .from('presencas')
+        .insert(dados)
+        .select()
+    }
+
+    if (result.error) {
+      showToast('Erro ao salvar presença: ' + result.error.message, 'error')
+    } else {
+      const saved = result.data[0]
+      setPresencasHoje(prev => ({ ...prev, [presencaAtual.id]: saved }))
+      showToast(presencaPresente ? 'Presença registrada!' : 'Falta registrada!', 'success')
+      setMostrarModalPresenca(false)
+    }
+    setSalvandoPresenca(false)
+  }
+
+  // Remover presença
+  const removerPresenca = async () => {
+    if (!presencaAtual) return
+    const existente = presencasHoje[presencaAtual.id]
+    if (!existente) return
+
+    setSalvandoPresenca(true)
+    const { error } = await supabase
+      .from('presencas')
+      .delete()
+      .eq('id', existente.id)
+
+    if (error) {
+      showToast('Erro ao remover presença: ' + error.message, 'error')
+    } else {
+      setPresencasHoje(prev => {
+        const novo = { ...prev }
+        delete novo[presencaAtual.id]
+        return novo
+      })
+      showToast('Presença removida!', 'success')
+      setMostrarModalPresenca(false)
+    }
+    setSalvandoPresenca(false)
   }
 
   // Contadores
@@ -617,6 +722,46 @@ export default function GradeHorarios() {
                               </div>
                             )}
 
+                            {/* Botão de presença (só no dia atual) */}
+                            {isHoje && h.ativo && (() => {
+                              const presenca = presencasHoje[h.id]
+                              return (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); abrirPresenca(h) }}
+                                  style={{
+                                    marginTop: '6px',
+                                    padding: '4px 8px',
+                                    borderRadius: '5px',
+                                    border: presenca ? 'none' : '1px dashed #aaa',
+                                    backgroundColor: presenca
+                                      ? presenca.presente ? '#dcfce7' : '#fee2e2'
+                                      : 'white',
+                                    color: presenca
+                                      ? presenca.presente ? '#16a34a' : '#dc2626'
+                                      : '#888',
+                                    fontSize: '10px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    width: '100%',
+                                    justifyContent: 'center'
+                                  }}
+                                >
+                                  <Icon
+                                    icon={presenca
+                                      ? presenca.presente ? 'mdi:check-circle' : 'mdi:close-circle'
+                                      : 'mdi:checkbox-blank-circle-outline'}
+                                    width="13"
+                                  />
+                                  {presenca
+                                    ? presenca.presente ? 'Presente' : 'Falta'
+                                    : 'Marcar presença'}
+                                </button>
+                              )
+                            })()}
+
                             {/* Ações hover (sempre visíveis no mobile) */}
                             <div
                               className="aula-acoes"
@@ -919,6 +1064,325 @@ export default function GradeHorarios() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Presença */}
+      {mostrarModalPresenca && presencaAtual && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setMostrarModalPresenca(false) }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1001,
+            padding: '16px'
+          }}
+        >
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '14px',
+            padding: '28px',
+            maxWidth: '420px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>
+                {presencaModoEdicao ? 'Registrar Presença' : 'Presença Registrada'}
+              </h2>
+              <button
+                onClick={() => setMostrarModalPresenca(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+              >
+                <Icon icon="mdi:close" width="22" color="#666" />
+              </button>
+            </div>
+
+            {/* Info do aluno */}
+            <div style={{
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#344848',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                fontWeight: '600',
+                flexShrink: 0
+              }}>
+                {(presencaAtual.devedores?.nome || 'A').charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: '600', color: '#333' }}>
+                  {presencaAtual.devedores?.nome || 'Aluno'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#888' }}>
+                  {presencaAtual.horario?.substring(0, 5)} — {presencaAtual.descricao || 'Aula'} — {new Date().toLocaleDateString('pt-BR')}
+                </div>
+              </div>
+            </div>
+
+            {presencaModoEdicao ? (
+              <>
+                {/* Toggle Presente/Falta */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                    Status
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => setPresencaPresente(true)}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: presencaPresente ? '2px solid #16a34a' : '1px solid #ddd',
+                        backgroundColor: presencaPresente ? '#f0fdf4' : 'white',
+                        color: presencaPresente ? '#16a34a' : '#666',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Icon icon="mdi:check-circle" width="20" />
+                      Presente
+                    </button>
+                    <button
+                      onClick={() => setPresencaPresente(false)}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: !presencaPresente ? '2px solid #dc2626' : '1px solid #ddd',
+                        backgroundColor: !presencaPresente ? '#fef2f2' : 'white',
+                        color: !presencaPresente ? '#dc2626' : '#666',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Icon icon="mdi:close-circle" width="20" />
+                      Falta
+                    </button>
+                  </div>
+                </div>
+
+                {/* Observação */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '6px' }}>
+                    {presencaPresente ? 'O que foi feito na aula?' : 'Motivo da falta'} <span style={{ fontWeight: '400', color: '#999', fontSize: '12px' }}>(opcional)</span>
+                  </label>
+                  <textarea
+                    value={presencaObservacao}
+                    onChange={e => setPresencaObservacao(e.target.value)}
+                    placeholder={presencaPresente
+                      ? "Ex: Treino de força, exercícios de respiração, revisão de escala musical..."
+                      : "Ex: Atestado médico, viagem, sem justificativa..."}
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* Botões edição */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {presencasHoje[presencaAtual.id] && (
+                    <button
+                      onClick={removerPresenca}
+                      disabled={salvandoPresenca}
+                      style={{
+                        padding: '12px',
+                        backgroundColor: 'white',
+                        color: '#ef4444',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Icon icon="mdi:delete-outline" width="16" />
+                      Remover
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (presencasHoje[presencaAtual.id]) {
+                        // Cancelar edição, voltar pra visualização
+                        const existente = presencasHoje[presencaAtual.id]
+                        setPresencaPresente(existente.presente)
+                        setPresencaObservacao(existente.observacao || '')
+                        setPresencaModoEdicao(false)
+                      } else {
+                        setMostrarModalPresenca(false)
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      color: '#333',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={salvarPresenca}
+                    disabled={salvandoPresenca}
+                    style={{
+                      flex: 2,
+                      padding: '12px',
+                      backgroundColor: salvandoPresenca ? '#ccc' : presencaPresente ? '#16a34a' : '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: salvandoPresenca ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {salvandoPresenca ? 'Salvando...' : (
+                      <>
+                        <Icon icon={presencaPresente ? 'mdi:check' : 'mdi:close'} width="18" />
+                        {presencaPresente ? 'Registrar Presença' : 'Registrar Falta'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Modo visualização */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  backgroundColor: presencaPresente ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${presencaPresente ? '#bbf7d0' : '#fecaca'}`,
+                  marginBottom: '16px'
+                }}>
+                  <Icon
+                    icon={presencaPresente ? 'mdi:check-circle' : 'mdi:close-circle'}
+                    width="22"
+                    color={presencaPresente ? '#16a34a' : '#dc2626'}
+                  />
+                  <span style={{
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    color: presencaPresente ? '#16a34a' : '#dc2626'
+                  }}>
+                    {presencaPresente ? 'Presente' : 'Falta'}
+                  </span>
+                </div>
+
+                {presencaObservacao && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#888', marginBottom: '4px' }}>
+                      {presencaPresente ? 'O que foi feito na aula' : 'Motivo da falta'}
+                    </label>
+                    <p style={{ fontSize: '14px', color: '#333', margin: 0, lineHeight: '1.5' }}>
+                      {presencaObservacao}
+                    </p>
+                  </div>
+                )}
+
+                {/* Botões visualização */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setMostrarModalPresenca(false)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      color: '#333',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    onClick={() => setPresencaModoEdicao(true)}
+                    style={{
+                      flex: 2,
+                      padding: '12px',
+                      backgroundColor: '#344848',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Icon icon="mdi:pencil" width="18" />
+                    Editar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
