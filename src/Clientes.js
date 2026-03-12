@@ -2024,264 +2024,179 @@ Equipe ${nomeEmpresa}`
 
             {/* Corpo do Modal */}
             <div style={{ padding: '24px' }}>
-              {/* Seção de Edição */}
-              <div style={{
-                backgroundColor: '#f9f9f9',
-                borderRadius: '8px',
-                padding: '20px',
-                marginBottom: '24px'
+              {/* Informações do Aluno + Assinatura - Colapsável */}
+              <details style={{
+                backgroundColor: '#f8f9fa',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb',
+                marginBottom: '16px',
+                overflow: 'hidden'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-                    Informações do Aluno
-                  </h3>
-                  {!editando && (
-                    <button
-                      onClick={() => setEditando(true)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#344848',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <Icon icon="mdi:pencil" width="16" height="16" />
-                      Editar
-                    </button>
+                <summary style={{
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  listStyle: 'none',
+                  userSelect: 'none'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Icon icon="mdi:account-outline" width="18" style={{ color: '#344848' }} />
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#344848' }}>Informações do Aluno</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        backgroundColor: clienteSelecionado.assinatura_ativa ? '#dcfce7' : '#fee2e2',
+                        color: clienteSelecionado.assinatura_ativa ? '#16a34a' : '#dc2626'
+                      }}>
+                        {planos.find(p => p.id === clienteSelecionado.plano_id)?.nome || 'Plano'} — {clienteSelecionado.assinatura_ativa ? 'Ativa' : 'Cancelada'}
+                      </span>
+                    )}
+                    <Icon icon="mdi:chevron-down" width="18" style={{ color: '#888' }} />
+                  </div>
+                </summary>
+                <div style={{ padding: '0 16px 16px' }}>
+                  {/* Dados do aluno em modo leitura ou edição */}
+                  {!editando ? (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr 1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                        {[
+                          { label: 'Telefone', value: clienteSelecionado.telefone },
+                          { label: 'CPF/CNPJ', value: clienteSelecionado.cpf || '—' },
+                          { label: 'Nascimento', value: clienteSelecionado.data_nascimento ? new Date(clienteSelecionado.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
+                          { label: 'Dia Vencimento', value: (() => { const pend = mensalidadesCliente.find(m => m.status === 'pendente'); const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]; return ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '—' })() },
+                        ].map((item, i) => (
+                          <div key={i}>
+                            <p style={{ margin: 0, fontSize: '11px', color: '#888', fontWeight: '500' }}>{item.label}</p>
+                            <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '600', color: '#333' }}>{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Assinatura inline */}
+                      {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          backgroundColor: 'white',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                          marginBottom: '12px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Icon icon="mdi:card-account-details" width="18" style={{ color: '#2196F3' }} />
+                            <div>
+                              <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
+                                {planos.find(p => p.id === clienteSelecionado.plano_id)?.nome || 'Não identificado'}
+                              </span>
+                              <span style={{ fontSize: '13px', color: '#2196F3', fontWeight: '600', marginLeft: '8px' }}>
+                                R$ {formatCurrency(parseFloat(planos.find(p => p.id === clienteSelecionado.plano_id)?.valor || 0))}/mês
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
+                            style={{
+                              padding: '5px 12px',
+                              backgroundColor: clienteSelecionado.assinatura_ativa ? '#fee2e2' : '#dcfce7',
+                              color: clienteSelecionado.assinatura_ativa ? '#dc2626' : '#16a34a',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {clienteSelecionado.assinatura_ativa ? 'Cancelar' : 'Reativar'}
+                          </button>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => setEditando(true)}
+                        style={{
+                          padding: '6px 14px',
+                          backgroundColor: 'white',
+                          color: '#344848',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Icon icon="mdi:pencil" width="14" />
+                        Editar dados
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nome</label>
+                          <input type="text" value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)}
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Telefone</label>
+                          <input type="tel" value={telefoneEdit} onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>CPF/CNPJ</label>
+                          <input type="text" value={cpfEdit} onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))} maxLength="18" placeholder="000.000.000-00"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cpfEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nascimento</label>
+                          <input type="date" value={dataNascimentoEdit} onChange={(e) => setDataNascimentoEdit(e.target.value)}
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: dataNascimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Dia Vencimento</label>
+                          <input type="number" min="1" max="31" value={diaVencimentoEdit} placeholder="1-31"
+                            onChange={(e) => { const val = e.target.value; if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) setDiaVencimentoEdit(val) }}
+                            onFocus={(e) => e.target.select()}
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: diaVencimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => {
+                            setEditando(false)
+                            setNomeEdit(clienteSelecionado.nome)
+                            setTelefoneEdit(clienteSelecionado.telefone)
+                            setCpfEdit(clienteSelecionado.cpf || '')
+                            setDataNascimentoEdit(clienteSelecionado.data_nascimento || '')
+                            const pend = mensalidadesCliente.find(m => m.status === 'pendente')
+                            const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]
+                            setDiaVencimentoEdit(ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '')
+                          }}
+                          style={{ padding: '6px 14px', backgroundColor: 'white', color: '#666', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                        >
+                          Cancelar
+                        </button>
+                        <button onClick={handleSalvarEdicao}
+                          style={{ padding: '6px 14px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                        >
+                          Salvar
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      Nome Completo
-                    </label>
-                    <input
-                      type="text"
-                      value={nomeEdit}
-                      onChange={(e) => setNomeEdit(e.target.value)}
-                      disabled={!editando}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: editando ? 'white' : '#f5f5f5',
-                        color: '#333',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      value={telefoneEdit}
-                      onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))}
-                      disabled={!editando}
-                      maxLength="15"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: editando ? 'white' : '#f5f5f5',
-                        color: '#333',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      CPF/CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      value={cpfEdit}
-                      onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))}
-                      disabled={!editando}
-                      maxLength="18"
-                      placeholder="000.000.000-00"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: editando ? 'white' : '#f5f5f5',
-                        color: cpfEdit ? '#333' : '#999',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      Data de Nascimento
-                    </label>
-                    <input
-                      type="date"
-                      value={dataNascimentoEdit}
-                      onChange={(e) => setDataNascimentoEdit(e.target.value)}
-                      disabled={!editando}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: editando ? 'white' : '#f5f5f5',
-                        color: dataNascimentoEdit ? '#333' : '#999',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      Dia de Vencimento
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={diaVencimentoEdit}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) {
-                          setDiaVencimentoEdit(val)
-                        }
-                      }}
-                      onFocus={(e) => e.target.select()}
-                      disabled={!editando}
-                      placeholder="1-31"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        fontSize: '14px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: editando ? 'white' : '#f5f5f5',
-                        color: diaVencimentoEdit ? '#333' : '#999',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {editando && (
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '16px', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => {
-                        setEditando(false)
-                        setNomeEdit(clienteSelecionado.nome)
-                        setTelefoneEdit(clienteSelecionado.telefone)
-                        setCpfEdit(clienteSelecionado.cpf || '')
-                        setDataNascimentoEdit(clienteSelecionado.data_nascimento || '')
-                        const pend = mensalidadesCliente.find(m => m.status === 'pendente')
-                        const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]
-                        setDiaVencimentoEdit(ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '')
-                      }}
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: 'white',
-                        color: '#666',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSalvarEdicao}
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      Salvar Alterações
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Seção de Assinatura */}
-              {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
-                <div style={{
-                  backgroundColor: '#e8f4f8',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  marginBottom: '24px',
-                  border: '2px solid #2196F3'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Icon icon="mdi:card-account-details" width="20" height="20" style={{ color: '#2196F3' }} />
-                      Assinatura
-                    </h3>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      backgroundColor: clienteSelecionado.assinatura_ativa ? '#4CAF50' : '#f44336',
-                      color: 'white'
-                    }}>
-                      {clienteSelecionado.assinatura_ativa ? 'ATIVA' : 'CANCELADA'}
-                    </span>
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#666', fontWeight: '500' }}>
-                      Plano Atual
-                    </p>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#333' }}>
-                      {planos.find(p => p.id === clienteSelecionado.plano_id)?.nome || 'Não identificado'}
-                    </p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#2196F3', fontWeight: '600' }}>
-                      R$ {formatCurrency(parseFloat(planos.find(p => p.id === clienteSelecionado.plano_id)?.valor || 0))}/mês
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: clienteSelecionado.assinatura_ativa ? '#f44336' : '#4CAF50',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Icon icon={clienteSelecionado.assinatura_ativa ? "mdi:pause-circle" : "mdi:play-circle"} width="18" height="18" />
-                    {clienteSelecionado.assinatura_ativa ? 'Cancelar Assinatura' : 'Reativar Assinatura'}
-                  </button>
-                </div>
-              )}
+              </details>
 
               {/* Indicadores do Aluno - 4 Cards */}
               <div style={{

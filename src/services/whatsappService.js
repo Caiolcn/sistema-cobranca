@@ -1158,9 +1158,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         ...resultado
       })
 
-      // Delay de 2 segundos entre envios para não sobrecarregar a API
+      // Delay aleatório de 30-40s entre envios para evitar bloqueio do WhatsApp
       if (mensalidadeIds.indexOf(mensalidadeId) < mensalidadeIds.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        const delay = 30000 + Math.random() * 10000 // 30-40 segundos
+        console.log(`⏳ Aguardando ${Math.round(delay / 1000)}s antes do próximo envio...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
 
