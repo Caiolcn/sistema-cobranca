@@ -42,6 +42,9 @@ export default function Clientes() {
   const [filtroPlano, setFiltroPlano] = useState(searchParams.get('plano') || 'todos')
   const [filtroAssinatura, setFiltroAssinatura] = useState(searchParams.get('assinatura') || 'todos')
   const [filtroInadimplente, setFiltroInadimplente] = useState(searchParams.get('inadimplente') === 'true')
+  const [filtroVencimentoDe, setFiltroVencimentoDe] = useState('')
+  const [filtroVencimentoAte, setFiltroVencimentoAte] = useState('')
+  const [filtroAniversariante, setFiltroAniversariante] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState({ show: false, cliente: null })
   const [excluirMensalidades, setExcluirMensalidades] = useState(false)
   const [mostrarModalNovoCliente, setMostrarModalNovoCliente] = useState(searchParams.get('novo') === 'true')
@@ -153,9 +156,31 @@ export default function Clientes() {
       filtrados = filtrados.filter(cliente => cliente.status === 'Atrasado')
     }
 
+    // Filtro por data de vencimento
+    if (filtroVencimentoDe) {
+      filtrados = filtrados.filter(cliente =>
+        cliente.proxima_mensalidade && cliente.proxima_mensalidade >= filtroVencimentoDe
+      )
+    }
+    if (filtroVencimentoAte) {
+      filtrados = filtrados.filter(cliente =>
+        cliente.proxima_mensalidade && cliente.proxima_mensalidade <= filtroVencimentoAte
+      )
+    }
+
+    // Filtro de aniversariantes do mês
+    if (filtroAniversariante) {
+      const mesAtual = new Date().getMonth() + 1
+      filtrados = filtrados.filter(cliente => {
+        if (!cliente.data_nascimento) return false
+        const mesNasc = new Date(cliente.data_nascimento + 'T00:00:00').getMonth() + 1
+        return mesNasc === mesAtual
+      })
+    }
+
     setClientesFiltrados(filtrados)
     setPaginaAtual(1) // Resetar para primeira página quando filtros mudam
-  }, [busca, clientes, filtroStatus, filtroPlano, filtroAssinatura, filtroInadimplente])
+  }, [busca, clientes, filtroStatus, filtroPlano, filtroAssinatura, filtroInadimplente, filtroVencimentoDe, filtroVencimentoAte, filtroAniversariante])
 
   // Calcular dados de paginação
   const totalPaginas = Math.ceil(clientesFiltrados.length / itensPorPagina)
@@ -207,6 +232,7 @@ export default function Clientes() {
             responsavel_nome,
             responsavel_telefone,
             bloquear_mensagens,
+            data_nascimento,
             planos:plano_id (nome)
           `)
           .eq('user_id', userId)
@@ -1576,6 +1602,85 @@ Equipe ${nomeEmpresa}`
                     </select>
                   </div>
 
+                  {/* Filtro por Vencimento */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                      Próximo Vencimento
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="date"
+                        value={filtroVencimentoDe}
+                        onChange={(e) => setFiltroVencimentoDe(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          fontSize: '14px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#999' }}>até</span>
+                      <input
+                        type="date"
+                        value={filtroVencimentoAte}
+                        onChange={(e) => setFiltroVencimentoAte(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          fontSize: '14px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filtro Aniversariantes */}
+                  <div style={{
+                    marginBottom: '16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    backgroundColor: filtroAniversariante ? '#fef3c7' : '#f9fafb',
+                    borderRadius: '8px',
+                    border: `1px solid ${filtroAniversariante ? '#fbbf24' : '#e5e7eb'}`
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icon icon="mdi:cake-variant" width="16" style={{ color: filtroAniversariante ? '#d97706' : '#888' }} />
+                      <span style={{ fontSize: '13px', fontWeight: '500', color: filtroAniversariante ? '#92400e' : '#555' }}>
+                        Aniversariantes do mês
+                      </span>
+                    </div>
+                    <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={filtroAniversariante}
+                        onChange={(e) => setFiltroAniversariante(e.target.checked)}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: filtroAniversariante ? '#4CAF50' : '#d1d5db',
+                        borderRadius: '20px', transition: 'background-color 0.3s'
+                      }} />
+                      <span style={{
+                        position: 'absolute', top: '2px',
+                        left: filtroAniversariante ? '18px' : '2px',
+                        width: '16px', height: '16px',
+                        backgroundColor: 'white', borderRadius: '50%',
+                        transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                      }} />
+                    </label>
+                  </div>
+
                   {/* Botão Limpar Filtros */}
                   <button
                     onClick={() => {
@@ -1583,6 +1688,9 @@ Equipe ${nomeEmpresa}`
                       setFiltroPlano('todos')
                       setFiltroAssinatura('todos')
                       setFiltroInadimplente(false)
+                      setFiltroVencimentoDe('')
+                      setFiltroVencimentoAte('')
+                      setFiltroAniversariante(false)
                       setBusca('')
                       setSearchParams({})
                       setMostrarFiltros(false)
