@@ -424,12 +424,16 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         return
       }
 
-      // 4. Calcular próximo vencimento (mesmo dia do próximo mês)
+      // 4. Calcular próximo vencimento baseado no ciclo do plano
       const dataVencimentoAtual = new Date(mensalidadeAtual.data_vencimento + 'T00:00:00')
       const proximoVencimento = new Date(dataVencimentoAtual)
 
-      // Adicionar 1 mês mantendo o mesmo dia
-      proximoVencimento.setMonth(proximoVencimento.getMonth() + 1)
+      // Buscar ciclo do plano do devedor
+      let mesesParaAdicionar = 1 // padrão mensal
+      if (devedor.plano?.ciclo_cobranca === 'trimestral') mesesParaAdicionar = 3
+      else if (devedor.plano?.ciclo_cobranca === 'anual') mesesParaAdicionar = 12
+
+      proximoVencimento.setMonth(proximoVencimento.getMonth() + mesesParaAdicionar)
 
       // Ajustar caso o dia não exista no próximo mês (ex: 31 de jan → 28/29 de fev)
       if (proximoVencimento.getDate() !== dataVencimentoAtual.getDate()) {
@@ -525,7 +529,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         .from('mensalidades')
         .update(updateData)
         .eq('id', mensalidadeParaAtualizar.id)
-        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor))')
+        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca))')
         .single()
 
       if (error) throw error

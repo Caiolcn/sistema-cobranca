@@ -206,6 +206,7 @@ export default function Clientes() {
             email,
             responsavel_nome,
             responsavel_telefone,
+            bloquear_mensagens,
             planos:plano_id (nome)
           `)
           .eq('user_id', userId)
@@ -2126,23 +2127,97 @@ Equipe ${nomeEmpresa}`
                               </span>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
-                            style={{
-                              padding: '5px 12px',
-                              backgroundColor: clienteSelecionado.assinatura_ativa ? '#fee2e2' : '#dcfce7',
-                              color: clienteSelecionado.assinatura_ativa ? '#dc2626' : '#16a34a',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                          >
-                            {clienteSelecionado.assinatura_ativa ? 'Cancelar' : 'Reativar'}
-                          </button>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            {clienteSelecionado.assinatura_ativa && (
+                              <button
+                                onClick={() => {
+                                  setPlanoParaAtivar(clienteSelecionado.plano_id || '')
+                                  const hoje = new Date()
+                                  setDataInicioAssinaturaModal(hoje.toISOString().split('T')[0])
+                                  const venc = new Date(hoje)
+                                  venc.setDate(venc.getDate() + 30)
+                                  setDataVencimentoAssinaturaModal(venc.toISOString().split('T')[0])
+                                  setMostrarModalSelecionarPlano({ show: true, clienteId: clienteSelecionado.id })
+                                }}
+                                style={{
+                                  padding: '5px 12px',
+                                  backgroundColor: '#e0f2fe',
+                                  color: '#0284c7',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                Alterar
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
+                              style={{
+                                padding: '5px 12px',
+                                backgroundColor: clienteSelecionado.assinatura_ativa ? '#fee2e2' : '#dcfce7',
+                                color: clienteSelecionado.assinatura_ativa ? '#dc2626' : '#16a34a',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: '600'
+                              }}
+                            >
+                              {clienteSelecionado.assinatura_ativa ? 'Cancelar' : 'Reativar'}
+                            </button>
+                          </div>
                         </div>
                       )}
+
+                      {/* Toggle pausar cobranças */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        backgroundColor: clienteSelecionado.bloquear_mensagens ? '#fef3c7' : '#f9fafb',
+                        borderRadius: '8px',
+                        border: `1px solid ${clienteSelecionado.bloquear_mensagens ? '#fbbf24' : '#e5e7eb'}`,
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Icon icon={clienteSelecionado.bloquear_mensagens ? 'mdi:bell-off' : 'mdi:bell-ring'} width="16" style={{ color: clienteSelecionado.bloquear_mensagens ? '#d97706' : '#888' }} />
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: clienteSelecionado.bloquear_mensagens ? '#92400e' : '#555' }}>
+                            {clienteSelecionado.bloquear_mensagens ? 'Cobranças pausadas' : 'Cobranças ativas'}
+                          </span>
+                        </div>
+                        <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={!clienteSelecionado.bloquear_mensagens}
+                            onChange={async (e) => {
+                              const novoValor = !e.target.checked
+                              try {
+                                await supabase.from('devedores').update({ bloquear_mensagens: novoValor }).eq('id', clienteSelecionado.id)
+                                setClienteSelecionado({ ...clienteSelecionado, bloquear_mensagens: novoValor })
+                                setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? { ...c, bloquear_mensagens: novoValor } : c))
+                                showToast(novoValor ? 'Cobranças pausadas para este aluno' : 'Cobranças reativadas', 'success')
+                              } catch { showToast('Erro ao atualizar', 'error') }
+                            }}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span style={{
+                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: clienteSelecionado.bloquear_mensagens ? '#d1d5db' : '#4CAF50',
+                            borderRadius: '20px', transition: 'background-color 0.3s'
+                          }} />
+                          <span style={{
+                            position: 'absolute', top: '2px',
+                            left: clienteSelecionado.bloquear_mensagens ? '2px' : '18px',
+                            width: '16px', height: '16px',
+                            backgroundColor: 'white', borderRadius: '50%',
+                            transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                          }} />
+                        </label>
+                      </div>
 
                       <button
                         onClick={() => setEditando(true)}
