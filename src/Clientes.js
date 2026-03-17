@@ -586,6 +586,65 @@ export default function Clientes() {
     }
   }
 
+  // Criar próxima mensalidade automaticamente ao marcar como pago
+  const criarProximaMensalidade = async (mensalidadeAtual) => {
+    try {
+      const devedor = mensalidadeAtual.devedores
+      if (!devedor || !devedor.assinatura_ativa) return
+
+      const isRecorrente = mensalidadeAtual.is_mensalidade === true ||
+                           (mensalidadeAtual.is_mensalidade == null && devedor.assinatura_ativa)
+      if (!isRecorrente) return
+
+      const dataVencimentoAtual = new Date(mensalidadeAtual.data_vencimento + 'T00:00:00')
+      const proximoVencimento = new Date(dataVencimentoAtual)
+
+      let mesesParaAdicionar = 1
+      if (devedor.plano?.ciclo_cobranca === 'trimestral') mesesParaAdicionar = 3
+      else if (devedor.plano?.ciclo_cobranca === 'anual') mesesParaAdicionar = 12
+
+      proximoVencimento.setMonth(proximoVencimento.getMonth() + mesesParaAdicionar)
+      if (proximoVencimento.getDate() !== dataVencimentoAtual.getDate()) {
+        proximoVencimento.setDate(0)
+      }
+
+      const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
+
+      const { data: jaExiste } = await supabase
+        .from('mensalidades')
+        .select('id')
+        .eq('devedor_id', mensalidadeAtual.devedor_id)
+        .eq('data_vencimento', proximoVencimentoStr)
+        .maybeSingle()
+
+      if (jaExiste) return
+
+      const { error: errorInsert } = await supabase
+        .from('mensalidades')
+        .insert({
+          user_id: mensalidadeAtual.user_id,
+          devedor_id: mensalidadeAtual.devedor_id,
+          valor: devedor.plano?.valor || mensalidadeAtual.valor,
+          data_vencimento: proximoVencimentoStr,
+          status: 'pendente',
+          is_mensalidade: true,
+          numero_mensalidade: (mensalidadeAtual.numero_mensalidade || 0) + 1,
+          enviado_hoje: false,
+          total_mensagens_enviadas: 0
+        })
+
+      if (errorInsert) {
+        console.error('Erro ao criar próxima mensalidade:', errorInsert)
+        return
+      }
+
+      const dataFormatada = new Date(proximoVencimentoStr).toLocaleDateString('pt-BR')
+      showToast(`Próxima mensalidade criada para ${dataFormatada}`, 'success')
+    } catch (error) {
+      console.error('Erro na criação automática:', error)
+    }
+  }
+
   const handleAlterarStatusMensalidade = (mensalidade, novoPago) => {
     setConfirmPagamento({ show: true, mensalidade, novoPago })
   }
@@ -595,10 +654,18 @@ export default function Clientes() {
     if (!mensalidade) return
 
     try {
-      const { error } = await supabase
+      const updateData = {
+        status: novoPago ? 'pago' : 'pendente',
+        forma_pagamento: novoPago ? (confirmPagamento.formaPagamento || 'pix') : null,
+        data_pagamento: novoPago ? new Date().toISOString().split('T')[0] : null
+      }
+
+      const { data: mensalidadeAtualizada, error } = await supabase
         .from('mensalidades')
-        .update({ status: novoPago ? 'pago' : 'pendente' })
+        .update(updateData)
         .eq('id', mensalidade.id)
+        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca))')
+        .single()
 
       if (error) throw error
 
@@ -609,6 +676,11 @@ export default function Clientes() {
         whatsappService.enviarConfirmacaoPagamento(mensalidade.id)
           .then(r => { if (r.sucesso) showToast('Confirmação enviada via WhatsApp', 'success') })
           .catch(() => {})
+
+        // Criar próxima mensalidade automaticamente
+        if (mensalidadeAtualizada) {
+          await criarProximaMensalidade(mensalidadeAtualizada)
+        }
       }
 
       // Atualizar mensalidades do cliente no modal
@@ -869,12 +941,25 @@ export default function Clientes() {
     if (!confirmar) return
 
     try {
-      const { error } = await supabase
+      const updateData = {
+        status: novoPago ? 'pago' : 'pendente',
+        forma_pagamento: novoPago ? 'pix' : null,
+        data_pagamento: novoPago ? new Date().toISOString().split('T')[0] : null
+      }
+
+      const { data: mensalidadeAtualizada, error } = await supabase
         .from('mensalidades')
-        .update({ status: novoPago ? 'pago' : 'pendente' })
+        .update(updateData)
         .eq('id', mensalidadeSelecionada.id)
+        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca))')
+        .single()
 
       if (error) throw error
+
+      // Criar próxima mensalidade automaticamente
+      if (novoPago && mensalidadeAtualizada) {
+        await criarProximaMensalidade(mensalidadeAtualizada)
+      }
 
       showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
       setMostrarModalMensalidade(false)
