@@ -802,7 +802,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 onChange={(e) => setBusca(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -814,7 +814,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 onChange={(e) => setFiltroCategoria(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
@@ -832,7 +832,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 onChange={(e) => setFiltroStatus(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
@@ -852,7 +852,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                   onChange={(e) => setFiltroDataInicio(e.target.value)}
                   style={{
                     flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '13px', outline: 'none'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none'
                   }}
                 />
                 <input
@@ -861,7 +861,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                   onChange={(e) => setFiltroDataFim(e.target.value)}
                   style={{
                     flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '13px', outline: 'none'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none'
                   }}
                 />
               </div>
@@ -1378,7 +1378,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 placeholder="Ex: Aluguel do escritório"
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
@@ -1397,7 +1397,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 placeholder="0.00"
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
@@ -1419,7 +1419,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                   }}
                   style={{
                     flex: 1, padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '14px', outline: 'none', backgroundColor: 'white'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white'
                   }}
                 >
                   <option value="">Sem categoria</option>
@@ -1440,7 +1440,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 onChange={(e) => setFormDataVencimento(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box',
                   backgroundColor: 'white', WebkitAppearance: 'none', color: '#333'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
@@ -1456,7 +1456,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 onChange={(e) => setFormStatus(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
@@ -1475,7 +1475,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                   onChange={(e) => setFormFormaPagamento(e.target.value)}
                   style={{
                     width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '14px', outline: 'none',
+                    borderRadius: '6px', fontSize: '16px', outline: 'none',
                     boxSizing: 'border-box', backgroundColor: 'white'
                   }}
                 >
@@ -1522,7 +1522,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                     onChange={(e) => setFormRecorrenciaTipo(e.target.value)}
                     style={{
                       width: '100%', padding: '8px 12px', border: '1px solid #ddd',
-                      borderRadius: '6px', fontSize: '13px', outline: 'none', backgroundColor: 'white'
+                      borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white'
                     }}
                   >
                     <option value="mensal">Mensal</option>
@@ -1543,7 +1543,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 rows={3}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
@@ -1610,7 +1610,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
                 placeholder="Ex: Manutenção"
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
               />
             </div>

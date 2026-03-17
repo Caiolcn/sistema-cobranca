@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
@@ -99,7 +99,8 @@ export default function WhatsAppConexao() {
   const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
   const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
-  const [activeTab, setActiveTab] = useState('conexao')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('aba') === 'templates' ? 'templates' : 'conexao')
 
   // ESTADOS SIMPLIFICADOS (6 essenciais)
   const [status, setStatus] = useState('disconnected') // 'disconnected' | 'connecting' | 'connected'
@@ -2124,7 +2125,7 @@ export default function WhatsAppConexao() {
               </div>
 
               {/* Configurações */}
-              <details style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+              <details open={searchParams.get('config') === 'abrir'} style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
                 <summary style={{ padding: '12px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#555', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
                   <Icon icon="mdi:cog-outline" width="16" style={{ color: '#888' }} />
                   Configurações
@@ -2136,7 +2137,7 @@ export default function WhatsAppConexao() {
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Chave PIX</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value={chavePix} onChange={(e) => setChavePix(e.target.value)}
-                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
                       <button onClick={salvarChavePix} disabled={salvandoPix}
                         style={{ padding: '8px 14px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: salvandoPix ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
                         {salvandoPix ? '...' : 'Salvar'}

@@ -13,13 +13,15 @@ export function useUserPlan() {
 
   // Limites de clientes por plano
   const limiteClientesPorPlano = {
+    'free': 0,
     'starter': 50,
     'pro': 150,
     'premium': 500
   }
 
-  // Hierarquia de planos: starter < pro < premium
+  // Hierarquia de planos: free < starter < pro < premium
   const planLevel = {
+    'free': 0,
     'starter': 1,
     'pro': 2,
     'premium': 3

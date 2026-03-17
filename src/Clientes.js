@@ -3261,7 +3261,7 @@ Equipe ${nomeEmpresa}`
                   value={novoClienteNome}
                   onChange={(e) => setNovoClienteNome(e.target.value)}
                   placeholder="Nome do aluno"
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
                   onFocus={(e) => e.target.style.borderColor = '#333'}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
@@ -3274,7 +3274,7 @@ Equipe ${nomeEmpresa}`
                   onChange={(e) => setNovoClienteTelefone(formatarTelefone(e.target.value))}
                   placeholder="(00) 00000-0000"
                   maxLength="15"
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
                   onFocus={(e) => e.target.style.borderColor = '#333'}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
@@ -3289,7 +3289,7 @@ Equipe ${nomeEmpresa}`
                   onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))}
                   placeholder="000.000.000-00"
                   maxLength="14"
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
                   onFocus={(e) => e.target.style.borderColor = '#333'}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
@@ -3302,7 +3302,7 @@ Equipe ${nomeEmpresa}`
                   type="date"
                   value={novoClienteDataNascimento}
                   onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
@@ -3314,7 +3314,7 @@ Equipe ${nomeEmpresa}`
                   value={novoClienteEmail}
                   onChange={(e) => setNovoClienteEmail(e.target.value)}
                   placeholder="email@exemplo.com"
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
                   onFocus={(e) => e.target.style.borderColor = '#333'}
                   onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
@@ -3349,7 +3349,7 @@ Equipe ${nomeEmpresa}`
                     value={novoClienteResponsavelNome}
                     onChange={(e) => setNovoClienteResponsavelNome(e.target.value)}
                     placeholder="Nome do responsável"
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
                     onFocus={(e) => e.target.style.borderColor = '#333'}
                     onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                   />
@@ -3362,7 +3362,7 @@ Equipe ${nomeEmpresa}`
                     onChange={(e) => setNovoClienteResponsavelTelefone(formatarTelefone(e.target.value))}
                     placeholder="(00) 00000-0000"
                     maxLength="15"
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
                     onFocus={(e) => e.target.style.borderColor = '#333'}
                     onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                   />
@@ -3424,7 +3424,7 @@ Equipe ${nomeEmpresa}`
                           setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
                         }
                       }}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
@@ -3433,7 +3433,7 @@ Equipe ${nomeEmpresa}`
                       type="date"
                       value={dataVencimentoAssinatura}
                       onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
@@ -3442,7 +3442,7 @@ Equipe ${nomeEmpresa}`
                   <select
                     value={planoSelecionado}
                     onChange={(e) => setPlanoSelecionado(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', outline: 'none', cursor: 'pointer', backgroundColor: 'white', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', outline: 'none', cursor: 'pointer', backgroundColor: 'white', boxSizing: 'border-box' }}
                     onFocus={(e) => e.target.style.borderColor = '#2196F3'}
                     onBlur={(e) => e.target.style.borderColor = '#ddd'}
                   >

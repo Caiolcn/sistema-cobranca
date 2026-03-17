@@ -593,7 +593,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 onChange={(e) => setBusca(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -605,7 +605,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 onChange={(e) => setFiltroCategoria(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
@@ -623,7 +623,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 onChange={(e) => setFiltroStatus(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
@@ -644,7 +644,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   onChange={(e) => setFiltroDataInicio(e.target.value)}
                   style={{
                     flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '13px', outline: 'none'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none'
                   }}
                 />
                 <input
@@ -653,7 +653,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   onChange={(e) => setFiltroDataFim(e.target.value)}
                   style={{
                     flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '13px', outline: 'none'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none'
                   }}
                 />
               </div>
@@ -1054,7 +1054,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 placeholder="Ex: Uniforme GG, Luva de boxe..."
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
                 onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
@@ -1074,7 +1074,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   placeholder="0.00"
                   style={{
                     width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                   }}
                   onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
@@ -1093,7 +1093,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   }}
                   style={{
                     width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '14px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box'
+                    borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box'
                   }}
                 >
                   {todasCategorias.map(cat => (
@@ -1113,7 +1113,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 onChange={(e) => setFormDataVencimento(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box',
                   backgroundColor: 'white', WebkitAppearance: 'none', color: '#333'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
@@ -1131,7 +1131,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 onChange={(e) => setFormDevedorId(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box'
                 }}
               >
                 <option value="">Sem vínculo</option>
@@ -1149,7 +1149,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 onChange={(e) => setFormStatus(e.target.value)}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   boxSizing: 'border-box', backgroundColor: 'white'
                 }}
               >
@@ -1168,7 +1168,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   onChange={(e) => setFormFormaPagamento(e.target.value)}
                   style={{
                     width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '14px', outline: 'none',
+                    borderRadius: '6px', fontSize: '16px', outline: 'none',
                     boxSizing: 'border-box', backgroundColor: 'white'
                   }}
                 >
@@ -1190,7 +1190,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 rows={3}
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none',
                   resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
@@ -1257,7 +1257,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 placeholder="Ex: Luvas, Quimono..."
                 style={{
                   width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
                 }}
               />
             </div>
