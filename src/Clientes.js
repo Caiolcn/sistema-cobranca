@@ -526,23 +526,19 @@ export default function Clientes() {
 
     try {
       // Verificar se já existe outro cliente com o mesmo telefone
-      const telefoneFormatado = telefoneEdit.trim().replace(/\D/g, '')
-      const { data: clienteExistente } = await supabase
-        .from('devedores')
-        .select('id, nome')
-        .eq('user_id', userId)
-        .neq('id', clienteSelecionado.id)
+      // Permite duplicata quando o aluno tem responsável (telefone é do responsável)
+      const temResponsavel = responsavelNomeEdit.trim() || responsavelTelefoneEdit.trim()
+      if (!temResponsavel) {
+        const telefoneFormatado = telefoneEdit.trim().replace(/\D/g, '')
+        const duplicado = clientes.find(c =>
+          c.id !== clienteSelecionado.id &&
+          c.telefone?.replace(/\D/g, '') === telefoneFormatado
+        )
 
-      const duplicado = clienteExistente?.find(c =>
-        c.telefone?.replace(/\D/g, '') === telefoneFormatado
-      ) || clientes.find(c =>
-        c.id !== clienteSelecionado.id &&
-        c.telefone?.replace(/\D/g, '') === telefoneFormatado
-      )
-
-      if (duplicado) {
-        showToast(`Já existe um aluno com este telefone (${duplicado.nome})`, 'warning')
-        return
+        if (duplicado) {
+          showToast(`Já existe um aluno com este telefone (${duplicado.nome})`, 'warning')
+          return
+        }
       }
 
       const { error } = await supabase
@@ -1092,14 +1088,18 @@ export default function Clientes() {
     setSalvandoCliente(true)
     try {
       // Verificar se já existe cliente com o mesmo telefone
-      const telefoneFormatado = novoClienteTelefone.trim().replace(/\D/g, '')
-      const duplicado = clientes.find(c =>
-        c.telefone?.replace(/\D/g, '') === telefoneFormatado
-      )
+      // Permite duplicata quando o aluno tem responsável (telefone é do responsável)
+      const temResponsavelNovo = novoClienteResponsavelNome.trim() || novoClienteResponsavelTelefone.trim()
+      if (!temResponsavelNovo) {
+        const telefoneFormatado = novoClienteTelefone.trim().replace(/\D/g, '')
+        const duplicado = clientes.find(c =>
+          c.telefone?.replace(/\D/g, '') === telefoneFormatado
+        )
 
-      if (duplicado) {
-        setErroModalNovoCliente(`Já existe um aluno com este telefone (${duplicado.nome})`)
-        return
+        if (duplicado) {
+          setErroModalNovoCliente(`Já existe um aluno com este telefone (${duplicado.nome})`)
+          return
+        }
       }
 
       // Criar cliente
