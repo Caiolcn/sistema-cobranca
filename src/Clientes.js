@@ -2246,22 +2246,21 @@ Equipe ${nomeEmpresa}`
             maxWidth: isSmallScreen ? '100%' : '800px',
             height: isSmallScreen ? '100%' : 'auto',
             maxHeight: isSmallScreen ? '100%' : '90vh',
-            overflow: 'auto',
+            overflow: 'hidden',
             boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0,0,0,0.15)',
             display: 'flex',
             flexDirection: 'column'
           }}>
-            {/* Header do Modal */}
+            {/* Header do Modal - fixo */}
             <div style={{
-              padding: '24px',
+              padding: isSmallScreen ? '16px' : '24px',
               borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              position: 'sticky',
-              top: 0,
               backgroundColor: 'white',
-              zIndex: 1
+              zIndex: 1,
+              flexShrink: 0
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div
@@ -2398,8 +2397,8 @@ Equipe ${nomeEmpresa}`
               </button>
             </div>
 
-            {/* Corpo do Modal */}
-            <div style={{ padding: '24px' }}>
+            {/* Corpo do Modal - scrollável */}
+            <div style={{ padding: isSmallScreen ? '16px' : '24px', overflow: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
               {/* Informações do Aluno + Assinatura - Colapsável */}
               <details style={{
                 backgroundColor: '#f8f9fa',
