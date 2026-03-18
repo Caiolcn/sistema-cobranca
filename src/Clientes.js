@@ -2228,7 +2228,7 @@ Equipe ${nomeEmpresa}`
       {mostrarModal && clienteSelecionado && (
         <div style={{
           position: 'fixed',
-          top: 0,
+          top: isSmallScreen ? '56px' : 0,
           left: 0,
           right: 0,
           bottom: 0,
