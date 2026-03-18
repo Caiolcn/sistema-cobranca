@@ -4,9 +4,7 @@ import { Icon } from '@iconify/react'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from '../services/pixService'
 import { baixarRecibo } from '../utils/pdfGenerator'
-
-const FUNCTIONS_URL = 'https://zvlnkkmcytjtridiojxx.supabase.co/functions/v1'
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTMxMDQsImV4cCI6MjA4MTU2OTEwNH0.LkZZaIGVmqkdh0tFfNIVgQKzwCntuoFcRasqdahUzzA'
+import { FUNCTIONS_URL, SUPABASE_ANON_KEY as ANON_KEY } from '../supabaseClient'
 
 export default function PortalCliente() {
   const { token } = useParams()
@@ -18,6 +16,9 @@ export default function PortalCliente() {
   const [pixCopied, setPixCopied] = useState(false)
   const [pagandoId, setPagandoId] = useState(null)
   const [mostrarPagos, setMostrarPagos] = useState(false)
+  const [mostrarDados, setMostrarDados] = useState(false)
+  const [mostrarAulas, setMostrarAulas] = useState(false)
+  const [mostrarFrequencia, setMostrarFrequencia] = useState(false)
 
   useEffect(() => {
     if (token) carregarDados()
@@ -567,6 +568,380 @@ export default function PortalCliente() {
             </div>
           )}
         </div>
+
+        {/* Card Aulas Restantes (só para pacote) */}
+        {dados.devedor.aulas_restantes !== null && dados.devedor.aulas_restantes !== undefined && (
+          <div style={{
+            background: '#ffffff', borderRadius: 12,
+            margin: '12px 0 0',
+            border: `1px solid ${dados.devedor.aulas_restantes <= 0 ? '#fecaca' : dados.devedor.aulas_restantes <= 2 ? '#fde68a' : '#bbf7d0'}`,
+            padding: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon icon="mdi:school-outline" width={20} style={{
+                  color: dados.devedor.aulas_restantes <= 0 ? '#dc2626' : dados.devedor.aulas_restantes <= 2 ? '#d97706' : '#16a34a'
+                }} />
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>Aulas Restantes</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+              <span style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                color: dados.devedor.aulas_restantes <= 0 ? '#dc2626' : dados.devedor.aulas_restantes <= 2 ? '#d97706' : '#16a34a'
+              }}>
+                {dados.devedor.aulas_restantes}
+              </span>
+              <span style={{ fontSize: '18px', color: '#888', fontWeight: '500' }}>/ {dados.devedor.aulas_total}</span>
+            </div>
+            <div style={{
+              height: '8px',
+              borderRadius: '4px',
+              backgroundColor: '#e5e7eb',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${dados.devedor.aulas_total > 0 ? Math.max((dados.devedor.aulas_restantes / dados.devedor.aulas_total) * 100, 0) : 0}%`,
+                backgroundColor: dados.devedor.aulas_restantes <= 0 ? '#dc2626' : dados.devedor.aulas_restantes <= 2 ? '#d97706' : '#16a34a',
+                borderRadius: '4px',
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
+            {dados.devedor.aulas_restantes <= 0 && (
+              <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#dc2626', fontWeight: '500' }}>
+                Pacote esgotado! Fale com seu professor para renovar.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Meus Dados */}
+        <div style={{
+          background: '#ffffff', borderRadius: 12,
+          margin: '12px 0 0',
+          border: '1px solid #e2e8f0', overflow: 'hidden'
+        }}>
+          <button
+            onClick={() => setMostrarDados(!mostrarDados)}
+            style={{
+              width: '100%', padding: '14px 16px',
+              background: 'transparent', border: 'none',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}
+          >
+            <span style={{
+              fontSize: 13, fontWeight: 600, color: '#334155',
+              display: 'flex', alignItems: 'center', gap: 8
+            }}>
+              <Icon icon="mdi:account-circle-outline" width="18" style={{ color: '#3b82f6' }} />
+              Meus Dados
+            </span>
+            <Icon
+              icon={mostrarDados ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+              width="20" style={{ color: '#94a3b8' }}
+            />
+          </button>
+
+          {mostrarDados && (
+            <div style={{ padding: '0 16px 16px' }}>
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr',
+                gap: '12px 16px'
+              }}>
+                {/* Nome */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nome</div>
+                  <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{dados.devedor.nome}</div>
+                </div>
+
+                {/* Plano */}
+                {dados.devedor.plano_nome && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plano</div>
+                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>
+                      {dados.devedor.plano_nome}
+                      {dados.devedor.plano_valor && (
+                        <span style={{ color: '#64748b', fontWeight: 400 }}> - {formatarValor(dados.devedor.plano_valor)}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dia de vencimento */}
+                {dados.devedor.dia_vencimento && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vencimento</div>
+                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>Todo dia {dados.devedor.dia_vencimento}</div>
+                  </div>
+                )}
+
+                {/* Telefone */}
+                {dados.devedor.telefone && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Telefone</div>
+                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{dados.devedor.telefone}</div>
+                  </div>
+                )}
+
+                {/* Email */}
+                {dados.devedor.email && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>E-mail</div>
+                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{dados.devedor.email}</div>
+                  </div>
+                )}
+
+                {/* Responsável */}
+                {dados.devedor.responsavel_nome && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Responsavel</div>
+                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>
+                      {dados.devedor.responsavel_nome}
+                      {dados.devedor.responsavel_telefone && (
+                        <span style={{ color: '#64748b', fontWeight: 400 }}> - {dados.devedor.responsavel_telefone}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Membro desde */}
+                {dados.devedor.membro_desde && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Aluno desde</div>
+                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{formatarData(dados.devedor.membro_desde)}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Minhas Aulas */}
+        {dados.grade_horarios && dados.grade_horarios.length > 0 && (
+          <div style={{
+            background: '#ffffff', borderRadius: 12,
+            margin: '12px 0 0',
+            border: '1px solid #e2e8f0', overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => setMostrarAulas(!mostrarAulas)}
+              style={{
+                width: '100%', padding: '14px 16px',
+                background: 'transparent', border: 'none',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}
+            >
+              <span style={{
+                fontSize: 13, fontWeight: 600, color: '#334155',
+                display: 'flex', alignItems: 'center', gap: 8
+              }}>
+                <Icon icon="mdi:calendar-clock-outline" width="18" style={{ color: '#8b5cf6' }} />
+                Minhas Aulas
+                <span style={{
+                  background: '#f5f3ff', color: '#8b5cf6',
+                  padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700
+                }}>
+                  {dados.grade_horarios.length}
+                </span>
+              </span>
+              <Icon
+                icon={mostrarAulas ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+                width="20" style={{ color: '#94a3b8' }}
+              />
+            </button>
+
+            {mostrarAulas && (
+              <div style={{ padding: '0 16px 16px' }}>
+                {(() => {
+                  const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+                  const diasAbrev = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+                  const hoje = new Date().getDay()
+                  // Agrupar por dia da semana
+                  const porDia = {}
+                  dados.grade_horarios.forEach(g => {
+                    if (!porDia[g.dia_semana]) porDia[g.dia_semana] = []
+                    porDia[g.dia_semana].push(g)
+                  })
+                  // Ordenar dias começando por hoje
+                  const diasOrdenados = Object.keys(porDia).map(Number).sort((a, b) => {
+                    const da = (a - hoje + 7) % 7
+                    const db = (b - hoje + 7) % 7
+                    return da - db
+                  })
+
+                  return diasOrdenados.map(dia => (
+                    <div key={dia} style={{ marginBottom: 10 }}>
+                      <div style={{
+                        fontSize: 12, fontWeight: 700, color: dia === hoje ? '#8b5cf6' : '#64748b',
+                        marginBottom: 6,
+                        display: 'flex', alignItems: 'center', gap: 6
+                      }}>
+                        {dia === hoje && <span style={{
+                          width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', display: 'inline-block'
+                        }} />}
+                        {diasSemana[dia]}
+                        {dia === hoje && <span style={{ fontWeight: 500, color: '#8b5cf6', fontSize: 11 }}>(hoje)</span>}
+                      </div>
+                      {porDia[dia].map(aula => (
+                        <div key={aula.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 12px', borderRadius: 8,
+                          background: dia === hoje ? '#faf5ff' : '#f8fafc',
+                          border: dia === hoje ? '1px solid #ede9fe' : '1px solid #f1f5f9',
+                          marginBottom: 4
+                        }}>
+                          <div style={{
+                            fontSize: 14, fontWeight: 700, color: dia === hoje ? '#8b5cf6' : '#334155',
+                            minWidth: 48
+                          }}>
+                            {aula.horario ? aula.horario.slice(0, 5) : '--:--'}
+                          </div>
+                          {aula.descricao && (
+                            <div style={{ fontSize: 13, color: '#64748b' }}>{aula.descricao}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                })()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Frequência */}
+        {dados.presencas && dados.presencas.length > 0 && (
+          <div style={{
+            background: '#ffffff', borderRadius: 12,
+            margin: '12px 0 0',
+            border: '1px solid #e2e8f0', overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => setMostrarFrequencia(!mostrarFrequencia)}
+              style={{
+                width: '100%', padding: '14px 16px',
+                background: 'transparent', border: 'none',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}
+            >
+              <span style={{
+                fontSize: 13, fontWeight: 600, color: '#334155',
+                display: 'flex', alignItems: 'center', gap: 8
+              }}>
+                <Icon icon="mdi:chart-line" width="18" style={{ color: '#f59e0b' }} />
+                Frequência
+                {(() => {
+                  const total = dados.presencas.length
+                  const presentes = dados.presencas.filter(p => p.presente).length
+                  const pct = total > 0 ? Math.round((presentes / total) * 100) : 0
+                  const cor = pct >= 75 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#dc2626'
+                  const bg = pct >= 75 ? '#f0fdf4' : pct >= 50 ? '#fffbeb' : '#fef2f2'
+                  return (
+                    <span style={{
+                      background: bg, color: cor,
+                      padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700
+                    }}>
+                      {pct}%
+                    </span>
+                  )
+                })()}
+              </span>
+              <Icon
+                icon={mostrarFrequencia ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+                width="20" style={{ color: '#94a3b8' }}
+              />
+            </button>
+
+            {mostrarFrequencia && (
+              <div style={{ padding: '0 16px 16px' }}>
+                {/* Resumo */}
+                {(() => {
+                  const total = dados.presencas.length
+                  const presentes = dados.presencas.filter(p => p.presente).length
+                  const ausentes = total - presentes
+                  const pct = total > 0 ? Math.round((presentes / total) * 100) : 0
+                  const barColor = pct >= 75 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#dc2626'
+                  return (
+                    <div style={{
+                      background: '#f8fafc', borderRadius: 10, padding: '14px 16px',
+                      marginBottom: 12, border: '1px solid #f1f5f9'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>Últimos 60 dias</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: barColor }}>{pct}% de presença</span>
+                      </div>
+                      <div style={{
+                        width: '100%', height: 8, borderRadius: 4, background: '#e2e8f0',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${pct}%`, height: '100%', borderRadius: 4,
+                          background: barColor, transition: 'width 0.5s ease'
+                        }} />
+                      </div>
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-around', marginTop: 10
+                      }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: '#16a34a' }}>{presentes}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>Presenças</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: '#dc2626' }}>{ausentes}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>Faltas</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: '#334155' }}>{total}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>Total</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Lista de presenças */}
+                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  {dados.presencas.map(p => (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 12px', borderRadius: 8,
+                      background: p.presente ? '#f0fdf4' : '#fef2f2',
+                      border: p.presente ? '1px solid #dcfce7' : '1px solid #fecaca',
+                      marginBottom: 4
+                    }}>
+                      <Icon
+                        icon={p.presente ? 'mdi:check-circle' : 'mdi:close-circle'}
+                        width="18"
+                        style={{ color: p.presente ? '#16a34a' : '#dc2626', flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                          {formatarData(p.data)}
+                        </div>
+                        {p.observacao && (
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.observacao}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600,
+                        color: p.presente ? '#16a34a' : '#dc2626'
+                      }}>
+                        {p.presente ? 'Presente' : 'Falta'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Historico de pagos */}
         {pagas.length > 0 && (

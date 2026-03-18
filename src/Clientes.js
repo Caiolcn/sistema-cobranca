@@ -66,6 +66,8 @@ export default function Clientes() {
   const [novoPlanoValor, setNovoPlanoValor] = useState('')
   const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
   const [novoPlanoDescricao, setNovoPlanoDescricao] = useState('')
+  const [novoPlanoTipo, setNovoPlanoTipo] = useState('recorrente')
+  const [novoPlanoNumeroAulas, setNovoPlanoNumeroAulas] = useState('')
   const [enviarBoasVindas, setEnviarBoasVindas] = useState(true)
   const [mostrarEdicaoBoasVindas, setMostrarEdicaoBoasVindas] = useState(false)
   const [mensagemBoasVindasCustom, setMensagemBoasVindasCustom] = useState('')
@@ -88,6 +90,10 @@ export default function Clientes() {
   // Frequência do aluno
   const [presencasAluno, setPresencasAluno] = useState([])
   const [mostrarFrequencia, setMostrarFrequencia] = useState(false)
+
+  // Recarregar créditos (pacote)
+  const [mostrarRecarregar, setMostrarRecarregar] = useState(false)
+  const [planoRecarregar, setPlanoRecarregar] = useState('')
 
   // Paginação
   const [paginaAtual, setPaginaAtual] = useState(1)
@@ -233,7 +239,11 @@ export default function Clientes() {
             responsavel_telefone,
             bloquear_mensagens,
             data_nascimento,
-            planos:plano_id (nome)
+            portal_token,
+            aulas_restantes,
+            aulas_total,
+            foto_url,
+            planos:plano_id (nome, tipo, numero_aulas, valor, ciclo_cobranca)
           `)
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false')
@@ -578,6 +588,18 @@ export default function Clientes() {
       }
 
       showToast('Aluno atualizado com sucesso!', 'success')
+
+      // Se telefone mudou ou não tem foto, tentar puxar do WhatsApp (fire-and-forget)
+      const telefoneMudou = telefoneEdit.trim() !== clienteSelecionado.telefone
+      if ((telefoneMudou || !clienteSelecionado.foto_url) && telefoneEdit.trim()) {
+        whatsappService.buscarFotoPerfil(telefoneEdit.trim()).then(async (fotoUrl) => {
+          if (fotoUrl) {
+            await supabase.from('devedores').update({ foto_url: fotoUrl }).eq('id', clienteSelecionado.id)
+            carregarClientes()
+          }
+        }).catch(() => {})
+      }
+
       setEditando(false)
       setMostrarModal(false)
       carregarClientes()
@@ -591,6 +613,9 @@ export default function Clientes() {
     try {
       const devedor = mensalidadeAtual.devedores
       if (!devedor || !devedor.assinatura_ativa) return
+
+      // Não criar próxima mensalidade para planos tipo pacote
+      if (devedor.plano?.tipo === 'pacote') return
 
       const isRecorrente = mensalidadeAtual.is_mensalidade === true ||
                            (mensalidadeAtual.is_mensalidade == null && devedor.assinatura_ativa)
@@ -610,6 +635,7 @@ export default function Clientes() {
 
       const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
 
+      // Verificar se já existe
       const { data: jaExiste } = await supabase
         .from('mensalidades')
         .select('id')
@@ -664,7 +690,7 @@ export default function Clientes() {
         .from('mensalidades')
         .update(updateData)
         .eq('id', mensalidade.id)
-        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca))')
+        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca, tipo))')
         .single()
 
       if (error) throw error
@@ -677,7 +703,7 @@ export default function Clientes() {
           .then(r => { if (r.sucesso) showToast('Confirmação enviada via WhatsApp', 'success') })
           .catch(() => {})
 
-        // Criar próxima mensalidade automaticamente
+        // Criar próxima mensalidade automaticamente (não para pacotes)
         if (mensalidadeAtualizada) {
           await criarProximaMensalidade(mensalidadeAtualizada)
         }
@@ -780,12 +806,23 @@ export default function Clientes() {
       }
 
       // Atualizar o cliente com o plano e ativar a assinatura
+      const updateData = {
+        assinatura_ativa: true,
+        plano_id: planoParaAtivar
+      }
+
+      // Se for plano tipo pacote, setar créditos de aulas
+      if (plano.tipo === 'pacote' && plano.numero_aulas) {
+        updateData.aulas_restantes = plano.numero_aulas
+        updateData.aulas_total = plano.numero_aulas
+      } else {
+        updateData.aulas_restantes = null
+        updateData.aulas_total = null
+      }
+
       const { error } = await supabase
         .from('devedores')
-        .update({
-          assinatura_ativa: true,
-          plano_id: planoParaAtivar
-        })
+        .update(updateData)
         .eq('id', clienteId)
 
       if (error) throw error
@@ -951,12 +988,12 @@ export default function Clientes() {
         .from('mensalidades')
         .update(updateData)
         .eq('id', mensalidadeSelecionada.id)
-        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca))')
+        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca, tipo))')
         .single()
 
       if (error) throw error
 
-      // Criar próxima mensalidade automaticamente
+      // Criar próxima mensalidade automaticamente (não para pacotes)
       if (novoPago && mensalidadeAtualizada) {
         await criarProximaMensalidade(mensalidadeAtualizada)
       }
@@ -976,6 +1013,11 @@ export default function Clientes() {
       return
     }
 
+    if (novoPlanoTipo === 'pacote' && (!novoPlanoNumeroAulas || parseInt(novoPlanoNumeroAulas) <= 0)) {
+      showToast('Preencha o número de aulas do pacote', 'warning')
+      return
+    }
+
     if (!userId) return
 
     try {
@@ -983,8 +1025,10 @@ export default function Clientes() {
         user_id: userId,
         nome: novoPlanoNome.trim(),
         valor: parseFloat(novoPlanoValor),
-        ciclo_cobranca: novoPlanoCiclo,
+        ciclo_cobranca: novoPlanoTipo === 'pacote' ? 'mensal' : novoPlanoCiclo,
         descricao: novoPlanoDescricao.trim() || null,
+        tipo: novoPlanoTipo,
+        numero_aulas: novoPlanoTipo === 'pacote' ? parseInt(novoPlanoNumeroAulas) : null,
         ativo: true
       }).select()
 
@@ -996,6 +1040,8 @@ export default function Clientes() {
       setNovoPlanoValor('')
       setNovoPlanoCiclo('mensal')
       setNovoPlanoDescricao('')
+      setNovoPlanoTipo('recorrente')
+      setNovoPlanoNumeroAulas('')
 
       // Recarregar planos e selecionar o recém-criado
       await carregarPlanos()
@@ -1073,6 +1119,8 @@ export default function Clientes() {
           status: 'pendente',
           assinatura_ativa: criarAssinatura,
           plano_id: criarAssinatura ? planoSelecionado : null,
+          aulas_restantes: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
+          aulas_total: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
           portal_token: crypto.randomUUID().replace(/-/g, '')
         })
         .select()
@@ -1101,6 +1149,15 @@ export default function Clientes() {
           })
 
         if (mensalidadeError) throw mensalidadeError
+      }
+
+      // Tentar puxar foto do WhatsApp (fire-and-forget, uma vez só)
+      if (clienteData && clienteData.length > 0) {
+        whatsappService.buscarFotoPerfil(novoClienteTelefone.trim()).then(async (fotoUrl) => {
+          if (fotoUrl) {
+            await supabase.from('devedores').update({ foto_url: fotoUrl }).eq('id', clienteData[0].id)
+          }
+        }).catch(() => {})
       }
 
       // Enviar mensagem de boas-vindas se opção estiver ativa
@@ -1867,9 +1924,15 @@ Equipe ${nomeEmpresa}`
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '16px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      overflow: 'hidden',
+                      flexShrink: 0
                     }}>
-                      {cliente.nome.charAt(0).toUpperCase()}
+                      {cliente.foto_url ? (
+                        <img src={cliente.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        cliente.nome.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div>
                       <p style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 2px 0' }}>
@@ -1968,9 +2031,15 @@ Equipe ${nomeEmpresa}`
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '14px',
-                          fontWeight: '600'
+                          fontWeight: '600',
+                          overflow: 'hidden',
+                          flexShrink: 0
                         }}>
-                          {cliente.nome.charAt(0).toUpperCase()}
+                          {cliente.foto_url ? (
+                            <img src={cliente.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            cliente.nome.charAt(0).toUpperCase()
+                          )}
                         </div>
                         {cliente.nome}
                       </div>
@@ -2195,27 +2264,119 @@ Equipe ${nomeEmpresa}`
               zIndex: 1
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: '#344848',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: '600'
-                }}>
-                  {clienteSelecionado.nome.charAt(0).toUpperCase()}
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: '#344848',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    cursor: 'pointer'
+                  }}
+                  title="Clique para alterar foto"
+                  onClick={() => document.getElementById('input-foto-aluno')?.click()}
+                >
+                  {clienteSelecionado.foto_url ? (
+                    <img src={clienteSelecionado.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    clienteSelecionado.nome.charAt(0).toUpperCase()
+                  )}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '16px',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Icon icon="mdi:camera" width={10} style={{ color: 'white' }} />
+                  </div>
                 </div>
+                <input
+                  id="input-foto-aluno"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    if (file.size > 2 * 1024 * 1024) {
+                      showToast('Imagem muito grande. Máximo 2MB.', 'warning')
+                      return
+                    }
+                    try {
+                      const ext = file.name.split('.').pop()
+                      const fileName = `${userId}/${clienteSelecionado.id}.${ext}`
+                      const { error: uploadError } = await supabase.storage
+                        .from('avatars')
+                        .upload(fileName, file, { upsert: true })
+                      if (uploadError) throw uploadError
+
+                      const { data: urlData } = supabase.storage
+                        .from('avatars')
+                        .getPublicUrl(fileName)
+                      const fotoUrl = urlData.publicUrl + '?t=' + Date.now()
+
+                      await supabase.from('devedores').update({ foto_url: fotoUrl }).eq('id', clienteSelecionado.id)
+                      setClienteSelecionado(prev => ({ ...prev, foto_url: fotoUrl }))
+                      carregarClientes()
+                      showToast('Foto atualizada!', 'success')
+                    } catch (err) {
+                      showToast('Erro ao enviar foto: ' + err.message, 'error')
+                    }
+                    e.target.value = ''
+                  }}
+                />
                 <div>
                   <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#344848' }}>
                     {clienteSelecionado.nome}
                   </h2>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#666' }}>
-                    {clienteSelecionado.telefone}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+                      {clienteSelecionado.telefone}
+                    </p>
+                    {/* TODO: Botão copiar link do portal - descomentar quando portal estiver pronto
+                    {clienteSelecionado.portal_token && (
+                      <button
+                        onClick={() => {
+                          const url = `https://www.mensalli.com.br/portal/${clienteSelecionado.portal_token}`
+                          navigator.clipboard.writeText(url)
+                          showToast('Link do portal copiado!', 'success')
+                        }}
+                        title="Copiar link do portal do aluno"
+                        style={{
+                          background: '#e8f5e9',
+                          border: '1px solid #c8e6c9',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          padding: '3px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#2e7d32',
+                          fontWeight: '500',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c8e6c9'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#e8f5e9'}
+                      >
+                        <Icon icon="mdi:link-variant" width="14" />
+                        Copiar link do portal
+                      </button>
+                    )}
+                    */}
+                  </div>
                 </div>
               </div>
               <button
@@ -2637,6 +2798,177 @@ Equipe ${nomeEmpresa}`
                   </p>
                 </div>
               </div>
+
+              {/* Card Aulas Restantes (só para plano tipo pacote) */}
+              {clienteSelecionado.aulas_restantes !== null && clienteSelecionado.aulas_restantes !== undefined && (
+                <div style={{
+                  backgroundColor: clienteSelecionado.aulas_restantes <= 0 ? '#fef2f2' : clienteSelecionado.aulas_restantes <= 2 ? '#fffbeb' : '#f0fdf4',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  marginBottom: '24px',
+                  border: `1px solid ${clienteSelecionado.aulas_restantes <= 0 ? '#fecaca' : clienteSelecionado.aulas_restantes <= 2 ? '#fde68a' : '#bbf7d0'}`
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icon icon="mdi:school-outline" width={20} style={{ color: clienteSelecionado.aulas_restantes <= 0 ? '#dc2626' : clienteSelecionado.aulas_restantes <= 2 ? '#d97706' : '#16a34a' }} />
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>Aulas Restantes</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setMostrarRecarregar(!mostrarRecarregar)
+                        setPlanoRecarregar(clienteSelecionado.plano_id || '')
+                      }}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #2196F3',
+                        backgroundColor: mostrarRecarregar ? '#e3f2fd' : 'white',
+                        color: '#2196F3',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Icon icon="mdi:refresh" width={14} />
+                      Renovar Pacote
+                    </button>
+                  </div>
+
+                  {/* Painel de renovação expandido */}
+                  {mostrarRecarregar && (
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      marginBottom: '12px',
+                      border: '1px solid #e0e0e0'
+                    }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#555', marginBottom: '6px' }}>
+                        Selecione o pacote:
+                      </label>
+                      <select
+                        value={planoRecarregar}
+                        onChange={(e) => setPlanoRecarregar(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '16px',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          marginBottom: '10px'
+                        }}
+                      >
+                        <option value="">Selecione...</option>
+                        {planos.filter(p => p.tipo === 'pacote').map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.nome} - {p.numero_aulas} aulas - R$ {parseFloat(p.valor).toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        disabled={!planoRecarregar}
+                        onClick={async () => {
+                          const plano = planos.find(p => p.id === planoRecarregar)
+                          if (!plano) return
+                          try {
+                            // 1. Atualizar créditos do aluno
+                            await supabase.from('devedores').update({
+                              aulas_restantes: plano.numero_aulas,
+                              aulas_total: plano.numero_aulas,
+                              plano_id: plano.id
+                            }).eq('id', clienteSelecionado.id)
+
+                            // 2. Criar mensalidade já paga
+                            await supabase.from('mensalidades').insert({
+                              user_id: userId,
+                              devedor_id: clienteSelecionado.id,
+                              valor: parseFloat(plano.valor),
+                              data_vencimento: new Date().toISOString().split('T')[0],
+                              status: 'pago',
+                              is_mensalidade: true,
+                              numero_mensalidade: 1,
+                              forma_pagamento: 'pix',
+                              data_pagamento: new Date().toISOString().split('T')[0]
+                            })
+
+                            setClienteSelecionado(prev => ({
+                              ...prev,
+                              aulas_restantes: plano.numero_aulas,
+                              aulas_total: plano.numero_aulas,
+                              plano_id: plano.id
+                            }))
+                            setMostrarRecarregar(false)
+                            showToast(`Pacote renovado: ${plano.numero_aulas} aulas! Pagamento de R$ ${parseFloat(plano.valor).toFixed(2)} registrado.`, 'success')
+                            carregarClientes()
+                            if (clienteSelecionado.id) carregarMensalidadesCliente(clienteSelecionado.id)
+                          } catch (err) {
+                            showToast('Erro ao renovar pacote: ' + err.message, 'error')
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          backgroundColor: planoRecarregar ? '#4CAF50' : '#ccc',
+                          color: 'white',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: planoRecarregar ? 'pointer' : 'not-allowed',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Icon icon="mdi:check" width={16} />
+                        Renovar Pacote
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+                    <span style={{
+                      fontSize: '28px',
+                      fontWeight: '700',
+                      color: clienteSelecionado.aulas_restantes <= 0 ? '#dc2626' : clienteSelecionado.aulas_restantes <= 2 ? '#d97706' : '#16a34a'
+                    }}>
+                      {clienteSelecionado.aulas_restantes}
+                    </span>
+                    <span style={{ fontSize: '16px', color: '#888', fontWeight: '500' }}>/ {clienteSelecionado.aulas_total}</span>
+                    <span style={{ fontSize: '13px', color: '#888', marginLeft: '4px' }}>aulas</span>
+                  </div>
+                  <div style={{
+                    height: '8px',
+                    borderRadius: '4px',
+                    backgroundColor: '#e5e7eb',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${clienteSelecionado.aulas_total > 0 ? Math.max((clienteSelecionado.aulas_restantes / clienteSelecionado.aulas_total) * 100, 0) : 0}%`,
+                      backgroundColor: clienteSelecionado.aulas_restantes <= 0 ? '#dc2626' : clienteSelecionado.aulas_restantes <= 2 ? '#d97706' : '#16a34a',
+                      borderRadius: '4px',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  {clienteSelecionado.aulas_restantes <= 0 && (
+                    <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#dc2626', fontWeight: '600' }}>
+                      Pacote esgotado! Renove o pacote para continuar.
+                    </p>
+                  )}
+                  {clienteSelecionado.aulas_restantes > 0 && clienteSelecionado.aulas_restantes <= 2 && (
+                    <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#d97706', fontWeight: '600' }}>
+                      Poucas aulas restantes!
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Resumo Financeiro */}
               <div style={{
@@ -3110,7 +3442,7 @@ Equipe ${nomeEmpresa}`
                       <option value="">Selecione um plano</option>
                       {planos.map(plano => (
                         <option key={plano.id} value={plano.id}>
-                          {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}/mês
+                          {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}{plano.tipo === 'pacote' ? ` (${plano.numero_aulas} aulas)` : '/mês'}
                         </option>
                       ))}
                     </select>
@@ -3534,7 +3866,7 @@ Equipe ${nomeEmpresa}`
                     <option value="">Selecione um plano</option>
                     {planos.map(plano => (
                       <option key={plano.id} value={plano.id}>
-                        {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}/mês
+                        {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}{plano.tipo === 'pacote' ? ` (${plano.numero_aulas} aulas)` : '/mês'}
                       </option>
                     ))}
                   </select>
@@ -4107,7 +4439,88 @@ Qualquer dúvida, estamos à disposição.`}
               />
             </div>
 
-            {/* Ciclo de cobrança */}
+            {/* Tipo do plano */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#333'
+              }}>
+                Tipo do Plano *
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[
+                  { value: 'recorrente', label: 'Recorrente', icon: 'mdi:refresh' },
+                  { value: 'pacote', label: 'Pacote de Aulas', icon: 'mdi:package-variant' }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setNovoPlanoTipo(opt.value)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: `2px solid ${novoPlanoTipo === opt.value ? '#2196F3' : '#e0e0e0'}`,
+                      backgroundColor: novoPlanoTipo === opt.value ? '#e3f2fd' : 'white',
+                      color: novoPlanoTipo === opt.value ? '#1565C0' : '#666',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Icon icon={opt.icon} width={18} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Número de aulas (só para pacote) */}
+            {novoPlanoTipo === 'pacote' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#333'
+                }}>
+                  Número de Aulas *
+                </label>
+                <input
+                  type="number"
+                  value={novoPlanoNumeroAulas}
+                  onChange={(e) => setNovoPlanoNumeroAulas(e.target.value)}
+                  placeholder="Ex: 8"
+                  min="1"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#2196F3'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+                <span style={{ fontSize: '12px', color: '#888', marginTop: '4px', display: 'block' }}>
+                  Quantidade de aulas que o aluno pode fazer com este pacote
+                </span>
+              </div>
+            )}
+
+            {/* Ciclo de cobrança (só para recorrente) */}
+            {novoPlanoTipo === 'recorrente' && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -4126,7 +4539,7 @@ Qualquer dúvida, estamos à disposição.`}
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   outline: 'none',
                   transition: 'border-color 0.2s',
                   backgroundColor: 'white',
@@ -4140,6 +4553,7 @@ Qualquer dúvida, estamos à disposição.`}
                 <option value="anual">Anual</option>
               </select>
             </div>
+            )}
 
             {/* Descrição/Observação */}
             <div style={{ marginBottom: '24px' }}>
@@ -4182,6 +4596,8 @@ Qualquer dúvida, estamos à disposição.`}
                   setNovoPlanoValor('')
                   setNovoPlanoCiclo('mensal')
                   setNovoPlanoDescricao('')
+                  setNovoPlanoTipo('recorrente')
+                  setNovoPlanoNumeroAulas('')
                 }}
                 style={{
                   padding: '10px 20px',

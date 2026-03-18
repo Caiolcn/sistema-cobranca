@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal'
 import { SkeletonList } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
+import whatsappService from './services/whatsappService'
 
 const DIAS_SEMANA = [
   { valor: 1, label: 'Segunda', abrev: 'Seg' },
@@ -49,6 +50,15 @@ export default function GradeHorarios() {
   // Salvando
   const [salvando, setSalvando] = useState(false)
 
+  // Créditos de aulas (pacote)
+  const [creditosAlunos, setCreditosAlunos] = useState({}) // { devedor_id: { aulas_restantes, aulas_total } }
+
+  // Notificação de presença via WhatsApp
+  const [enviarNotifPresenca, setEnviarNotifPresenca] = useState(false)
+
+  // Vista
+  const [vistaAtual, setVistaAtual] = useState('semana') // 'hoje' | 'semana'
+
   // Presença
   const [presencasHoje, setPresencasHoje] = useState({}) // { grade_horario_id: { id, presente, observacao } }
   const [mostrarModalPresenca, setMostrarModalPresenca] = useState(false)
@@ -71,20 +81,29 @@ export default function GradeHorarios() {
     const [horariosRes, clientesRes] = await Promise.all([
       supabase
         .from('grade_horarios')
-        .select('*, devedores(nome, telefone)')
+        .select('*, devedores(nome, telefone, foto_url)')
         .eq('user_id', userId)
         .order('dia_semana')
         .order('horario'),
       supabase
         .from('devedores')
-        .select('id, nome, telefone')
+        .select('id, nome, telefone, aulas_restantes, aulas_total, foto_url')
         .eq('user_id', userId)
         .or('lixo.is.null,lixo.eq.false')
         .order('nome')
     ])
 
     if (horariosRes.data) setHorarios(horariosRes.data)
-    if (clientesRes.data) setClientes(clientesRes.data)
+    if (clientesRes.data) {
+      setClientes(clientesRes.data)
+      const credMap = {}
+      clientesRes.data.forEach(c => {
+        if (c.aulas_restantes !== null && c.aulas_restantes !== undefined) {
+          credMap[c.id] = { aulas_restantes: c.aulas_restantes, aulas_total: c.aulas_total }
+        }
+      })
+      setCreditosAlunos(credMap)
+    }
 
     // Carregar presenças de hoje
     const { data: presencasData } = await supabase
@@ -99,12 +118,61 @@ export default function GradeHorarios() {
       setPresencasHoje(map)
     }
 
+    // Carregar config de notificação de presença
+    const { data: configNotif } = await supabase
+      .from('config')
+      .select('valor')
+      .eq('chave', `${userId}_notif_presenca_whatsapp`)
+      .maybeSingle()
+    setEnviarNotifPresenca(configNotif?.valor === 'true')
+
     setLoading(false)
   }, [userId, hojeStr])
 
   useEffect(() => {
     carregarDados()
   }, [carregarDados])
+
+  // Salvar config de notificação
+  const toggleNotifPresenca = async (novoValor) => {
+    setEnviarNotifPresenca(novoValor)
+    await supabase.from('config').upsert({
+      chave: `${userId}_notif_presenca_whatsapp`,
+      valor: novoValor ? 'true' : 'false',
+      user_id: userId
+    }, { onConflict: 'chave' })
+  }
+
+  // Enviar notificação de presença via WhatsApp (fire-and-forget)
+  const enviarNotificacaoPresenca = async (horario, presente, observacao, creditoAtual) => {
+    if (!enviarNotifPresenca) return
+    const telefone = horario.devedores?.telefone
+    const nome = horario.devedores?.nome || 'Aluno'
+    if (!telefone) return
+
+    try {
+      let mensagem = ''
+      if (presente) {
+        const cred = creditoAtual || creditosAlunos[horario.devedor_id]
+        if (cred) {
+          const aulaNumero = cred.aulas_total - cred.aulas_restantes
+          mensagem = `✅ Presença confirmada, ${nome}!\n\n📚 Aula ${aulaNumero} de ${cred.aulas_total}${horario.descricao ? ` - ${horario.descricao}` : ''}${observacao ? `\n📝 ${observacao}` : ''}\n\n📊 Restam ${cred.aulas_restantes} aula(s) no seu pacote.`
+        } else {
+          mensagem = `✅ Presença confirmada, ${nome}!${horario.descricao ? `\n📚 ${horario.descricao}` : ''}${observacao ? `\n📝 ${observacao}` : ''}`
+        }
+      } else {
+        mensagem = `❌ Falta registrada, ${nome}.${horario.descricao ? `\n📚 ${horario.descricao}` : ''}${observacao ? `\n📝 Motivo: ${observacao}` : ''}`
+        const cred = creditosAlunos[horario.devedor_id]
+        if (cred) {
+          mensagem += `\n\n📊 Você tem ${cred.aulas_restantes} aula(s) restante(s) no seu pacote.`
+        }
+      }
+
+      await whatsappService.enviarMensagem(telefone, mensagem)
+    } catch (err) {
+      console.error('Erro ao enviar notificação de presença:', err)
+    }
+  }
 
   // Filtrar horários
   const horariosFiltrados = horarios.filter(h => {
@@ -300,7 +368,43 @@ export default function GradeHorarios() {
     } else {
       const saved = result.data[0]
       setPresencasHoje(prev => ({ ...prev, [presencaAtual.id]: saved }))
+
+      // Auto-decremento/incremento de créditos de pacote
+      const creditos = creditosAlunos[presencaAtual.devedor_id]
+      let novoRestante = creditos?.aulas_restantes
+      if (creditos) {
+        if (!existente && presencaPresente) {
+          // Nova presença marcada como presente → decrementar
+          novoRestante = Math.max(creditos.aulas_restantes - 1, 0)
+        } else if (existente && existente.presente && !presencaPresente) {
+          // Mudou de presente → falta → incrementar de volta
+          novoRestante = creditos.aulas_restantes + 1
+        } else if (existente && !existente.presente && presencaPresente) {
+          // Mudou de falta → presente → decrementar
+          novoRestante = Math.max(creditos.aulas_restantes - 1, 0)
+        }
+
+        if (novoRestante !== creditos.aulas_restantes) {
+          await supabase.from('devedores').update({ aulas_restantes: novoRestante }).eq('id', presencaAtual.devedor_id)
+          setCreditosAlunos(prev => ({
+            ...prev,
+            [presencaAtual.devedor_id]: { ...prev[presencaAtual.devedor_id], aulas_restantes: novoRestante }
+          }))
+
+          if (novoRestante === 0) {
+            showToast(`${presencaAtual.devedores?.nome || 'Aluno'} usou todas as aulas do pacote!`, 'warning')
+          } else if (novoRestante <= 2) {
+            showToast(`${presencaAtual.devedores?.nome || 'Aluno'} tem ${novoRestante} aula(s) restante(s)`, 'warning')
+          }
+        }
+      }
+
       showToast(presencaPresente ? 'Presença registrada!' : 'Falta registrada!', 'success')
+
+      // Enviar notificação via WhatsApp com crédito atualizado (fire-and-forget)
+      const credParaNotif = creditos ? { ...creditos, aulas_restantes: novoRestante } : null
+      enviarNotificacaoPresenca(presencaAtual, presencaPresente, presencaObservacao.trim(), credParaNotif)
+
       setMostrarModalPresenca(false)
     }
     setSalvandoPresenca(false)
@@ -321,6 +425,19 @@ export default function GradeHorarios() {
     if (error) {
       showToast('Erro ao remover presença: ' + error.message, 'error')
     } else {
+      // Se era presente, incrementar créditos de volta
+      if (existente.presente) {
+        const creditos = creditosAlunos[presencaAtual.devedor_id]
+        if (creditos) {
+          const novoRestante = creditos.aulas_restantes + 1
+          await supabase.from('devedores').update({ aulas_restantes: novoRestante }).eq('id', presencaAtual.devedor_id)
+          setCreditosAlunos(prev => ({
+            ...prev,
+            [presencaAtual.devedor_id]: { ...prev[presencaAtual.devedor_id], aulas_restantes: novoRestante }
+          }))
+        }
+      }
+
       setPresencasHoje(prev => {
         const novo = { ...prev }
         delete novo[presencaAtual.id]
@@ -409,7 +526,331 @@ export default function GradeHorarios() {
         </p>
       </div>
 
+      {/* Toggle Hoje / Semana + Notificação */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+      <div style={{
+        display: 'inline-flex',
+        gap: '4px',
+        backgroundColor: '#f3f4f6',
+        borderRadius: '10px',
+        padding: '4px'
+      }}>
+        {[
+          { value: 'hoje', label: 'Hoje', icon: 'mdi:calendar-today' },
+          { value: 'semana', label: 'Semana', icon: 'mdi:calendar-week' }
+        ].map(v => (
+          <button
+            key={v.value}
+            onClick={() => {
+              setVistaAtual(v.value)
+              if (v.value === 'hoje') setFiltroDia(hoje.toString())
+            }}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: vistaAtual === v.value ? 'white' : 'transparent',
+              color: vistaAtual === v.value ? '#1a1a1a' : '#555',
+              fontSize: '13px',
+              fontWeight: vistaAtual === v.value ? '600' : '400',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: vistaAtual === v.value ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Icon icon={v.icon} width={16} />
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Toggle notificação WhatsApp */}
+      <label style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        cursor: 'pointer',
+        fontSize: '12px',
+        color: enviarNotifPresenca ? '#16a34a' : '#999',
+        fontWeight: '500'
+      }}>
+        <div
+          onClick={() => toggleNotifPresenca(!enviarNotifPresenca)}
+          style={{
+            width: '36px',
+            height: '20px',
+            borderRadius: '10px',
+            backgroundColor: enviarNotifPresenca ? '#16a34a' : '#d1d5db',
+            position: 'relative',
+            transition: 'background-color 0.2s',
+            cursor: 'pointer',
+            flexShrink: 0
+          }}
+        >
+          <div style={{
+            width: '16px',
+            height: '16px',
+            borderRadius: '50%',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '2px',
+            left: enviarNotifPresenca ? '18px' : '2px',
+            transition: 'left 0.2s',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+          }} />
+        </div>
+        <Icon icon="mdi:whatsapp" width={16} style={{ color: enviarNotifPresenca ? '#25D366' : '#999' }} />
+        {!isMobile && (enviarNotifPresenca ? 'Notificar aluno' : 'Notificação off')}
+      </label>
+      </div>
+
+      {/* === VISÃO HOJE === */}
+      {vistaAtual === 'hoje' && (() => {
+        const aulasHoje = horarios.filter(h => h.dia_semana === hoje && h.ativo).sort((a, b) => a.horario.localeCompare(b.horario))
+        const presencasMarcadas = aulasHoje.filter(h => presencasHoje[h.id]).length
+        const creditosBaixos = aulasHoje.filter(h => creditosAlunos[h.devedor_id] && creditosAlunos[h.devedor_id].aulas_restantes <= 2).length
+
+        return (
+          <div style={{ marginBottom: '24px' }}>
+            {/* Summary Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                backgroundColor: '#eff6ff',
+                borderRadius: '10px',
+                padding: '14px',
+                border: '1px solid #bfdbfe',
+                textAlign: 'center'
+              }}>
+                <Icon icon="mdi:calendar-check" width={24} style={{ color: '#3b82f6', marginBottom: '4px' }} />
+                <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#3b82f6' }}>{aulasHoje.length}</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>Aulas Hoje</p>
+              </div>
+              <div style={{
+                backgroundColor: '#f0fdf4',
+                borderRadius: '10px',
+                padding: '14px',
+                border: '1px solid #bbf7d0',
+                textAlign: 'center'
+              }}>
+                <Icon icon="mdi:check-circle-outline" width={24} style={{ color: '#16a34a', marginBottom: '4px' }} />
+                <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#16a34a' }}>{presencasMarcadas}/{aulasHoje.length}</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>Presenças</p>
+              </div>
+              <div style={{
+                backgroundColor: creditosBaixos > 0 ? '#fffbeb' : '#f8f9fa',
+                borderRadius: '10px',
+                padding: '14px',
+                border: `1px solid ${creditosBaixos > 0 ? '#fde68a' : '#e5e7eb'}`,
+                textAlign: 'center'
+              }}>
+                <Icon icon="mdi:alert-circle-outline" width={24} style={{ color: creditosBaixos > 0 ? '#d97706' : '#9ca3af', marginBottom: '4px' }} />
+                <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: creditosBaixos > 0 ? '#d97706' : '#9ca3af' }}>{creditosBaixos}</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>Créditos Baixos</p>
+              </div>
+            </div>
+
+            {/* Alerta créditos baixos */}
+            {creditosBaixos > 0 && (
+              <div style={{
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Icon icon="mdi:alert" width={18} style={{ color: '#d97706' }} />
+                <span style={{ fontSize: '13px', color: '#92400e' }}>
+                  {creditosBaixos} aluno{creditosBaixos > 1 ? 's' : ''} com poucas aulas restantes
+                </span>
+              </div>
+            )}
+
+            {/* Timeline de aulas */}
+            {aulasHoje.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                backgroundColor: '#f8f8f8',
+                borderRadius: '12px',
+                border: '1px solid #ebebeb'
+              }}>
+                <Icon icon="mdi:calendar-blank-outline" width="40" style={{ color: '#ccc', marginBottom: '12px' }} />
+                <p style={{ color: '#666', fontSize: '14px', fontWeight: '500' }}>Nenhuma aula hoje</p>
+                <p style={{ color: '#999', fontSize: '13px' }}>{getDiaLabel(hoje)}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {aulasHoje.map(h => {
+                  const presenca = presencasHoje[h.id]
+                  const credito = creditosAlunos[h.devedor_id]
+                  const cor = getCorAula(h.descricao)
+
+                  return (
+                    <div
+                      key={h.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        backgroundColor: presenca ? (presenca.presente ? '#f0fdf4' : '#fef2f2') : 'white',
+                        borderRadius: '10px',
+                        border: `1px solid ${presenca ? (presenca.presente ? '#bbf7d0' : '#fecaca') : '#e5e7eb'}`,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {/* Horário */}
+                      <div style={{
+                        fontSize: '15px',
+                        fontWeight: '700',
+                        color: '#333',
+                        minWidth: '50px'
+                      }}>
+                        {h.horario?.slice(0, 5)}
+                      </div>
+
+                      {/* Avatar */}
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        backgroundColor: cor.bg,
+                        color: cor.text,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        flexShrink: 0,
+                        overflow: 'hidden'
+                      }}>
+                        {h.devedores?.foto_url ? (
+                          <img src={h.devedores.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          (h.devedores?.nome || 'A').charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#333',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {h.devedores?.nome || 'Aluno'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                          {h.descricao && (
+                            <span style={{ fontSize: '12px', color: '#888' }}>{h.descricao}</span>
+                          )}
+                          {credito && (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              padding: '1px 6px',
+                              borderRadius: '8px',
+                              backgroundColor: credito.aulas_restantes <= 0 ? '#fef2f2'
+                                : credito.aulas_restantes <= 2 ? '#fffbeb' : '#f0fdf4',
+                              color: credito.aulas_restantes <= 0 ? '#dc2626'
+                                : credito.aulas_restantes <= 2 ? '#d97706' : '#16a34a'
+                            }}>
+                              {credito.aulas_restantes}/{credito.aulas_total}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botão presença rápida */}
+                      <button
+                        onClick={async () => {
+                          if (!presenca) {
+                            // Primeiro toque: marca presente direto
+                            const dados = {
+                              user_id: userId,
+                              grade_horario_id: h.id,
+                              devedor_id: h.devedor_id,
+                              data: hojeStr,
+                              presente: true,
+                              observacao: null,
+                              updated_at: new Date().toISOString()
+                            }
+                            const result = await supabase.from('presencas').insert(dados).select()
+                            if (result.data) {
+                              setPresencasHoje(prev => ({ ...prev, [h.id]: result.data[0] }))
+                              // Decrementar crédito
+                              const cred = creditosAlunos[h.devedor_id]
+                              if (cred) {
+                                const novoR = Math.max(cred.aulas_restantes - 1, 0)
+                                await supabase.from('devedores').update({ aulas_restantes: novoR }).eq('id', h.devedor_id)
+                                setCreditosAlunos(prev => ({
+                                  ...prev,
+                                  [h.devedor_id]: { ...prev[h.devedor_id], aulas_restantes: novoR }
+                                }))
+                                if (novoR === 0) showToast(`${h.devedores?.nome} usou todas as aulas!`, 'warning')
+                                else if (novoR <= 2) showToast(`${h.devedores?.nome} tem ${novoR} aula(s) restante(s)`, 'warning')
+                              }
+                              showToast('Presença registrada!', 'success')
+                              // Enviar notificação via WhatsApp (fire-and-forget)
+                              const credAtual = creditosAlunos[h.devedor_id] ? { ...creditosAlunos[h.devedor_id], aulas_restantes: Math.max(creditosAlunos[h.devedor_id].aulas_restantes - 1, 0) } : null
+                              enviarNotificacaoPresenca(h, true, null, credAtual)
+                            }
+                          } else {
+                            // Segundo toque: abre modal completo
+                            abrirPresenca(h)
+                          }
+                        }}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          border: presenca
+                            ? `2px solid ${presenca.presente ? '#16a34a' : '#dc2626'}`
+                            : '2px dashed #d1d5db',
+                          backgroundColor: presenca
+                            ? (presenca.presente ? '#dcfce7' : '#fef2f2')
+                            : 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {presenca ? (
+                          presenca.presente
+                            ? <Icon icon="mdi:check" width={20} style={{ color: '#16a34a' }} />
+                            : <Icon icon="mdi:close" width={20} style={{ color: '#dc2626' }} />
+                        ) : (
+                          <Icon icon="mdi:circle-outline" width={20} style={{ color: '#d1d5db' }} />
+                        )}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Dias da semana + Busca + Adicionar */}
+      {vistaAtual === 'semana' && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isMobile ? '16px' : '24px', flexWrap: 'wrap' }}>
         {/* Pills de dia - esquerda */}
         <div style={{
@@ -517,8 +958,10 @@ export default function GradeHorarios() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Conteúdo principal */}
+      {vistaAtual === 'semana' && (
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -722,6 +1165,24 @@ export default function GradeHorarios() {
                               </div>
                             )}
 
+                            {/* Badge de créditos (pacote de aulas) */}
+                            {creditosAlunos[h.devedor_id] && (
+                              <div style={{
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                padding: '1px 6px',
+                                borderRadius: '8px',
+                                backgroundColor: creditosAlunos[h.devedor_id].aulas_restantes <= 0 ? '#fef2f2'
+                                  : creditosAlunos[h.devedor_id].aulas_restantes <= 2 ? '#fffbeb' : '#f0fdf4',
+                                color: creditosAlunos[h.devedor_id].aulas_restantes <= 0 ? '#dc2626'
+                                  : creditosAlunos[h.devedor_id].aulas_restantes <= 2 ? '#d97706' : '#16a34a',
+                                display: 'inline-block',
+                                marginTop: '3px'
+                              }}>
+                                {creditosAlunos[h.devedor_id].aulas_restantes}/{creditosAlunos[h.devedor_id].aulas_total} aulas
+                              </div>
+                            )}
+
                             {/* Botão de presença (só no dia atual) */}
                             {isHoje && h.ativo && (() => {
                               const presenca = presencasHoje[h.id]
@@ -827,7 +1288,7 @@ export default function GradeHorarios() {
         </div>
       )}
 
-      </div>{/* Fim card conteúdo */}
+      </div>)}{/* Fim card conteúdo + vistaAtual semana */}
 
       {/* Modal de confirmação de exclusão */}
       <ConfirmModal
@@ -1133,9 +1594,14 @@ export default function GradeHorarios() {
                 justifyContent: 'center',
                 fontSize: '16px',
                 fontWeight: '600',
-                flexShrink: 0
+                flexShrink: 0,
+                overflow: 'hidden'
               }}>
-                {(presencaAtual.devedores?.nome || 'A').charAt(0).toUpperCase()}
+                {presencaAtual.devedores?.foto_url ? (
+                  <img src={presencaAtual.devedores.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (presencaAtual.devedores?.nome || 'A').charAt(0).toUpperCase()
+                )}
               </div>
               <div>
                 <div style={{ fontSize: '15px', fontWeight: '600', color: '#333' }}>

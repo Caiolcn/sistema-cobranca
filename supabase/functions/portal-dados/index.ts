@@ -33,17 +33,17 @@ serve(async (req) => {
       )
     }
 
-    // Buscar devedor pelo portal_token
+    // Buscar devedor pelo portal_token (campos básicos que sempre existem)
     const { data: devedor, error: devedorError } = await supabase
       .from('devedores')
-      .select('id, nome, telefone, user_id, assinatura_ativa, plano_id')
+      .select('*')
       .eq('portal_token', token)
-      .or('lixo.is.null,lixo.eq.false')
       .single()
 
     if (devedorError || !devedor) {
+      console.error('Erro busca devedor:', devedorError)
       return new Response(
-        JSON.stringify({ error: 'Portal não encontrado' }),
+        JSON.stringify({ error: 'Portal não encontrado', detail: devedorError?.message || 'not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -106,14 +106,49 @@ serve(async (req) => {
 
     // Buscar nome do plano
     let planoNome = null
+    let planoValor = null
     if (devedor.plano_id) {
       const { data: plano } = await supabase
         .from('planos')
         .select('nome, valor')
         .eq('id', devedor.plano_id)
         .single()
-      if (plano) planoNome = plano.nome
+      if (plano) {
+        planoNome = plano.nome
+        planoValor = plano.valor
+      }
     }
+
+    // Buscar grade de horários do aluno (aulas ativas) - protegido
+    let gradeHorarios = null
+    try {
+      const { data } = await supabase
+        .from('grade_horarios')
+        .select('id, dia_semana, horario, descricao')
+        .eq('devedor_id', devedor.id)
+        .eq('user_id', devedor.user_id)
+        .eq('ativo', true)
+        .order('dia_semana', { ascending: true })
+        .order('horario', { ascending: true })
+      gradeHorarios = data
+    } catch (e) { /* tabela pode não existir */ }
+
+    // Buscar presenças dos últimos 60 dias - protegido
+    let presencas = null
+    try {
+      const dataLimite = new Date()
+      dataLimite.setDate(dataLimite.getDate() - 60)
+      const dataLimiteStr = dataLimite.toISOString().split('T')[0]
+
+      const { data } = await supabase
+        .from('presencas')
+        .select('id, data, presente, observacao, grade_horario_id')
+        .eq('devedor_id', devedor.id)
+        .gte('data', dataLimiteStr)
+        .order('data', { ascending: false })
+        .limit(100)
+      presencas = data
+    } catch (e) { /* tabela pode não existir */ }
 
     // Montar endereço completo
     const enderecoPartes = [
@@ -129,9 +164,20 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         devedor: {
-          nome: devedor.nome,
-          assinatura_ativa: devedor.assinatura_ativa,
-          plano_nome: planoNome
+          nome: devedor.nome || '',
+          telefone: devedor.telefone || null,
+          email: devedor.email || null,
+          cpf: devedor.cpf || null,
+          assinatura_ativa: devedor.assinatura_ativa ?? true,
+          plano_nome: planoNome,
+          plano_valor: planoValor,
+          dia_vencimento: devedor.dia_vencimento || null,
+          data_nascimento: devedor.data_nascimento || null,
+          responsavel_nome: devedor.responsavel_nome || null,
+          responsavel_telefone: devedor.responsavel_telefone || null,
+          membro_desde: devedor.created_at ? devedor.created_at.split('T')[0] : null,
+          aulas_restantes: devedor.aulas_restantes ?? null,
+          aulas_total: devedor.aulas_total ?? null
         },
         empresa: {
           nome: usuario?.nome_empresa || 'Empresa',
@@ -143,7 +189,20 @@ serve(async (req) => {
         },
         metodo_pagamento: metodoPagamento,
         asaas_configurado: !!(usuario?.asaas_api_key && usuario?.modo_integracao === 'asaas'),
-        mensalidades: mensalidadesFormatadas
+        mensalidades: mensalidadesFormatadas,
+        grade_horarios: (gradeHorarios || []).map(g => ({
+          id: g.id,
+          dia_semana: g.dia_semana,
+          horario: g.horario,
+          descricao: g.descricao
+        })),
+        presencas: (presencas || []).map(p => ({
+          id: p.id,
+          data: p.data,
+          presente: p.presente,
+          observacao: p.observacao,
+          grade_horario_id: p.grade_horario_id
+        }))
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

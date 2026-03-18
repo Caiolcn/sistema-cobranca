@@ -1353,6 +1353,45 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       return false
     }
   }
+
+  // Buscar foto de perfil do WhatsApp (uma tentativa só)
+  async buscarFotoPerfil(telefone, userIdOverride = null) {
+    await this.ensureInitialized()
+    if (!this.apiKey || !this.apiUrl || !this.instanceName) {
+      console.log('⚠️ WhatsApp não inicializado para buscar foto')
+      return null
+    }
+
+    try {
+      const numero = telefone.replace(/\D/g, '')
+      const numeroFinal = numero.length <= 11 ? `55${numero}` : numero
+
+      const response = await fetch(
+        `${this.apiUrl}/chat/fetchProfilePictureUrl/${this.instanceName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': this.apiKey
+          },
+          body: JSON.stringify({ number: numeroFinal })
+        }
+      )
+
+      if (!response.ok) {
+        console.log('⚠️ Foto WhatsApp: resposta', response.status)
+        return null
+      }
+      const data = await response.json()
+      const url = data?.profilePictureUrl || data?.picture || data?.url || null
+      if (url) console.log('✅ Foto WhatsApp encontrada!')
+      else console.log('ℹ️ Foto WhatsApp privada ou inexistente')
+      return url
+    } catch (err) {
+      console.error('❌ Erro ao buscar foto WhatsApp:', err)
+      return null
+    }
+  }
 }
 
 // Exportar instância singleton
