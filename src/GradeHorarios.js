@@ -918,7 +918,7 @@ export default function GradeHorarios() {
                 padding: '9px 32px 9px 34px',
                 border: '1px solid #ddd',
                 borderRadius: '6px',
-                fontSize: '14px',
+                fontSize: '16px',
                 backgroundColor: 'white',
                 outline: 'none',
                 boxSizing: 'border-box'

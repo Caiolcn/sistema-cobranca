@@ -352,7 +352,7 @@ export default function CRM() {
             onChange={(e) => setBuscaTexto(e.target.value)}
             style={{
               width: '100%', padding: '8px 14px', border: '1px solid #ddd',
-              borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box'
+              borderRadius: '6px', fontSize: '16px', boxSizing: 'border-box'
             }}
           />
         </div>

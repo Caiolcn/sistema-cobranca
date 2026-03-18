@@ -1249,7 +1249,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 style={{
                   width: isSmallScreen ? '100%' : '200px',
                   padding: '9px 32px 9px 34px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   backgroundColor: 'white',
