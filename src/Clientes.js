@@ -3828,7 +3828,7 @@ Equipe ${nomeEmpresa}`
 
                 {criarAssinatura ? (
                   <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb', overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                       <div style={{ minWidth: 0 }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Data de Inicio</label>
                         <input type="date" value={dataInicioAssinatura}
@@ -3840,12 +3840,12 @@ Equipe ${nomeEmpresa}`
                               setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
                             }
                           }}
-                          style={{ width: '100%', padding: '8px 6px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Vencimento</label>
                         <input type="date" value={dataVencimentoAssinatura} onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                          style={{ width: '100%', padding: '8px 6px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
                       </div>
                     </div>
                     <div>
