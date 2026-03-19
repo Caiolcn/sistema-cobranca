@@ -1275,7 +1275,7 @@ Equipe ${nomeEmpresa}`
       setNovoClienteResponsavelTelefone('')
       setTemResponsavel(false)
       setStepCadastro(1)
-      setCriarAssinatura(false)
+      setCriarAssinatura(true)
       setDataInicioAssinatura('')
       setDataVencimentoAssinatura('')
       setPlanoSelecionado('')
@@ -1569,7 +1569,7 @@ Equipe ${nomeEmpresa}`
                 setNovoClienteDataNascimento(''); setNovoClienteEmail('')
                 setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('')
                 setTemResponsavel(false); setStepCadastro(1)
-                setCriarAssinatura(false); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
+                setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
                 setPlanoSelecionado(''); setEnviarBoasVindas(true)
                 setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
                 setMostrarModalNovoCliente(true)
@@ -3827,9 +3827,9 @@ Equipe ${nomeEmpresa}`
                 </label>
 
                 {criarAssinatura ? (
-                  <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <div>
+                  <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb', overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ minWidth: 0 }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Data de Inicio</label>
                         <input type="date" value={dataInicioAssinatura}
                           onChange={(e) => {
@@ -3840,12 +3840,12 @@ Equipe ${nomeEmpresa}`
                               setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
                             }
                           }}
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                          style={{ width: '100%', padding: '8px 6px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
                       </div>
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Vencimento</label>
                         <input type="date" value={dataVencimentoAssinatura} onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                          style={{ width: '100%', padding: '8px 6px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
                       </div>
                     </div>
                     <div>
@@ -3978,7 +3978,7 @@ Equipe ${nomeEmpresa}`
                     setMostrarModalNovoCliente(false); setStepCadastro(1); setErroModalNovoCliente('')
                     setNovoClienteNome(''); setNovoClienteTelefone(''); setNovoClienteCpf(''); setNovoClienteDataNascimento('')
                     setNovoClienteEmail(''); setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('')
-                    setTemResponsavel(false); setCriarAssinatura(false); setDataInicioAssinatura(''); setPlanoSelecionado('')
+                    setTemResponsavel(false); setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura(''); setPlanoSelecionado('')
                     setEnviarBoasVindas(true); setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
                   } else {
                     setStepCadastro(stepCadastro - 1)
