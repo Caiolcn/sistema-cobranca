@@ -3741,7 +3741,7 @@ Equipe ${nomeEmpresa}`
                       Nascimento <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
                     </label>
                     <input type="date" value={novoClienteDataNascimento} onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                      style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
@@ -3840,12 +3840,12 @@ Equipe ${nomeEmpresa}`
                               setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
                             }
                           }}
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                          style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none' }} />
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Vencimento</label>
                         <input type="date" value={dataVencimentoAssinatura} onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box' }} />
+                          style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none' }} />
                       </div>
                     </div>
                     <div>
