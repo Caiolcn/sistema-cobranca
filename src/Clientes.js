@@ -3736,12 +3736,12 @@ Equipe ${nomeEmpresa}`
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
                       onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
                       Nascimento <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
                     </label>
                     <input type="date" value={novoClienteDataNascimento} onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
-                      style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none' }} />
+                      style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none', height: '40px' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
