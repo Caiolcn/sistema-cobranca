@@ -14,6 +14,18 @@
     <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
+    <!-- Redirect PWA para portal se token salvo (cookie funciona entre Safari e PWA) -->
+    <script>
+      (function() {
+        if (window.location.pathname === '/' || window.location.pathname === '') {
+          var match = document.cookie.match(/portal_token=([^;]+)/);
+          if (match && match[1]) {
+            window.location.replace('/portal/' + match[1]);
+          }
+        }
+      })();
+    </script>
+
     <!-- Open Graph / SEO -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Mensalli - Cobre Mensalidades pelo WhatsApp no Automático" />

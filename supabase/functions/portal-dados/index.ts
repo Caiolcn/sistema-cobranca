@@ -150,6 +150,20 @@ serve(async (req) => {
       presencas = data
     } catch (e) { /* tabela pode não existir */ }
 
+    // Buscar avisos da escola (ativos, últimos 30 dias)
+    let avisos = null
+    try {
+      const { data } = await supabase
+        .from('avisos')
+        .select('id, titulo, conteudo, tipo, fixado, imagem_url, created_at')
+        .eq('user_id', devedor.user_id)
+        .eq('ativo', true)
+        .order('fixado', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(20)
+      avisos = data
+    } catch (e) { /* tabela pode não existir */ }
+
     // Montar endereço completo
     const enderecoPartes = [
       usuario?.endereco,
@@ -202,6 +216,15 @@ serve(async (req) => {
           presente: p.presente,
           observacao: p.observacao,
           grade_horario_id: p.grade_horario_id
+        })),
+        avisos: (avisos || []).map(a => ({
+          id: a.id,
+          titulo: a.titulo,
+          conteudo: a.conteudo,
+          tipo: a.tipo || 'geral',
+          fixado: a.fixado,
+          imagem_url: a.imagem_url || null,
+          created_at: a.created_at
         }))
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

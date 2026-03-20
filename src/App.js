@@ -28,6 +28,7 @@ const GradeHorarios = lazy(() => import('./GradeHorarios'))
 const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
 const CRM = lazy(() => import('./CRM'))
+const Avisos = lazy(() => import('./Avisos'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -72,7 +73,11 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Rotas públicas */}
-              <Route path="/" element={session ? <Navigate to="/app/home" replace /> : <LandingPage />} />
+              <Route path="/" element={session ? <Navigate to="/app/home" replace /> : (() => {
+                const portalToken = localStorage.getItem('portal_token')
+                if (portalToken) return <Navigate to={`/portal/${portalToken}`} replace />
+                return <LandingPage />
+              })()} />
               <Route path="/signup" element={session ? <Navigate to="/app/home" replace /> : <Signup />} />
               <Route path="/login" element={session ? <Navigate to="/app/home" replace /> : <Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -95,6 +100,7 @@ function App() {
                     <Route path="whatsapp" element={<WhatsAppConexao />} />
                     <Route path="configuracao" element={<Configuracao />} />
                     <Route path="ajuda" element={<Ajuda />} />
+                    <Route path="avisos" element={<Avisos />} />
                     <Route path="crm" element={<CRM />} />
                   </Route>
                 </>

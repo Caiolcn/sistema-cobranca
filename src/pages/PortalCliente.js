@@ -83,6 +83,9 @@ export default function PortalCliente() {
       const json = await res.json()
       if (json.error) { setErro(json.error); setLoading(false); return }
       setDados(json)
+      // Salvar token pra redirect do PWA (cookie compartilha entre Safari e standalone)
+      localStorage.setItem('portal_token', token)
+      document.cookie = `portal_token=${token}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`
       setLoading(false)
     } catch {
       setErro('Erro ao carregar dados. Tente novamente.')
@@ -230,49 +233,28 @@ export default function PortalCliente() {
   const presencasPresente = dados.presencas?.filter(p => p.presente).length || 0
   const pctFrequencia = presencasTotal > 0 ? Math.round((presencasPresente / presencasTotal) * 100) : null
 
-  // Dados mockados do feed (temporário - depois vem do banco)
-  const avisosMock = [
-    {
-      id: 1,
-      tipo: 'aviso',
-      titulo: 'Sem aula nesta sexta!',
-      conteudo: 'Informamos que nesta sexta-feira (21/03) nao havera aula devido ao feriado. As aulas retornam normalmente na segunda.',
-      criado_em: '2026-03-19',
+  // Avisos reais do banco (vem da edge function portal-dados)
+  const TIPOS_PORTAL = {
+    aviso: { icon: 'mdi:alert-circle-outline', cor: '#f59e0b' },
+    evento: { icon: 'mdi:trophy-outline', cor: '#8b5cf6' },
+    novidade: { icon: 'mdi:plus-circle-outline', cor: '#22c55e' },
+    promocao: { icon: 'mdi:tag-outline', cor: '#ef4444' },
+    geral: { icon: 'mdi:chat-outline', cor: '#3b82f6' }
+  }
+  const avisosReais = (dados.avisos || []).map(a => {
+    const tipoInfo = TIPOS_PORTAL[a.tipo] || TIPOS_PORTAL.geral
+    return {
+      id: a.id,
+      tipo: a.tipo || 'geral',
+      titulo: a.titulo,
+      conteudo: a.conteudo || '',
+      criado_em: a.created_at ? a.created_at.split('T')[0] : '',
       autor: dados.empresa.nome,
-      icone: 'mdi:alert-circle-outline',
-      cor: '#f59e0b'
-    },
-    {
-      id: 2,
-      tipo: 'evento',
-      titulo: 'Campeonato interno dia 05/04',
-      conteudo: 'Inscricoes abertas para o campeonato interno! Fale com seu professor para se inscrever. Vagas limitadas.',
-      criado_em: '2026-03-17',
-      autor: dados.empresa.nome,
-      icone: 'mdi:trophy-outline',
-      cor: '#8b5cf6'
-    },
-    {
-      id: 3,
-      tipo: 'novidade',
-      titulo: 'Nova turma de reforco as 14h',
-      conteudo: 'A partir de abril teremos uma nova turma de reforco escolar no horario das 14h. Interessados, entrem em contato!',
-      criado_em: '2026-03-15',
-      autor: dados.empresa.nome,
-      icone: 'mdi:plus-circle-outline',
-      cor: '#22c55e'
-    },
-    {
-      id: 4,
-      tipo: 'mensagem',
-      titulo: 'Boas vindas aos novos alunos!',
-      conteudo: 'Queremos dar as boas vindas a todos os novos alunos que entraram neste mes. Sejam bem vindos a familia!',
-      criado_em: '2026-03-10',
-      autor: dados.empresa.nome,
-      icone: 'mdi:hand-wave-outline',
-      cor: '#3b82f6'
+      icone: a.fixado ? 'mdi:pin' : tipoInfo.icon,
+      cor: tipoInfo.cor,
+      imagem_url: a.imagem_url || null
     }
-  ]
+  })
 
   const formatarDataRelativa = (dataStr) => {
     const data = new Date(dataStr + 'T00:00:00')
@@ -282,6 +264,18 @@ export default function PortalCliente() {
     if (diff === 1) return 'Ontem'
     if (diff < 7) return `${diff} dias atras`
     return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  }
+
+  // Avisos não lidos (compara com último visto salvo no localStorage)
+  const ultimoAvisoVisto = localStorage.getItem(`avisos_visto_${token}`)
+  const avisosNaoLidos = avisosReais.filter(a => !ultimoAvisoVisto || a.id > ultimoAvisoVisto).length
+
+  // Marcar avisos como lidos ao abrir a tab
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId)
+    if (tabId === 'feed' && avisosReais.length > 0) {
+      localStorage.setItem(`avisos_visto_${token}`, avisosReais[0].id)
+    }
   }
 
   // Tab content
@@ -345,169 +339,78 @@ export default function PortalCliente() {
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setMenuAberto(true)}
-          style={{
-            background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer',
-            borderRadius: 10, padding: 8, display: 'flex',
-            transition: 'background 0.2s'
-          }}
-        >
-          <Icon icon="mdi:menu" width="24" style={{ color: '#fff' }} />
-        </button>
-      </div>
+        {/* Avatar com dropdown */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setMenuAberto(!menuAberto)}
+            style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              border: '2px solid rgba(255,255,255,0.3)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 14, fontWeight: 700, padding: 0
+            }}
+          >
+            {primeiroNome.charAt(0).toUpperCase()}
+          </button>
 
-      {/* Drawer overlay */}
-      {menuAberto && (
-        <div
-          onClick={() => setMenuAberto(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-            zIndex: 200, animation: 'fadeIn 0.2s ease'
-          }}
-        />
-      )}
-
-      {/* Drawer lateral */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: 280, maxWidth: '80vw',
-        background: '#fff', zIndex: 201,
-        transform: menuAberto ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: menuAberto ? '-4px 0 20px rgba(0,0,0,0.15)' : 'none',
-        display: 'flex', flexDirection: 'column'
-      }}>
-        {/* Drawer header */}
-        <div style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-          padding: '24px 20px 20px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>{primeiroNome}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-                {dados.devedor.plano_nome || 'Aluno'}
-              </div>
-            </div>
-            <button
-              onClick={() => setMenuAberto(false)}
-              style={{ background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', borderRadius: 8, padding: 6, display: 'flex' }}
-            >
-              <Icon icon="mdi:close" width="20" style={{ color: '#fff' }} />
-            </button>
-          </div>
-          {/* Status no drawer */}
-          <div style={{ marginTop: 12 }}>
-            {pendentes.length === 0 ? (
+          {/* Dropdown */}
+          {menuAberto && (
+            <>
+              <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'rgba(34,197,94,0.15)', padding: '5px 12px', borderRadius: 20,
-                fontSize: 12, fontWeight: 600, color: '#4ade80'
+                position: 'absolute', top: 42, right: 0, zIndex: 200,
+                background: '#fff', borderRadius: 12, padding: '6px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0',
+                minWidth: 180, animation: 'fadeIn 0.15s ease'
               }}>
-                <Icon icon="mdi:check-circle" width="14" /> Tudo em dia
+                <div style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{dados.devedor.nome}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 1 }}>{dados.devedor.plano_nome || 'Aluno'}</div>
+                </div>
+                <button
+                  onClick={() => { setActiveTab('perfil'); setMenuAberto(false) }}
+                  style={{
+                    width: '100%', padding: '10px 12px', background: 'transparent',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                    borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#334155'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Icon icon="mdi:account-circle-outline" width="18" style={{ color: '#64748b' }} />
+                  Meus Dados
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('portal_token')
+                    document.cookie = 'portal_token=; path=/; max-age=0'
+                    window.location.href = '/'
+                  }}
+                  style={{
+                    width: '100%', padding: '10px 12px', background: 'transparent',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                    borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#ef4444'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Icon icon="mdi:logout" width="18" style={{ color: '#ef4444' }} />
+                  Sair
+                </button>
               </div>
-            ) : (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: temAtrasadas ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)',
-                padding: '5px 12px', borderRadius: 20,
-                fontSize: 12, fontWeight: 600, color: temAtrasadas ? '#f87171' : '#fbbf24'
-              }}>
-                <Icon icon={temAtrasadas ? 'mdi:alert-circle' : 'mdi:clock-outline'} width="14" />
-                {pendentes.length} pendencia{pendentes.length !== 1 ? 's' : ''}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Drawer menu items */}
-        <div style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }}>
-          {[
-            { icon: 'mdi:home-variant', label: 'Inicio', tab: 'home' },
-            { icon: 'mdi:newspaper-variant-outline', label: 'Avisos', tab: 'feed', badge: avisosMock.length },
-            { icon: 'mdi:credit-card-outline', label: 'Pagamentos', tab: 'pagamentos', badge: pendentes.length > 0 ? pendentes.length : null, badgeColor: '#ef4444' },
-            { icon: 'mdi:calendar-check', label: 'Minhas Aulas', tab: 'aulas' },
-            { icon: 'mdi:account-circle-outline', label: 'Meu Perfil', tab: 'perfil' },
-          ].map(item => (
-            <button
-              key={item.tab}
-              onClick={() => { setActiveTab(item.tab); setMenuAberto(false) }}
-              style={{
-                width: '100%', padding: '14px 20px',
-                background: activeTab === item.tab ? '#f0fdf4' : 'transparent',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 14,
-                borderLeft: activeTab === item.tab ? '3px solid #22c55e' : '3px solid transparent',
-                transition: 'all 0.15s'
-              }}
-            >
-              <Icon icon={item.icon} width="22" style={{ color: activeTab === item.tab ? '#22c55e' : '#64748b' }} />
-              <span style={{ fontSize: 14, fontWeight: activeTab === item.tab ? 700 : 500, color: activeTab === item.tab ? '#166534' : '#334155', flex: 1, textAlign: 'left' }}>
-                {item.label}
-              </span>
-              {item.badge && (
-                <span style={{
-                  background: item.badgeColor || '#22c55e', color: '#fff',
-                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, minWidth: 18, textAlign: 'center'
-                }}>{item.badge}</span>
-              )}
-            </button>
-          ))}
-
-          <div style={{ height: 1, background: '#e2e8f0', margin: '8px 20px' }} />
-
-          {/* Contato WhatsApp */}
-          {dados.empresa.telefone && (
-            <button
-              onClick={() => {
-                const tel = dados.empresa.telefone.replace(/\D/g, '')
-                window.open(`https://wa.me/55${tel}`, '_blank')
-                setMenuAberto(false)
-              }}
-              style={{
-                width: '100%', padding: '14px 20px',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 14
-              }}
-            >
-              <Icon icon="mdi:whatsapp" width="22" style={{ color: '#25d366' }} />
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#334155' }}>Falar com a escola</span>
-            </button>
+            </>
           )}
-
-          {/* Instalar App */}
-          {(deferredPrompt || isIOS) && (
-            <button
-              onClick={() => {
-                if (deferredPrompt) instalarPWA()
-                setMenuAberto(false)
-              }}
-              style={{
-                width: '100%', padding: '14px 20px',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 14
-              }}
-            >
-              <Icon icon="mdi:cellphone-arrow-down" width="22" style={{ color: '#3b82f6' }} />
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#334155' }}>Instalar app</span>
-            </button>
-          )}
-        </div>
-
-        {/* Drawer footer */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-            Powered by <span style={{ fontWeight: 700, color: '#22c55e' }}>Mensalli</span>
-          </div>
         </div>
       </div>
 
-      {/* Hero section */}
+      {/* Hero section - esconde na tab feed */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%)',
-        padding: '16px 20px 40px',
-        position: 'relative', overflow: 'hidden'
+        padding: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas') ? '0' : '16px 20px 40px',
+        maxHeight: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas') ? '0' : '300px',
+        overflow: 'hidden', transition: 'all 0.3s ease',
+        position: 'relative'
       }}>
         <div style={{
           position: 'absolute', top: -40, right: -40, width: 160, height: 160,
@@ -583,26 +486,50 @@ export default function PortalCliente() {
                 )}
               </div>
 
-              {/* Total Pago */}
-              <div style={{
+              {/* Próxima Aula */}
+              <div onClick={() => setActiveTab('aulas')} style={{
                 background: '#fff', borderRadius: 16, padding: '16px 14px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)'
+                border: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: 10,
-                    background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+                    background: 'linear-gradient(135deg, #f3e8ff, #e9d5ff)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
-                    <Icon icon="mdi:cash-check" width="16" style={{ color: '#16a34a' }} />
+                    <Icon icon="mdi:calendar-clock" width="16" style={{ color: '#8b5cf6' }} />
                   </div>
-                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pago</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Proxima aula</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', lineHeight: 1.2 }}>
-                  {formatarValor(totalPago)}
-                </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{pagas.length} mensalidade{pagas.length !== 1 ? 's' : ''}</div>
+                {dados.grade_horarios && dados.grade_horarios.length > 0 ? (() => {
+                  const hojeDia = new Date().getDay()
+                  const diasAbrev = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab']
+                  for (let offset = 0; offset < 7; offset++) {
+                    const dia = (hojeDia + offset) % 7
+                    const aulas = dados.grade_horarios.filter(g => g.dia_semana === dia)
+                    if (aulas.length > 0) {
+                      const sorted = [...aulas].sort((a, b) => (a.horario || '').localeCompare(b.horario || ''))
+                      const h = sorted[0].horario ? sorted[0].horario.slice(0, 5) : '--:--'
+                      const label = offset === 0 ? 'Hoje' : offset === 1 ? 'Amanha' : diasAbrev[dia]
+                      return (
+                        <div key="prox">
+                          <div style={{ fontSize: 15, fontWeight: 700, color: offset === 0 ? '#8b5cf6' : '#0f172a', lineHeight: 1.2 }}>
+                            {label} as {h}
+                          </div>
+                          {sorted[0].descricao && (
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                              {sorted[0].descricao}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }
+                  }
+                  return <div style={{ fontSize: 13, color: '#94a3b8' }}>Sem aulas</div>
+                })() : (
+                  <div style={{ fontSize: 13, color: '#94a3b8' }}>Sem aulas</div>
+                )}
               </div>
             </div>
 
@@ -636,6 +563,10 @@ export default function PortalCliente() {
                       width: `${pctFrequencia}%`,
                       background: pctFrequencia >= 75 ? '#16a34a' : pctFrequencia >= 50 ? '#d97706' : '#dc2626'
                     }} />
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, fontWeight: 600 }}>
+                    {presencasPresente}/{presencasTotal} aula{presencasTotal !== 1 ? 's' : ''}
+                    {pctFrequencia === 100 ? ' - Nenhuma falta!' : presencasTotal - presencasPresente === 1 ? ' - 1 falta' : ` - ${presencasTotal - presencasPresente} faltas`}
                   </div>
                 </div>
               )}
@@ -684,148 +615,97 @@ export default function PortalCliente() {
               )}
             </div>
 
-            {/* Pendencias (se houver) */}
+            {/* Barra de alerta de pendencias */}
             {pendentes.length > 0 && (
-              <div style={{
-                background: '#fff', borderRadius: 16, padding: '20px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                border: temAtrasadas ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(0,0,0,0.04)',
-                marginBottom: 12
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <Icon icon="mdi:alert-circle-outline" width="20" style={{ color: temAtrasadas ? '#ef4444' : '#f59e0b' }} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                    {pendentes.length === 1 ? 'Mensalidade pendente' : `${pendentes.length} mensalidades pendentes`}
-                  </span>
-                </div>
-
-                {pendentes.map(m => {
-                  const info = getStatusInfo(m)
-                  return (
-                    <div key={m.id} style={{
-                      background: '#f8fafc', borderRadius: 12, padding: '14px',
-                      marginBottom: 8, border: '1px solid #e2e8f0'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>{formatarValor(m.valor)}</span>
-                        <span style={{
-                          padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                          color: info.color, backgroundColor: info.bg
-                        }}>
-                          {info.label}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>
-                        Vencimento: {formatarData(m.data_vencimento)}
-                      </div>
-                      {info.diasAtraso > 0 && (
-                        <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
-                          {info.diasAtraso} dia{info.diasAtraso !== 1 ? 's' : ''} de atraso
-                        </div>
-                      )}
-                      <button
-                        onClick={() => { setActiveTab('pagamentos'); setTimeout(() => handlePagar(m), 100) }}
-                        style={{
-                          width: '100%', padding: '12px', borderRadius: 10, marginTop: 10,
-                          border: 'none', cursor: 'pointer',
-                          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                          color: '#fff', fontSize: 14, fontWeight: 700,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                          boxShadow: '0 2px 8px rgba(34,197,94,0.3)', transition: 'transform 0.15s'
-                        }}
-                      >
-                        <Icon icon="mdi:qrcode" width="18" />
-                        Pagar agora
-                      </button>
+              <div
+                onClick={() => { setActiveTab('pagamentos'); setTimeout(() => handlePagar(pendentes[0]), 150) }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '12px 16px', borderRadius: 12, marginBottom: 12, cursor: 'pointer',
+                  background: temAtrasadas ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+                  border: `1px solid ${temAtrasadas ? '#fecaca' : '#fde68a'}`,
+                  transition: 'transform 0.15s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon icon={temAtrasadas ? 'mdi:alert-circle' : 'mdi:clock-outline'} width="20"
+                    style={{ color: temAtrasadas ? '#dc2626' : '#d97706' }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: temAtrasadas ? '#991b1b' : '#92400e' }}>
+                      {pendentes.length === 1
+                        ? `Mensalidade de ${formatarValor(pendentes[0].valor)} pendente`
+                        : `${pendentes.length} mensalidades pendentes`
+                      }
                     </div>
-                  )
-                })}
+                    {temAtrasadas && (
+                      <div style={{ fontSize: 11, color: '#dc2626', marginTop: 1 }}>
+                        {(() => { const info = getStatusInfo(pendentes[0]); return info.diasAtraso > 0 ? `${info.diasAtraso} dia${info.diasAtraso !== 1 ? 's' : ''} de atraso` : '' })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                  background: temAtrasadas ? '#dc2626' : '#d97706', color: '#fff',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Pagar agora
+                </div>
               </div>
             )}
 
-            {/* Proximas aulas (mini) */}
-            {dados.grade_horarios && dados.grade_horarios.length > 0 && (() => {
-              const hojeDia = new Date().getDay()
-              const diasSemana = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado']
-              const aulasHoje = dados.grade_horarios.filter(g => g.dia_semana === hojeDia)
-              const amanha = (hojeDia + 1) % 7
-              const aulasAmanha = dados.grade_horarios.filter(g => g.dia_semana === amanha)
-
-              if (aulasHoje.length === 0 && aulasAmanha.length === 0) return null
-
-              return (
-                <div style={{
-                  background: '#fff', borderRadius: 16, padding: '20px',
+            {/* Ultimo aviso (se houver) */}
+            {avisosReais.length > 0 && (
+              <div
+                onClick={() => setActiveTab('feed')}
+                style={{
+                  background: '#fff', borderRadius: 16, padding: '14px 16px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                  border: '1px solid rgba(0,0,0,0.04)', marginBottom: 12
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    <Icon icon="mdi:calendar-today" width="20" style={{ color: '#8b5cf6' }} />
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Proximas aulas</span>
+                  border: '1px solid rgba(0,0,0,0.04)', marginBottom: 12, cursor: 'pointer'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Icon icon="mdi:newspaper-variant-outline" width="16" style={{ color: '#3b82f6' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Mural</span>
                   </div>
-
-                  {aulasHoje.length > 0 && (
-                    <div style={{ marginBottom: aulasAmanha.length > 0 ? 12 : 0 }}>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, color: '#8b5cf6', marginBottom: 6,
-                        textTransform: 'uppercase', letterSpacing: '0.5px'
-                      }}>
-                        Hoje - {diasSemana[hojeDia]}
-                      </div>
-                      {aulasHoje.map(a => (
-                        <div key={a.id} style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 12px', borderRadius: 10,
-                          background: 'linear-gradient(135deg, #faf5ff, #f5f3ff)',
-                          border: '1px solid #ede9fe', marginBottom: 4
-                        }}>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: '#8b5cf6' }}>
-                            {a.horario ? a.horario.slice(0, 5) : '--:--'}
-                          </span>
-                          {a.descricao && <span style={{ fontSize: 13, color: '#64748b' }}>{a.descricao}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {aulasAmanha.length > 0 && (
-                    <div>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6,
-                        textTransform: 'uppercase', letterSpacing: '0.5px'
-                      }}>
-                        Amanha - {diasSemana[amanha]}
-                      </div>
-                      {aulasAmanha.map(a => (
-                        <div key={a.id} style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 12px', borderRadius: 10,
-                          background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: 4
-                        }}>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: '#334155' }}>
-                            {a.horario ? a.horario.slice(0, 5) : '--:--'}
-                          </span>
-                          {a.descricao && <span style={{ fontSize: 13, color: '#64748b' }}>{a.descricao}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setActiveTab('aulas')}
-                    style={{
-                      width: '100%', padding: '10px', borderRadius: 10, marginTop: 10,
-                      border: '1px solid #e2e8f0', cursor: 'pointer',
-                      background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
-                    }}
-                  >
-                    Ver todas as aulas
-                    <Icon icon="mdi:chevron-right" width="16" />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b82f6', fontSize: 11, fontWeight: 600 }}>
+                    {avisosReais.length > 1 && `+${avisosReais.length - 1} `}
+                    Ver todos <Icon icon="mdi:chevron-right" width="14" />
+                  </div>
                 </div>
-              )
-            })()}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {avisosReais[0].imagem_url ? (
+                    <img src={avisosReais[0].imagem_url} alt="" style={{
+                      width: 48, height: 48, objectFit: 'cover',
+                      borderRadius: 10, flexShrink: 0, border: '1px solid #e2e8f0'
+                    }} />
+                  ) : (
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 10, flexShrink: 0,
+                      background: `linear-gradient(135deg, ${avisosReais[0].cor}15, ${avisosReais[0].cor}08)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: `1px solid ${avisosReais[0].cor}20`
+                    }}>
+                      <Icon icon={avisosReais[0].icone} width="20" style={{ color: avisosReais[0].cor }} />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>{avisosReais[0].titulo}</div>
+                    {avisosReais[0].conteudo && (
+                      <div style={{
+                        fontSize: 12, color: '#94a3b8', marginTop: 2, lineHeight: 1.3,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                      }}>
+                        {avisosReais[0].conteudo}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Card separado removido - próxima aula agora está dentro do card de frequência */}
 
             {/* PWA Banner */}
             {mostrarBannerPWA && (
@@ -881,7 +761,7 @@ export default function PortalCliente() {
 
         {/* ===== TAB PAGAMENTOS ===== */}
         {activeTab === 'pagamentos' && (
-          <div className="ptab">
+          <div className="ptab" style={{ marginTop: 40 }}>
             {/* Pendentes */}
             {pendentes.length > 0 ? (
               <div style={{
@@ -950,55 +830,63 @@ export default function PortalCliente() {
                       {/* PIX Expandido */}
                       {isExpanded && pixData && pixData.pixCode && (
                         <div style={{
-                          borderTop: '1px solid #e2e8f0', padding: '24px 20px',
-                          background: '#fafffe', animation: 'expandIn 0.3s ease-out', textAlign: 'center'
+                          borderTop: '1px solid #e2e8f0', padding: '20px',
+                          background: '#fafffe', animation: 'expandIn 0.3s ease-out'
                         }}>
-                          <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            background: '#f0fdf4', border: '1px solid #dcfce7',
-                            padding: '8px 16px', borderRadius: 24, fontSize: 13, fontWeight: 600, color: '#16a34a', marginBottom: 20
-                          }}>
-                            <Icon icon="mdi:shield-check-outline" width="16" />
-                            Pagamento seguro via PIX
+                          {/* Valor em destaque */}
+                          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Valor a pagar</div>
+                            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a' }}>{formatarValor(m.valor)}</div>
                           </div>
-                          <div style={{
-                            background: '#fff', borderRadius: 16, padding: 24, display: 'inline-block',
-                            border: '2px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                          }}>
-                            {pixData.qrImage ? (
-                              <img src={`data:image/png;base64,${pixData.qrImage}`} alt="QR Code PIX" style={{ width: 200, height: 200 }} />
-                            ) : (
-                              <QRCodeSVG value={pixData.pixCode} size={200} />
-                            )}
-                          </div>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginTop: 16 }}>{formatarValor(m.valor)}</div>
-                          <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20, marginTop: 4 }}>Escaneie o QR Code ou copie o codigo</div>
 
-                          <div style={{
-                            background: '#f8fafc', borderRadius: 12, padding: '14px 16px', marginBottom: 16,
-                            border: '1px solid #e2e8f0', textAlign: 'left'
+                          {/* Botão copiar PIX - principal */}
+                          <button onClick={copiarPix} style={{
+                            width: '100%', padding: '16px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                            background: pixCopied ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #0f172a, #1e3a5f)',
+                            color: '#fff', fontSize: 16, fontWeight: 700,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            boxShadow: pixCopied ? '0 4px 12px rgba(34,197,94,0.3)' : '0 4px 12px rgba(15,23,42,0.2)',
+                            transition: 'all 0.2s', marginBottom: 12
                           }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>Como pagar:</div>
-                            {['Abra o app do seu banco', 'Escolha Pagar com PIX', 'Escaneie o QR Code ou cole o codigo'].map((text, i) => (
-                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                                <div style={{
-                                  width: 22, height: 22, borderRadius: '50%', background: '#22c55e', color: '#fff',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0
-                                }}>{i + 1}</div>
-                                <span style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>{text}</span>
+                            <Icon icon={pixCopied ? 'mdi:check-circle' : 'mdi:content-copy'} width="20" />
+                            {pixCopied ? 'Chave copiada!' : 'Copiar chave PIX'}
+                          </button>
+
+                          {/* Instruções compactas */}
+                          <div style={{
+                            display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16
+                          }}>
+                            {['1. Copie a chave', '2. Abra seu banco', '3. Pague com PIX'].map((text, i) => (
+                              <div key={i} style={{
+                                fontSize: 11, color: '#64748b', fontWeight: 500,
+                                display: 'flex', alignItems: 'center', gap: 4
+                              }}>
+                                {i > 0 && <Icon icon="mdi:chevron-right" width="12" style={{ color: '#cbd5e1' }} />}
+                                {text}
                               </div>
                             ))}
                           </div>
 
-                          <button onClick={copiarPix} style={{
-                            width: '100%', padding: '15px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                            background: pixCopied ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#0f172a',
-                            color: '#fff', fontSize: 15, fontWeight: 700,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-                          }}>
-                            <Icon icon={pixCopied ? 'mdi:check-circle' : 'mdi:content-copy'} width="18" />
-                            {pixCopied ? 'Codigo copiado!' : 'Copiar codigo PIX'}
-                          </button>
+                          {/* QR Code colapsável */}
+                          <details style={{ textAlign: 'center' }}>
+                            <summary style={{
+                              fontSize: 12, color: '#94a3b8', cursor: 'pointer', fontWeight: 600,
+                              listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
+                            }}>
+                              <Icon icon="mdi:qrcode" width="14" />
+                              Ver QR Code
+                            </summary>
+                            <div style={{
+                              background: '#fff', borderRadius: 12, padding: 20, display: 'inline-block',
+                              border: '1px solid #e2e8f0', marginTop: 12
+                            }}>
+                              {pixData.qrImage ? (
+                                <img src={`data:image/png;base64,${pixData.qrImage}`} alt="QR Code PIX" style={{ width: 180, height: 180 }} />
+                              ) : (
+                                <QRCodeSVG value={pixData.pixCode} size={180} />
+                              )}
+                            </div>
+                          </details>
                         </div>
                       )}
 
@@ -1093,7 +981,7 @@ export default function PortalCliente() {
 
         {/* ===== TAB FEED/AVISOS ===== */}
         {activeTab === 'feed' && (
-          <div className="ptab">
+          <div className="ptab" style={{ marginTop: 40 }}>
             <div style={{
               background: '#fff', borderRadius: 16, padding: '20px', marginBottom: 12,
               boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
@@ -1106,7 +994,7 @@ export default function PortalCliente() {
               <div style={{ fontSize: 12, color: '#94a3b8' }}>Fique por dentro das novidades</div>
             </div>
 
-            {avisosMock.map((aviso, index) => (
+            {avisosReais.map((aviso, index) => (
               <div key={aviso.id} style={{
                 background: '#fff', borderRadius: 16, marginBottom: 10, overflow: 'hidden',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
@@ -1157,6 +1045,16 @@ export default function PortalCliente() {
                     {aviso.conteudo}
                   </div>
 
+                  {/* Imagem */}
+                  {aviso.imagem_url && (
+                    <div style={{ marginTop: 12, paddingLeft: 52 }}>
+                      <img src={aviso.imagem_url} alt="" style={{
+                        width: '100%', borderRadius: 10,
+                        border: '1px solid #e2e8f0'
+                      }} />
+                    </div>
+                  )}
+
                   {/* Footer do aviso */}
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
@@ -1187,7 +1085,7 @@ export default function PortalCliente() {
 
         {/* ===== TAB AULAS ===== */}
         {activeTab === 'aulas' && (
-          <div className="ptab">
+          <div className="ptab" style={{ marginTop: 40 }}>
             {/* Grade de horarios */}
             {dados.grade_horarios && dados.grade_horarios.length > 0 ? (
               <div style={{
@@ -1460,23 +1358,44 @@ export default function PortalCliente() {
         </div>
       </div>
 
+      {/* Botão flutuante WhatsApp */}
+      {dados.empresa.telefone && (
+        <a
+          href={`https://wa.me/55${dados.empresa.telefone.replace(/\D/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: 'fixed', bottom: 76, right: 16, zIndex: 99,
+            width: 48, height: 48, borderRadius: '50%',
+            background: '#25D366', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(37,211,102,0.4)',
+            textDecoration: 'none', transition: 'transform 0.2s'
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <Icon icon="mdi:whatsapp" width="26" />
+        </a>
+      )}
+
       {/* Bottom Tab Bar */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#ffffff',
         borderTop: '1px solid #e2e8f0',
         display: 'flex', justifyContent: 'space-around',
-        padding: '6px 0 env(safe-area-inset-bottom, 8px)',
+        padding: '10px 16px env(safe-area-inset-bottom, 16px)',
         zIndex: 100,
         boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
       }}>
         {tabs.map(tab => {
           const isActive = activeTab === tab.id
-          const hasNotif = (tab.id === 'pagamentos' && pendentes.length > 0) || (tab.id === 'feed' && avisosMock.length > 0)
+          const hasNotif = (tab.id === 'pagamentos' && pendentes.length > 0) || (tab.id === 'feed' && avisosNaoLidos > 0)
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -1502,7 +1421,7 @@ export default function PortalCliente() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     border: '2px solid #fff'
                   }}>
-                    {tab.id === 'pagamentos' ? pendentes.length : avisosMock.length}
+                    {tab.id === 'pagamentos' ? pendentes.length : avisosNaoLidos}
                   </div>
                 )}
               </div>
