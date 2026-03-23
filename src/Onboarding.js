@@ -65,76 +65,98 @@ export default function Onboarding() {
   }
 
   const finishOnboarding = async () => {
-    await supabase.from('usuarios').update({
-      onboarding_completed: true,
-      onboarding_step: 4
-    }).eq('id', userId)
-    await refreshUserData()
-    navigate('/app/home', { replace: true })
+    try {
+      setSaving(true)
+      await supabase.from('usuarios').update({
+        onboarding_completed: true,
+        onboarding_step: 4
+      }).eq('id', userId)
+      await refreshUserData()
+      navigate('/app/home', { replace: true })
+    } catch (error) {
+      showToast('Erro ao finalizar. Tente novamente.', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Step 1: Salvar nome da empresa
   const handleStep1Next = async () => {
+    if (saving) return
     if (!nomeEmpresa.trim()) {
       showToast('Informe o nome da sua empresa', 'warning')
       return
     }
     setSaving(true)
-    await supabase.from('usuarios').update({ nome_empresa: nomeEmpresa.trim() }).eq('id', userId)
-    await saveStep(1)
-    await refreshUserData()
-    setSaving(false)
-    setStep(2)
+    try {
+      await supabase.from('usuarios').update({ nome_empresa: nomeEmpresa.trim() }).eq('id', userId)
+      await saveStep(1)
+      await refreshUserData()
+      setStep(2)
+    } catch (error) {
+      showToast('Erro ao salvar. Tente novamente.', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Step 2: Salvar chave PIX
   const handleStep2Next = async () => {
-    if (chavePix.trim()) {
-      setSaving(true)
-      await supabase.from('usuarios').update({ chave_pix: chavePix.trim() }).eq('id', userId)
-      await refreshUserData()
+    if (saving) return
+    setSaving(true)
+    try {
+      if (chavePix.trim()) {
+        await supabase.from('usuarios').update({ chave_pix: chavePix.trim() }).eq('id', userId)
+        await refreshUserData()
+      }
+      await saveStep(2)
+      setStep(3)
+    } catch (error) {
+      showToast('Erro ao salvar. Tente novamente.', 'error')
+    } finally {
       setSaving(false)
     }
-    await saveStep(2)
-    setStep(3)
   }
 
   // Step 3: Criar primeiro plano
   const handleStep3Next = async () => {
-    if (planoNome.trim() && planoValor) {
-      // Evitar duplicata se usuario voltou e avancou de novo
-      const jaExiste = planosCriados.some(p => p.nome === planoNome.trim())
-      if (jaExiste) {
-        await saveStep(3)
-        setStep(4)
-        return
-      }
+    if (saving) return
+    setSaving(true)
+    try {
+      if (planoNome.trim() && planoValor) {
+        const jaExiste = planosCriados.some(p => p.nome === planoNome.trim())
+        if (!jaExiste) {
+          const valor = parseFloat(planoValor)
+          if (valor <= 0) {
+            showToast('Valor deve ser maior que zero', 'warning')
+            setSaving(false)
+            return
+          }
+          const { data, error } = await supabase.from('planos').insert({
+            user_id: userId,
+            nome: planoNome.trim(),
+            valor,
+            ativo: true
+          }).select()
 
-      const valor = parseFloat(planoValor)
-      if (valor <= 0) {
-        showToast('Valor deve ser maior que zero', 'warning')
-        return
+          if (!error && data) {
+            setPlanosCriados(prev => [...prev, data[0]])
+            showToast(`Plano "${planoNome}" criado!`, 'success')
+          }
+        }
       }
-      setSaving(true)
-      const { data, error } = await supabase.from('planos').insert({
-        user_id: userId,
-        nome: planoNome.trim(),
-        valor,
-        ativo: true
-      }).select()
-
-      if (!error && data) {
-        setPlanosCriados(prev => [...prev, data[0]])
-        showToast(`Plano "${planoNome}" criado!`, 'success')
-      }
+      await saveStep(3)
+      setStep(4)
+    } catch (error) {
+      showToast('Erro ao salvar. Tente novamente.', 'error')
+    } finally {
       setSaving(false)
     }
-    await saveStep(3)
-    setStep(4)
   }
 
   // Step 4: Adicionar cliente manual
   const handleAdicionarCliente = async () => {
+    if (saving) return
     if (!clienteNome.trim()) {
       showToast('Informe o nome do aluno', 'warning')
       return
@@ -145,27 +167,38 @@ export default function Onboarding() {
     }
 
     setSaving(true)
-    const { data, error } = await supabase.from('devedores').insert({
-      user_id: userId,
-      nome: clienteNome.trim(),
-      telefone: clienteTelefone.replace(/\D/g, ''),
-      assinatura_ativa: false,
-      valor_devido: 0,
-      data_vencimento: new Date().toISOString().split('T')[0],
-      status: 'pendente',
-      portal_token: crypto.randomUUID().replace(/-/g, '')
-    }).select()
+    try {
+      const { data, error } = await supabase.from('devedores').insert({
+        user_id: userId,
+        nome: clienteNome.trim(),
+        telefone: clienteTelefone.replace(/\D/g, ''),
+        assinatura_ativa: false,
+        valor_devido: 0,
+        data_vencimento: new Date().toISOString().split('T')[0],
+        status: 'pendente',
+        portal_token: crypto.randomUUID().replace(/-/g, '')
+      }).select()
 
-    if (!error && data) {
-      setClientesCriados(prev => [...prev, data[0]])
-      setClienteNome('')
-      setClienteTelefone('')
-      showToast('Aluno adicionado!', 'success')
-    } else {
+      if (!error && data) {
+        setClientesCriados(prev => [...prev, data[0]])
+        setClienteNome('')
+        setClienteTelefone('')
+        showToast('Aluno adicionado!', 'success')
+      } else {
+        showToast('Erro ao adicionar aluno', 'error')
+      }
+    } catch (error) {
       showToast('Erro ao adicionar aluno', 'error')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
+
+  if (!userId) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#344848' }}>
+      Carregando...
+    </div>
+  )
 
   return (
     <div className="onboarding-page">
