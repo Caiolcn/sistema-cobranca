@@ -9,13 +9,15 @@ function parseDate(str) {
 
   const cleaned = str.trim()
 
-  // Formato DD/MM/AAAA ou DD-MM-AAAA (mais comum no Brasil)
-  const brMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  // Formato DD/MM/AAAA ou DD-MM-AAAA ou DD/MM/AA (mais comum no Brasil)
+  const brMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
   if (brMatch) {
-    const [, day, month, year] = brMatch
+    const [, day, month, yearStr] = brMatch
     const d = parseInt(day, 10)
     const m = parseInt(month, 10)
-    const y = parseInt(year, 10)
+    let y = parseInt(yearStr, 10)
+    // Ano com 2 dígitos: 00-49 → 2000-2049, 50-99 → 1950-1999
+    if (y < 100) y += y < 50 ? 2000 : 1900
     if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
       const date = new Date(y, m - 1, d)
       if (!isNaN(date.getTime())) {
