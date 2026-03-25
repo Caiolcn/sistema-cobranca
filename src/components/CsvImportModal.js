@@ -142,21 +142,31 @@ export default function CsvImportModal({
   }
 
   const runValidation = () => {
-    const phonesSeen = new Set()
+    // Mapa: telefone → nome do primeiro aluno com esse número (para detectar irmãos)
+    const phoneFirstName = new Map()
     const valid = []
     const invalid = []
 
     rows.forEach((row, index) => {
       const result = validateRow(row, columnMapping, existingPhones, planos)
 
-      // Checar duplicata interna no CSV
-      if (result.data.telefone && phonesSeen.has(result.data.telefone)) {
-        result.valid = false
-        result.errors.push('Telefone duplicado no arquivo')
-      }
+      if (result.valid && result.data.telefone) {
+        const phone = result.data.telefone
+        const isPhoneDuplicateInCSV = phoneFirstName.has(phone)
+        const isPhoneInDB = existingPhones.has(phone)
 
-      if (result.data.telefone) {
-        phonesSeen.add(result.data.telefone)
+        if (isPhoneDuplicateInCSV || isPhoneInDB) {
+          // Irmão detectado — preencher responsável automaticamente
+          const responsavelNome = isPhoneDuplicateInCSV
+            ? phoneFirstName.get(phone)
+            : existingClients.find(c => c.telefone?.replace(/\D/g, '') === phone)?.nome || 'Responsável'
+          result.data.responsavel_nome = responsavelNome
+          result.data.responsavel_telefone = phone
+        }
+
+        if (!phoneFirstName.has(phone)) {
+          phoneFirstName.set(phone, result.data.nome)
+        }
       }
 
       if (result.valid) {
@@ -192,7 +202,10 @@ export default function CsvImportModal({
         valor_devido: 0,
         data_vencimento: item.data.data_vencimento || new Date().toISOString().split('T')[0],
         status: 'pendente',
-        portal_token: crypto.randomUUID().replace(/-/g, '')
+        portal_token: crypto.randomUUID().replace(/-/g, ''),
+        // Irmãos: preencher responsável automaticamente
+        responsavel_nome: item.data.responsavel_nome || null,
+        responsavel_telefone: item.data.responsavel_telefone || null
       }))
 
       const { data, error } = await supabase

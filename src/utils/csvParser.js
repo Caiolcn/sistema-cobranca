@@ -171,8 +171,6 @@ export function validateRow(row, mapping, existingPhones, planos) {
     errors.push('Telefone obrigatório')
   } else if (!validarTelefone(data.telefone)) {
     errors.push('Telefone inválido')
-  } else if (existingPhones.has(data.telefone)) {
-    errors.push('Telefone já cadastrado')
   }
 
   // CPF (opcional)
