@@ -8,6 +8,7 @@ import PlanExpirationBanner from './PlanExpirationBanner'
 import { useTrialStatus } from './useTrialStatus'
 import { useUser } from './contexts/UserContext'
 import { usePaymentNotifications } from './hooks/usePaymentNotifications'
+import { useAgendamentoNotifications } from './hooks/useAgendamentoNotifications'
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 
@@ -31,8 +32,9 @@ export default function Dashboard() {
   const [adminClientes, setAdminClientes] = useState([])
   const [adminBarVisivel, setAdminBarVisivel] = useState(true)
 
-  // Notificacoes em tempo real de pagamentos
+  // Notificacoes em tempo real de pagamentos e agendamentos
   usePaymentNotifications(realUserId || userId)
+  useAgendamentoNotifications(realUserId || userId)
 
   // Determinar tela ativa pela rota atual
   const telaAtiva = location.pathname.replace('/app/', '') || 'home'

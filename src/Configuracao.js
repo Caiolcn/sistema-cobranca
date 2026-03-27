@@ -130,6 +130,15 @@ function Configuracao() {
   // Logo upload
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
+  // Agendamento Online
+  const [agendamentoConfig, setAgendamentoConfig] = useState({
+    slug: '',
+    ativo: false,
+    antecedenciaHoras: 2
+  })
+  const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
+  const [gerandoSlug, setGerandoSlug] = useState(false)
+
   // Automação WhatsApp - REMOVIDO (movido para /whatsapp)
   // const [configAutomacao, setConfigAutomacao] = useState({...})
   // const [testando, setTestando] = useState(false)
@@ -141,7 +150,7 @@ function Configuracao() {
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade', 'integracoes'].includes(abaUrl)) {
+    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade', 'integracoes', 'agendamento'].includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
   }, [searchParams])
@@ -196,6 +205,13 @@ function Configuracao() {
       })
       // Carregar modo de integração
       setModoIntegracao(data.modo_integracao || 'manual')
+
+      // Carregar config de agendamento
+      setAgendamentoConfig({
+        slug: data.agendamento_slug || '',
+        ativo: data.agendamento_ativo || false,
+        antecedenciaHoras: data.agendamento_antecedencia_horas || 2
+      })
     }
   }
 
@@ -2949,6 +2965,239 @@ function Configuracao() {
   // A configuração de automações agora está integrada na página de templates
 
   // ==========================================
+  // AGENDAMENTO ONLINE
+  // ==========================================
+
+  const gerarSlug = async () => {
+    if (!dadosEmpresa.nomeEmpresa) {
+      showToast('Preencha o nome da empresa primeiro', 'warning')
+      return
+    }
+    setGerandoSlug(true)
+    try {
+      const { data, error } = await supabase.rpc('gerar_agendamento_slug', { nome_empresa: dadosEmpresa.nomeEmpresa })
+      if (error) throw error
+      setAgendamentoConfig(prev => ({ ...prev, slug: data }))
+      showToast('Slug gerado!', 'success')
+    } catch (err) {
+      console.error('Erro ao gerar slug:', err)
+      // Fallback: gerar localmente
+      let slug = dadosEmpresa.nomeEmpresa.toLowerCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      setAgendamentoConfig(prev => ({ ...prev, slug }))
+    }
+    setGerandoSlug(false)
+  }
+
+  const salvarAgendamento = async () => {
+    if (agendamentoConfig.ativo && !agendamentoConfig.slug) {
+      showToast('Defina um slug antes de ativar', 'warning')
+      return
+    }
+    setSalvandoAgendamento(true)
+    try {
+      const { error } = await supabase
+        .from('usuarios')
+        .update({
+          agendamento_slug: agendamentoConfig.slug || null,
+          agendamento_ativo: agendamentoConfig.ativo,
+          agendamento_antecedencia_horas: agendamentoConfig.antecedenciaHoras
+        })
+        .eq('id', contextUserId)
+
+      if (error) throw error
+      showToast('Configuração de agendamento salva!', 'success')
+    } catch (err) {
+      console.error('Erro ao salvar agendamento:', err)
+      showToast('Erro ao salvar: ' + (err.message || 'erro desconhecido'), 'error')
+    }
+    setSalvandoAgendamento(false)
+  }
+
+  const copiarLinkAgendamento = () => {
+    const link = `${window.location.origin}/agendar/${agendamentoConfig.slug}`
+    navigator.clipboard.writeText(link).then(() => {
+      showToast('Link copiado!', 'success')
+    }).catch(() => {
+      showToast('Erro ao copiar', 'error')
+    })
+  }
+
+  const renderAgendamento = () => (
+    <div style={{ maxWidth: '600px' }}>
+      <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
+        Agendamento Online
+      </h3>
+      <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#888' }}>
+        Permita que seus alunos agendem e cancelem aulas por um link público
+      </p>
+
+      {/* Toggle Ativar */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '16px', backgroundColor: agendamentoConfig.ativo ? '#f0fdf4' : '#f9fafb',
+        borderRadius: '10px', marginBottom: '20px',
+        border: agendamentoConfig.ativo ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Icon icon={agendamentoConfig.ativo ? 'mdi:calendar-check' : 'mdi:calendar-remove'} width="24"
+            style={{ color: agendamentoConfig.ativo ? '#16a34a' : '#999' }} />
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>
+              {agendamentoConfig.ativo ? 'Agendamento ativo' : 'Agendamento desativado'}
+            </div>
+            <div style={{ fontSize: '12px', color: '#888' }}>
+              {agendamentoConfig.ativo ? 'Alunos podem agendar pelo link' : 'Link de agendamento está offline'}
+            </div>
+          </div>
+        </div>
+        <div
+          onClick={() => setAgendamentoConfig(prev => ({ ...prev, ativo: !prev.ativo }))}
+          style={{
+            width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
+            backgroundColor: agendamentoConfig.ativo ? '#16a34a' : '#d1d5db',
+            position: 'relative', transition: 'background-color 0.2s'
+          }}
+        >
+          <div style={{
+            width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
+            position: 'absolute', top: '2px',
+            left: agendamentoConfig.ativo ? '22px' : '2px',
+            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+          }} />
+        </div>
+      </div>
+
+      {/* Slug */}
+      <div style={{ marginBottom: '20px' }}>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+          Link de agendamento
+        </label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{
+            flex: 1, display: 'flex', alignItems: 'center',
+            border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9fafb'
+          }}>
+            <span style={{ padding: '10px 0 10px 12px', fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>
+              /agendar/
+            </span>
+            <input
+              type="text"
+              value={agendamentoConfig.slug}
+              onChange={e => setAgendamentoConfig(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+              placeholder="minha-empresa"
+              style={{
+                flex: 1, padding: '10px 12px 10px 0', border: 'none', outline: 'none',
+                fontSize: '14px', fontWeight: '500', backgroundColor: 'transparent', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          <button
+            onClick={gerarSlug}
+            disabled={gerandoSlug}
+            style={{
+              padding: '10px 14px', backgroundColor: '#f3f4f6', border: '1px solid #ddd',
+              borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+              fontSize: '12px', fontWeight: '600', color: '#555'
+            }}
+          >
+            <Icon icon="mdi:auto-fix" width="16" />
+            {gerandoSlug ? '...' : 'Gerar'}
+          </button>
+        </div>
+        {agendamentoConfig.slug && (
+          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <code style={{
+              flex: 1, fontSize: '12px', padding: '8px 12px', backgroundColor: '#f1f5f9',
+              borderRadius: '6px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {window.location.origin}/agendar/{agendamentoConfig.slug}
+            </code>
+            <button
+              onClick={copiarLinkAgendamento}
+              style={{
+                padding: '8px 12px', backgroundColor: '#344848', color: 'white',
+                border: 'none', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px'
+              }}
+            >
+              <Icon icon="mdi:content-copy" width="14" />
+              Copiar
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Antecedência */}
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+          Prazo mínimo para cancelamento
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="number"
+            min="0"
+            max="72"
+            value={agendamentoConfig.antecedenciaHoras}
+            onChange={e => setAgendamentoConfig(prev => ({ ...prev, antecedenciaHoras: parseInt(e.target.value) || 0 }))}
+            style={{
+              width: '80px', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+              fontSize: '16px', textAlign: 'center', boxSizing: 'border-box'
+            }}
+          />
+          <span style={{ fontSize: '14px', color: '#555' }}>horas antes da aula</span>
+        </div>
+        <p style={{ fontSize: '12px', color: '#888', margin: '6px 0 0' }}>
+          O aluno só pode cancelar se faltar mais que {agendamentoConfig.antecedenciaHoras}h para a aula
+        </p>
+      </div>
+
+      {/* Botão Salvar */}
+      <button
+        onClick={salvarAgendamento}
+        disabled={salvandoAgendamento}
+        style={{
+          padding: '12px 28px',
+          backgroundColor: salvandoAgendamento ? '#ccc' : '#344848',
+          color: 'white', border: 'none', borderRadius: '8px',
+          fontSize: '14px', fontWeight: '600',
+          cursor: salvandoAgendamento ? 'not-allowed' : 'pointer',
+          display: 'flex', alignItems: 'center', gap: '8px'
+        }}
+      >
+        {salvandoAgendamento ? (
+          <>
+            <Icon icon="eos-icons:loading" width="18" />
+            Salvando...
+          </>
+        ) : (
+          <>
+            <Icon icon="mdi:check" width="18" />
+            Salvar configuração
+          </>
+        )}
+      </button>
+
+      {/* Info box */}
+      <div style={{
+        marginTop: '24px', padding: '16px', backgroundColor: '#eef2ff',
+        borderRadius: '10px', border: '1px solid #c7d2fe'
+      }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Icon icon="mdi:information-outline" width="20" style={{ color: '#4338ca', flexShrink: 0, marginTop: '1px' }} />
+          <div style={{ fontSize: '13px', color: '#4338ca', lineHeight: '1.5' }}>
+            <strong>Como funciona:</strong> Crie as aulas na aba <strong>Horários → Agendamento</strong>,
+            ative aqui e compartilhe o link. Alunos cadastrados se identificam pelo telefone.
+            Novos alunos preenchem nome e telefone e entram como aula experimental.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ==========================================
   // MAIN RENDER
   // ==========================================
 
@@ -2957,7 +3206,8 @@ function Configuracao() {
     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
     { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
-    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
+    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
+    { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' }
   ]
 
   // Encontrar a aba atual para mostrar no header mobile
@@ -3051,6 +3301,7 @@ function Configuracao() {
               {abaAtiva === 'integracoes' && renderIntegracoes()}
               {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
+              {abaAtiva === 'agendamento' && renderAgendamento()}
             </>
           )}
         </div>
