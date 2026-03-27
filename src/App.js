@@ -29,6 +29,7 @@ const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
 const CRM = lazy(() => import('./CRM'))
 const Avisos = lazy(() => import('./Avisos'))
+const Agendamento = lazy(() => import('./pages/Agendamento'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -83,6 +84,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
               <Route path="/portal/:token" element={<PortalCliente />} />
+              <Route path="/agendar/:slug" element={<Agendamento />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (

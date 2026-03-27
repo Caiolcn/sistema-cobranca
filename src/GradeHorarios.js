@@ -57,7 +57,23 @@ export default function GradeHorarios() {
   const [enviarNotifPresenca, setEnviarNotifPresenca] = useState(false)
 
   // Vista
-  const [vistaAtual, setVistaAtual] = useState('semana') // 'hoje' | 'semana'
+  const [vistaAtual, setVistaAtual] = useState('semana') // 'hoje' | 'semana' | 'agendamento'
+
+  // Agendamento Online
+  const [aulasAgendamento, setAulasAgendamento] = useState([])
+  const [agendamentosOnline, setAgendamentosOnline] = useState([])
+  const [loadingAgendamento, setLoadingAgendamento] = useState(false)
+  const [mostrarModalAula, setMostrarModalAula] = useState(false)
+  const [editandoAula, setEditandoAula] = useState(null)
+  const [formAulaDias, setFormAulaDias] = useState([1])
+  const [formAulaHorario, setFormAulaHorario] = useState('09:00')
+  const [formAulaDescricao, setFormAulaDescricao] = useState('')
+  const [formAulaCapacidade, setFormAulaCapacidade] = useState(10)
+  const [salvandoAula, setSalvandoAula] = useState(false)
+  const [confirmDeleteAula, setConfirmDeleteAula] = useState({ show: false, aula: null })
+  const [filtroAgendamentoDia, setFiltroAgendamentoDia] = useState('todos')
+  const [formAulaHorarioFim, setFormAulaHorarioFim] = useState('18:00')
+  const [formAulaIntervalo, setFormAulaIntervalo] = useState(60) // minutos
 
   // Presença
   const [presencasHoje, setPresencasHoje] = useState({}) // { grade_horario_id: { id, presente, observacao } }
@@ -132,6 +148,36 @@ export default function GradeHorarios() {
   useEffect(() => {
     carregarDados()
   }, [carregarDados])
+
+  // Carregar dados de agendamento online
+  const carregarAgendamento = useCallback(async () => {
+    if (!userId) return
+    setLoadingAgendamento(true)
+
+    const [aulasRes, agRes] = await Promise.all([
+      supabase
+        .from('aulas')
+        .select('*')
+        .eq('user_id', userId)
+        .order('dia_semana')
+        .order('horario'),
+      supabase
+        .from('agendamentos')
+        .select('*, devedores(nome, telefone, origem)')
+        .eq('user_id', userId)
+        .eq('status', 'confirmado')
+        .gte('data', hojeStr)
+        .order('data')
+    ])
+
+    if (aulasRes.data) setAulasAgendamento(aulasRes.data)
+    if (agRes.data) setAgendamentosOnline(agRes.data)
+    setLoadingAgendamento(false)
+  }, [userId, hojeStr])
+
+  useEffect(() => {
+    if (vistaAtual === 'agendamento') carregarAgendamento()
+  }, [vistaAtual, carregarAgendamento])
 
   // Salvar config de notificação
   const toggleNotifPresenca = async (novoValor) => {
@@ -449,6 +495,142 @@ export default function GradeHorarios() {
     setSalvandoPresenca(false)
   }
 
+  // ===== CRUD Aulas de Agendamento Online =====
+  const abrirModalNovaAula = () => {
+    setEditandoAula(null)
+    setFormAulaDias([1, 2, 3, 4, 5])
+    setFormAulaHorario('09:00')
+    setFormAulaHorarioFim('18:00')
+    setFormAulaIntervalo(60)
+    setFormAulaDescricao('')
+    setFormAulaCapacidade(10)
+    setMostrarModalAula(true)
+  }
+
+  const abrirModalEditarAula = (aula) => {
+    setEditandoAula(aula)
+    setFormAulaDias([aula.dia_semana])
+    setFormAulaHorario(aula.horario?.substring(0, 5) || '09:00')
+    setFormAulaDescricao(aula.descricao || '')
+    setFormAulaCapacidade(aula.capacidade || 10)
+    setMostrarModalAula(true)
+  }
+
+  // Gerar lista de horários entre inicio e fim com intervalo
+  const gerarHorarios = (inicio, fim, intervaloMin) => {
+    const horarios = []
+    const [hI, mI] = inicio.split(':').map(Number)
+    const [hF, mF] = fim.split(':').map(Number)
+    let minAtual = hI * 60 + mI
+    const minFim = hF * 60 + mF
+    while (minAtual < minFim) {
+      const h = String(Math.floor(minAtual / 60)).padStart(2, '0')
+      const m = String(minAtual % 60).padStart(2, '0')
+      horarios.push(`${h}:${m}`)
+      minAtual += intervaloMin
+    }
+    return horarios
+  }
+
+  const salvarAula = async () => {
+    if (!formAulaHorario) { showToast('Informe o horário', 'warning'); return }
+    if (formAulaDias.length === 0) { showToast('Selecione pelo menos um dia', 'warning'); return }
+    if (formAulaCapacidade < 1) { showToast('Capacidade mínima é 1', 'warning'); return }
+
+    setSalvandoAula(true)
+
+    if (editandoAula) {
+      const { error } = await supabase
+        .from('aulas')
+        .update({
+          dia_semana: formAulaDias[0],
+          horario: formAulaHorario,
+          descricao: formAulaDescricao.trim(),
+          capacidade: formAulaCapacidade,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editandoAula.id)
+
+      if (error) {
+        showToast('Erro ao atualizar: ' + error.message, 'error')
+      } else {
+        showToast('Aula atualizada!', 'success')
+        setMostrarModalAula(false)
+        carregarAgendamento()
+      }
+    } else {
+      // Gerar todos os horários entre inicio e fim
+      const horarios = gerarHorarios(formAulaHorario, formAulaHorarioFim, formAulaIntervalo)
+
+      if (horarios.length === 0) {
+        showToast('Horário de início deve ser menor que o de fim', 'warning')
+        setSalvandoAula(false)
+        return
+      }
+
+      // Criar registro para cada dia × horário
+      const registros = []
+      for (const dia of formAulaDias) {
+        for (const horario of horarios) {
+          registros.push({
+            user_id: userId,
+            dia_semana: dia,
+            horario,
+            descricao: formAulaDescricao.trim(),
+            capacidade: formAulaCapacidade
+          })
+        }
+      }
+
+      const { error } = await supabase.from('aulas').insert(registros)
+
+      if (error) {
+        showToast('Erro ao criar: ' + error.message, 'error')
+      } else {
+        showToast(`${registros.length} aulas criadas! (${formAulaDias.length} dia(s) × ${horarios.length} horário(s))`, 'success')
+        setMostrarModalAula(false)
+        carregarAgendamento()
+      }
+    }
+    setSalvandoAula(false)
+  }
+
+  const excluirAula = async (id) => {
+    const { error } = await supabase.from('aulas').delete().eq('id', id)
+    if (error) {
+      showToast('Erro ao excluir: ' + error.message, 'error')
+    } else {
+      showToast('Aula removida!', 'success')
+      setAulasAgendamento(prev => prev.filter(a => a.id !== id))
+    }
+    setConfirmDeleteAula({ show: false, aula: null })
+  }
+
+  const toggleAtivoAula = async (aula) => {
+    const { error } = await supabase
+      .from('aulas')
+      .update({ ativo: !aula.ativo, updated_at: new Date().toISOString() })
+      .eq('id', aula.id)
+    if (!error) {
+      setAulasAgendamento(prev => prev.map(a => a.id === aula.id ? { ...a, ativo: !a.ativo } : a))
+    }
+  }
+
+  // Agrupar aulas agendamento por dia
+  const aulasAgendamentoAgrupadas = DIAS_SEMANA.reduce((acc, dia) => {
+    const filtradas = aulasAgendamento.filter(a => {
+      if (filtroAgendamentoDia !== 'todos' && a.dia_semana !== Number(filtroAgendamentoDia)) return false
+      return a.dia_semana === dia.valor
+    })
+    if (filtradas.length > 0) acc.push({ dia, aulas: filtradas })
+    return acc
+  }, [])
+
+  // Contar agendamentos por aula
+  const contagemAgendamentos = (aulaId) => {
+    return agendamentosOnline.filter(a => a.aula_id === aulaId).length
+  }
+
   // Contadores
   const totalHorarios = horarios.length
   const totalAtivos = horarios.filter(h => h.ativo).length
@@ -537,7 +719,8 @@ export default function GradeHorarios() {
       }}>
         {[
           { value: 'hoje', label: 'Hoje', icon: 'mdi:calendar-today' },
-          { value: 'semana', label: 'Semana', icon: 'mdi:calendar-week' }
+          { value: 'semana', label: 'Semana', icon: 'mdi:calendar-week' },
+          { value: 'agendamento', label: isMobile ? 'Online' : 'Agendamento', icon: 'mdi:calendar-cursor' }
         ].map(v => (
           <button
             key={v.value}
@@ -1530,6 +1713,438 @@ export default function GradeHorarios() {
       )}
 
       {/* Modal de Presença */}
+      {/* ===== VISTA AGENDAMENTO ONLINE ===== */}
+      {vistaAtual === 'agendamento' && (
+        <div>
+          {/* Header + Adicionar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'inline-flex', gap: '4px', backgroundColor: '#f3f4f6',
+              borderRadius: '10px', padding: '4px', flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={() => setFiltroAgendamentoDia('todos')}
+                style={{
+                  padding: '8px 14px', borderRadius: '8px', border: 'none',
+                  backgroundColor: filtroAgendamentoDia === 'todos' ? 'white' : 'transparent',
+                  color: filtroAgendamentoDia === 'todos' ? '#1a1a1a' : '#555',
+                  fontSize: isMobile ? '12px' : '13px', fontWeight: filtroAgendamentoDia === 'todos' ? '600' : '400',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  boxShadow: filtroAgendamentoDia === 'todos' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                }}
+              >
+                Todos
+              </button>
+              {DIAS_SEMANA.map(dia => (
+                <button
+                  key={dia.valor}
+                  onClick={() => setFiltroAgendamentoDia(dia.valor.toString())}
+                  style={{
+                    padding: '8px 14px', borderRadius: '8px', border: 'none',
+                    backgroundColor: filtroAgendamentoDia === dia.valor.toString() ? 'white' : 'transparent',
+                    color: filtroAgendamentoDia === dia.valor.toString() ? '#1a1a1a' : '#555',
+                    fontSize: isMobile ? '12px' : '13px',
+                    fontWeight: filtroAgendamentoDia === dia.valor.toString() ? '600' : '400',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    boxShadow: filtroAgendamentoDia === dia.valor.toString() ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                  }}
+                >
+                  {dia.abrev}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={abrirModalNovaAula}
+              style={{
+                padding: isMobile ? '10px 14px' : '10px 20px',
+                backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '6px',
+                fontSize: '14px', fontWeight: '500', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px', transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#222'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#333'}
+            >
+              <Icon icon="mdi:plus" width="18" />
+              {!isMobile && 'Nova Aula'}
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            {[
+              { label: 'Aulas', value: aulasAgendamento.filter(a => a.ativo).length, icon: 'mdi:calendar-clock', color: '#4338ca', bg: '#eef2ff' },
+              { label: 'Agendados', value: agendamentosOnline.length, icon: 'mdi:account-check', color: '#16a34a', bg: '#f0fdf4' },
+            ].map((s, i) => (
+              <div key={i} style={{
+                flex: 1, minWidth: '120px', padding: '14px 16px', backgroundColor: s.bg,
+                borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px'
+              }}>
+                <Icon icon={s.icon} width="22" style={{ color: s.color }} />
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: '11px', color: '#666' }}>{s.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {loadingAgendamento ? (
+            <SkeletonList count={4} />
+          ) : aulasAgendamento.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#999' }}>
+              <Icon icon="mdi:calendar-plus" width="56" style={{ color: '#ccc', marginBottom: '12px' }} />
+              <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 6px' }}>Nenhuma aula cadastrada</p>
+              <p style={{ fontSize: '13px', margin: 0 }}>Crie aulas com horários e capacidade para seus alunos agendarem online</p>
+            </div>
+          ) : (
+            <div>
+              {aulasAgendamentoAgrupadas.map(grupo => (
+                <div key={grupo.dia.valor} style={{ marginBottom: '20px' }}>
+                  <div style={{
+                    fontSize: '13px', fontWeight: '700', color: '#344848', marginBottom: '8px',
+                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}>
+                    <div style={{
+                      width: '6px', height: '6px', borderRadius: '50%',
+                      backgroundColor: grupo.dia.valor === new Date().getDay() ? '#16a34a' : '#ccc'
+                    }} />
+                    {grupo.dia.label}
+                  </div>
+
+                  {grupo.aulas.map(aula => {
+                    const agendados = contagemAgendamentos(aula.id)
+                    const agendadosLista = agendamentosOnline.filter(a => a.aula_id === aula.id)
+
+                    return (
+                      <div key={aula.id} style={{
+                        marginBottom: '8px', padding: '14px 16px',
+                        border: '1px solid #eee', borderRadius: '10px',
+                        backgroundColor: aula.ativo ? '#fff' : '#fafafa',
+                        opacity: aula.ativo ? 1 : 0.6
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '40px', height: '40px', borderRadius: '10px',
+                              backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              <Icon icon="mdi:clock-outline" width="20" style={{ color: '#4338ca' }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>
+                                {aula.horario?.substring(0, 5)} {aula.descricao && `- ${aula.descricao}`}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>{agendados}/{aula.capacidade} vagas</span>
+                                {!aula.ativo && <span style={{ color: '#ef4444', fontWeight: '600' }}>Inativa</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button onClick={() => toggleAtivoAula(aula)} title={aula.ativo ? 'Desativar' : 'Ativar'}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                              <Icon icon={aula.ativo ? 'mdi:eye' : 'mdi:eye-off'} width="18" style={{ color: aula.ativo ? '#16a34a' : '#ccc' }} />
+                            </button>
+                            <button onClick={() => abrirModalEditarAula(aula)} title="Editar"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                              <Icon icon="mdi:pencil" width="18" style={{ color: '#666' }} />
+                            </button>
+                            <button onClick={() => setConfirmDeleteAula({ show: true, aula })} title="Excluir"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                              <Icon icon="mdi:delete-outline" width="18" style={{ color: '#ef4444' }} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Lista de agendados */}
+                        {agendadosLista.length > 0 && (
+                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#888', marginBottom: '6px', textTransform: 'uppercase' }}>
+                              Próximos agendados
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {agendadosLista.slice(0, 8).map(ag => {
+                                const isExperimental = ag.devedores?.origem === 'agendamento'
+                                return (
+                                <div key={ag.id} style={{
+                                  fontSize: '12px', padding: '4px 10px',
+                                  backgroundColor: isExperimental ? '#fef3c7' : '#f0fdf4',
+                                  borderRadius: '6px', color: isExperimental ? '#92400e' : '#16a34a', fontWeight: '500',
+                                  display: 'flex', alignItems: 'center', gap: '4px'
+                                }}>
+                                  <span>{ag.devedores?.nome?.split(' ')[0] || 'Aluno'}</span>
+                                  <span style={{ color: '#94a3b8', fontSize: '10px' }}>
+                                    {new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                  </span>
+                                  {isExperimental && (
+                                    <span style={{
+                                      fontSize: '9px', padding: '1px 5px', backgroundColor: '#f59e0b',
+                                      borderRadius: '4px', color: '#fff', fontWeight: '700', textTransform: 'uppercase'
+                                    }}>
+                                      Experimental
+                                    </span>
+                                  )}
+                                </div>
+                                )
+                              })}
+                              {agendadosLista.length > 8 && (
+                                <div style={{ fontSize: '12px', padding: '4px 10px', backgroundColor: '#f3f4f6', borderRadius: '6px', color: '#666' }}>
+                                  +{agendadosLista.length - 8}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal Criar/Editar Aula Agendamento */}
+      {mostrarModalAula && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white', borderRadius: '12px', padding: '24px',
+            width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                {editandoAula ? 'Editar Aula' : 'Liberar Horários'}
+              </h3>
+              <button onClick={() => setMostrarModalAula(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                <Icon icon="mdi:close" width="20" style={{ color: '#999' }} />
+              </button>
+            </div>
+
+            {/* Dias da semana */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                Dia(s) da semana
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {DIAS_SEMANA.map(dia => {
+                  const sel = formAulaDias.includes(dia.valor)
+                  return (
+                    <button
+                      key={dia.valor}
+                      onClick={() => {
+                        if (editandoAula) { setFormAulaDias([dia.valor]); return }
+                        setFormAulaDias(prev => {
+                          if (prev.includes(dia.valor)) {
+                            if (prev.length === 1) return prev
+                            return prev.filter(d => d !== dia.valor)
+                          }
+                          return [...prev, dia.valor]
+                        })
+                      }}
+                      style={{
+                        padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+                        border: sel ? '2px solid #344848' : '1px solid #ddd',
+                        backgroundColor: sel ? '#f0f4f4' : 'white',
+                        color: sel ? '#344848' : '#666', cursor: 'pointer'
+                      }}
+                    >
+                      {dia.abrev}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Horário */}
+            {editandoAula ? (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                  Horário
+                </label>
+                <input
+                  type="time"
+                  value={formAulaHorario}
+                  onChange={e => setFormAulaHorario(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                    fontSize: '16px', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                      Início
+                    </label>
+                    <input
+                      type="time"
+                      value={formAulaHorario}
+                      onChange={e => setFormAulaHorario(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                        fontSize: '16px', boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                      Fim
+                    </label>
+                    <input
+                      type="time"
+                      value={formAulaHorarioFim}
+                      onChange={e => setFormAulaHorarioFim(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                        fontSize: '16px', boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                    Intervalo entre aulas
+                  </label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[30, 60, 90, 120].map(min => (
+                      <button
+                        key={min}
+                        onClick={() => setFormAulaIntervalo(min)}
+                        style={{
+                          padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+                          border: formAulaIntervalo === min ? '2px solid #344848' : '1px solid #ddd',
+                          backgroundColor: formAulaIntervalo === min ? '#f0f4f4' : 'white',
+                          color: formAulaIntervalo === min ? '#344848' : '#666', cursor: 'pointer'
+                        }}
+                      >
+                        {min >= 60 ? `${min / 60}h` : `${min}min`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {(() => {
+                  const preview = []
+                  const [hI, mI] = formAulaHorario.split(':').map(Number)
+                  const [hF, mF] = formAulaHorarioFim.split(':').map(Number)
+                  let min = hI * 60 + mI
+                  const fim = hF * 60 + mF
+                  while (min < fim) {
+                    const h = String(Math.floor(min / 60)).padStart(2, '0')
+                    const m = String(min % 60).padStart(2, '0')
+                    preview.push(`${h}:${m}`)
+                    min += formAulaIntervalo
+                  }
+                  if (preview.length === 0) return null
+                  return (
+                    <div style={{
+                      marginBottom: '16px', padding: '12px', backgroundColor: '#f8fafc',
+                      borderRadius: '8px', border: '1px solid #e2e8f0'
+                    }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#888', marginBottom: '6px' }}>
+                        {preview.length} horário(s) × {formAulaDias.length} dia(s) = {preview.length * formAulaDias.length} aula(s)
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {preview.map(h => (
+                          <span key={h} style={{
+                            fontSize: '12px', padding: '3px 8px', backgroundColor: '#eef2ff',
+                            borderRadius: '4px', color: '#4338ca', fontWeight: '600'
+                          }}>
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </>
+            )}
+
+            {/* Descrição */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                Descrição (ex: Pilates, Yoga, Musculação)
+              </label>
+              <input
+                type="text"
+                value={formAulaDescricao}
+                onChange={e => setFormAulaDescricao(e.target.value)}
+                placeholder="Ex: Pilates avançado"
+                style={{
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                  fontSize: '14px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Capacidade */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                Capacidade (vagas)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={formAulaCapacidade}
+                onChange={e => setFormAulaCapacidade(parseInt(e.target.value) || 1)}
+                style={{
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                  fontSize: '16px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setMostrarModalAula(false)}
+                style={{
+                  flex: 1, padding: '12px', backgroundColor: '#f5f5f5', color: '#333',
+                  border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={salvarAula}
+                disabled={salvandoAula}
+                style={{
+                  flex: 2, padding: '12px',
+                  backgroundColor: salvandoAula ? '#ccc' : '#344848',
+                  color: 'white', border: 'none', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: '600',
+                  cursor: salvandoAula ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {salvandoAula ? 'Salvando...' : (editandoAula ? 'Salvar' : 'Criar')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Aula */}
+      <ConfirmModal
+        isOpen={confirmDeleteAula.show}
+        onClose={() => setConfirmDeleteAula({ show: false, aula: null })}
+        onConfirm={() => excluirAula(confirmDeleteAula.aula?.id)}
+        title="Excluir aula"
+        message={`Tem certeza que deseja excluir esta aula? Agendamentos futuros serão removidos.`}
+      />
+
       {mostrarModalPresenca && presencaAtual && (
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setMostrarModalPresenca(false) }}
