@@ -3025,7 +3025,7 @@ function Configuracao() {
   }
 
   const renderAgendamento = () => (
-    <div style={{ maxWidth: '600px' }}>
+    <div style={{ maxWidth: '600px', width: '100%', boxSizing: 'border-box' }}>
       <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
         Agendamento Online
       </h3>
@@ -3036,15 +3036,15 @@ function Configuracao() {
       {/* Toggle Ativar */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '16px', backgroundColor: agendamentoConfig.ativo ? '#f0fdf4' : '#f9fafb',
+        padding: isMobile ? '12px' : '16px', backgroundColor: agendamentoConfig.ativo ? '#f0fdf4' : '#f9fafb',
         borderRadius: '10px', marginBottom: '20px',
         border: agendamentoConfig.ativo ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Icon icon={agendamentoConfig.ativo ? 'mdi:calendar-check' : 'mdi:calendar-remove'} width="24"
-            style={{ color: agendamentoConfig.ativo ? '#16a34a' : '#999' }} />
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0, flex: 1 }}>
+          <Icon icon={agendamentoConfig.ativo ? 'mdi:calendar-check' : 'mdi:calendar-remove'} width={isMobile ? 20 : 24}
+            style={{ color: agendamentoConfig.ativo ? '#16a34a' : '#999', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#1a1a1a' }}>
               {agendamentoConfig.ativo ? 'Agendamento ativo' : 'Agendamento desativado'}
             </div>
             <div style={{ fontSize: '12px', color: '#888' }}>
@@ -3055,9 +3055,9 @@ function Configuracao() {
         <div
           onClick={() => setAgendamentoConfig(prev => ({ ...prev, ativo: !prev.ativo }))}
           style={{
-            width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
+            width: '44px', minWidth: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
             backgroundColor: agendamentoConfig.ativo ? '#16a34a' : '#d1d5db',
-            position: 'relative', transition: 'background-color 0.2s'
+            position: 'relative', transition: 'background-color 0.2s', marginLeft: '8px'
           }}
         >
           <div style={{
@@ -3074,9 +3074,9 @@ function Configuracao() {
         <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
           Link de agendamento
         </label>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           <div style={{
-            flex: 1, display: 'flex', alignItems: 'center',
+            flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
             border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9fafb'
           }}>
             <span style={{ padding: '10px 0 10px 12px', fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>
@@ -3088,7 +3088,7 @@ function Configuracao() {
               onChange={e => setAgendamentoConfig(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
               placeholder="minha-empresa"
               style={{
-                flex: 1, padding: '10px 12px 10px 0', border: 'none', outline: 'none',
+                flex: 1, minWidth: 0, padding: '10px 12px 10px 0', border: 'none', outline: 'none',
                 fontSize: '14px', fontWeight: '500', backgroundColor: 'transparent', boxSizing: 'border-box'
               }}
             />
@@ -3099,7 +3099,7 @@ function Configuracao() {
             style={{
               padding: '10px 14px', backgroundColor: '#f3f4f6', border: '1px solid #ddd',
               borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-              fontSize: '12px', fontWeight: '600', color: '#555'
+              fontSize: '12px', fontWeight: '600', color: '#555', flexShrink: 0
             }}
           >
             <Icon icon="mdi:auto-fix" width="16" />
@@ -3107,11 +3107,12 @@ function Configuracao() {
           </button>
         </div>
         {agendamentoConfig.slug && (
-          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
             <code style={{
-              flex: 1, fontSize: '12px', padding: '8px 12px', backgroundColor: '#f1f5f9',
+              flex: 1, minWidth: 0, fontSize: isMobile ? '11px' : '12px', padding: '8px 12px', backgroundColor: '#f1f5f9',
               borderRadius: '6px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap', display: 'block', boxSizing: 'border-box',
+              ...(isMobile ? { width: '100%' } : {})
             }}>
               {window.location.origin}/agendar/{agendamentoConfig.slug}
             </code>
@@ -3120,11 +3121,12 @@ function Configuracao() {
               style={{
                 padding: '8px 12px', backgroundColor: '#344848', color: 'white',
                 border: 'none', borderRadius: '6px', cursor: 'pointer',
-                fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px'
+                fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px',
+                flexShrink: 0, ...(isMobile ? { width: '100%', justifyContent: 'center' } : {})
               }}
             >
               <Icon icon="mdi:content-copy" width="14" />
-              Copiar
+              Copiar link
             </button>
           </div>
         )}
@@ -3164,7 +3166,8 @@ function Configuracao() {
           color: 'white', border: 'none', borderRadius: '8px',
           fontSize: '14px', fontWeight: '600',
           cursor: salvandoAgendamento ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', gap: '8px'
+          display: 'flex', alignItems: 'center', gap: '8px',
+          width: isMobile ? '100%' : 'auto', justifyContent: 'center'
         }}
       >
         {salvandoAgendamento ? (
@@ -3182,7 +3185,7 @@ function Configuracao() {
 
       {/* Info box */}
       <div style={{
-        marginTop: '24px', padding: '16px', backgroundColor: '#eef2ff',
+        marginTop: '24px', padding: isMobile ? '12px' : '16px', backgroundColor: '#eef2ff',
         borderRadius: '10px', border: '1px solid #c7d2fe'
       }}>
         <div style={{ display: 'flex', gap: '10px' }}>
