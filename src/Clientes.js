@@ -1213,15 +1213,29 @@ export default function Clientes() {
             const nomeEmpresa = usuarioData?.nome_empresa || 'nossa empresa'
             const primeiroNome = novoClienteNome.trim().split(' ')[0]
 
-            // Usar mensagem personalizada ou padrão
+            // Buscar template de boas-vindas salvo
+            const { data: templateWelcome } = await supabase
+              .from('templates')
+              .select('mensagem')
+              .eq('user_id', userId)
+              .eq('tipo', 'welcome')
+              .eq('ativo', true)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            // Usar mensagem personalizada inline > template salvo > padrão
             let mensagemFinal
             if (mensagemBoasVindasCustom && mensagemBoasVindasCustom.trim()) {
-              // Substituir placeholders na mensagem customizada
               mensagemFinal = mensagemBoasVindasCustom
                 .replace(/\[Nome\]/g, primeiroNome)
-                .replace(/{{nomeCliente}}/g, primeiroNome)
+                .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
+                .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
+            } else if (templateWelcome?.mensagem) {
+              mensagemFinal = templateWelcome.mensagem
+                .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
+                .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
             } else {
-              // Mensagem padrão
               mensagemFinal = `Olá, ${primeiroNome}! 👋
 
 Seja muito bem-vindo(a) à ${nomeEmpresa}!

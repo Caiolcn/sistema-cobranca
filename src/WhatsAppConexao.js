@@ -86,7 +86,21 @@ Confirmamos o recebimento do seu pagamento.
 💰 Valor: {{valorMensalidade}}
 📅 Vencimento: {{dataVencimento}}
 
-Obrigado pela pontualidade! - {{nomeEmpresa}}`
+Obrigado pela pontualidade! - {{nomeEmpresa}}`,
+
+  welcome: `Olá, {{nomeCliente}}! 👋
+
+Seja muito bem-vindo(a) à {{nomeEmpresa}}!
+
+Este é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:
+
+✅ Lembretes de vencimento
+✅ Confirmações de pagamento
+✅ Comunicados importantes
+
+*Salve nosso número* para não perder nenhuma mensagem!
+
+Qualquer dúvida, estamos à disposição.`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -127,7 +141,8 @@ export default function WhatsAppConexao() {
     pre_due_3days: null,
     due_day: null,
     overdue: null,
-    payment_confirmed: null
+    payment_confirmed: null,
+    welcome: null
   })
   const [tituloTemplate, setTituloTemplate] = useState('Lembrete - Vencimento Hoje')
   const [mensagemTemplate, setMensagemTemplate] = useState(TEMPLATES_PADRAO.due_day)
@@ -259,7 +274,8 @@ export default function WhatsAppConexao() {
           overdue: findBestTemplate('overdue'),
           class_reminder: findBestTemplate('class_reminder'),
           birthday: findBestTemplate('birthday'),
-          payment_confirmed: findBestTemplate('payment_confirmed')
+          payment_confirmed: findBestTemplate('payment_confirmed'),
+          welcome: findBestTemplate('welcome')
         }
 
         // 4.1 Criar templates que não existem automaticamente
@@ -268,7 +284,8 @@ export default function WhatsAppConexao() {
           { tipo: 'due_day', titulo: 'Lembrete - Vencimento Hoje', mensagem: TEMPLATES_PADRAO.due_day },
           { tipo: 'pre_due_3days', titulo: 'Lembrete - 3 Dias Antes do Vencimento', mensagem: TEMPLATES_PADRAO.pre_due_3days },
           { tipo: 'overdue', titulo: 'Cobrança - 3 Dias Após o Vencimento', mensagem: TEMPLATES_PADRAO.overdue },
-          { tipo: 'payment_confirmed', titulo: 'Confirmação de Pagamento', mensagem: TEMPLATES_PADRAO.payment_confirmed }
+          { tipo: 'payment_confirmed', titulo: 'Confirmação de Pagamento', mensagem: TEMPLATES_PADRAO.payment_confirmed },
+          { tipo: 'welcome', titulo: 'Boas-vindas', mensagem: TEMPLATES_PADRAO.welcome }
         ]
 
         for (const tmpl of templatesParaCriar) {
@@ -667,7 +684,11 @@ export default function WhatsAppConexao() {
           const agrupados = {
             pre_due_3days: findBest('pre_due_3days'),
             due_day: findBest('due_day'),
-            overdue: findBest('overdue')
+            overdue: findBest('overdue'),
+            class_reminder: findBest('class_reminder'),
+            birthday: findBest('birthday'),
+            payment_confirmed: findBest('payment_confirmed'),
+            welcome: findBest('welcome')
           }
           setTemplatesAgrupados(agrupados)
 
@@ -774,7 +795,9 @@ export default function WhatsAppConexao() {
         due_day: 'Lembrete - Vencimento Hoje',
         overdue: 'Cobrança - 3 Dias Após o Vencimento',
         class_reminder: 'Lembrete de Aula',
-        birthday: 'Mensagem de Aniversário'
+        birthday: 'Mensagem de Aniversário',
+        payment_confirmed: 'Confirmação de Pagamento',
+        welcome: 'Boas-vindas'
       }
 
       // Se já existe, verificar se precisa atualizar
@@ -1303,7 +1326,8 @@ export default function WhatsAppConexao() {
       overdue: 'Cobrança - 3 Dias Após o Vencimento',
       class_reminder: 'Lembrete de Aula',
       birthday: 'Mensagem de Aniversário',
-      payment_confirmed: 'Confirmação de Pagamento'
+      payment_confirmed: 'Confirmação de Pagamento',
+      welcome: 'Boas-vindas'
     }
     return titulos[tipo] || ''
   }
@@ -1391,7 +1415,10 @@ export default function WhatsAppConexao() {
         pre_due_3days: findBestTemplate('pre_due_3days'),
         due_day: findBestTemplate('due_day'),
         overdue: findBestTemplate('overdue'),
-        class_reminder: findBestTemplate('class_reminder')
+        class_reminder: findBestTemplate('class_reminder'),
+        birthday: findBestTemplate('birthday'),
+        payment_confirmed: findBestTemplate('payment_confirmed'),
+        welcome: findBestTemplate('welcome')
       }
 
       setTemplatesAgrupados(agrupados)
@@ -2074,7 +2101,8 @@ export default function WhatsAppConexao() {
                   { tipo: 'overdue', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked },
                   { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked },
                   { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked },
-                  { tipo: 'payment_confirmed', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false }
+                  { tipo: 'payment_confirmed', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
+                  { tipo: 'welcome', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true }
                 ].map((item) => (
                   <div
                     key={item.tipo}
@@ -2108,7 +2136,7 @@ export default function WhatsAppConexao() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      {item.locked ? (
+                      {item.semToggle ? null : item.locked ? (
                         <button onClick={(e) => { e.stopPropagation(); setUpgradeModal({ isOpen: true, featureName: item.nome }) }}
                           style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', backgroundColor: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', color: '#e65100' }}>
                           <Icon icon="mdi:lock" width="12" /> Pro
@@ -2541,7 +2569,12 @@ export default function WhatsAppConexao() {
                     Enviada automaticamente quando você marca uma mensalidade como paga
                   </p>
                 )}
-                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'payment_confirmed' && (
+                {tipoTemplateSelecionado === 'welcome' && (
+                  <p style={{ fontSize: '11px', color: '#8B5CF6', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    Enviada ao cadastrar novo aluno com boas-vindas ativada
+                  </p>
+                )}
+                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'payment_confirmed' && tipoTemplateSelecionado !== 'welcome' && (
                   <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
                     Nota: {`{{diasAtraso}}`} não está disponível para mensagens pré-vencimento
                   </p>
