@@ -71,6 +71,7 @@ export default function GradeHorarios() {
   const [formAulaCapacidade, setFormAulaCapacidade] = useState(10)
   const [salvandoAula, setSalvandoAula] = useState(false)
   const [confirmDeleteAula, setConfirmDeleteAula] = useState({ show: false, aula: null })
+  const [confirmRemoverAgendamento, setConfirmRemoverAgendamento] = useState({ show: false, agendamento: null })
   const [filtroAgendamentoDia, setFiltroAgendamentoDia] = useState('todos')
   const [formAulaHorarioFim, setFormAulaHorarioFim] = useState('18:00')
   const [formAulaIntervalo, setFormAulaIntervalo] = useState(60) // minutos
@@ -178,6 +179,39 @@ export default function GradeHorarios() {
   useEffect(() => {
     if (vistaAtual === 'agendamento') carregarAgendamento()
   }, [vistaAtual, carregarAgendamento])
+
+  // Cancelar agendamento pelo admin
+  const cancelarAgendamentoAdmin = async (agendamento) => {
+    try {
+      // 1. Cancelar agendamento
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ status: 'cancelado', cancelado_em: new Date().toISOString() })
+        .eq('id', agendamento.id)
+
+      if (error) throw error
+
+      // 2. Devolver crédito se aluno tem pacote
+      const { data: devedor } = await supabase
+        .from('devedores')
+        .select('aulas_restantes')
+        .eq('id', agendamento.devedor_id)
+        .single()
+
+      if (devedor && devedor.aulas_restantes !== null) {
+        await supabase
+          .from('devedores')
+          .update({ aulas_restantes: devedor.aulas_restantes + 1 })
+          .eq('id', agendamento.devedor_id)
+      }
+
+      showToast(`${agendamento?.devedores?.nome?.split(' ')[0] || 'Aluno'} removido do horário`, 'success')
+      carregarAgendamento()
+    } catch (err) {
+      console.error('Erro ao cancelar agendamento:', err)
+      showToast('Erro ao remover aluno', 'error')
+    }
+  }
 
   // Salvar config de notificação
   const toggleNotifPresenca = async (novoValor) => {
@@ -1887,6 +1921,17 @@ export default function GradeHorarios() {
                                       Experimental
                                     </span>
                                   )}
+                                  <span
+                                    onClick={(e) => { e.stopPropagation(); setConfirmRemoverAgendamento({ show: true, agendamento: ag }) }}
+                                    style={{
+                                      cursor: 'pointer', marginLeft: '2px', color: '#ef4444',
+                                      fontSize: '14px', fontWeight: '700', lineHeight: '1',
+                                      display: 'flex', alignItems: 'center'
+                                    }}
+                                    title="Remover aluno deste horário"
+                                  >
+                                    ×
+                                  </span>
                                 </div>
                                 )
                               })}
@@ -2143,6 +2188,19 @@ export default function GradeHorarios() {
         onConfirm={() => excluirAula(confirmDeleteAula.aula?.id)}
         title="Excluir aula"
         message={`Tem certeza que deseja excluir esta aula? Agendamentos futuros serão removidos.`}
+      />
+
+      <ConfirmModal
+        isOpen={confirmRemoverAgendamento.show}
+        onClose={() => setConfirmRemoverAgendamento({ show: false, agendamento: null })}
+        onConfirm={() => {
+          cancelarAgendamentoAdmin(confirmRemoverAgendamento.agendamento)
+          setConfirmRemoverAgendamento({ show: false, agendamento: null })
+        }}
+        title="Remover aluno do horário"
+        message={`Tem certeza que deseja remover ${confirmRemoverAgendamento.agendamento?.devedores?.nome?.split(' ')[0] || 'este aluno'} deste horário?`}
+        confirmText="Remover"
+        confirmColor="#ef4444"
       />
 
       {mostrarModalPresenca && presencaAtual && (
