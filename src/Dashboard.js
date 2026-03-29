@@ -473,8 +473,10 @@ export default function Dashboard() {
                   {[
                     { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
                     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
+                    { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
                     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
-                    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' }
+                    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
+                    { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' }
                   ].map((item) => (
                     <div
                       key={item.id}
