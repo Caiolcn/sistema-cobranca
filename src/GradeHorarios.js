@@ -79,6 +79,7 @@ export default function GradeHorarios() {
   const [aulaParaFixo, setAulaParaFixo] = useState(null)
   const [fixoClienteId, setFixoClienteId] = useState('')
   const [confirmRemoverFixo, setConfirmRemoverFixo] = useState({ show: false, fixo: null })
+  const [listaEspera, setListaEspera] = useState([]) // lista_espera com devedores join
   const [filtroAgendamentoDia, setFiltroAgendamentoDia] = useState('todos')
   const [formAulaHorarioFim, setFormAulaHorarioFim] = useState('18:00')
   const [formAulaIntervalo, setFormAulaIntervalo] = useState(60) // minutos
@@ -190,9 +191,18 @@ export default function GradeHorarios() {
         .eq('user_id', userId)
     ])
 
+    // Buscar lista de espera
+    const { data: filaRes } = await supabase
+      .from('lista_espera')
+      .select('*, devedores(nome, telefone)')
+      .eq('user_id', userId)
+      .eq('status', 'aguardando')
+      .order('posicao')
+
     if (aulasRes.data) setAulasAgendamento(aulasRes.data)
     if (agRes.data) setAgendamentosOnline(agRes.data)
     if (fixosRes.data) setFixosAulas(fixosRes.data)
+    if (filaRes) setListaEspera(filaRes)
 
     // Carregar presenças de hoje por aula_id
     const { data: presAgData } = await supabase
@@ -821,6 +831,10 @@ export default function GradeHorarios() {
 
   const totalOcupado = (aulaId) => {
     return contagemFixos(aulaId) + contagemAgendamentos(aulaId)
+  }
+
+  const contagemFilaEspera = (aulaId) => {
+    return listaEspera.filter(f => f.aula_id === aulaId).length
   }
 
   // Contadores
@@ -2040,8 +2054,10 @@ export default function GradeHorarios() {
                     const nFixos = contagemFixos(aula.id)
                     const nAgendados = contagemAgendamentos(aula.id)
                     const nTotal = nFixos + nAgendados
+                    const nFila = contagemFilaEspera(aula.id)
                     const fixosDaAula = fixosAulas.filter(f => f.aula_id === aula.id)
                     const agendadosLista = agendamentosOnline.filter(a => a.aula_id === aula.id)
+                    const filaDaAula = listaEspera.filter(f => f.aula_id === aula.id)
 
                     return (
                       <div key={aula.id} style={{
@@ -2065,6 +2081,7 @@ export default function GradeHorarios() {
                               <div style={{ fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span>{nTotal}/{aula.capacidade} vagas</span>
                                 {nFixos > 0 && <span style={{ color: '#b45309' }}>({nFixos} fixo{nFixos > 1 ? 's' : ''})</span>}
+                                {nFila > 0 && <span style={{ color: '#f59e0b' }}>({nFila} na fila)</span>}
                                 {!aula.ativo && <span style={{ color: '#ef4444', fontWeight: '600' }}>Inativa</span>}
                               </div>
                             </div>
@@ -2191,6 +2208,28 @@ export default function GradeHorarios() {
                                   +{agendadosLista.length - 8}
                                 </div>
                               )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Lista de espera */}
+                        {filaDaAula.length > 0 && (
+                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#f59e0b', marginBottom: '6px', textTransform: 'uppercase' }}>
+                              Lista de espera ({filaDaAula.length})
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {filaDaAula.map(fila => (
+                                <div key={fila.id} style={{
+                                  fontSize: '12px', padding: '4px 10px',
+                                  backgroundColor: '#fef3c7', borderRadius: '6px', color: '#92400e', fontWeight: '500',
+                                  display: 'flex', alignItems: 'center', gap: '4px'
+                                }}>
+                                  <Icon icon="mdi:clock-outline" width="12" style={{ color: '#f59e0b' }} />
+                                  <span>{fila.posicao}º</span>
+                                  <span>{fila.devedores?.nome?.split(' ')[0] || 'Aluno'}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}

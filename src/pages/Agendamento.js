@@ -43,6 +43,7 @@ export default function Agendamento() {
   const [aulas, setAulas] = useState([])
   const [contagemAgendamentos, setContagemAgendamentos] = useState({})
   const [contagemFixos, setContagemFixos] = useState({}) // { aulaId: count }
+  const [contagemFila, setContagemFila] = useState({}) // { aulaId_data: count }
 
   // Identificacao
   const [etapa, setEtapa] = useState('telefone') // telefone | nome | selecionar | grade
@@ -53,6 +54,11 @@ export default function Agendamento() {
   const [identificando, setIdentificando] = useState(false)
   const [cadastrando, setCadastrando] = useState(false)
   const [multiplosAlunos, setMultiplosAlunos] = useState([]) // quando tem mais de 1 com mesmo telefone
+
+  // Lista de espera
+  const [minhasFilas, setMinhasFilas] = useState([]) // filas ativas do aluno
+  const [entrandoFila, setEntrandoFila] = useState(null) // aula_id_data loading
+  const [saindoFila, setSaindoFila] = useState(null)
 
   // Agendamento
   const [diaSelecionado, setDiaSelecionado] = useState(null)
@@ -82,6 +88,7 @@ export default function Agendamento() {
         setAulas(json.aulas)
         setContagemAgendamentos(json.agendamentos_contagem || {})
         setContagemFixos(json.fixos_contagem || {})
+        setContagemFila(json.fila_contagem || {})
         setLoading(false)
       } catch (err) {
         setErro(err.message)
@@ -145,6 +152,7 @@ export default function Agendamento() {
       } else if (json.encontrado) {
         setAluno(json.aluno)
         setMeusAgendamentos(json.agendamentos || [])
+        setMinhasFilas(json.filas || [])
         setEtapa('grade')
       } else {
         setEtapa('nome')
@@ -173,12 +181,63 @@ export default function Agendamento() {
       if (json.encontrado) {
         setAluno(json.aluno)
         setMeusAgendamentos(json.agendamentos || [])
+        setMinhasFilas(json.filas || [])
         setEtapa('grade')
       }
     } catch {
       mostrarToast('Erro ao buscar. Tente novamente.', 'error')
     } finally {
       setIdentificando(false)
+    }
+  }
+
+  // === LISTA DE ESPERA ===
+  const naFila = (aulaId, data) => minhasFilas.find(f => f.aula_id === aulaId && f.data === data && (f.status === 'aguardando' || f.status === 'notificado'))
+  const filaCount = (aulaId, data) => contagemFila[`${aulaId}_${data}`] || 0
+
+  const entrarNaFila = async (aula, data) => {
+    const key = `${aula.id}_${data}`
+    setEntrandoFila(key)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fila-entrar`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ slug, devedor_id: aluno.id, aula_id: aula.id, data })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        mostrarToast(`Você é o ${json.posicao}º da fila! Avisaremos por WhatsApp.`, 'success')
+        setMinhasFilas(prev => [...prev, { id: json.fila_id, aula_id: aula.id, data, posicao: json.posicao, status: 'aguardando', aula: { dia_semana: aula.dia_semana, horario: aula.horario, descricao: aula.descricao } }])
+        setContagemFila(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
+      } else {
+        mostrarToast(json.error || 'Erro ao entrar na fila', 'error')
+      }
+    } catch {
+      mostrarToast('Erro ao entrar na fila', 'error')
+    } finally {
+      setEntrandoFila(null)
+    }
+  }
+
+  const sairDaFila = async (fila) => {
+    setSaindoFila(fila.id)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fila-sair`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ slug, devedor_id: aluno.id, fila_id: fila.id })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        mostrarToast('Você saiu da fila', 'success')
+        setMinhasFilas(prev => prev.filter(f => f.id !== fila.id))
+        const key = `${fila.aula_id}_${fila.data}`
+        setContagemFila(prev => ({ ...prev, [key]: Math.max((prev[key] || 1) - 1, 0) }))
+      } else {
+        mostrarToast(json.error || 'Erro ao sair da fila', 'error')
+      }
+    } catch {
+      mostrarToast('Erro ao sair da fila', 'error')
+    } finally {
+      setSaindoFila(null)
     }
   }
 
@@ -746,26 +805,30 @@ export default function Agendamento() {
                   const lotado = vagas <= 0
                   const agendado = jaAgendou(aula.id, diaSelecionado)
                   const isAgendando = agendando === `${aula.id}_${diaSelecionado}`
+                  const filaAtiva = naFila(aula.id, diaSelecionado)
+                  const nFila = filaCount(aula.id, diaSelecionado)
+                  const isEntrandoFila = entrandoFila === `${aula.id}_${diaSelecionado}`
+                  const isSaindoFila = filaAtiva && saindoFila === filaAtiva.id
 
                   return (
                     <div key={aula.id} style={{
                       background: '#fff', borderRadius: 14, padding: 16,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                      border: agendado ? '2px solid #22c55e' : '1px solid #f1f5f9',
-                      opacity: lotado && !agendado ? 0.6 : 1,
+                      border: agendado ? '2px solid #22c55e' : filaAtiva ? '2px solid #f59e0b' : '1px solid #f1f5f9',
+                      opacity: lotado && !agendado && !filaAtiva ? 0.7 : 1,
                       transition: 'all 0.2s'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{
                             width: 44, height: 44, borderRadius: 12,
-                            background: agendado ? 'linear-gradient(135deg, #22c55e, #16a34a)' : lotado ? '#fef2f2' : '#f0fdf4',
+                            background: agendado ? 'linear-gradient(135deg, #22c55e, #16a34a)' : filaAtiva ? '#fef3c7' : lotado ? '#fef2f2' : '#f0fdf4',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}>
                             <Icon
-                              icon={agendado ? 'mdi:check' : lotado ? 'mdi:account-group' : 'mdi:dumbbell'}
+                              icon={agendado ? 'mdi:check' : filaAtiva ? 'mdi:clock-outline' : lotado ? 'mdi:account-group' : 'mdi:dumbbell'}
                               width="22"
-                              style={{ color: agendado ? '#fff' : lotado ? '#ef4444' : '#22c55e' }}
+                              style={{ color: agendado ? '#fff' : filaAtiva ? '#f59e0b' : lotado ? '#ef4444' : '#22c55e' }}
                             />
                           </div>
                           <div>
@@ -788,12 +851,26 @@ export default function Agendamento() {
                             }}>
                               Agendado
                             </div>
-                          ) : lotado ? (
+                          ) : filaAtiva ? (
                             <div style={{
-                              background: '#fef2f2', padding: '4px 10px', borderRadius: 8,
-                              fontSize: 11, fontWeight: 700, color: '#ef4444'
+                              background: '#fef3c7', padding: '4px 10px', borderRadius: 8,
+                              fontSize: 11, fontWeight: 700, color: '#92400e'
                             }}>
-                              Esgotado
+                              Na fila ({filaAtiva.posicao}º)
+                            </div>
+                          ) : lotado ? (
+                            <div>
+                              <div style={{
+                                background: '#fef2f2', padding: '4px 10px', borderRadius: 8,
+                                fontSize: 11, fontWeight: 700, color: '#ef4444'
+                              }}>
+                                Esgotado
+                              </div>
+                              {nFila > 0 && (
+                                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                                  {nFila} na fila
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div style={{
@@ -805,8 +882,8 @@ export default function Agendamento() {
                         </div>
                       </div>
 
-                      {/* Botao de acao */}
-                      {!agendado && !lotado && (
+                      {/* Botão agendar (tem vaga) */}
+                      {!agendado && !lotado && !filaAtiva && (
                         <button
                           onClick={() => agendarAula(aula, diaSelecionado)}
                           disabled={isAgendando}
@@ -828,6 +905,55 @@ export default function Agendamento() {
                             </>
                           )}
                         </button>
+                      )}
+
+                      {/* Botão entrar na fila (lotado, não está na fila) */}
+                      {lotado && !agendado && !filaAtiva && (
+                        <button
+                          onClick={() => entrarNaFila(aula, diaSelecionado)}
+                          disabled={isEntrandoFila}
+                          style={{
+                            width: '100%', marginTop: 12, padding: '10px 16px',
+                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                            color: '#fff', border: 'none', borderRadius: 10,
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {isEntrandoFila ? (
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
+                          ) : (
+                            <>
+                              <Icon icon="mdi:clock-plus-outline" width="18" />
+                              Entrar na lista de espera
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Estado: na fila — botão sair */}
+                      {filaAtiva && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{
+                            padding: '10px 14px', borderRadius: 10, backgroundColor: '#fef3c7',
+                            fontSize: 13, color: '#92400e', textAlign: 'center', marginBottom: 8
+                          }}>
+                            <Icon icon="mdi:clock-outline" width="14" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                            Você é o <strong>{filaAtiva.posicao}º</strong> da fila. Avisaremos por WhatsApp quando abrir uma vaga!
+                          </div>
+                          <button
+                            onClick={() => sairDaFila(filaAtiva)}
+                            disabled={isSaindoFila}
+                            style={{
+                              width: '100%', padding: '8px', backgroundColor: 'transparent',
+                              color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: 8,
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                            }}
+                          >
+                            {isSaindoFila ? 'Saindo...' : 'Sair da fila'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )
