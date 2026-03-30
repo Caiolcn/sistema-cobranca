@@ -259,6 +259,42 @@ export default function GradeHorarios() {
       }
 
       showToast(`${agendamento?.devedores?.nome?.split(' ')[0] || 'Aluno'} removido do horário`, 'success')
+
+      // Processar lista de espera: notificar próximo da fila
+      try {
+        const { data: proximoFila } = await supabase
+          .from('lista_espera')
+          .select('id, devedor_id')
+          .eq('aula_id', agendamento.aula_id)
+          .eq('data', agendamento.data)
+          .eq('status', 'aguardando')
+          .order('posicao', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+
+        if (proximoFila) {
+          const expiraEm = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+          await supabase.from('lista_espera').update({
+            status: 'notificado',
+            notificado_em: new Date().toISOString(),
+            expira_em: expiraEm
+          }).eq('id', proximoFila.id)
+
+          // Notificar aluno da fila via WhatsApp
+          const { data: alunoFila } = await supabase.from('devedores').select('nome, telefone').eq('id', proximoFila.devedor_id).single()
+          if (alunoFila?.telefone) {
+            const { data: aulaInfo } = await supabase.from('aulas').select('descricao, horario').eq('id', agendamento.aula_id).single()
+            const { data: empresaInfo } = await supabase.from('usuarios').select('agendamento_slug').eq('id', userId).single()
+            const linkConfirmacao = `https://www.mensalli.com.br/agendar/${empresaInfo?.agendamento_slug || ''}?confirmar=${proximoFila.id}`
+            const msgFila = `🎉 *Vaga disponível!*\n\nUma vaga abriu na aula que você está esperando:\n\n📚 ${aulaInfo?.descricao || 'Aula'}\n📅 ${new Date(agendamento.data + 'T12:00:00').toLocaleDateString('pt-BR')}\n🕐 ${aulaInfo?.horario || ''}\n\nConfirme sua vaga em até 1 hora:\n${linkConfirmacao}\n\nSe não confirmar a tempo, a vaga passa para o próximo da fila.`
+            await whatsappService.enviarMensagem(alunoFila.telefone, msgFila)
+            showToast(`${alunoFila.nome?.split(' ')[0]} foi notificado da vaga (lista de espera)`, 'info')
+          }
+        }
+      } catch (filaErr) {
+        console.error('Erro ao processar fila de espera:', filaErr)
+      }
+
       carregarAgendamento()
     } catch (err) {
       console.error('Erro ao cancelar agendamento:', err)

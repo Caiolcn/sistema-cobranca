@@ -54,6 +54,7 @@ export default function Agendamento() {
   const [identificando, setIdentificando] = useState(false)
   const [cadastrando, setCadastrando] = useState(false)
   const [multiplosAlunos, setMultiplosAlunos] = useState([]) // quando tem mais de 1 com mesmo telefone
+  const [alunoBloqueado, setAlunoBloqueado] = useState(null) // id do aluno bloqueado por inadimplência
 
   // Lista de espera
   const [minhasFilas, setMinhasFilas] = useState([]) // filas ativas do aluno
@@ -175,7 +176,7 @@ export default function Agendamento() {
       const json = await res.json()
 
       if (json.bloqueado) {
-        mostrarToast(json.error || 'Agendamento bloqueado por mensalidade em atraso', 'error')
+        setAlunoBloqueado(alunoSelecionado.id)
         return
       }
       if (json.encontrado) {
@@ -524,37 +525,57 @@ export default function Agendamento() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {multiplosAlunos.map(a => (
-              <button key={a.id} onClick={() => selecionarAluno(a)} disabled={identificando}
-                style={{
-                  padding: '14px 16px', borderRadius: 12, border: '1px solid #e2e8f0',
-                  backgroundColor: '#f8fafc', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  transition: 'all 0.15s', textAlign: 'left'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#4338ca' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0' }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg, #4338ca, #6366f1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, fontWeight: 700, color: '#fff'
-                }}>
-                  {(a.nome || 'A').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1e293b' }}>{a.nome}</div>
-                  {a.plano_nome && (
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{a.plano_nome}</div>
+            {multiplosAlunos.map(a => {
+              const bloqueado = alunoBloqueado === a.id
+              return (
+              <div key={a.id}>
+                <button onClick={() => !bloqueado && selecionarAluno(a)} disabled={identificando}
+                  style={{
+                    width: '100%', padding: '14px 16px', borderRadius: 12,
+                    border: bloqueado ? '1px solid #fecaca' : '1px solid #e2e8f0',
+                    backgroundColor: bloqueado ? '#fef2f2' : '#f8fafc', cursor: bloqueado ? 'default' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    transition: 'all 0.15s', textAlign: 'left', opacity: bloqueado ? 0.8 : 1
+                  }}
+                  onMouseEnter={e => { if (!bloqueado) { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#4338ca' } }}
+                  onMouseLeave={e => { if (!bloqueado) { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0' } }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: bloqueado ? '#fee2e2' : 'linear-gradient(135deg, #4338ca, #6366f1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, fontWeight: 700, color: bloqueado ? '#ef4444' : '#fff'
+                  }}>
+                    {bloqueado ? <Icon icon="mdi:lock" width="20" /> : (a.nome || 'A').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: bloqueado ? '#ef4444' : '#1e293b' }}>{a.nome}</div>
+                    {bloqueado ? (
+                      <div style={{ fontSize: 12, color: '#ef4444', marginTop: 2 }}>Mensalidade em atraso</div>
+                    ) : a.plano_nome ? (
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{a.plano_nome}</div>
+                    ) : null}
+                  </div>
+                  {bloqueado ? (
+                    <Icon icon="mdi:alert-circle" width="20" style={{ color: '#ef4444', flexShrink: 0 }} />
+                  ) : (
+                    <Icon icon="mdi:chevron-right" width="20" style={{ color: '#94a3b8', flexShrink: 0 }} />
                   )}
-                </div>
-                <Icon icon="mdi:chevron-right" width="20" style={{ color: '#94a3b8', flexShrink: 0 }} />
-              </button>
-            ))}
+                </button>
+                {bloqueado && (
+                  <div style={{
+                    marginTop: 4, padding: '8px 12px', borderRadius: 8, backgroundColor: '#fef2f2',
+                    fontSize: 12, color: '#dc2626', textAlign: 'center'
+                  }}>
+                    Regularize sua mensalidade para agendar aulas.
+                  </div>
+                )}
+              </div>
+              )
+            })}
           </div>
 
-          <button onClick={() => { setEtapa('telefone'); setMultiplosAlunos([]) }}
+          <button onClick={() => { setEtapa('telefone'); setMultiplosAlunos([]); setAlunoBloqueado(null) }}
             style={{
               marginTop: 16, padding: '10px', width: '100%', backgroundColor: 'transparent',
               border: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8', fontWeight: 500
