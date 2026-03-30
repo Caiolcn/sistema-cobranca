@@ -179,7 +179,7 @@ export default function GradeHorarios() {
         .order('horario'),
       supabase
         .from('agendamentos')
-        .select('*, devedores(nome, telefone, origem)')
+        .select('*, devedores(nome, telefone, origem, assinatura_ativa, plano_id)')
         .eq('user_id', userId)
         .eq('status', 'confirmado')
         .gte('data', hojeStr)
@@ -2142,7 +2142,7 @@ export default function GradeHorarios() {
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                               {agendadosLista.slice(0, 8).map(ag => {
-                                const isExperimental = ag.devedores?.origem === 'agendamento'
+                                const isExperimental = ag.devedores?.origem === 'agendamento' && !ag.devedores?.assinatura_ativa && !ag.devedores?.plano_id
                                 const isAgHoje = ag.data === hojeStr
                                 const pKey = presAgKey(aula.id, ag.devedor_id)
                                 const presenca = presencasAgendamento[pKey]
