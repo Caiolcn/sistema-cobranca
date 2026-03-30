@@ -134,6 +134,10 @@ export default function Agendamento() {
       })
       const json = await res.json()
 
+      if (json.bloqueado) {
+        mostrarToast(json.error || 'Agendamento bloqueado por mensalidade em atraso', 'error')
+        return
+      }
       if (json.encontrado) {
         setAluno(json.aluno)
         setMeusAgendamentos(json.agendamentos || [])
