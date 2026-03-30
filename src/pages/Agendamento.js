@@ -42,6 +42,7 @@ export default function Agendamento() {
   const [empresa, setEmpresa] = useState(null)
   const [aulas, setAulas] = useState([])
   const [contagemAgendamentos, setContagemAgendamentos] = useState({})
+  const [contagemFixos, setContagemFixos] = useState({}) // { aulaId: count }
 
   // Identificacao
   const [etapa, setEtapa] = useState('telefone') // telefone | nome | grade
@@ -79,6 +80,7 @@ export default function Agendamento() {
         setEmpresa(json.empresa)
         setAulas(json.aulas)
         setContagemAgendamentos(json.agendamentos_contagem || {})
+        setContagemFixos(json.fixos_contagem || {})
         setLoading(false)
       } catch (err) {
         setErro(err.message)
@@ -240,10 +242,22 @@ export default function Agendamento() {
     return aulas.some(a => a.dia_semana === d.getDay())
   })
 
-  // Aulas do dia selecionado
+  // Aulas do dia selecionado (esconde horários com menos de 1h de antecedência)
   const aulaDoDia = diaSelecionado ? aulas.filter(a => {
     const dataSel = new Date(diaSelecionado + 'T12:00:00')
-    return a.dia_semana === dataSel.getDay()
+    if (a.dia_semana !== dataSel.getDay()) return false
+
+    // Se for hoje, esconder aulas que já passaram ou faltam menos de 1h
+    const hoje = new Date()
+    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+    if (diaSelecionado === hojeStr && a.horario) {
+      const [h, m] = a.horario.split(':').map(Number)
+      const horarioAula = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), h, m)
+      const diffMs = horarioAula.getTime() - hoje.getTime()
+      if (diffMs < 60 * 60 * 1000) return false // menos de 1h de antecedência
+    }
+
+    return true
   }) : []
 
   // Verificar se aluno ja agendou nesta aula/data
@@ -251,13 +265,14 @@ export default function Agendamento() {
     return meusAgendamentos.some(a => a.aula_id === aulaId && a.data === data)
   }
 
-  // Vagas restantes
+  // Vagas restantes (descontando fixos + agendados)
   const vagasRestantes = (aulaId, data) => {
     const aula = aulas.find(a => a.id === aulaId)
     if (!aula) return 0
     const chave = `${aulaId}_${data}`
     const agendados = contagemAgendamentos[chave] || 0
-    return aula.capacidade - agendados
+    const fixos = contagemFixos[aulaId] || 0
+    return aula.capacidade - fixos - agendados
   }
 
   // ===== RENDER =====

@@ -110,7 +110,7 @@ export default function WhatsAppConexao() {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked } = useUserPlan()
-  const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
+  const { userId: contextUserId, isAdmin, adminViewingAs, refreshUserData } = useUser()
   const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [searchParams] = useSearchParams()
@@ -1451,6 +1451,8 @@ export default function WhatsAppConexao() {
       if (error) throw error
 
       setFeedbackModal({ isOpen: true, type: 'success', title: 'Salvo!', message: 'Chave PIX atualizada com sucesso' })
+      // Atualizar contexto global para refletir no onboarding checklist
+      if (refreshUserData) refreshUserData()
     } catch (error) {
       console.error('Erro ao salvar chave PIX:', error)
       setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar chave PIX' })

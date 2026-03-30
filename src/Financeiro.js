@@ -240,7 +240,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
     const hoje = new Date()
     hoje.setHours(0, 0, 0, 0)
-    const vencimento = new Date(mensalidade.data_vencimento)
+    const vencimento = new Date(mensalidade.data_vencimento + 'T12:00:00')
     vencimento.setHours(0, 0, 0, 0)
 
     if (vencimento < hoje) return 'atrasado'
@@ -263,7 +263,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     lista.forEach(p => {
       const status = p.statusCalculado || calcularStatus(p)
       const valor = parseFloat(p.valor) || 0
-      const venc = new Date(p.data_vencimento)
+      const venc = new Date(p.data_vencimento + 'T12:00:00')
       venc.setHours(0, 0, 0, 0)
       const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
 
@@ -290,7 +290,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     // Incluir vendas (cobranças avulsas) nos totais
     vendas.forEach(v => {
       const valor = parseFloat(v.valor) || 0
-      const venc = new Date(v.data_vencimento)
+      const venc = new Date(v.data_vencimento + 'T12:00:00')
       venc.setHours(0, 0, 0, 0)
       const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
 
@@ -2180,7 +2180,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 {mensalidadeDetalhes.statusCalculado === 'atrasado' && (() => {
                   const hoje = new Date()
                   hoje.setHours(0, 0, 0, 0)
-                  const vencimento = new Date(mensalidadeDetalhes.data_vencimento + 'T00:00:00')
+                  const vencimento = new Date(mensalidadeDetalhes.data_vencimento + 'T12:00:00')
                   const diffTime = hoje.getTime() - vencimento.getTime()
                   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
                   return (

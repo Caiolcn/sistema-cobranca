@@ -13,6 +13,7 @@ import { asaasService } from './services/asaasService'
 import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
+import { useUserPlan } from './hooks/useUserPlan'
 
 // Templates padrão para criação automática
 const TEMPLATES_PADRAO = {
@@ -62,6 +63,7 @@ function Configuracao() {
   const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'empresa')
   const [loading, setLoading] = useState(false)
   const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
+  const { isLocked } = useUserPlan()
 
   // Company data
   const [dadosEmpresa, setDadosEmpresa] = useState({
@@ -3024,7 +3026,37 @@ function Configuracao() {
     })
   }
 
-  const renderAgendamento = () => (
+  const renderAgendamento = () => {
+    if (isLocked('premium')) {
+      return (
+        <div style={{
+          backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px',
+          textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto'
+        }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto'
+          }}>
+            <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+          </div>
+          <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+            Agendamento Online
+          </h2>
+          <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+            Permita que seus alunos agendem e cancelem aulas por um link público.
+            Disponível no plano <strong>Premium</strong>.
+          </p>
+          <button onClick={() => setAbaAtiva('upgrade')}
+            style={{
+              padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
+              border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
+            }}>
+            Fazer Upgrade
+          </button>
+        </div>
+      )
+    }
+    return (
     <div style={{ maxWidth: '600px', width: '100%', boxSizing: 'border-box' }}>
       <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
         Agendamento Online
@@ -3198,7 +3230,8 @@ function Configuracao() {
         </div>
       </div>
     </div>
-  )
+    )
+  }
 
   // ==========================================
   // MAIN RENDER

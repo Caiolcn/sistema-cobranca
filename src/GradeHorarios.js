@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal'
 import { SkeletonList } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
+import { useUserPlan } from './hooks/useUserPlan'
 import whatsappService from './services/whatsappService'
 
 const DIAS_SEMANA = [
@@ -24,6 +25,7 @@ const getDiaAbrev = (dia) => DIAS_SEMANA.find(d => d.valor === dia)?.abrev || ''
 export default function GradeHorarios() {
   const { isMobile } = useWindowSize()
   const { userId } = useUser()
+  const { isLocked } = useUserPlan()
 
   // Dados
   const [horarios, setHorarios] = useState([])
@@ -72,11 +74,24 @@ export default function GradeHorarios() {
   const [salvandoAula, setSalvandoAula] = useState(false)
   const [confirmDeleteAula, setConfirmDeleteAula] = useState({ show: false, aula: null })
   const [confirmRemoverAgendamento, setConfirmRemoverAgendamento] = useState({ show: false, agendamento: null })
+  const [fixosAulas, setFixosAulas] = useState([])
+  const [mostrarModalFixo, setMostrarModalFixo] = useState(false)
+  const [aulaParaFixo, setAulaParaFixo] = useState(null)
+  const [fixoClienteId, setFixoClienteId] = useState('')
+  const [confirmRemoverFixo, setConfirmRemoverFixo] = useState({ show: false, fixo: null })
   const [filtroAgendamentoDia, setFiltroAgendamentoDia] = useState('todos')
   const [formAulaHorarioFim, setFormAulaHorarioFim] = useState('18:00')
   const [formAulaIntervalo, setFormAulaIntervalo] = useState(60) // minutos
 
-  // Presença
+  // Presença (agendamento - por aula_id + devedor_id)
+  const [presencasAgendamento, setPresencasAgendamento] = useState({}) // { `${aula_id}_${devedor_id}`: { id, presente, observacao } }
+  const [mostrarModalPresencaAg, setMostrarModalPresencaAg] = useState(false)
+  const [presencaAgAtual, setPresencaAgAtual] = useState(null) // { aula, devedor_id, nome, telefone, descricao }
+  const [presencaAgPresente, setPresencaAgPresente] = useState(true)
+  const [presencaAgObs, setPresencaAgObs] = useState('')
+  const [salvandoPresencaAg, setSalvandoPresencaAg] = useState(false)
+
+  // Presença (grade horários - legado)
   const [presencasHoje, setPresencasHoje] = useState({}) // { grade_horario_id: { id, presente, observacao } }
   const [mostrarModalPresenca, setMostrarModalPresenca] = useState(false)
   const [presencaAtual, setPresencaAtual] = useState(null) // { horario, presente, observacao }
@@ -155,7 +170,7 @@ export default function GradeHorarios() {
     if (!userId) return
     setLoadingAgendamento(true)
 
-    const [aulasRes, agRes] = await Promise.all([
+    const [aulasRes, agRes, fixosRes] = await Promise.all([
       supabase
         .from('aulas')
         .select('*')
@@ -168,17 +183,45 @@ export default function GradeHorarios() {
         .eq('user_id', userId)
         .eq('status', 'confirmado')
         .gte('data', hojeStr)
-        .order('data')
+        .order('data'),
+      supabase
+        .from('aulas_fixos')
+        .select('*, devedores(nome, telefone)')
+        .eq('user_id', userId)
     ])
 
     if (aulasRes.data) setAulasAgendamento(aulasRes.data)
     if (agRes.data) setAgendamentosOnline(agRes.data)
+    if (fixosRes.data) setFixosAulas(fixosRes.data)
+
+    // Carregar presenças de hoje por aula_id
+    const { data: presAgData } = await supabase
+      .from('presencas')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('data', hojeStr)
+      .not('aula_id', 'is', null)
+    if (presAgData) {
+      const map = {}
+      presAgData.forEach(p => { if (p.aula_id && p.devedor_id) map[`${p.aula_id}_${p.devedor_id}`] = p })
+      setPresencasAgendamento(map)
+    }
     setLoadingAgendamento(false)
   }, [userId, hojeStr])
 
   useEffect(() => {
     if (vistaAtual === 'agendamento') carregarAgendamento()
   }, [vistaAtual, carregarAgendamento])
+
+  // Realtime: atualizar quando aluno agenda ou cancela pelo link público
+  useEffect(() => {
+    if (!userId || vistaAtual !== 'agendamento') return
+    const channel = supabase
+      .channel(`agendamento-grade-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agendamentos', filter: `user_id=eq.${userId}` }, () => carregarAgendamento())
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, vistaAtual, carregarAgendamento])
 
   // Cancelar agendamento pelo admin
   const cancelarAgendamentoAdmin = async (agendamento) => {
@@ -211,6 +254,113 @@ export default function GradeHorarios() {
       console.error('Erro ao cancelar agendamento:', err)
       showToast('Erro ao remover aluno', 'error')
     }
+  }
+
+  // === FIXOS ===
+  const adicionarFixo = async () => {
+    if (!fixoClienteId || !aulaParaFixo) return
+    try {
+      const jaExiste = fixosAulas.find(f => f.aula_id === aulaParaFixo.id && f.devedor_id === fixoClienteId)
+      if (jaExiste) { showToast('Aluno já é fixo nesta aula', 'warning'); return }
+      const fixosNaAula = fixosAulas.filter(f => f.aula_id === aulaParaFixo.id).length
+      const agendadosNaAula = contagemAgendamentos(aulaParaFixo.id)
+      if (fixosNaAula + agendadosNaAula >= aulaParaFixo.capacidade) {
+        showToast('Aula lotada, sem vagas disponíveis', 'warning'); return
+      }
+      const { error } = await supabase.from('aulas_fixos').insert({ aula_id: aulaParaFixo.id, devedor_id: fixoClienteId, user_id: userId })
+      if (error) throw error
+      showToast('Aluno fixo adicionado!', 'success')
+      setMostrarModalFixo(false); setFixoClienteId(''); carregarAgendamento()
+    } catch (err) { console.error(err); showToast('Erro ao adicionar aluno fixo', 'error') }
+  }
+
+  const removerFixo = async (fixo) => {
+    try {
+      const { error } = await supabase.from('aulas_fixos').delete().eq('id', fixo.id)
+      if (error) throw error
+      showToast(`${fixo?.devedores?.nome?.split(' ')[0] || 'Aluno'} removido dos fixos`, 'success')
+      carregarAgendamento()
+    } catch (err) { console.error(err); showToast('Erro ao remover aluno fixo', 'error') }
+  }
+
+  // === PRESENÇA AGENDAMENTO ===
+  const presAgKey = (aulaId, devedorId) => `${aulaId}_${devedorId}`
+
+  const abrirPresencaAgendamento = (aula, devedorId, devedores) => {
+    // Só funciona se a aula é do dia de hoje
+    if (aula.dia_semana !== new Date().getDay()) return
+    const key = presAgKey(aula.id, devedorId)
+    const existente = presencasAgendamento[key]
+    setPresencaAgAtual({ aula, devedor_id: devedorId, devedores })
+    setPresencaAgPresente(existente ? existente.presente : true)
+    setPresencaAgObs(existente ? (existente.observacao || '') : '')
+    setMostrarModalPresencaAg(true)
+  }
+
+  const salvarPresencaAgendamento = async () => {
+    if (!presencaAgAtual) return
+    setSalvandoPresencaAg(true)
+    const key = presAgKey(presencaAgAtual.aula.id, presencaAgAtual.devedor_id)
+    const existente = presencasAgendamento[key]
+
+    let result
+    if (existente) {
+      result = await supabase.from('presencas')
+        .update({ presente: presencaAgPresente, observacao: presencaAgObs.trim() || null, updated_at: new Date().toISOString() })
+        .eq('id', existente.id).select()
+    } else {
+      result = await supabase.from('presencas').insert({
+        user_id: userId, aula_id: presencaAgAtual.aula.id, devedor_id: presencaAgAtual.devedor_id,
+        data: hojeStr, presente: presencaAgPresente, observacao: presencaAgObs.trim() || null
+      }).select()
+    }
+
+    if (result.error) {
+      showToast('Erro ao salvar presença: ' + result.error.message, 'error')
+    } else {
+      setPresencasAgendamento(prev => ({ ...prev, [key]: result.data[0] }))
+
+      // Créditos
+      const creditos = creditosAlunos[presencaAgAtual.devedor_id]
+      let novoRestante = creditos?.aulas_restantes
+      if (creditos) {
+        if (!existente && presencaAgPresente) novoRestante = Math.max(creditos.aulas_restantes - 1, 0)
+        else if (existente && existente.presente && !presencaAgPresente) novoRestante = creditos.aulas_restantes + 1
+        else if (existente && !existente.presente && presencaAgPresente) novoRestante = Math.max(creditos.aulas_restantes - 1, 0)
+
+        if (novoRestante !== creditos.aulas_restantes) {
+          await supabase.from('devedores').update({ aulas_restantes: novoRestante }).eq('id', presencaAgAtual.devedor_id)
+          setCreditosAlunos(prev => ({ ...prev, [presencaAgAtual.devedor_id]: { ...prev[presencaAgAtual.devedor_id], aulas_restantes: novoRestante } }))
+          if (novoRestante === 0) showToast(`${presencaAgAtual.devedores?.nome || 'Aluno'} usou todas as aulas do pacote!`, 'warning')
+          else if (novoRestante <= 2) showToast(`${presencaAgAtual.devedores?.nome || 'Aluno'} tem ${novoRestante} aula(s) restante(s)`, 'warning')
+        }
+      }
+      showToast(presencaAgPresente ? 'Presença registrada!' : 'Falta registrada!', 'success')
+
+      // WhatsApp
+      if (enviarNotifPresenca && presencaAgAtual.devedores?.telefone) {
+        try {
+          const nome = presencaAgAtual.devedores?.nome || 'Aluno'
+          const cred = creditos ? { ...creditos, aulas_restantes: novoRestante } : null
+          let msg = ''
+          if (presencaAgPresente) {
+            if (cred) {
+              const aulaNum = cred.aulas_total - cred.aulas_restantes
+              msg = `✅ Presença confirmada, ${nome}!\n\n📚 Aula ${aulaNum} de ${cred.aulas_total}${presencaAgAtual.aula.descricao ? ` - ${presencaAgAtual.aula.descricao}` : ''}${presencaAgObs.trim() ? `\n📝 ${presencaAgObs.trim()}` : ''}\n\n📊 Restam ${cred.aulas_restantes} aula(s) no seu pacote.`
+            } else {
+              msg = `✅ Presença confirmada, ${nome}!${presencaAgAtual.aula.descricao ? `\n📚 ${presencaAgAtual.aula.descricao}` : ''}${presencaAgObs.trim() ? `\n📝 ${presencaAgObs.trim()}` : ''}`
+            }
+          } else {
+            msg = `❌ Falta registrada, ${nome}.${presencaAgAtual.aula.descricao ? `\n📚 ${presencaAgAtual.aula.descricao}` : ''}${presencaAgObs.trim() ? `\n📝 Motivo: ${presencaAgObs.trim()}` : ''}`
+            if (cred) msg += `\n\n📊 Você tem ${cred.aulas_restantes} aula(s) restante(s).`
+          }
+          await whatsappService.enviarMensagem(presencaAgAtual.devedores.telefone, msg)
+        } catch (err) { console.error('Erro notificação presença:', err) }
+      }
+
+      setMostrarModalPresencaAg(false)
+    }
+    setSalvandoPresencaAg(false)
   }
 
   // Salvar config de notificação
@@ -663,6 +813,14 @@ export default function GradeHorarios() {
   // Contar agendamentos por aula
   const contagemAgendamentos = (aulaId) => {
     return agendamentosOnline.filter(a => a.aula_id === aulaId).length
+  }
+
+  const contagemFixos = (aulaId) => {
+    return fixosAulas.filter(f => f.aula_id === aulaId).length
+  }
+
+  const totalOcupado = (aulaId) => {
+    return contagemFixos(aulaId) + contagemAgendamentos(aulaId)
   }
 
   // Contadores
@@ -1750,6 +1908,36 @@ export default function GradeHorarios() {
       {/* ===== VISTA AGENDAMENTO ONLINE ===== */}
       {vistaAtual === 'agendamento' && (
         <div>
+          {/* PREMIUM LOCK */}
+          {isLocked('premium') ? (
+            <div style={{
+              backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px',
+              textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto'
+            }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto'
+              }}>
+                <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+              </div>
+              <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+                Agendamento Online
+              </h2>
+              <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+                Permita que seus alunos agendem e cancelem aulas por um link público.
+                Gerencie turmas com capacidade, alunos fixos e agendados online.
+                Disponível no plano <strong>Premium</strong>.
+              </p>
+              <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+                style={{
+                  padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
+                  border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
+                }}>
+                Fazer Upgrade
+              </button>
+            </div>
+          ) : (
+          <>
           {/* Header + Adicionar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
             <div style={{
@@ -1808,6 +1996,7 @@ export default function GradeHorarios() {
           <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {[
               { label: 'Aulas', value: aulasAgendamento.filter(a => a.ativo).length, icon: 'mdi:calendar-clock', color: '#4338ca', bg: '#eef2ff' },
+              { label: 'Fixos', value: fixosAulas.length, icon: 'mdi:account-lock', color: '#b45309', bg: '#fef3c7' },
               { label: 'Agendados', value: agendamentosOnline.length, icon: 'mdi:account-check', color: '#16a34a', bg: '#f0fdf4' },
             ].map((s, i) => (
               <div key={i} style={{
@@ -1848,7 +2037,10 @@ export default function GradeHorarios() {
                   </div>
 
                   {grupo.aulas.map(aula => {
-                    const agendados = contagemAgendamentos(aula.id)
+                    const nFixos = contagemFixos(aula.id)
+                    const nAgendados = contagemAgendamentos(aula.id)
+                    const nTotal = nFixos + nAgendados
+                    const fixosDaAula = fixosAulas.filter(f => f.aula_id === aula.id)
                     const agendadosLista = agendamentosOnline.filter(a => a.aula_id === aula.id)
 
                     return (
@@ -1871,13 +2063,18 @@ export default function GradeHorarios() {
                                 {aula.horario?.substring(0, 5)} {aula.descricao && `- ${aula.descricao}`}
                               </div>
                               <div style={{ fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span>{agendados}/{aula.capacidade} vagas</span>
+                                <span>{nTotal}/{aula.capacidade} vagas</span>
+                                {nFixos > 0 && <span style={{ color: '#b45309' }}>({nFixos} fixo{nFixos > 1 ? 's' : ''})</span>}
                                 {!aula.ativo && <span style={{ color: '#ef4444', fontWeight: '600' }}>Inativa</span>}
                               </div>
                             </div>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button onClick={() => { setAulaParaFixo(aula); setFixoClienteId(''); setMostrarModalFixo(true) }} title="Adicionar aluno fixo"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                              <Icon icon="mdi:account-plus" width="18" style={{ color: '#b45309' }} />
+                            </button>
                             <button onClick={() => toggleAtivoAula(aula)} title={aula.ativo ? 'Desativar' : 'Ativar'}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
                               <Icon icon={aula.ativo ? 'mdi:eye' : 'mdi:eye-off'} width="18" style={{ color: aula.ativo ? '#16a34a' : '#ccc' }} />
@@ -1893,7 +2090,51 @@ export default function GradeHorarios() {
                           </div>
                         </div>
 
-                        {/* Lista de agendados */}
+                        {/* Lista de alunos fixos */}
+                        {fixosDaAula.length > 0 && (
+                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#b45309', marginBottom: '6px', textTransform: 'uppercase' }}>
+                              Alunos fixos
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {fixosDaAula.map(fixo => {
+                                const isHoje = aula.dia_semana === new Date().getDay()
+                                const pKey = presAgKey(aula.id, fixo.devedor_id)
+                                const presenca = presencasAgendamento[pKey]
+                                return (
+                                <div key={fixo.id}
+                                  onClick={() => isHoje && abrirPresencaAgendamento(aula, fixo.devedor_id, fixo.devedores)}
+                                  style={{
+                                  fontSize: '12px', padding: '4px 10px',
+                                  backgroundColor: presenca ? (presenca.presente ? '#d1fae5' : '#fee2e2') : '#fef3c7',
+                                  borderRadius: '6px', color: presenca ? (presenca.presente ? '#065f46' : '#991b1b') : '#92400e', fontWeight: '500',
+                                  display: 'flex', alignItems: 'center', gap: '4px',
+                                  cursor: isHoje ? 'pointer' : 'default',
+                                  transition: 'all 0.15s'
+                                }}>
+                                  {presenca ? (
+                                    <Icon icon={presenca.presente ? 'mdi:check-circle' : 'mdi:close-circle'} width="12" style={{ color: presenca.presente ? '#16a34a' : '#ef4444' }} />
+                                  ) : (
+                                    <Icon icon="mdi:pin" width="12" style={{ color: '#b45309' }} />
+                                  )}
+                                  <span>{fixo.devedores?.nome?.split(' ')[0] || 'Aluno'}</span>
+                                  <span
+                                    onClick={(e) => { e.stopPropagation(); setConfirmRemoverFixo({ show: true, fixo }) }}
+                                    style={{
+                                      cursor: 'pointer', marginLeft: '2px', color: '#ef4444',
+                                      fontSize: '14px', fontWeight: '700', lineHeight: '1',
+                                      display: 'flex', alignItems: 'center'
+                                    }}
+                                    title="Remover aluno fixo"
+                                  >×</span>
+                                </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Lista de agendados online */}
                         {agendadosLista.length > 0 && (
                           <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
                             <div style={{ fontSize: '11px', fontWeight: '600', color: '#888', marginBottom: '6px', textTransform: 'uppercase' }}>
@@ -1902,13 +2143,23 @@ export default function GradeHorarios() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                               {agendadosLista.slice(0, 8).map(ag => {
                                 const isExperimental = ag.devedores?.origem === 'agendamento'
+                                const isAgHoje = ag.data === hojeStr
+                                const pKey = presAgKey(aula.id, ag.devedor_id)
+                                const presenca = presencasAgendamento[pKey]
                                 return (
-                                <div key={ag.id} style={{
+                                <div key={ag.id}
+                                  onClick={() => isAgHoje && abrirPresencaAgendamento(aula, ag.devedor_id, ag.devedores)}
+                                  style={{
                                   fontSize: '12px', padding: '4px 10px',
-                                  backgroundColor: isExperimental ? '#fef3c7' : '#f0fdf4',
-                                  borderRadius: '6px', color: isExperimental ? '#92400e' : '#16a34a', fontWeight: '500',
-                                  display: 'flex', alignItems: 'center', gap: '4px'
+                                  backgroundColor: presenca ? (presenca.presente ? '#d1fae5' : '#fee2e2') : (isExperimental ? '#fef3c7' : '#f0fdf4'),
+                                  borderRadius: '6px', color: presenca ? (presenca.presente ? '#065f46' : '#991b1b') : (isExperimental ? '#92400e' : '#16a34a'), fontWeight: '500',
+                                  display: 'flex', alignItems: 'center', gap: '4px',
+                                  cursor: isAgHoje ? 'pointer' : 'default',
+                                  transition: 'all 0.15s'
                                 }}>
+                                  {presenca && (
+                                    <Icon icon={presenca.presente ? 'mdi:check-circle' : 'mdi:close-circle'} width="12" style={{ color: presenca.presente ? '#16a34a' : '#ef4444' }} />
+                                  )}
                                   <span>{ag.devedores?.nome?.split(' ')[0] || 'Aluno'}</span>
                                   <span style={{ color: '#94a3b8', fontSize: '10px' }}>
                                     {new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
@@ -1949,6 +2200,8 @@ export default function GradeHorarios() {
                 </div>
               ))}
             </div>
+          )}
+          </>
           )}
         </div>
       )}
@@ -2202,6 +2455,171 @@ export default function GradeHorarios() {
         confirmText="Remover"
         confirmColor="#ef4444"
       />
+
+      {/* Confirmar remover fixo */}
+      <ConfirmModal
+        isOpen={confirmRemoverFixo.show}
+        onClose={() => setConfirmRemoverFixo({ show: false, fixo: null })}
+        onConfirm={() => {
+          removerFixo(confirmRemoverFixo.fixo)
+          setConfirmRemoverFixo({ show: false, fixo: null })
+        }}
+        title="Remover aluno fixo"
+        message={`Tem certeza que deseja remover ${confirmRemoverFixo.fixo?.devedores?.nome?.split(' ')[0] || 'este aluno'} dos fixos desta aula?`}
+        confirmText="Remover"
+        confirmColor="#ef4444"
+      />
+
+      {/* Modal Adicionar Aluno Fixo */}
+      {mostrarModalFixo && aulaParaFixo && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white', borderRadius: '12px', padding: '24px',
+            width: '100%', maxWidth: '400px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
+                Adicionar aluno fixo
+              </h3>
+              <button onClick={() => setMostrarModalFixo(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                <Icon icon="mdi:close" width="20" style={{ color: '#999' }} />
+              </button>
+            </div>
+
+            <div style={{
+              padding: '10px 14px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '16px',
+              fontSize: '13px', color: '#555'
+            }}>
+              <strong>{aulaParaFixo.horario?.substring(0, 5)}</strong> {aulaParaFixo.descricao && `- ${aulaParaFixo.descricao}`}
+              <span style={{ marginLeft: '8px', color: '#888' }}>
+                ({totalOcupado(aulaParaFixo.id)}/{aulaParaFixo.capacidade} vagas)
+              </span>
+            </div>
+
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+              Selecione o aluno
+            </label>
+            <select
+              value={fixoClienteId}
+              onChange={e => setFixoClienteId(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                fontSize: '14px', marginBottom: '20px', boxSizing: 'border-box'
+              }}
+            >
+              <option value="">Selecionar aluno...</option>
+              {clientes
+                .filter(c => !fixosAulas.find(f => f.aula_id === aulaParaFixo.id && f.devedor_id === c.id))
+                .map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))
+              }
+            </select>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setMostrarModalFixo(false)}
+                style={{
+                  flex: 1, padding: '10px', backgroundColor: '#f3f4f6', color: '#555',
+                  border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600'
+                }}>
+                Cancelar
+              </button>
+              <button onClick={adicionarFixo} disabled={!fixoClienteId}
+                style={{
+                  flex: 1, padding: '10px', backgroundColor: fixoClienteId ? '#344848' : '#ccc', color: 'white',
+                  border: 'none', borderRadius: '8px', cursor: fixoClienteId ? 'pointer' : 'not-allowed',
+                  fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                }}>
+                <Icon icon="mdi:account-plus" width="18" />
+                Adicionar fixo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Presença Agendamento */}
+      {mostrarModalPresencaAg && presencaAgAtual && (
+        <div onClick={e => { if (e.target === e.currentTarget) setMostrarModalPresencaAg(false) }}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '380px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Registrar Presença</h3>
+              <button onClick={() => setMostrarModalPresencaAg(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                <Icon icon="mdi:close" width="20" style={{ color: '#999' }} />
+              </button>
+            </div>
+
+            {/* Info */}
+            <div style={{ padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '10px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{presencaAgAtual.devedores?.nome || 'Aluno'}</div>
+              <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                {presencaAgAtual.aula.horario?.substring(0, 5)} {presencaAgAtual.aula.descricao && `- ${presencaAgAtual.aula.descricao}`}
+              </div>
+              {creditosAlunos[presencaAgAtual.devedor_id] && (
+                <div style={{ fontSize: '11px', color: '#b45309', marginTop: '4px', fontWeight: '600' }}>
+                  {creditosAlunos[presencaAgAtual.devedor_id].aulas_restantes}/{creditosAlunos[presencaAgAtual.devedor_id].aulas_total} aulas restantes
+                </div>
+              )}
+            </div>
+
+            {/* Presente / Falta */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <button onClick={() => setPresencaAgPresente(true)} style={{
+                flex: 1, padding: '12px', borderRadius: '10px', cursor: 'pointer',
+                backgroundColor: presencaAgPresente ? '#f0fdf4' : 'white',
+                border: presencaAgPresente ? '2px solid #16a34a' : '1px solid #e5e7eb',
+                fontSize: '14px', fontWeight: '600', color: presencaAgPresente ? '#16a34a' : '#666',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}>
+                <Icon icon="mdi:check-circle" width="20" /> Presente
+              </button>
+              <button onClick={() => setPresencaAgPresente(false)} style={{
+                flex: 1, padding: '12px', borderRadius: '10px', cursor: 'pointer',
+                backgroundColor: !presencaAgPresente ? '#fef2f2' : 'white',
+                border: !presencaAgPresente ? '2px solid #dc2626' : '1px solid #e5e7eb',
+                fontSize: '14px', fontWeight: '600', color: !presencaAgPresente ? '#dc2626' : '#666',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}>
+                <Icon icon="mdi:close-circle" width="20" /> Falta
+              </button>
+            </div>
+
+            {/* Observação */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+                {presencaAgPresente ? 'O que foi feito na aula?' : 'Motivo da falta'} <span style={{ color: '#999', fontWeight: '400' }}>(opcional)</span>
+              </label>
+              <textarea value={presencaAgObs} onChange={e => setPresencaAgObs(e.target.value)}
+                rows={3} placeholder={presencaAgPresente ? 'Ex: Treino de peito e costas' : 'Ex: Aluno avisou que não poderia vir'}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* Botões */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setMostrarModalPresencaAg(false)} style={{
+                flex: 1, padding: '10px', backgroundColor: '#f3f4f6', color: '#555',
+                border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600'
+              }}>Cancelar</button>
+              <button onClick={salvarPresencaAgendamento} disabled={salvandoPresencaAg} style={{
+                flex: 1, padding: '10px',
+                backgroundColor: salvandoPresencaAg ? '#ccc' : (presencaAgPresente ? '#16a34a' : '#ef4444'),
+                color: 'white', border: 'none', borderRadius: '8px',
+                cursor: salvandoPresencaAg ? 'not-allowed' : 'pointer',
+                fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}>
+                <Icon icon={presencaAgPresente ? 'mdi:check' : 'mdi:close'} width="18" />
+                {salvandoPresencaAg ? 'Salvando...' : 'Registrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {mostrarModalPresenca && presencaAtual && (
         <div
