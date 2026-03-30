@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { FUNCTIONS_URL, SUPABASE_ANON_KEY as ANON_KEY } from '../supabaseClient'
 
@@ -35,6 +35,14 @@ function dataParaString(date) {
 
 export default function Agendamento() {
   const { slug } = useParams()
+  const [searchParams] = useSearchParams()
+  const confirmarFilaId = searchParams.get('confirmar')
+
+  // Confirmação de vaga (lista de espera)
+  const [etapaConfirmacao, setEtapaConfirmacao] = useState(!!confirmarFilaId) // true se veio pelo link de confirmar
+  const [confirmando, setConfirmando] = useState(false)
+  const [confirmacaoResultado, setConfirmacaoResultado] = useState(null) // 'sucesso' | 'erro' | 'expirado'
+  const [confirmacaoMsg, setConfirmacaoMsg] = useState('')
 
   // Estados
   const [loading, setLoading] = useState(true)
@@ -242,6 +250,34 @@ export default function Agendamento() {
     }
   }
 
+  // Confirmar vaga da lista de espera (veio pelo link do WhatsApp)
+  const confirmarVagaFila = async () => {
+    if (!confirmarFilaId) return
+    setConfirmando(true)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fila-confirmar`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ slug, fila_id: confirmarFilaId })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        setConfirmacaoResultado('sucesso')
+        setConfirmacaoMsg('Sua vaga foi confirmada com sucesso!')
+      } else if (json.error?.includes('expirou') || json.error?.includes('prazo')) {
+        setConfirmacaoResultado('expirado')
+        setConfirmacaoMsg(json.error)
+      } else {
+        setConfirmacaoResultado('erro')
+        setConfirmacaoMsg(json.error || 'Erro ao confirmar vaga')
+      }
+    } catch {
+      setConfirmacaoResultado('erro')
+      setConfirmacaoMsg('Erro ao confirmar. Tente novamente.')
+    } finally {
+      setConfirmando(false)
+    }
+  }
+
   // Cadastrar novo aluno
   const cadastrarAluno = async () => {
     if (nome.trim().length < 2) { mostrarToast('Digite seu nome completo', 'error'); return }
@@ -370,6 +406,120 @@ export default function Agendamento() {
   }
 
   // ===== RENDER =====
+
+  // Tela de confirmação de vaga (veio pelo link do WhatsApp)
+  if (etapaConfirmacao) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', padding: 20
+      }}>
+        {empresa?.logo_url && (
+          <img src={empresa.logo_url} alt="" style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 16, objectFit: 'cover' }} />
+        )}
+        <div style={{
+          background: '#fff', borderRadius: 20, padding: '32px 24px', width: '100%', maxWidth: 380,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)', textAlign: 'center'
+        }}>
+          {confirmacaoResultado === 'sucesso' ? (
+            <>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', backgroundColor: '#f0fdf4',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
+              }}>
+                <Icon icon="mdi:check-circle" width="40" style={{ color: '#22c55e' }} />
+              </div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Vaga confirmada!</h2>
+              <p style={{ margin: '0 0 24px', fontSize: 14, color: '#64748b' }}>{confirmacaoMsg}</p>
+              <button onClick={() => { setEtapaConfirmacao(false); window.history.replaceState({}, '', `/agendar/${slug}`) }}
+                style={{
+                  padding: '12px 32px', backgroundColor: '#22c55e', color: '#fff', border: 'none',
+                  borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%'
+                }}>
+                Ver meus agendamentos
+              </button>
+            </>
+          ) : confirmacaoResultado === 'expirado' ? (
+            <>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', backgroundColor: '#fef3c7',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
+              }}>
+                <Icon icon="mdi:clock-alert" width="40" style={{ color: '#f59e0b' }} />
+              </div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Prazo expirado</h2>
+              <p style={{ margin: '0 0 24px', fontSize: 14, color: '#64748b' }}>{confirmacaoMsg}</p>
+              <button onClick={() => { setEtapaConfirmacao(false); window.history.replaceState({}, '', `/agendar/${slug}`) }}
+                style={{
+                  padding: '12px 32px', backgroundColor: '#344848', color: '#fff', border: 'none',
+                  borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%'
+                }}>
+                Voltar ao agendamento
+              </button>
+            </>
+          ) : confirmacaoResultado === 'erro' ? (
+            <>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', backgroundColor: '#fef2f2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
+              }}>
+                <Icon icon="mdi:alert-circle" width="40" style={{ color: '#ef4444' }} />
+              </div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Erro</h2>
+              <p style={{ margin: '0 0 24px', fontSize: 14, color: '#64748b' }}>{confirmacaoMsg}</p>
+              <button onClick={() => { setEtapaConfirmacao(false); window.history.replaceState({}, '', `/agendar/${slug}`) }}
+                style={{
+                  padding: '12px 32px', backgroundColor: '#344848', color: '#fff', border: 'none',
+                  borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%'
+                }}>
+                Voltar ao agendamento
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', backgroundColor: '#fef3c7',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
+              }}>
+                <Icon icon="mdi:calendar-check" width="40" style={{ color: '#f59e0b' }} />
+              </div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Vaga disponível!</h2>
+              <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                Uma vaga abriu na aula que você estava esperando.
+              </p>
+              <p style={{ margin: '0 0 24px', fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+                Confirme em até 1 hora para garantir sua vaga.
+              </p>
+              <button onClick={confirmarVagaFila} disabled={confirmando}
+                style={{
+                  padding: '14px 32px', width: '100%',
+                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  color: '#fff', border: 'none', borderRadius: 10,
+                  fontSize: 16, fontWeight: 700, cursor: confirmando ? 'wait' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                }}>
+                {confirmando ? (
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
+                ) : (
+                  <>
+                    <Icon icon="mdi:check-bold" width="20" />
+                    Confirmar minha vaga
+                  </>
+                )}
+              </button>
+              <button onClick={() => { setEtapaConfirmacao(false); window.history.replaceState({}, '', `/agendar/${slug}`) }}
+                style={{
+                  marginTop: 12, padding: '10px', width: '100%', backgroundColor: 'transparent',
+                  border: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8', fontWeight: 500
+                }}>
+                Não quero mais
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   // Loading
   if (loading) {
