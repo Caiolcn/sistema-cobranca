@@ -45,13 +45,14 @@ export default function Agendamento() {
   const [contagemFixos, setContagemFixos] = useState({}) // { aulaId: count }
 
   // Identificacao
-  const [etapa, setEtapa] = useState('telefone') // telefone | nome | grade
+  const [etapa, setEtapa] = useState('telefone') // telefone | nome | selecionar | grade
   const [telefone, setTelefone] = useState('')
   const [nome, setNome] = useState('')
   const [aluno, setAluno] = useState(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState([])
   const [identificando, setIdentificando] = useState(false)
   const [cadastrando, setCadastrando] = useState(false)
+  const [multiplosAlunos, setMultiplosAlunos] = useState([]) // quando tem mais de 1 com mesmo telefone
 
   // Agendamento
   const [diaSelecionado, setDiaSelecionado] = useState(null)
@@ -138,12 +139,41 @@ export default function Agendamento() {
         mostrarToast(json.error || 'Agendamento bloqueado por mensalidade em atraso', 'error')
         return
       }
-      if (json.encontrado) {
+      if (json.multiplos) {
+        setMultiplosAlunos(json.alunos)
+        setEtapa('selecionar')
+      } else if (json.encontrado) {
         setAluno(json.aluno)
         setMeusAgendamentos(json.agendamentos || [])
         setEtapa('grade')
       } else {
         setEtapa('nome')
+      }
+    } catch {
+      mostrarToast('Erro ao buscar. Tente novamente.', 'error')
+    } finally {
+      setIdentificando(false)
+    }
+  }
+
+  // Selecionar aluno quando há múltiplos com mesmo telefone
+  const selecionarAluno = async (alunoSelecionado) => {
+    setIdentificando(true)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-identificar`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ slug, telefone: telefone.replace(/\D/g, ''), devedor_id: alunoSelecionado.id })
+      })
+      const json = await res.json()
+
+      if (json.bloqueado) {
+        mostrarToast(json.error || 'Agendamento bloqueado por mensalidade em atraso', 'error')
+        return
+      }
+      if (json.encontrado) {
+        setAluno(json.aluno)
+        setMeusAgendamentos(json.agendamentos || [])
+        setEtapa('grade')
       }
     } catch {
       mostrarToast('Erro ao buscar. Tente novamente.', 'error')
@@ -406,6 +436,74 @@ export default function Agendamento() {
             {toast.msg}
           </div>
         )}
+      </div>
+    )
+  }
+
+  // Tela de seleção (múltiplos alunos com mesmo telefone)
+  if (etapa === 'selecionar') {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', padding: 20
+      }}>
+        {empresa?.logo_url && (
+          <img src={empresa.logo_url} alt="" style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 16, objectFit: 'cover' }} />
+        )}
+        <div style={{
+          background: '#fff', borderRadius: 20, padding: '32px 24px', width: '100%', maxWidth: 380,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <Icon icon="mdi:account-group" width="40" style={{ color: '#4338ca', marginBottom: 8 }} />
+            <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#1e293b' }}>
+              Quem vai agendar?
+            </h2>
+            <p style={{ margin: 0, fontSize: 14, color: '#94a3b8' }}>
+              Encontramos mais de um cadastro com esse telefone
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {multiplosAlunos.map(a => (
+              <button key={a.id} onClick={() => selecionarAluno(a)} disabled={identificando}
+                style={{
+                  padding: '14px 16px', borderRadius: 12, border: '1px solid #e2e8f0',
+                  backgroundColor: '#f8fafc', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  transition: 'all 0.15s', textAlign: 'left'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#4338ca' }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0' }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(135deg, #4338ca, #6366f1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 700, color: '#fff'
+                }}>
+                  {(a.nome || 'A').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1e293b' }}>{a.nome}</div>
+                  {a.plano_nome && (
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{a.plano_nome}</div>
+                  )}
+                </div>
+                <Icon icon="mdi:chevron-right" width="20" style={{ color: '#94a3b8', flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+
+          <button onClick={() => { setEtapa('telefone'); setMultiplosAlunos([]) }}
+            style={{
+              marginTop: 16, padding: '10px', width: '100%', backgroundColor: 'transparent',
+              border: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8', fontWeight: 500
+            }}>
+            <Icon icon="mdi:arrow-left" width="14" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+            Voltar
+          </button>
+        </div>
       </div>
     )
   }
