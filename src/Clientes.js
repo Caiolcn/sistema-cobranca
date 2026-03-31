@@ -2427,7 +2427,7 @@ Equipe ${nomeEmpresa}`
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#e8f5e9'}
                       >
                         <Icon icon="mdi:link-variant" width="14" />
-                        Copiar link
+                        Copiar portal
                       </button>
                       <button
                         onClick={async () => {
@@ -2465,7 +2465,7 @@ Equipe ${nomeEmpresa}`
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
                       >
                         <Icon icon="mdi:whatsapp" width="14" />
-                        Enviar link
+                        Enviar portal
                       </button>
                     </>)}
                   </div>
