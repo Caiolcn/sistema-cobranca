@@ -1254,8 +1254,9 @@ Abraços,
 Equipe ${nomeEmpresa}`
             }
 
+            const telefoneEnvio = temResponsavel ? novoClienteResponsavelTelefone.trim() : novoClienteTelefone.trim()
             const resultado = await whatsappService.enviarMensagem(
-              novoClienteTelefone.trim(),
+              telefoneEnvio,
               mensagemFinal
             )
 
