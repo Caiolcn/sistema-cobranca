@@ -256,7 +256,6 @@ export default function Clientes() {
           .from('mensalidades')
           .select('devedor_id, data_vencimento, status, is_mensalidade')
           .eq('user_id', userId)
-          .eq('is_mensalidade', true)
           .in('status', ['pendente', 'atrasado'])
           .order('data_vencimento', { ascending: true })
       ])
@@ -633,12 +632,13 @@ export default function Clientes() {
 
       const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
 
-      // Verificar se já existe
+      // Verificar se já existe (ignorar lixo)
       const { data: jaExiste } = await supabase
         .from('mensalidades')
         .select('id')
         .eq('devedor_id', mensalidadeAtual.devedor_id)
         .eq('data_vencimento', proximoVencimentoStr)
+        .eq('lixo', false)
         .maybeSingle()
 
       if (jaExiste) return
@@ -2401,7 +2401,7 @@ Equipe ${nomeEmpresa}`
                     <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
                       {clienteSelecionado.telefone}
                     </p>
-                    {clienteSelecionado.portal_token && (
+                    {clienteSelecionado.portal_token && (<>
                       <button
                         onClick={() => {
                           const url = `${window.location.origin}/portal/${clienteSelecionado.portal_token}`
@@ -2427,9 +2427,47 @@ Equipe ${nomeEmpresa}`
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#e8f5e9'}
                       >
                         <Icon icon="mdi:link-variant" width="14" />
-                        Copiar link do portal
+                        Copiar link
                       </button>
-                    )}
+                      <button
+                        onClick={async () => {
+                          const url = `${window.location.origin}/portal/${clienteSelecionado.portal_token}`
+                          const telefone = clienteSelecionado.responsavel_telefone || clienteSelecionado.telefone
+                          const nome = clienteSelecionado.nome?.split(' ')[0] || 'Aluno'
+                          const msg = `Olá, ${nome}! 👋\n\nAcesse seu portal de pagamentos pelo link abaixo:\n\n${url}\n\nPor lá você pode consultar suas mensalidades e realizar pagamentos.`
+                          try {
+                            const resultado = await whatsappService.enviarMensagem(telefone, msg)
+                            if (resultado.sucesso) {
+                              showToast('Link do portal enviado por WhatsApp!', 'success')
+                            } else {
+                              showToast(resultado.erro || 'Erro ao enviar', 'warning')
+                            }
+                          } catch {
+                            showToast('Erro ao enviar WhatsApp', 'error')
+                          }
+                        }}
+                        title="Enviar link do portal por WhatsApp"
+                        style={{
+                          background: '#dcfce7',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          padding: '3px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#16a34a',
+                          fontWeight: '500',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#bbf7d0'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
+                      >
+                        <Icon icon="mdi:whatsapp" width="14" />
+                        Enviar link
+                      </button>
+                    </>)}
                   </div>
                 </div>
               </div>
