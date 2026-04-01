@@ -37,8 +37,9 @@ export default function PortalCliente() {
   const [cancelando, setCancelando] = useState(null)
   const [entrandoFila, setEntrandoFila] = useState(null)
   const [saindoFila, setSaindoFila] = useState(null)
-  const [agendamentoTab, setAgendamentoTab] = useState('agendar') // 'agendar' | 'meus'
+  const [agendamentoTab, setAgendamentoTab] = useState('agendar') // 'agendar' | 'minhas' | 'frequencia'
   const [agendamentoCarregado, setAgendamentoCarregado] = useState(false)
+  const [agendamentoBloqueado, setAgendamentoBloqueado] = useState(false)
 
   // PWA Install
   const [deferredPrompt, setDeferredPrompt] = useState(null)
@@ -311,7 +312,8 @@ export default function PortalCliente() {
       setAgendamentoFixos(dadosJson.fixos_contagem || {})
       setAgendamentoFila(dadosJson.fila_contagem || {})
 
-      if (idJson.encontrado && !idJson.bloqueado) {
+      if (idJson.bloqueado) setAgendamentoBloqueado(true)
+      if (idJson.encontrado) {
         setMeusAgendamentos(idJson.agendamentos || [])
         setMinhasFilas(idJson.filas || [])
       }
@@ -416,7 +418,7 @@ export default function PortalCliente() {
   // Marcar avisos como lidos ao abrir a tab
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
-    if (tabId === 'agendar' && !agendamentoCarregado) carregarAgendamento()
+    if (tabId === 'aulas' && !agendamentoCarregado && dados?.agendamento_ativo) carregarAgendamento()
     if (tabId === 'feed' && avisosReais.length > 0) {
       localStorage.setItem(`avisos_visto_${token}`, avisosReais[0].id)
     }
@@ -427,8 +429,7 @@ export default function PortalCliente() {
     { id: 'home', icon: 'mdi:home-variant', label: 'Inicio' },
     { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
     { id: 'pagamentos', icon: 'mdi:credit-card-outline', label: 'Pagar' },
-    { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' },
-    ...(dados?.agendamento_ativo ? [{ id: 'agendar', icon: 'mdi:calendar-plus', label: 'Agendar' }] : [])
+    { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' }
   ]
 
   return (
@@ -438,6 +439,7 @@ export default function PortalCliente() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
         @keyframes expandIn { from { max-height: 0; opacity: 0 } to { max-height: 700px; opacity: 1 } }
         @keyframes pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.05) } }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
         .ptab { animation: fadeIn 0.3s ease both; }
         .ptab > *:nth-child(1) { animation: fadeIn 0.3s ease 0.05s both; }
@@ -552,8 +554,8 @@ export default function PortalCliente() {
       {/* Hero section - esconde na tab feed */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%)',
-        padding: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas' || activeTab === 'agendar') ? '0' : '16px 20px 40px',
-        maxHeight: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas' || activeTab === 'agendar') ? '0' : '300px',
+        padding: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas') ? '0' : '16px 20px 40px',
+        maxHeight: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas') ? '0' : '300px',
         overflow: 'hidden', transition: 'all 0.3s ease',
         position: 'relative'
       }}>
@@ -1228,176 +1230,103 @@ export default function PortalCliente() {
           </div>
         )}
 
-        {/* ===== TAB AULAS ===== */}
+        {/* ===== TAB AULAS (Unificada) ===== */}
         {activeTab === 'aulas' && (
           <div className="ptab" style={{ marginTop: 40 }}>
-            {/* Grade de horarios */}
-            {dados.grade_horarios && dados.grade_horarios.length > 0 ? (
-              <div style={{
-                background: '#fff', borderRadius: 16, padding: '20px', marginBottom: 12,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <Icon icon="mdi:calendar-clock-outline" width="20" style={{ color: '#8b5cf6' }} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Minhas Aulas</span>
-                  <span style={{
-                    background: '#f5f3ff', color: '#8b5cf6',
-                    padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700
-                  }}>{dados.grade_horarios.length}</span>
-                </div>
-                {(() => {
-                  const diasSemana = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado']
-                  const hojeDia = new Date().getDay()
-                  const porDia = {}
-                  dados.grade_horarios.forEach(g => {
-                    if (!porDia[g.dia_semana]) porDia[g.dia_semana] = []
-                    porDia[g.dia_semana].push(g)
-                  })
-                  const diasOrdenados = Object.keys(porDia).map(Number).sort((a, b) => {
-                    return ((a - hojeDia + 7) % 7) - ((b - hojeDia + 7) % 7)
-                  })
-                  return diasOrdenados.map(dia => (
-                    <div key={dia} style={{ marginBottom: 12 }}>
-                      <div style={{
-                        fontSize: 12, fontWeight: 700, marginBottom: 6,
-                        color: dia === hojeDia ? '#8b5cf6' : '#64748b',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        textTransform: 'uppercase', letterSpacing: '0.5px'
-                      }}>
-                        {dia === hojeDia && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6' }} />}
-                        {diasSemana[dia]}
-                        {dia === hojeDia && <span style={{ fontWeight: 500, color: '#8b5cf6', fontSize: 10, textTransform: 'none' }}>(hoje)</span>}
-                      </div>
-                      {porDia[dia].map(aula => (
-                        <div key={aula.id} style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 12px', borderRadius: 10,
-                          background: dia === hojeDia ? 'linear-gradient(135deg, #faf5ff, #f5f3ff)' : '#f8fafc',
-                          border: dia === hojeDia ? '1px solid #ede9fe' : '1px solid #f1f5f9',
-                          marginBottom: 4
-                        }}>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: dia === hojeDia ? '#8b5cf6' : '#334155', minWidth: 48 }}>
-                            {aula.horario ? aula.horario.slice(0, 5) : '--:--'}
-                          </span>
-                          {aula.descricao && <span style={{ fontSize: 13, color: '#64748b' }}>{aula.descricao}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                })()}
-              </div>
-            ) : (
-              <div style={{
-                background: '#fff', borderRadius: 16, padding: '32px 20px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)', textAlign: 'center',
-                border: '1px solid rgba(0,0,0,0.04)'
-              }}>
-                <Icon icon="mdi:calendar-blank-outline" width="40" style={{ color: '#cbd5e1', marginBottom: 8 }} />
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#64748b' }}>Nenhuma aula cadastrada</div>
-              </div>
-            )}
 
-            {/* Frequencia */}
-            {dados.presencas && dados.presencas.length > 0 && (
-              <div style={{
-                background: '#fff', borderRadius: 16, padding: '20px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                border: '1px solid rgba(0,0,0,0.04)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <Icon icon="mdi:chart-line" width="20" style={{ color: '#f59e0b' }} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Frequencia</span>
-                  {pctFrequencia !== null && (
-                    <span style={{
-                      background: pctFrequencia >= 75 ? '#f0fdf4' : pctFrequencia >= 50 ? '#fffbeb' : '#fef2f2',
-                      color: pctFrequencia >= 75 ? '#16a34a' : pctFrequencia >= 50 ? '#d97706' : '#dc2626',
-                      padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700
-                    }}>{pctFrequencia}%</span>
-                  )}
-                </div>
-
-                {/* Stats resumo */}
+            {/* Card Próxima Aula — compacto */}
+            {(() => {
+              const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+              const hojeDia = new Date().getDay()
+              const proximaAula = dados.grade_horarios?.sort((a, b) => {
+                const diffA = ((a.dia_semana - hojeDia + 7) % 7) || 7
+                const diffB = ((b.dia_semana - hojeDia + 7) % 7) || 7
+                return diffA === diffB ? (a.horario || '').localeCompare(b.horario || '') : diffA - diffB
+              })?.[0]
+              // Se tem aula hoje com horário futuro, priorizar
+              const aulaHoje = dados.grade_horarios?.find(g => {
+                if (g.dia_semana !== hojeDia) return false
+                if (!g.horario) return false
+                const [h, m] = g.horario.split(':').map(Number)
+                return new Date().getHours() < h || (new Date().getHours() === h && new Date().getMinutes() < m)
+              })
+              const aula = aulaHoje || proximaAula
+              if (!aula) return null
+              const isHoje = aula.dia_semana === hojeDia
+              return (
                 <div style={{
-                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16
+                  background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: 12, padding: '12px 16px',
+                  marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  border: '1px solid #bbf7d0'
                 }}>
-                  <div style={{ textAlign: 'center', padding: '12px 8px', background: '#f0fdf4', borderRadius: 10 }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a' }}>{presencasPresente}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Presencas</div>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '12px 8px', background: '#fef2f2', borderRadius: 10 }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{presencasTotal - presencasPresente}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Faltas</div>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '12px 8px', background: '#f8fafc', borderRadius: 10 }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: '#334155' }}>{presencasTotal}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Total</div>
-                  </div>
-                </div>
-
-                {/* Barra */}
-                <div style={{
-                  height: 6, borderRadius: 3, background: '#e5e7eb', overflow: 'hidden', marginBottom: 16
-                }}>
-                  <div style={{
-                    height: '100%', borderRadius: 3, transition: 'width 0.5s ease',
-                    width: `${pctFrequencia}%`,
-                    background: pctFrequencia >= 75 ? 'linear-gradient(90deg, #22c55e, #16a34a)' : pctFrequencia >= 50 ? 'linear-gradient(90deg, #fbbf24, #d97706)' : 'linear-gradient(90deg, #f87171, #dc2626)'
-                  }} />
-                </div>
-
-                {/* Lista */}
-                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                  {dados.presencas.map(p => (
-                    <div key={p.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 12px', borderRadius: 8,
-                      background: p.presente ? '#f0fdf4' : '#fef2f2',
-                      border: p.presente ? '1px solid #dcfce7' : '1px solid #fecaca',
-                      marginBottom: 4
-                    }}>
-                      <Icon icon={p.presente ? 'mdi:check-circle' : 'mdi:close-circle'} width="18"
-                        style={{ color: p.presente ? '#16a34a' : '#dc2626', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{formatarData(p.data)}</div>
-                        {p.observacao && (
-                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.observacao}</div>
-                        )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Icon icon="mdi:clock-outline" width={20} style={{ color: '#16a34a' }} />
+                    <div>
+                      <div style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>Próxima aula</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                        {aula.horario?.slice(0, 5)} {aula.descricao && `- ${aula.descricao}`}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: p.presente ? '#16a34a' : '#dc2626' }}>
-                        {p.presente ? 'Presente' : 'Falta'}
-                      </span>
                     </div>
-                  ))}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: isHoje ? '#16a34a' : '#64748b' }}>
+                    {isHoje ? 'Hoje' : diasSemana[aula.dia_semana]}
+                  </span>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )
+            })()}
 
-        {/* ===== TAB AGENDAR ===== */}
-        {activeTab === 'agendar' && dados?.agendamento_ativo && (
-          <div className="ptab" style={{ padding: '16px 20px' }}>
-            {/* Sub-tabs: Agendar / Meus */}
-            <div style={{ display: 'flex', gap: 4, backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 16 }}>
-              {[{ id: 'agendar', label: 'Agendar', icon: 'mdi:calendar-plus' }, { id: 'meus', label: `Meus (${meusAgendamentos.length})`, icon: 'mdi:calendar-check' }].map(t => (
-                <button key={t.id} onClick={() => setAgendamentoTab(t.id)} style={{
-                  flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  backgroundColor: agendamentoTab === t.id ? '#fff' : 'transparent',
-                  color: agendamentoTab === t.id ? '#1e293b' : '#94a3b8',
-                  fontWeight: agendamentoTab === t.id ? 600 : 400, fontSize: 13,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                  boxShadow: agendamentoTab === t.id ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
-                }}>
-                  <Icon icon={t.icon} width={16} /> {t.label}
-                </button>
-              ))}
+            {/* Card único — sistema coeso */}
+            <div style={{
+              background: '#fff', borderRadius: 16, overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)',
+              border: '1px solid rgba(0,0,0,0.04)'
+            }}>
+
+            {/* Sub-abas — segmented control */}
+            <div style={{ padding: '14px 14px 0', backgroundColor: '#fff', borderRadius: '16px 16px 0 0' }}>
+              <div style={{ display: 'flex', gap: 4, backgroundColor: '#f3f4f6', borderRadius: 10, padding: 3 }}>
+                {[
+                  ...(dados?.agendamento_ativo ? [
+                    { id: 'agendar', label: 'Agendar', icon: 'mdi:calendar-plus' },
+                  ] : []),
+                  { id: 'minhas', label: 'Aulas', icon: 'mdi:calendar-check' },
+                  { id: 'frequencia', label: 'Frequência', icon: 'mdi:chart-line' }
+                ].map(t => (
+                  <button key={t.id} onClick={() => setAgendamentoTab(t.id)} style={{
+                    flex: 1, padding: '8px 10px', cursor: 'pointer',
+                    backgroundColor: agendamentoTab === t.id ? '#fff' : 'transparent',
+                    color: agendamentoTab === t.id ? '#1a1a1a' : '#888',
+                    fontWeight: agendamentoTab === t.id ? 600 : 400, fontSize: 13,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    border: 'none', borderRadius: 8,
+                    boxShadow: agendamentoTab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.15s', whiteSpace: 'nowrap'
+                  }}>
+                    <Icon icon={t.icon} width={15} style={{ opacity: agendamentoTab === t.id ? 1 : 0.4 }} /> {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {agendamentoTab === 'agendar' && (
-              <>
+            {/* Conteúdo do card */}
+            <div style={{ padding: '16px' }}>
+
+            {/* === Sub-aba: Agendar === */}
+            {agendamentoTab === 'agendar' && dados?.agendamento_ativo && (
+              <div>
+                {agendamentoBloqueado ? (
+                  <div style={{
+                    padding: '24px 16px', borderRadius: 10, backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca', textAlign: 'center'
+                  }}>
+                    <Icon icon="mdi:lock" width={32} style={{ color: '#ef4444', marginBottom: 8 }} />
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>Agendamento bloqueado</div>
+                    <div style={{ fontSize: 13, color: '#991b1b', lineHeight: 1.5 }}>Regularize sua mensalidade em atraso para agendar novas aulas.</div>
+                  </div>
+                ) : (
+                  <>
                 {/* Seletor de datas */}
-                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2, marginBottom: 16, scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }} className="hide-scrollbar">
                   {gerarProximasDatasAg().map(d => {
                     const str = d.toISOString().split('T')[0]
                     const isHoje = str === new Date().toISOString().split('T')[0]
@@ -1447,7 +1376,7 @@ export default function PortalCliente() {
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {aulaDoDia.map(aula => {
+                          {aulaDoDia.map((aula, idx) => {
                             const vagas = agVagasRestantes(aula.id, agendamentoDia)
                             const lotado = vagas <= 0
                             const agendado = agJaAgendou(aula.id, agendamentoDia)
@@ -1458,60 +1387,55 @@ export default function PortalCliente() {
 
                             return (
                               <div key={aula.id} style={{
-                                background: '#fff', borderRadius: 12, padding: 14,
-                                border: agendado ? '2px solid #22c55e' : filaAtiva ? '2px solid #f59e0b' : '1px solid #e2e8f0',
-                                opacity: lotado && !agendado && !filaAtiva ? 0.7 : 1
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '12px 14px', borderRadius: 10,
+                                background: agendado ? '#f0fdf4' : filaAtiva ? '#fefce8' : '#fff',
+                                border: agendado ? '1px solid #bbf7d0' : filaAtiva ? '1px solid #fde68a' : '1px solid #e5e7eb',
+                                opacity: lotado && !agendado && !filaAtiva ? 0.55 : 1
                               }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <div>
-                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{aula.horario?.substring(0, 5)}</div>
-                                    {aula.descricao && <div style={{ fontSize: 12, color: '#64748b' }}>{aula.descricao}</div>}
+                                {/* Horário + descrição + vagas */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    minWidth: 48, height: 48, borderRadius: 10,
+                                    backgroundColor: agendado ? '#dcfce7' : lotado ? '#fef2f2' : '#f8fafc',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}>
+                                    <span style={{ fontSize: 15, fontWeight: 800, color: agendado ? '#16a34a' : lotado ? '#ef4444' : '#1e293b' }}>
+                                      {aula.horario?.substring(0, 5)}
+                                    </span>
                                   </div>
-                                  <div style={{ textAlign: 'right' }}>
-                                    {agendado ? (
-                                      <span style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', backgroundColor: '#f0fdf4', padding: '3px 8px', borderRadius: 6 }}>Agendado</span>
-                                    ) : filaAtiva ? (
-                                      <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', backgroundColor: '#fef3c7', padding: '3px 8px', borderRadius: 6 }}>Na fila ({filaAtiva.posicao}º)</span>
-                                    ) : lotado ? (
-                                      <div>
-                                        <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', backgroundColor: '#fef2f2', padding: '3px 8px', borderRadius: 6 }}>Esgotado</span>
-                                        {nFila > 0 && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, textAlign: 'right' }}>{nFila} na fila</div>}
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: 12, color: vagas <= 3 ? '#f59e0b' : '#94a3b8', fontWeight: 600 }}>{vagas} vaga{vagas !== 1 ? 's' : ''}</span>
-                                    )}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {aula.descricao && <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{aula.descricao}</div>}
+                                    <div style={{ fontSize: 11, color: lotado ? '#ef4444' : vagas <= 3 ? '#f59e0b' : '#94a3b8', fontWeight: 500, marginTop: 2 }}>
+                                      {lotado ? 'Esgotado' : `${vagas} vaga${vagas !== 1 ? 's' : ''} disponíve${vagas !== 1 ? 'is' : 'l'}`}
+                                      {lotado && nFila > 0 && ` · ${nFila} na fila`}
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* Botão agendar */}
-                                {!agendado && !lotado && !filaAtiva && (
-                                  <button onClick={() => agendarAula(aula, agendamentoDia)} disabled={isAgendando}
-                                    style={{ width: '100%', marginTop: 10, padding: '10px', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                    {isAgendando ? <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:calendar-plus" width={16} /> Agendar</>}
-                                  </button>
-                                )}
-
-                                {/* Botão fila */}
-                                {lotado && !agendado && !filaAtiva && (
-                                  <button onClick={() => entrarNaFila(aula, agendamentoDia)} disabled={isEntrandoFila}
-                                    style={{ width: '100%', marginTop: 10, padding: '10px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                    {isEntrandoFila ? <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:clock-plus-outline" width={16} /> Entrar na fila</>}
-                                  </button>
-                                )}
-
-                                {/* Na fila */}
-                                {filaAtiva && (
-                                  <div style={{ marginTop: 10 }}>
-                                    <div style={{ padding: '8px 12px', borderRadius: 8, backgroundColor: '#fef3c7', fontSize: 12, color: '#92400e', textAlign: 'center', marginBottom: 6 }}>
-                                      <Icon icon="mdi:clock-outline" width={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                                      Você é o <strong>{filaAtiva.posicao}º</strong> da fila
-                                    </div>
+                                {/* Ação à direita */}
+                                <div style={{ flexShrink: 0, marginLeft: 8 }}>
+                                  {agendado ? (
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', backgroundColor: '#dcfce7', padding: '6px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <Icon icon="mdi:check" width={14} /> Agendado
+                                    </span>
+                                  ) : filaAtiva ? (
                                     <button onClick={() => sairDaFila(filaAtiva)} disabled={saindoFila === filaAtiva.id}
-                                      style={{ width: '100%', padding: '7px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                                      {saindoFila === filaAtiva.id ? 'Saindo...' : 'Sair da fila'}
+                                      style={{ fontSize: 11, fontWeight: 700, color: '#92400e', backgroundColor: '#fef3c7', padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <Icon icon="mdi:clock-outline" width={14} /> {filaAtiva.posicao}º · Sair
                                     </button>
-                                  </div>
-                                )}
+                                  ) : lotado ? (
+                                    <button onClick={() => entrarNaFila(aula, agendamentoDia)} disabled={isEntrandoFila}
+                                      style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', backgroundColor: '#fffbeb', padding: '6px 12px', borderRadius: 8, border: '1px solid #fde68a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      {isEntrandoFila ? <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #fde68a', borderTopColor: '#f59e0b', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:clock-plus-outline" width={14} /> Fila</>}
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => agendarAula(aula, agendamentoDia)} disabled={isAgendando}
+                                      style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', backgroundColor: '#f0fdf4', padding: '6px 12px', borderRadius: 8, border: '1px solid #bbf7d0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      {isAgendando ? <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #bbf7d0', borderTopColor: '#16a34a', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:plus" width={16} /> Agendar</>}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             )
                           })}
@@ -1527,59 +1451,169 @@ export default function PortalCliente() {
                 )}
               </>
             )}
+              </div>
+            )}
 
-            {/* Meus agendamentos */}
-            {agendamentoTab === 'meus' && (
+            {/* === Sub-aba: Minhas Aulas (agendamentos + fila) === */}
+            {agendamentoTab === 'minhas' && (
               <div>
                 {meusAgendamentos.length === 0 && minhasFilas.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
-                    <Icon icon="mdi:calendar-blank" width={40} style={{ color: '#e2e8f0', marginBottom: 8 }} />
-                    <p style={{ margin: 0, fontSize: 13 }}>Nenhum agendamento</p>
+                  <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>
+                    <Icon icon="mdi:calendar-blank" width={36} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>Nenhum agendamento</div>
+                    <div style={{ fontSize: 12, color: '#c0c8d0', marginTop: 4 }}>Agende uma aula na aba "Agendar"</div>
                   </div>
                 ) : (
                   <>
-                    {meusAgendamentos.map(ag => (
+                    {meusAgendamentos.map((ag, idx) => (
                       <div key={ag.id} style={{
-                        background: '#fff', borderRadius: 12, padding: 14, marginBottom: 8,
-                        border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '10px 0', borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none'
                       }}>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
                             {ag.aula?.horario?.substring(0, 5)} {ag.aula?.descricao && `- ${ag.aula.descricao}`}
                           </div>
-                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>
                             {new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
                           </div>
                         </div>
                         <button onClick={() => cancelarAgendamento(ag)} disabled={cancelando === ag.id}
-                          style={{ padding: '6px 12px', backgroundColor: '#fef2f2', color: '#ef4444', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          style={{ padding: '5px 10px', backgroundColor: '#fef2f2', color: '#ef4444', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           {cancelando === ag.id ? '...' : 'Cancelar'}
                         </button>
                       </div>
                     ))}
-                    {minhasFilas.map(f => (
-                      <div key={f.id} style={{
-                        background: '#fefce8', borderRadius: 12, padding: 14, marginBottom: 8,
-                        border: '1px solid #fde68a', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                      }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>
-                            {f.aula?.horario?.substring(0, 5)} {f.aula?.descricao && `- ${f.aula.descricao}`}
+                    {minhasFilas.length > 0 && (
+                      <div style={{ marginTop: meusAgendamentos.length > 0 ? 8 : 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 6, textTransform: 'uppercase' }}>Na fila</div>
+                        {minhasFilas.map((f, idx) => (
+                          <div key={f.id} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '10px 0', borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none',
+                            background: '#fefce8', margin: '0 -16px', padding: '10px 16px'
+                          }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                                {f.aula?.horario?.substring(0, 5)} {f.aula?.descricao && `- ${f.aula.descricao}`}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#a16207' }}>
+                                {f.posicao}º da fila — {new Date(f.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+                              </div>
+                            </div>
+                            <button onClick={() => sairDaFila(f)} disabled={saindoFila === f.id}
+                              style={{ padding: '5px 10px', backgroundColor: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                              {saindoFila === f.id ? '...' : 'Sair'}
+                            </button>
                           </div>
-                          <div style={{ fontSize: 12, color: '#a16207', marginTop: 2 }}>
-                            Na fila ({f.posicao}º) — {new Date(f.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
-                          </div>
-                        </div>
-                        <button onClick={() => sairDaFila(f)} disabled={saindoFila === f.id}
-                          style={{ padding: '6px 12px', backgroundColor: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                          {saindoFila === f.id ? '...' : 'Sair'}
-                        </button>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </>
                 )}
               </div>
             )}
+
+            {/* === Sub-aba: Frequência === */}
+            {agendamentoTab === 'frequencia' && (
+              <div>
+                {/* Aproveitamento — destaque principal */}
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 80, height: 80, borderRadius: '50%',
+                    background: pctFrequencia >= 75 ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : pctFrequencia >= 50 ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+                    border: `3px solid ${pctFrequencia >= 75 ? '#22c55e' : pctFrequencia >= 50 ? '#f59e0b' : '#ef4444'}`,
+                    marginBottom: 8
+                  }}>
+                    <span style={{
+                      fontSize: 24, fontWeight: 800,
+                      color: pctFrequencia >= 75 ? '#16a34a' : pctFrequencia >= 50 ? '#d97706' : '#dc2626'
+                    }}>{pctFrequencia || 0}%</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>Aproveitamento</div>
+
+                  {/* Stats inline */}
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 12 }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#16a34a' }}>{presencasPresente}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Presenças</div>
+                    </div>
+                    <div style={{ width: 1, backgroundColor: '#e5e7eb' }} />
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#dc2626' }}>{presencasTotal - presencasPresente}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Faltas</div>
+                    </div>
+                    <div style={{ width: 1, backgroundColor: '#e5e7eb' }} />
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#334155' }}>{presencasTotal}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Total</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Barra de progresso com legenda */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>Frequência</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: pctFrequencia >= 75 ? '#16a34a' : pctFrequencia >= 50 ? '#d97706' : '#dc2626' }}>{pctFrequencia || 0}%</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: '#f1f5f9', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 2, transition: 'width 0.5s ease',
+                      width: `${pctFrequencia || 0}%`,
+                      background: pctFrequencia >= 75 ? 'linear-gradient(90deg, #22c55e, #16a34a)' : pctFrequencia >= 50 ? 'linear-gradient(90deg, #fbbf24, #d97706)' : 'linear-gradient(90deg, #f87171, #dc2626)'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Histórico */}
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico</div>
+
+                {dados.presencas && dados.presencas.length > 0 ? (
+                  <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+                    {dados.presencas.map((p, idx) => (
+                      <div key={p.id} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 0',
+                        borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none',
+                        background: p.presente ? 'transparent' : '#fef2f230'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                            backgroundColor: p.presente ? '#f0fdf4' : '#fef2f2',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            <Icon icon={p.presente ? 'mdi:check' : 'mdi:close'} width={16}
+                              style={{ color: p.presente ? '#16a34a' : '#dc2626' }} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{formatarData(p.data)}</div>
+                            {p.observacao && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.observacao}</div>}
+                          </div>
+                        </div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, flexShrink: 0,
+                          color: p.presente ? '#16a34a' : '#dc2626',
+                          backgroundColor: p.presente ? '#f0fdf4' : '#fef2f2',
+                          padding: '3px 8px', borderRadius: 6
+                        }}>
+                          {p.presente ? 'Presente' : 'Falta'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>
+                    <Icon icon="mdi:chart-line" width={36} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>Nenhum registro de frequência</div>
+                  </div>
+                )}
+              </div>
+            )}
+            </div>{/* fim padding */}
+            </div>{/* fim card branco */}
           </div>
         )}
 
