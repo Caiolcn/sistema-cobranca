@@ -29,7 +29,10 @@ export default function PortalCliente() {
   const [agendamentoFila, setAgendamentoFila] = useState({})
   const [meusAgendamentos, setMeusAgendamentos] = useState([])
   const [minhasFilas, setMinhasFilas] = useState([])
-  const [agendamentoDia, setAgendamentoDia] = useState(null)
+  const [agendamentoDia, setAgendamentoDia] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
   const [agendando, setAgendando] = useState(null)
   const [cancelando, setCancelando] = useState(null)
   const [entrandoFila, setEntrandoFila] = useState(null)
