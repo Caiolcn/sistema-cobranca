@@ -22,6 +22,21 @@ export default function PortalCliente() {
   // Menu lateral
   const [menuAberto, setMenuAberto] = useState(false)
 
+  // Agendamento (dentro do portal)
+  const [agendamentoAulas, setAgendamentoAulas] = useState([])
+  const [agendamentoContagem, setAgendamentoContagem] = useState({})
+  const [agendamentoFixos, setAgendamentoFixos] = useState({})
+  const [agendamentoFila, setAgendamentoFila] = useState({})
+  const [meusAgendamentos, setMeusAgendamentos] = useState([])
+  const [minhasFilas, setMinhasFilas] = useState([])
+  const [agendamentoDia, setAgendamentoDia] = useState(null)
+  const [agendando, setAgendando] = useState(null)
+  const [cancelando, setCancelando] = useState(null)
+  const [entrandoFila, setEntrandoFila] = useState(null)
+  const [saindoFila, setSaindoFila] = useState(null)
+  const [agendamentoTab, setAgendamentoTab] = useState('agendar') // 'agendar' | 'meus'
+  const [agendamentoCarregado, setAgendamentoCarregado] = useState(false)
+
   // PWA Install
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [mostrarBannerPWA, setMostrarBannerPWA] = useState(false)
@@ -270,9 +285,135 @@ export default function PortalCliente() {
   const ultimoAvisoVisto = localStorage.getItem(`avisos_visto_${token}`)
   const avisosNaoLidos = avisosReais.filter(a => !ultimoAvisoVisto || a.id > ultimoAvisoVisto).length
 
+  // === AGENDAMENTO ===
+  const agHeaders = { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
+  const slug = dados?.agendamento_slug
+  const devedorId = dados?.devedor_id
+
+  const carregarAgendamento = async () => {
+    if (!slug || !devedorId) return
+    try {
+      const [dadosRes, idRes] = await Promise.all([
+        fetch(`${FUNCTIONS_URL}/agendamento-dados?slug=${slug}`, { headers: agHeaders }),
+        fetch(`${FUNCTIONS_URL}/agendamento-identificar`, {
+          method: 'POST', headers: agHeaders,
+          body: JSON.stringify({ slug, telefone: dados.devedor_telefone || '0', devedor_id: devedorId })
+        })
+      ])
+      const dadosJson = await dadosRes.json()
+      const idJson = await idRes.json()
+
+      setAgendamentoAulas(dadosJson.aulas || [])
+      setAgendamentoContagem(dadosJson.agendamentos_contagem || {})
+      setAgendamentoFixos(dadosJson.fixos_contagem || {})
+      setAgendamentoFila(dadosJson.fila_contagem || {})
+
+      if (idJson.encontrado && !idJson.bloqueado) {
+        setMeusAgendamentos(idJson.agendamentos || [])
+        setMinhasFilas(idJson.filas || [])
+      }
+      setAgendamentoCarregado(true)
+    } catch (e) { console.error('Erro carregar agendamento:', e) }
+  }
+
+  const agendarAula = async (aula, data) => {
+    setAgendando(`${aula.id}_${data}`)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-agendar`, {
+        method: 'POST', headers: agHeaders,
+        body: JSON.stringify({ slug, devedor_id: devedorId, aula_id: aula.id, data })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        const chave = `${aula.id}_${data}`
+        setAgendamentoContagem(prev => ({ ...prev, [chave]: (prev[chave] || 0) + 1 }))
+        setMeusAgendamentos(prev => [...prev, { ...json.agendamento, aula: { dia_semana: aula.dia_semana, horario: aula.horario, descricao: aula.descricao } }])
+      } else {
+        alert(json.error || 'Erro ao agendar')
+      }
+    } catch { alert('Erro ao agendar') }
+    finally { setAgendando(null) }
+  }
+
+  const cancelarAgendamento = async (agendamento) => {
+    setCancelando(agendamento.id)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-cancelar`, {
+        method: 'POST', headers: agHeaders,
+        body: JSON.stringify({ slug, devedor_id: devedorId, agendamento_id: agendamento.id })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        const chave = `${agendamento.aula_id}_${agendamento.data}`
+        setAgendamentoContagem(prev => ({ ...prev, [chave]: Math.max(0, (prev[chave] || 1) - 1) }))
+        setMeusAgendamentos(prev => prev.filter(a => a.id !== agendamento.id))
+      } else { alert(json.error || 'Erro ao cancelar') }
+    } catch { alert('Erro ao cancelar') }
+    finally { setCancelando(null) }
+  }
+
+  const entrarNaFila = async (aula, data) => {
+    setEntrandoFila(`${aula.id}_${data}`)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fila-entrar`, {
+        method: 'POST', headers: agHeaders,
+        body: JSON.stringify({ slug, devedor_id: devedorId, aula_id: aula.id, data })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        setMinhasFilas(prev => [...prev, { id: json.fila_id, aula_id: aula.id, data, posicao: json.posicao, status: 'aguardando', aula: { dia_semana: aula.dia_semana, horario: aula.horario, descricao: aula.descricao } }])
+        const key = `${aula.id}_${data}`
+        setAgendamentoFila(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
+      } else { alert(json.error || 'Erro ao entrar na fila') }
+    } catch { alert('Erro ao entrar na fila') }
+    finally { setEntrandoFila(null) }
+  }
+
+  const sairDaFila = async (fila) => {
+    setSaindoFila(fila.id)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fila-sair`, {
+        method: 'POST', headers: agHeaders,
+        body: JSON.stringify({ slug, devedor_id: devedorId, fila_id: fila.id })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        setMinhasFilas(prev => prev.filter(f => f.id !== fila.id))
+        const key = `${fila.aula_id}_${fila.data}`
+        setAgendamentoFila(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 1) - 1) }))
+      } else { alert(json.error || 'Erro') }
+    } catch { alert('Erro') }
+    finally { setSaindoFila(null) }
+  }
+
+  // Helpers agendamento
+  const agVagasRestantes = (aulaId, data) => {
+    const aula = agendamentoAulas.find(a => a.id === aulaId)
+    if (!aula) return 0
+    return aula.capacidade - (agendamentoFixos[aulaId] || 0) - (agendamentoContagem[`${aulaId}_${data}`] || 0)
+  }
+  const agJaAgendou = (aulaId, data) => meusAgendamentos.some(a => a.aula_id === aulaId && a.data === data)
+  const agNaFila = (aulaId, data) => minhasFilas.find(f => f.aula_id === aulaId && f.data === data && (f.status === 'aguardando' || f.status === 'notificado'))
+  const agFilaCount = (aulaId, data) => agendamentoFila[`${aulaId}_${data}`] || 0
+
+  const gerarProximasDatasAg = () => {
+    const datas = []
+    const hoje = new Date()
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(hoje)
+      d.setDate(d.getDate() + i)
+      if (agendamentoAulas.some(a => a.dia_semana === d.getDay())) datas.push(d)
+    }
+    return datas
+  }
+
+  const DIAS_SEMANA_AG = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  const DIAS_SEMANA_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+
   // Marcar avisos como lidos ao abrir a tab
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
+    if (tabId === 'agendar' && !agendamentoCarregado) carregarAgendamento()
     if (tabId === 'feed' && avisosReais.length > 0) {
       localStorage.setItem(`avisos_visto_${token}`, avisosReais[0].id)
     }
@@ -284,6 +425,7 @@ export default function PortalCliente() {
     { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
     { id: 'pagamentos', icon: 'mdi:credit-card-outline', label: 'Pagar' },
     { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' },
+    ...(dados?.agendamento_ativo ? [{ id: 'agendar', icon: 'mdi:calendar-plus', label: 'Agendar' }] : [])
   ]
 
   return (
@@ -407,8 +549,8 @@ export default function PortalCliente() {
       {/* Hero section - esconde na tab feed */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%)',
-        padding: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas') ? '0' : '16px 20px 40px',
-        maxHeight: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas') ? '0' : '300px',
+        padding: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas' || activeTab === 'agendar') ? '0' : '16px 20px 40px',
+        maxHeight: (activeTab === 'feed' || activeTab === 'pagamentos' || activeTab === 'aulas' || activeTab === 'agendar') ? '0' : '300px',
         overflow: 'hidden', transition: 'all 0.3s ease',
         position: 'relative'
       }}>
@@ -1225,6 +1367,214 @@ export default function PortalCliente() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== TAB AGENDAR ===== */}
+        {activeTab === 'agendar' && dados?.agendamento_ativo && (
+          <div className="ptab" style={{ padding: '16px 20px' }}>
+            {/* Sub-tabs: Agendar / Meus */}
+            <div style={{ display: 'flex', gap: 4, backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 16 }}>
+              {[{ id: 'agendar', label: 'Agendar', icon: 'mdi:calendar-plus' }, { id: 'meus', label: `Meus (${meusAgendamentos.length})`, icon: 'mdi:calendar-check' }].map(t => (
+                <button key={t.id} onClick={() => setAgendamentoTab(t.id)} style={{
+                  flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  backgroundColor: agendamentoTab === t.id ? '#fff' : 'transparent',
+                  color: agendamentoTab === t.id ? '#1e293b' : '#94a3b8',
+                  fontWeight: agendamentoTab === t.id ? 600 : 400, fontSize: 13,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  boxShadow: agendamentoTab === t.id ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+                }}>
+                  <Icon icon={t.icon} width={16} /> {t.label}
+                </button>
+              ))}
+            </div>
+
+            {agendamentoTab === 'agendar' && (
+              <>
+                {/* Seletor de datas */}
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 16 }}>
+                  {gerarProximasDatasAg().map(d => {
+                    const str = d.toISOString().split('T')[0]
+                    const isHoje = str === new Date().toISOString().split('T')[0]
+                    const sel = agendamentoDia === str
+                    return (
+                      <button key={str} onClick={() => setAgendamentoDia(str)} style={{
+                        minWidth: 56, padding: '8px 4px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                        backgroundColor: sel ? '#22c55e' : '#fff', color: sel ? '#fff' : '#1e293b',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{DIAS_SEMANA_AG[d.getDay()]}</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>{d.getDate()}</span>
+                        {isHoje && <span style={{ fontSize: 9, fontWeight: 700 }}>Hoje</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Aulas do dia */}
+                {agendamentoDia ? (() => {
+                  const dataSel = new Date(agendamentoDia + 'T12:00:00')
+                  const hoje = new Date()
+                  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+                  const aulaDoDia = agendamentoAulas.filter(a => {
+                    if (a.dia_semana !== dataSel.getDay()) return false
+                    if (agendamentoDia === hojeStr && a.horario) {
+                      const [h, m] = a.horario.split(':').map(Number)
+                      const horarioAula = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), h, m)
+                      if (horarioAula.getTime() - hoje.getTime() < 60 * 60 * 1000) return false
+                    }
+                    return true
+                  })
+
+                  return (
+                    <>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Icon icon="mdi:calendar" width={16} style={{ color: '#22c55e' }} />
+                        {DIAS_SEMANA_FULL[dataSel.getDay()]}, {dataSel.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400 }}>{aulaDoDia.length} aula{aulaDoDia.length !== 1 ? 's' : ''}</span>
+                      </div>
+
+                      {aulaDoDia.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 13 }}>
+                          <Icon icon="mdi:calendar-blank" width={40} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                          <p style={{ margin: 0 }}>Sem aulas disponíveis</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {aulaDoDia.map(aula => {
+                            const vagas = agVagasRestantes(aula.id, agendamentoDia)
+                            const lotado = vagas <= 0
+                            const agendado = agJaAgendou(aula.id, agendamentoDia)
+                            const filaAtiva = agNaFila(aula.id, agendamentoDia)
+                            const nFila = agFilaCount(aula.id, agendamentoDia)
+                            const isAgendando = agendando === `${aula.id}_${agendamentoDia}`
+                            const isEntrandoFila = entrandoFila === `${aula.id}_${agendamentoDia}`
+
+                            return (
+                              <div key={aula.id} style={{
+                                background: '#fff', borderRadius: 12, padding: 14,
+                                border: agendado ? '2px solid #22c55e' : filaAtiva ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                                opacity: lotado && !agendado && !filaAtiva ? 0.7 : 1
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div>
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{aula.horario?.substring(0, 5)}</div>
+                                    {aula.descricao && <div style={{ fontSize: 12, color: '#64748b' }}>{aula.descricao}</div>}
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    {agendado ? (
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', backgroundColor: '#f0fdf4', padding: '3px 8px', borderRadius: 6 }}>Agendado</span>
+                                    ) : filaAtiva ? (
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', backgroundColor: '#fef3c7', padding: '3px 8px', borderRadius: 6 }}>Na fila ({filaAtiva.posicao}º)</span>
+                                    ) : lotado ? (
+                                      <div>
+                                        <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', backgroundColor: '#fef2f2', padding: '3px 8px', borderRadius: 6 }}>Esgotado</span>
+                                        {nFila > 0 && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, textAlign: 'right' }}>{nFila} na fila</div>}
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: 12, color: vagas <= 3 ? '#f59e0b' : '#94a3b8', fontWeight: 600 }}>{vagas} vaga{vagas !== 1 ? 's' : ''}</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Botão agendar */}
+                                {!agendado && !lotado && !filaAtiva && (
+                                  <button onClick={() => agendarAula(aula, agendamentoDia)} disabled={isAgendando}
+                                    style={{ width: '100%', marginTop: 10, padding: '10px', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    {isAgendando ? <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:calendar-plus" width={16} /> Agendar</>}
+                                  </button>
+                                )}
+
+                                {/* Botão fila */}
+                                {lotado && !agendado && !filaAtiva && (
+                                  <button onClick={() => entrarNaFila(aula, agendamentoDia)} disabled={isEntrandoFila}
+                                    style={{ width: '100%', marginTop: 10, padding: '10px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    {isEntrandoFila ? <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:clock-plus-outline" width={16} /> Entrar na fila</>}
+                                  </button>
+                                )}
+
+                                {/* Na fila */}
+                                {filaAtiva && (
+                                  <div style={{ marginTop: 10 }}>
+                                    <div style={{ padding: '8px 12px', borderRadius: 8, backgroundColor: '#fef3c7', fontSize: 12, color: '#92400e', textAlign: 'center', marginBottom: 6 }}>
+                                      <Icon icon="mdi:clock-outline" width={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                      Você é o <strong>{filaAtiva.posicao}º</strong> da fila
+                                    </div>
+                                    <button onClick={() => sairDaFila(filaAtiva)} disabled={saindoFila === filaAtiva.id}
+                                      style={{ width: '100%', padding: '7px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                                      {saindoFila === filaAtiva.id ? 'Saindo...' : 'Sair da fila'}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )
+                })() : (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+                    <Icon icon="mdi:gesture-tap" width={40} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                    <p style={{ margin: 0, fontSize: 13 }}>Selecione um dia acima</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Meus agendamentos */}
+            {agendamentoTab === 'meus' && (
+              <div>
+                {meusAgendamentos.length === 0 && minhasFilas.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+                    <Icon icon="mdi:calendar-blank" width={40} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                    <p style={{ margin: 0, fontSize: 13 }}>Nenhum agendamento</p>
+                  </div>
+                ) : (
+                  <>
+                    {meusAgendamentos.map(ag => (
+                      <div key={ag.id} style={{
+                        background: '#fff', borderRadius: 12, padding: 14, marginBottom: 8,
+                        border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                            {ag.aula?.horario?.substring(0, 5)} {ag.aula?.descricao && `- ${ag.aula.descricao}`}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                            {new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+                          </div>
+                        </div>
+                        <button onClick={() => cancelarAgendamento(ag)} disabled={cancelando === ag.id}
+                          style={{ padding: '6px 12px', backgroundColor: '#fef2f2', color: '#ef4444', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          {cancelando === ag.id ? '...' : 'Cancelar'}
+                        </button>
+                      </div>
+                    ))}
+                    {minhasFilas.map(f => (
+                      <div key={f.id} style={{
+                        background: '#fefce8', borderRadius: 12, padding: 14, marginBottom: 8,
+                        border: '1px solid #fde68a', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>
+                            {f.aula?.horario?.substring(0, 5)} {f.aula?.descricao && `- ${f.aula.descricao}`}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#a16207', marginTop: 2 }}>
+                            Na fila ({f.posicao}º) — {new Date(f.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+                          </div>
+                        </div>
+                        <button onClick={() => sairDaFila(f)} disabled={saindoFila === f.id}
+                          style={{ padding: '6px 12px', backgroundColor: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          {saindoFila === f.id ? '...' : 'Sair'}
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>
