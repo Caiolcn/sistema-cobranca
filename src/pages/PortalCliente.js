@@ -419,6 +419,7 @@ export default function PortalCliente() {
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
     if (tabId === 'aulas' && !agendamentoCarregado && dados?.agendamento_ativo && isPremium) carregarAgendamento()
+    if (tabId === 'aulas' && agendamentoTab === 'agendar' && !isPremium) setAgendamentoTab('agendar')
     if (tabId === 'feed' && avisosReais.length > 0) {
       localStorage.setItem(`avisos_visto_${token}`, avisosReais[0].id)
     }
@@ -429,14 +430,12 @@ export default function PortalCliente() {
   const isStarter = planoAdmin === 'starter'
   const isPremium = planoAdmin === 'premium'
 
-  // Tab content — Starter só vê Home
+  // Tab content — todas visíveis, bloqueio por plano dentro do conteúdo
   const tabs = [
     { id: 'home', icon: 'mdi:home-variant', label: 'Inicio' },
-    ...(!isStarter ? [
-      { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
-      { id: 'pagamentos', icon: 'mdi:credit-card-outline', label: 'Pagar' },
-      { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' }
-    ] : [])
+    { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
+    { id: 'pagamentos', icon: 'mdi:credit-card-outline', label: 'Pagar' },
+    { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' }
   ]
 
   return (
@@ -916,6 +915,23 @@ export default function PortalCliente() {
         {/* ===== TAB PAGAMENTOS ===== */}
         {activeTab === 'pagamentos' && (
           <div className="ptab" style={{ marginTop: 40 }}>
+            {isStarter ? (
+              <div style={{ position: 'relative' }}>
+                <div style={{ filter: 'blur(6px)', pointerEvents: 'none', opacity: 0.5 }}>
+                  <div style={{ background: '#fff', borderRadius: 16, padding: 20, marginBottom: 12 }}>
+                    <div style={{ height: 20, width: '60%', background: '#e5e7eb', borderRadius: 8, marginBottom: 12 }} />
+                    <div style={{ height: 60, background: '#f3f4f6', borderRadius: 10, marginBottom: 8 }} />
+                    <div style={{ height: 60, background: '#f3f4f6', borderRadius: 10 }} />
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', zIndex: 1 }}>
+                  <Icon icon="mdi:lock" width={36} style={{ color: '#f59e0b', marginBottom: 8 }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>Recurso do plano Pro</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Peça ao seu professor para ativar</div>
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Pendentes */}
             {pendentes.length > 0 ? (
               <div style={{
@@ -1130,12 +1146,31 @@ export default function PortalCliente() {
                 ))}
               </div>
             )}
+            </>
+            )}
           </div>
         )}
 
         {/* ===== TAB FEED/AVISOS ===== */}
         {activeTab === 'feed' && (
           <div className="ptab" style={{ marginTop: 40 }}>
+            {isStarter ? (
+              <div style={{ position: 'relative' }}>
+                <div style={{ filter: 'blur(6px)', pointerEvents: 'none', opacity: 0.5 }}>
+                  <div style={{ background: '#fff', borderRadius: 16, padding: 20 }}>
+                    <div style={{ height: 20, width: '40%', background: '#e5e7eb', borderRadius: 8, marginBottom: 16 }} />
+                    <div style={{ height: 80, background: '#f3f4f6', borderRadius: 10, marginBottom: 8 }} />
+                    <div style={{ height: 80, background: '#f3f4f6', borderRadius: 10 }} />
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', zIndex: 1 }}>
+                  <Icon icon="mdi:lock" width={36} style={{ color: '#f59e0b', marginBottom: 8 }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>Recurso do plano Pro</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Peça ao seu professor para ativar</div>
+                </div>
+              </div>
+            ) : (
+            <>
             <div style={{
               background: '#fff', borderRadius: 16, padding: '20px', marginBottom: 12,
               boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
@@ -1234,13 +1269,32 @@ export default function PortalCliente() {
             }}>
               <div style={{ fontSize: 12, color: '#cbd5e1' }}>Voce esta atualizado!</div>
             </div>
+            </>
+            )}
           </div>
         )}
 
         {/* ===== TAB AULAS (Unificada) ===== */}
         {activeTab === 'aulas' && (
           <div className="ptab" style={{ marginTop: 40 }}>
-
+            {isStarter ? (
+              <div style={{ position: 'relative' }}>
+                <div style={{ filter: 'blur(6px)', pointerEvents: 'none', opacity: 0.5 }}>
+                  <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, marginBottom: 16, height: 50 }} />
+                  <div style={{ background: '#fff', borderRadius: 16, padding: 20 }}>
+                    <div style={{ height: 40, background: '#f3f4f6', borderRadius: 10, marginBottom: 12 }} />
+                    <div style={{ height: 50, background: '#f3f4f6', borderRadius: 10, marginBottom: 8 }} />
+                    <div style={{ height: 50, background: '#f3f4f6', borderRadius: 10 }} />
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', zIndex: 1 }}>
+                  <Icon icon="mdi:lock" width={36} style={{ color: '#f59e0b', marginBottom: 8 }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>Recurso do plano Pro</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Peça ao seu professor para ativar</div>
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Card Próxima Aula — compacto */}
             {(() => {
               const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -1293,9 +1347,7 @@ export default function PortalCliente() {
             <div style={{ padding: '14px 14px 0', backgroundColor: '#fff', borderRadius: '16px 16px 0 0' }}>
               <div style={{ display: 'flex', gap: 4, backgroundColor: '#f3f4f6', borderRadius: 10, padding: 3 }}>
                 {[
-                  ...(dados?.agendamento_ativo && isPremium ? [
-                    { id: 'agendar', label: 'Agendar', icon: 'mdi:calendar-plus' },
-                  ] : []),
+                  { id: 'agendar', label: 'Agendar', icon: 'mdi:calendar-plus' },
                   { id: 'minhas', label: 'Aulas', icon: 'mdi:calendar-check' },
                   { id: 'frequencia', label: 'Frequência', icon: 'mdi:chart-line' }
                 ].map(t => (
@@ -1319,9 +1371,27 @@ export default function PortalCliente() {
             <div style={{ padding: '16px' }}>
 
             {/* === Sub-aba: Agendar === */}
-            {agendamentoTab === 'agendar' && dados?.agendamento_ativo && isPremium && (
+            {agendamentoTab === 'agendar' && (
               <div>
-                {agendamentoBloqueado ? (
+                {!isPremium ? (
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ filter: 'blur(6px)', pointerEvents: 'none', opacity: 0.5 }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                        {[1,2,3,4,5].map(i => (
+                          <div key={i} style={{ minWidth: 56, height: 60, background: '#f3f4f6', borderRadius: 10 }} />
+                        ))}
+                      </div>
+                      <div style={{ height: 50, background: '#f3f4f6', borderRadius: 10, marginBottom: 8 }} />
+                      <div style={{ height: 50, background: '#f3f4f6', borderRadius: 10, marginBottom: 8 }} />
+                      <div style={{ height: 50, background: '#f3f4f6', borderRadius: 10 }} />
+                    </div>
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', zIndex: 1 }}>
+                      <Icon icon="mdi:lock" width={36} style={{ color: '#f59e0b', marginBottom: 8 }} />
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>Recurso do plano Premium</div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>Peça ao seu professor para ativar</div>
+                    </div>
+                  </div>
+                ) : agendamentoBloqueado ? (
                   <div style={{
                     padding: '24px 16px', borderRadius: 10, backgroundColor: '#fef2f2',
                     border: '1px solid #fecaca', textAlign: 'center'
@@ -1621,6 +1691,8 @@ export default function PortalCliente() {
             )}
             </div>{/* fim padding */}
             </div>{/* fim card branco */}
+            </>
+            )}
           </div>
         )}
 
