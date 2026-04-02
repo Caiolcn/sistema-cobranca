@@ -323,14 +323,23 @@ export default function WhatsAppConexao() {
         }
 
         // 5. Processar Automações (da tabela configuracoes_cobranca)
-        const configCobranca = automacoesResult.data
-        // Se não existir configuração, "No Dia" vem ativo por padrão
+        let configCobranca = automacoesResult.data
+
+        // Se não existe registro, criar com padrões pra garantir que n8n funcione
+        if (!configCobranca && effectiveUserId) {
+          const { data: novoConfig } = await supabase
+            .from('configuracoes_cobranca')
+            .insert({ user_id: effectiveUserId, enviar_no_dia: true, enviar_domingo: true })
+            .select()
+            .maybeSingle()
+          if (novoConfig) configCobranca = novoConfig
+        }
+
         setAutomacao3DiasAtiva(configCobranca?.enviar_3_dias_antes === true)
         setAutomacaoNoDiaAtiva(configCobranca?.enviar_no_dia !== false)
         setAutomacao3DiasDepoisAtiva(configCobranca?.enviar_3_dias_depois === true)
         setAutomacaoLembreteAulaAtiva(configCobranca?.enviar_lembrete_aula === true)
         setAutomacaoAniversarioAtiva(configCobranca?.enviar_aniversario === true)
-        // Confirmação de pagamento: ativo por padrão (coluna pode não existir ainda no banco)
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
         setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
 
