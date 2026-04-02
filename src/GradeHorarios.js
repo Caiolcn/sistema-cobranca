@@ -1161,7 +1161,7 @@ export default function GradeHorarios() {
                         overflow: 'hidden'
                       }}>
                         {h.devedores?.foto_url ? (
-                          <img src={h.devedores.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={h.devedores.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = (h.devedores?.nome || 'A').charAt(0).toUpperCase() }} />
                         ) : (
                           (h.devedores?.nome || 'A').charAt(0).toUpperCase()
                         )}
@@ -2764,7 +2764,7 @@ export default function GradeHorarios() {
                 overflow: 'hidden'
               }}>
                 {presencaAtual.devedores?.foto_url ? (
-                  <img src={presencaAtual.devedores.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={presencaAtual.devedores.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = (presencaAtual.devedores?.nome || 'A').charAt(0).toUpperCase() }} />
                 ) : (
                   (presencaAtual.devedores?.nome || 'A').charAt(0).toUpperCase()
                 )}

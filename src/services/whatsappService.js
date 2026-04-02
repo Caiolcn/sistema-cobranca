@@ -1384,8 +1384,35 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       }
       const data = await response.json()
       const url = data?.profilePictureUrl || data?.picture || data?.url || null
-      if (url) console.log('✅ Foto WhatsApp encontrada!')
-      else console.log('ℹ️ Foto WhatsApp privada ou inexistente')
+      if (!url) {
+        console.log('ℹ️ Foto WhatsApp privada ou inexistente')
+        return null
+      }
+
+      // Baixar imagem e salvar no Supabase Storage (URL permanente)
+      try {
+        const imgResponse = await fetch(url)
+        if (imgResponse.ok) {
+          const blob = await imgResponse.blob()
+          const fileName = `fotos-alunos/${numeroFinal}_${Date.now()}.jpg`
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('logos')
+            .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true })
+
+          if (!uploadError && uploadData) {
+            const { data: publicUrl } = supabase.storage.from('logos').getPublicUrl(fileName)
+            if (publicUrl?.publicUrl) {
+              console.log('✅ Foto salva no Storage:', publicUrl.publicUrl)
+              return publicUrl.publicUrl
+            }
+          }
+        }
+      } catch (storageErr) {
+        console.log('⚠️ Erro ao salvar foto no Storage, usando URL temporária')
+      }
+
+      // Fallback: retornar URL temporária se Storage falhar
+      console.log('✅ Foto WhatsApp encontrada (URL temporária)')
       return url
     } catch (err) {
       console.error('❌ Erro ao buscar foto WhatsApp:', err)

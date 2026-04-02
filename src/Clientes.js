@@ -1989,7 +1989,7 @@ Equipe ${nomeEmpresa}`
                       flexShrink: 0
                     }}>
                       {cliente.foto_url ? (
-                        <img src={cliente.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={cliente.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = (cliente.nome || 'A').charAt(0).toUpperCase() }} />
                       ) : (
                         cliente.nome.charAt(0).toUpperCase()
                       )}
@@ -2096,7 +2096,7 @@ Equipe ${nomeEmpresa}`
                           flexShrink: 0
                         }}>
                           {cliente.foto_url ? (
-                            <img src={cliente.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={cliente.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = (cliente.nome || 'A').charAt(0).toUpperCase() }} />
                           ) : (
                             cliente.nome.charAt(0).toUpperCase()
                           )}
@@ -2340,7 +2340,7 @@ Equipe ${nomeEmpresa}`
                   onClick={() => document.getElementById('input-foto-aluno')?.click()}
                 >
                   {clienteSelecionado.foto_url ? (
-                    <img src={clienteSelecionado.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={clienteSelecionado.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = (clienteSelecionado.nome || 'A').charAt(0).toUpperCase() }} />
                   ) : (
                     clienteSelecionado.nome.charAt(0).toUpperCase()
                   )}
