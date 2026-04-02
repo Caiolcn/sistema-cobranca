@@ -102,7 +102,7 @@ function Home() {
           `)
           .eq('user_id', userId)
           .eq('status', 'pendente')
-          .eq('enviado_hoje', false)
+          .or('enviado_no_dia.is.null,enviado_no_dia.eq.false')
           .neq('cancelado_envio', true)
           .or('lixo.is.null,lixo.eq.false')
           .lte('data_vencimento', tresDiasFrenteStr)
