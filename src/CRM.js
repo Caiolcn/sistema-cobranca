@@ -11,6 +11,8 @@ export default function CRM() {
   const { isMobile, isSmallScreen } = useWindowSize()
 
   const [clientes, setClientes] = useState([])
+  const [pagamentos, setPagamentos] = useState([])
+  const [assinaturas, setAssinaturas] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('todos')
   const [buscaTexto, setBuscaTexto] = useState('')
@@ -34,7 +36,10 @@ export default function CRM() {
         { data: usuariosData },
         { data: mensallizapData },
         { data: controlePlanoData },
-        { data: whatsappData }
+        { data: whatsappData },
+        { data: pagamentosData },
+        { data: assinaturasData },
+        { data: logsMensagensData }
       ] = await Promise.all([
         supabase
           .from('usuarios')
@@ -46,10 +51,22 @@ export default function CRM() {
           .select('user_id, telefone, whatsapp_numero, conectado, ultima_conexao, total_mensagens_enviadas, mensagens_mes_atual'),
         supabase
           .from('controle_planos')
-          .select('user_id, usage_count, limite_mensal, mes_referencia'),
+          .select('user_id, usage_count, limite_mensal, mes_referencia')
+          .eq('mes_referencia', `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`),
         supabase
           .from('whatsapp_connections')
-          .select('user_id, status, last_connected_at')
+          .select('user_id, status, last_connected_at'),
+        supabase
+          .from('pagamentos_mercadopago')
+          .select('id, user_id, valor, status, data_pagamento, data_aprovacao, payment_type_id, created_at')
+          .eq('status', 'approved'),
+        supabase
+          .from('assinaturas_mercadopago')
+          .select('id, user_id, plano, status, valor, data_inicio, proxima_cobranca, created_at'),
+        supabase
+          .from('logs_mensagens')
+          .select('user_id, enviado_em')
+          .gte('enviado_em', `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`)
       ])
 
       // Merge por user_id
@@ -60,14 +77,23 @@ export default function CRM() {
       const wcMap = {}
       ;(whatsappData || []).forEach(w => { wcMap[w.user_id] = w })
 
+      // Contar mensagens reais do mês por user_id
+      const msgCountMap = {}
+      ;(logsMensagensData || []).forEach(l => {
+        msgCountMap[l.user_id] = (msgCountMap[l.user_id] || 0) + 1
+      })
+
       const merged = (usuariosData || []).map(u => ({
         ...u,
         mz: mzMap[u.id] || null,
+        mensagensReaisMes: msgCountMap[u.id] || 0,
         cp: cpMap[u.id] || null,
         wc: wcMap[u.id] || null
       }))
 
       setClientes(merged)
+      setPagamentos(pagamentosData || [])
+      setAssinaturas(assinaturasData || [])
     } catch (error) {
       console.error('Erro ao carregar dados do CRM:', error)
     } finally {
@@ -83,23 +109,83 @@ export default function CRM() {
     const emTrial = clientes.filter(c => !c.plano_pago && c.trial_fim && new Date(c.trial_fim) > hoje).length
     const trialExpirado = clientes.filter(c => !c.plano_pago && c.trial_fim && new Date(c.trial_fim) <= hoje).length
     const whatsappConectado = clientes.filter(c => c.mz?.conectado === true).length
-    const mensagensMes = clientes.reduce((sum, c) => sum + (c.cp?.usage_count || 0), 0)
+    const mensagensMes = clientes.reduce((sum, c) => sum + (c.mensagensReaisMes || 0), 0)
 
     return { total, pagos, emTrial, trialExpirado, whatsappConectado, mensagensMes }
   }, [clientes])
 
-  // Distribuição de planos
+  // Distribuição de planos (só pagos)
   const distribuicaoPlanos = useMemo(() => {
-    const total = clientes.length || 1
-    const starter = clientes.filter(c => c.plano === 'starter' || !c.plano).length
-    const pro = clientes.filter(c => c.plano === 'pro').length
-    const premium = clientes.filter(c => c.plano === 'premium').length
+    const pagos = clientes.filter(c => c.plano_pago === true)
+    const total = pagos.length || 1
+    const starter = pagos.filter(c => c.plano === 'starter' || !c.plano).length
+    const pro = pagos.filter(c => c.plano === 'pro').length
+    const premium = pagos.filter(c => c.plano === 'premium').length
     return {
+      total: pagos.length,
       starter: { count: starter, pct: Math.round((starter / total) * 100) },
       pro: { count: pro, pct: Math.round((pro / total) * 100) },
       premium: { count: premium, pct: Math.round((premium / total) * 100) }
     }
   }, [clientes])
+
+  // KPIs Financeiros
+  const kpisFinanceiros = useMemo(() => {
+    const hoje = new Date()
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
+    const mesAnterior = hoje.getMonth() === 0
+      ? `${hoje.getFullYear() - 1}-12`
+      : `${hoje.getFullYear()}-${String(hoje.getMonth()).padStart(2, '0')}`
+
+    // Faturamento do mês atual
+    const pagamentosMes = pagamentos.filter(p => (p.data_aprovacao || p.created_at)?.slice(0, 7) === mesAtual)
+    const faturamentoMes = pagamentosMes.reduce((sum, p) => sum + Number(p.valor || 0), 0)
+
+    // Faturamento do mês anterior
+    const pagamentosMesAnterior = pagamentos.filter(p => (p.data_aprovacao || p.created_at)?.slice(0, 7) === mesAnterior)
+    const faturamentoMesAnterior = pagamentosMesAnterior.reduce((sum, p) => sum + Number(p.valor || 0), 0)
+
+    // Faturamento total (todos os tempos)
+    const faturamentoTotal = pagamentos.reduce((sum, p) => sum + Number(p.valor || 0), 0)
+
+    // Assinaturas ativas (authorized)
+    const assinaturasAtivas = assinaturas.filter(a => a.status === 'authorized')
+
+    // MRR (receita mensal recorrente) = soma dos valores das assinaturas ativas
+    const mrr = assinaturasAtivas.reduce((sum, a) => sum + Number(a.valor || 0), 0)
+
+    // Faturamento de assinaturas = baseado nos clientes com plano_pago ativo
+    const precosPlano = { starter: 49.90, pro: 99.90, premium: 149.90 }
+    const clientesPagos = clientes.filter(c => c.plano_pago === true)
+    const faturamentoAssinaturas = clientesPagos.reduce((sum, c) => sum + (precosPlano[c.plano] || precosPlano.starter), 0)
+
+    // Total de pagamentos recebidos
+    const totalPagamentos = pagamentos.length
+
+    // Variação mês a mês
+    const variacao = faturamentoMesAnterior > 0
+      ? ((faturamentoMes - faturamentoMesAnterior) / faturamentoMesAnterior * 100).toFixed(0)
+      : null
+
+    // Faturamento por mês (últimos 6 meses)
+    const faturamentoPorMes = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
+      const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+      const total = pagamentos
+        .filter(p => (p.data_aprovacao || p.created_at)?.slice(0, 7) === mesKey)
+        .reduce((sum, p) => sum + Number(p.valor || 0), 0)
+      faturamentoPorMes.push({ mes: `${nomes[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, valor: total })
+    }
+
+    return {
+      faturamentoMes, faturamentoMesAnterior, faturamentoTotal,
+      mrr, assinaturasAtivas: assinaturasAtivas.length,
+      faturamentoAssinaturas, clientesPagos: clientesPagos.length,
+      totalPagamentos, variacao, faturamentoPorMes
+    }
+  }, [pagamentos, assinaturas])
 
   // Filtros e busca
   const clientesFiltrados = useMemo(() => {
@@ -141,7 +227,7 @@ export default function CRM() {
         return (ordem[a.plano] ?? 2) - (ordem[b.plano] ?? 2)
       }
       if (ordenacao === 'mensagens') {
-        return (b.cp?.usage_count || 0) - (a.cp?.usage_count || 0)
+        return (b.mensagensReaisMes || 0) - (a.mensagensReaisMes || 0)
       }
       if (ordenacao === 'criacao') {
         return new Date(b.created_at || 0) - new Date(a.created_at || 0)
@@ -271,51 +357,160 @@ export default function CRM() {
         backgroundColor: 'white', padding: isMobile ? '16px' : '20px',
         borderRadius: '12px', border: '1px solid #e0e0e0', marginBottom: '24px'
       }}>
-        <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 14px 0' }}>
-          Distribuição de Planos
-        </h3>
-        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', height: '32px', backgroundColor: '#f0f0f0' }}>
-          {distribuicaoPlanos.starter.pct > 0 && (
-            <div style={{
-              width: `${distribuicaoPlanos.starter.pct}%`, backgroundColor: '#ff9800',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontSize: '11px', fontWeight: '600', minWidth: distribuicaoPlanos.starter.pct > 10 ? 'auto' : '0'
-            }}>
-              {distribuicaoPlanos.starter.pct > 10 && `Starter ${distribuicaoPlanos.starter.pct}%`}
-            </div>
-          )}
-          {distribuicaoPlanos.pro.pct > 0 && (
-            <div style={{
-              width: `${distribuicaoPlanos.pro.pct}%`, backgroundColor: '#7b1fa2',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontSize: '11px', fontWeight: '600', minWidth: distribuicaoPlanos.pro.pct > 10 ? 'auto' : '0'
-            }}>
-              {distribuicaoPlanos.pro.pct > 10 && `Pro ${distribuicaoPlanos.pro.pct}%`}
-            </div>
-          )}
-          {distribuicaoPlanos.premium.pct > 0 && (
-            <div style={{
-              width: `${distribuicaoPlanos.premium.pct}%`, backgroundColor: '#1976d2',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontSize: '11px', fontWeight: '600', minWidth: distribuicaoPlanos.premium.pct > 10 ? 'auto' : '0'
-            }}>
-              {distribuicaoPlanos.premium.pct > 10 && `Premium ${distribuicaoPlanos.premium.pct}%`}
-            </div>
-          )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 14px 0' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: 0 }}>
+            Distribuição de Planos Pagos
+          </h3>
+          <span style={{ fontSize: '13px', color: '#666', fontWeight: '500' }}>
+            {distribuicaoPlanos.total} cliente{distribuicaoPlanos.total !== 1 ? 's' : ''} pagante{distribuicaoPlanos.total !== 1 ? 's' : ''}
+          </span>
         </div>
-        <div style={{ display: 'flex', gap: '20px', marginTop: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#ff9800', display: 'inline-block' }} />
-            Starter: {distribuicaoPlanos.starter.count}
-          </span>
-          <span style={{ fontSize: '12px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#7b1fa2', display: 'inline-block' }} />
-            Pro: {distribuicaoPlanos.pro.count}
-          </span>
-          <span style={{ fontSize: '12px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#1976d2', display: 'inline-block' }} />
-            Premium: {distribuicaoPlanos.premium.count}
-          </span>
+        <div style={{ display: 'flex', gap: isMobile ? '8px' : '14px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          {[
+            { key: 'starter', label: 'Starter', cor: '#ff9800', bg: '#fff3e0', preco: 'R$ 49,90' },
+            { key: 'pro', label: 'Pro', cor: '#7b1fa2', bg: '#f3e5f5', preco: 'R$ 99,90' },
+            { key: 'premium', label: 'Premium', cor: '#1976d2', bg: '#e3f2fd', preco: 'R$ 149,90' }
+          ].map(p => (
+            <div key={p.key} style={{
+              flex: 1, minWidth: '120px', padding: '14px', borderRadius: '10px',
+              backgroundColor: p.bg, borderLeft: `3px solid ${p.cor}`, textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '12px', color: p.cor, fontWeight: '600', marginBottom: '4px' }}>{p.label}</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#333' }}>{distribuicaoPlanos[p.key].count}</div>
+              <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>{p.preco}/mês</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', height: '28px', backgroundColor: '#f0f0f0' }}>
+          {[
+            { key: 'starter', cor: '#ff9800' },
+            { key: 'pro', cor: '#7b1fa2' },
+            { key: 'premium', cor: '#1976d2' }
+          ].map(p => distribuicaoPlanos[p.key].pct > 0 && (
+            <div key={p.key} style={{
+              width: `${distribuicaoPlanos[p.key].pct}%`, backgroundColor: p.cor,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white', fontSize: '11px', fontWeight: '600',
+              minWidth: distribuicaoPlanos[p.key].pct > 8 ? 'auto' : '0'
+            }}>
+              {distribuicaoPlanos[p.key].pct > 8 && `${distribuicaoPlanos[p.key].pct}%`}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Indicadores Financeiros */}
+      <div style={{
+        backgroundColor: 'white', padding: isMobile ? '16px' : '20px',
+        borderRadius: '12px', border: '1px solid #e0e0e0', marginBottom: '24px'
+      }}>
+        <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Icon icon="mdi:finance" width="20" style={{ color: '#667eea' }} />
+          Financeiro
+        </h3>
+
+        {/* Cards financeiros */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : isSmallScreen ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)',
+          gap: isMobile ? '10px' : '14px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#f0f9f0', borderLeft: '3px solid #4CAF50' }}>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:cash" width="16" style={{ color: '#4CAF50' }} />
+              Faturamento do Mês
+            </div>
+            <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 'bold', color: '#333' }}>
+              R$ {kpisFinanceiros.faturamentoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            {kpisFinanceiros.variacao !== null && (
+              <div style={{
+                fontSize: '11px', marginTop: '4px',
+                color: Number(kpisFinanceiros.variacao) >= 0 ? '#4CAF50' : '#f44336',
+                display: 'flex', alignItems: 'center', gap: '3px'
+              }}>
+                <Icon icon={Number(kpisFinanceiros.variacao) >= 0 ? 'mdi:trending-up' : 'mdi:trending-down'} width="14" />
+                {Number(kpisFinanceiros.variacao) >= 0 ? '+' : ''}{kpisFinanceiros.variacao}% vs mês anterior
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#f0f4ff', borderLeft: '3px solid #667eea' }}>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:autorenew" width="16" style={{ color: '#667eea' }} />
+              MRR (Recorrente)
+            </div>
+            <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 'bold', color: '#333' }}>
+              R$ {kpisFinanceiros.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+              {kpisFinanceiros.assinaturasAtivas} assinatura{kpisFinanceiros.assinaturasAtivas !== 1 ? 's' : ''} ativa{kpisFinanceiros.assinaturasAtivas !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#fce4ec', borderLeft: '3px solid #e91e63' }}>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:account-cash" width="16" style={{ color: '#e91e63' }} />
+              Receita em Assinaturas
+            </div>
+            <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 'bold', color: '#333' }}>
+              R$ {kpisFinanceiros.faturamentoAssinaturas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+              {kpisFinanceiros.clientesPagos} cliente{kpisFinanceiros.clientesPagos !== 1 ? 's' : ''} com plano ativo
+            </div>
+          </div>
+
+          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#fff8e1', borderLeft: '3px solid #ff9800' }}>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:chart-timeline-variant" width="16" style={{ color: '#ff9800' }} />
+              Faturamento Total
+            </div>
+            <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 'bold', color: '#333' }}>
+              R$ {kpisFinanceiros.faturamentoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+              {kpisFinanceiros.totalPagamentos} pagamento{kpisFinanceiros.totalPagamentos !== 1 ? 's' : ''} recebido{kpisFinanceiros.totalPagamentos !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#e3f2fd', borderLeft: '3px solid #2196F3' }}>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:calendar-month" width="16" style={{ color: '#2196F3' }} />
+              Mês Anterior
+            </div>
+            <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 'bold', color: '#333' }}>
+              R$ {kpisFinanceiros.faturamentoMesAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+        </div>
+
+        {/* Gráfico de barras simples - Faturamento últimos 6 meses */}
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: '#666', marginBottom: '12px' }}>
+            Faturamento - Últimos 6 meses
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? '6px' : '12px', height: '120px' }}>
+            {(() => {
+              const maxValor = Math.max(...kpisFinanceiros.faturamentoPorMes.map(m => m.valor), 1)
+              return kpisFinanceiros.faturamentoPorMes.map((m, i) => (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
+                  <div style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>
+                    {m.valor > 0 ? `R$${m.valor.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : ''}
+                  </div>
+                  <div style={{
+                    width: '100%', maxWidth: '60px',
+                    height: `${Math.max((m.valor / maxValor) * 90, m.valor > 0 ? 8 : 3)}px`,
+                    backgroundColor: i === kpisFinanceiros.faturamentoPorMes.length - 1 ? '#667eea' : '#c5caf0',
+                    borderRadius: '4px 4px 0 0',
+                    transition: 'height 0.3s ease'
+                  }} />
+                  <div style={{ fontSize: '11px', color: '#999' }}>{m.mes}</div>
+                </div>
+              ))
+            })()}
+          </div>
         </div>
       </div>
 
@@ -418,9 +613,9 @@ export default function CRM() {
                 {clientesFiltrados.map(cliente => {
                   const statusPgto = getStatusPagamento(cliente)
                   const planoBadge = getPlanoBadge(cliente.plano)
-                  const usageCount = cliente.cp?.usage_count || 0
+                  const msgReais = cliente.mensagensReaisMes || 0
                   const limiteMsg = cliente.cp?.limite_mensal || 0
-                  const usagePct = limiteMsg > 0 ? Math.min((usageCount / limiteMsg) * 100, 100) : 0
+                  const usagePct = limiteMsg > 0 ? Math.min((msgReais / limiteMsg) * 100, 100) : 0
                   const wcConectado = cliente.mz?.conectado === true
 
                   return (
@@ -550,7 +745,7 @@ export default function CRM() {
                       {/* Mensagens */}
                       <td style={{ padding: '8px 6px' }}>
                         <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '3px', whiteSpace: 'nowrap' }}>
-                          {usageCount}/{limiteMsg}
+                          {msgReais}/{limiteMsg}
                         </div>
                         <div style={{
                           width: '60px', height: '3px', backgroundColor: '#f0f0f0',

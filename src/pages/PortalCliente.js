@@ -418,18 +418,25 @@ export default function PortalCliente() {
   // Marcar avisos como lidos ao abrir a tab
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
-    if (tabId === 'aulas' && !agendamentoCarregado && dados?.agendamento_ativo) carregarAgendamento()
+    if (tabId === 'aulas' && !agendamentoCarregado && dados?.agendamento_ativo && isPremium) carregarAgendamento()
     if (tabId === 'feed' && avisosReais.length > 0) {
       localStorage.setItem(`avisos_visto_${token}`, avisosReais[0].id)
     }
   }
 
-  // Tab content
+  // Plano do admin (controla features do portal)
+  const planoAdmin = dados?.plano_admin || 'starter'
+  const isStarter = planoAdmin === 'starter'
+  const isPremium = planoAdmin === 'premium'
+
+  // Tab content — Starter só vê Home
   const tabs = [
     { id: 'home', icon: 'mdi:home-variant', label: 'Inicio' },
-    { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
-    { id: 'pagamentos', icon: 'mdi:credit-card-outline', label: 'Pagar' },
-    { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' }
+    ...(!isStarter ? [
+      { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
+      { id: 'pagamentos', icon: 'mdi:credit-card-outline', label: 'Pagar' },
+      { id: 'aulas', icon: 'mdi:calendar-check', label: 'Aulas' }
+    ] : [])
   ]
 
   return (
@@ -1286,7 +1293,7 @@ export default function PortalCliente() {
             <div style={{ padding: '14px 14px 0', backgroundColor: '#fff', borderRadius: '16px 16px 0 0' }}>
               <div style={{ display: 'flex', gap: 4, backgroundColor: '#f3f4f6', borderRadius: 10, padding: 3 }}>
                 {[
-                  ...(dados?.agendamento_ativo ? [
+                  ...(dados?.agendamento_ativo && isPremium ? [
                     { id: 'agendar', label: 'Agendar', icon: 'mdi:calendar-plus' },
                   ] : []),
                   { id: 'minhas', label: 'Aulas', icon: 'mdi:calendar-check' },
@@ -1312,7 +1319,7 @@ export default function PortalCliente() {
             <div style={{ padding: '16px' }}>
 
             {/* === Sub-aba: Agendar === */}
-            {agendamentoTab === 'agendar' && dados?.agendamento_ativo && (
+            {agendamentoTab === 'agendar' && dados?.agendamento_ativo && isPremium && (
               <div>
                 {agendamentoBloqueado ? (
                   <div style={{

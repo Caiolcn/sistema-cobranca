@@ -442,12 +442,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
 
-      // 5. Verificar se já existe mensalidade para esta data
+      // 5. Verificar se já existe mensalidade para esta data (ignorar lixo)
       const { data: jaExiste } = await supabase
         .from('mensalidades')
         .select('id')
         .eq('devedor_id', mensalidadeAtual.devedor_id)
         .eq('data_vencimento', proximoVencimentoStr)
+        .eq('lixo', false)
         .maybeSingle()
 
       if (jaExiste) {

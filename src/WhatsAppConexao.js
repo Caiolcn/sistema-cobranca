@@ -1137,9 +1137,9 @@ export default function WhatsAppConexao() {
         const data = await connectResponse.json()
         console.log('📦 Resposta completa da API:', data)
 
-        const code = data.pairingCode
+        const code = data.pairingCode || data.code || data.pairing_code
         if (!code) {
-          console.error('❌ Código de pareamento não encontrado. Resposta:', Object.keys(data))
+          console.error('❌ Código de pareamento não encontrado. Resposta:', JSON.stringify(data))
           throw new Error('Código de pareamento não foi gerado. Tente novamente ou use o QR Code.')
         }
 
