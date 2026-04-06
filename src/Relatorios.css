@@ -4,6 +4,9 @@
   padding: 25px 30px;
   background: #ffffff;
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: auto;
 }
 
 .relatorios-header {
