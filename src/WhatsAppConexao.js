@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -7,8 +7,489 @@ import useWindowSize from './hooks/useWindowSize'
 import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
+import whatsappService from './services/whatsappService'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
+
+// ==========================================
+// COMPONENTE: CAMPANHAS
+// ==========================================
+function CampanhasContent({ contextUserId, isSmallScreen }) {
+  const [campanhas, setCampanhas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [criando, setCriando] = useState(false)
+
+  // Form nova campanha
+  const [titulo, setTitulo] = useState('')
+  const [mensagem, setMensagem] = useState('')
+  const [segmento, setSegmento] = useState('todos')
+  const [planos, setPlanos] = useState([])
+  const [filtroPlanoId, setFiltroPlanoId] = useState('')
+  const [destinatarios, setDestinatarios] = useState([])
+  const [carregandoDest, setCarregandoDest] = useState(false)
+  const [destExpandido, setDestExpandido] = useState(false)
+  const [destDesmarcados, setDestDesmarcados] = useState(new Set()) // IDs removidos
+  const [regrasExpandidas, setRegrasExpandidas] = useState(false)
+
+  // Envio
+  const [enviando, setEnviando] = useState(false)
+  const [progresso, setProgresso] = useState({ enviados: 0, falhas: 0, total: 0 })
+  const [campanhaAtiva, setCampanhaAtiva] = useState(null)
+  const cancelarRef = useRef(false)
+
+  // Tabs
+  const [tab, setTab] = useState('nova') // 'nova' | 'historico'
+  const [campanhaExpandida, setCampanhaExpandida] = useState(null) // id da campanha expandida
+  const [enviosDaCampanha, setEnviosDaCampanha] = useState([]) // detalhes dos envios
+
+  const carregarCampanhas = useCallback(async () => {
+    if (!contextUserId) return
+    const { data } = await supabase.from('campanhas').select('*').eq('user_id', contextUserId).order('created_at', { ascending: false }).limit(20)
+    if (data) setCampanhas(data)
+    setLoading(false)
+  }, [contextUserId])
+
+  const carregarPlanos = useCallback(async () => {
+    if (!contextUserId) return
+    const { data } = await supabase.from('planos').select('id, nome').eq('user_id', contextUserId).eq('ativo', true)
+    if (data) setPlanos(data)
+  }, [contextUserId])
+
+  useEffect(() => { carregarCampanhas(); carregarPlanos() }, [carregarCampanhas, carregarPlanos])
+
+  // Buscar destinatários com base no segmento
+  const buscarDestinatarios = async () => {
+    setCarregandoDest(true)
+    let query = supabase.from('devedores')
+      .select('id, nome, telefone, responsavel_telefone, assinatura_ativa, plano_id, bloquear_mensagens')
+      .eq('user_id', contextUserId)
+      .or('lixo.is.null,lixo.eq.false')
+      .or('bloquear_mensagens.is.null,bloquear_mensagens.eq.false')
+      .not('telefone', 'is', null)
+
+    if (segmento === 'todos') {
+      query = query.eq('assinatura_ativa', true)
+    } else if (segmento === 'plano' && filtroPlanoId) {
+      query = query.eq('plano_id', filtroPlanoId).eq('assinatura_ativa', true)
+    } else if (segmento === 'inadimplentes') {
+      query = query.eq('assinatura_ativa', true)
+    }
+
+    const { data } = await query.order('nome').limit(500)
+
+    if (segmento === 'inadimplentes' && data) {
+      // Filtrar só quem tem mensalidade vencida
+      const hoje = new Date().toISOString().split('T')[0]
+      const ids = data.map(d => d.id)
+      const { data: mensalidades } = await supabase.from('mensalidades')
+        .select('devedor_id').eq('status', 'pendente').lt('data_vencimento', hoje)
+        .in('devedor_id', ids)
+      const idsInadimplentes = new Set(mensalidades?.map(m => m.devedor_id) || [])
+      setDestinatarios(data.filter(d => idsInadimplentes.has(d.id))); setDestDesmarcados(new Set())
+    } else {
+      setDestinatarios(data || []); setDestDesmarcados(new Set())
+    }
+    setCarregandoDest(false)
+  }
+
+  useEffect(() => { if (contextUserId) buscarDestinatarios() }, [segmento, filtroPlanoId, contextUserId])
+
+  // Buscar nome da empresa
+  const [nomeEmpresa, setNomeEmpresa] = useState('')
+  useEffect(() => {
+    if (!contextUserId) return
+    supabase.from('usuarios').select('nome_empresa').eq('id', contextUserId).single().then(({ data }) => {
+      if (data) setNomeEmpresa(data.nome_empresa || '')
+    })
+  }, [contextUserId])
+
+  // Enviar campanha
+  // Destinatários selecionados (sem os desmarcados)
+  const destinatariosSelecionados = destinatarios.filter(d => !destDesmarcados.has(d.id))
+
+  const enviarCampanha = async () => {
+    if (!titulo.trim() || !mensagem.trim()) { showToast('Preencha o título e a mensagem', 'warning'); return }
+    if (destinatariosSelecionados.length === 0) { showToast('Nenhum destinatário selecionado', 'warning'); return }
+
+    setEnviando(true)
+    cancelarRef.current = false
+    const destFinal = destinatariosSelecionados
+    setProgresso({ enviados: 0, falhas: 0, total: destFinal.length })
+
+    // Criar campanha no banco
+    const { data: campanha, error } = await supabase.from('campanhas').insert({
+      user_id: contextUserId, titulo: titulo.trim(), mensagem: mensagem.trim(),
+      segmento, filtro_plano_id: filtroPlanoId || null,
+      total_destinatarios: destFinal.length, status: 'enviando', iniciada_em: new Date().toISOString()
+    }).select().single()
+
+    if (error || !campanha) { showToast('Erro ao criar campanha', 'error'); setEnviando(false); return }
+    setCampanhaAtiva(campanha)
+
+    // Criar envios pendentes
+    const envios = destFinal.map(d => ({
+      campanha_id: campanha.id, devedor_id: d.id,
+      telefone: d.responsavel_telefone || d.telefone, status: 'pendente'
+    }))
+    await supabase.from('campanha_envios').insert(envios)
+
+    // Enviar um por um com throttle
+    let enviados = 0, falhas = 0
+    for (const dest of destFinal) {
+      if (cancelarRef.current) break
+
+      const telefone = dest.responsavel_telefone || dest.telefone
+      const msgFinal = mensagem
+        .replace(/\{\{nomeCliente\}\}/g, (dest.nome || 'Aluno').split(' ')[0])
+        .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
+
+      try {
+        const resultado = await whatsappService.enviarMensagem(telefone, msgFinal)
+        if (resultado.sucesso) {
+          enviados++
+          await supabase.from('campanha_envios').update({ status: 'enviado', enviado_em: new Date().toISOString() })
+            .eq('campanha_id', campanha.id).eq('devedor_id', dest.id)
+        } else {
+          falhas++
+          await supabase.from('campanha_envios').update({ status: 'falha', erro: resultado.erro })
+            .eq('campanha_id', campanha.id).eq('devedor_id', dest.id)
+        }
+      } catch {
+        falhas++
+        await supabase.from('campanha_envios').update({ status: 'falha', erro: 'Erro de conexão' })
+          .eq('campanha_id', campanha.id).eq('devedor_id', dest.id)
+      }
+
+      setProgresso({ enviados, falhas, total: destFinal.length })
+
+      // Atualizar contadores da campanha
+      await supabase.from('campanhas').update({ total_enviados: enviados, total_falhas: falhas }).eq('id', campanha.id)
+
+      // Throttle 25-30 segundos
+      if (!cancelarRef.current) {
+        const delay = 25000 + Math.random() * 5000
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+
+    // Finalizar
+    await supabase.from('campanhas').update({
+      status: cancelarRef.current ? 'cancelada' : 'concluida',
+      total_enviados: enviados, total_falhas: falhas,
+      concluida_em: new Date().toISOString()
+    }).eq('id', campanha.id)
+
+    setEnviando(false)
+    setCampanhaAtiva(null)
+    showToast(cancelarRef.current ? 'Campanha cancelada' : `Campanha concluída! ${enviados} enviados, ${falhas} falhas`, cancelarRef.current ? 'warning' : 'success')
+    setTitulo(''); setMensagem(''); carregarCampanhas(); setTab('historico')
+  }
+
+  return (
+    <div style={{ padding: isSmallScreen ? '16px' : '24px' }}>
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: 4, backgroundColor: '#f3f4f6', borderRadius: 10, padding: 3, marginBottom: 20 }}>
+        {[{ id: 'nova', label: 'Nova Campanha', icon: 'mdi:bullhorn' }, { id: 'historico', label: `Histórico (${campanhas.length})`, icon: 'mdi:history' }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            backgroundColor: tab === t.id ? '#fff' : 'transparent',
+            color: tab === t.id ? '#1a1a1a' : '#888', fontWeight: tab === t.id ? 600 : 400, fontSize: 13,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+          }}>
+            <Icon icon={t.icon} width={15} /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Nova Campanha */}
+      {tab === 'nova' && !enviando && (
+        <div style={{ backgroundColor: '#fff', borderRadius: 12, padding: isSmallScreen ? 16 : 24, border: '1px solid #e5e7eb' }}>
+          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600, color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon icon="mdi:bullhorn" width={20} style={{ color: '#344848' }} /> Nova Campanha
+          </h3>
+
+          {/* Título */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Título da campanha</label>
+            <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Aviso de feriado, Promoção do mês..."
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+          </div>
+
+          {/* Segmento */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Enviar para</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { id: 'todos', label: 'Todos ativos' },
+                { id: 'plano', label: 'Por plano' },
+                { id: 'inadimplentes', label: 'Inadimplentes' }
+              ].map(s => (
+                <button key={s.id} onClick={() => setSegmento(s.id)} style={{
+                  padding: '6px 14px', fontSize: 13, fontWeight: segmento === s.id ? 600 : 400,
+                  backgroundColor: segmento === s.id ? '#344848' : '#f3f4f6',
+                  color: segmento === s.id ? 'white' : '#555',
+                  border: 'none', borderRadius: 6, cursor: 'pointer'
+                }}>{s.label}</button>
+              ))}
+            </div>
+            {segmento === 'plano' && (
+              <select value={filtroPlanoId} onChange={e => setFiltroPlanoId(e.target.value)}
+                style={{ marginTop: 8, padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, width: '100%', boxSizing: 'border-box' }}>
+                <option value="">Selecionar plano...</option>
+                {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            )}
+          </div>
+
+          {/* Preview destinatários — colapsável com checkboxes */}
+          <div style={{ marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+            <div onClick={() => !carregandoDest && setDestExpandido(!destExpandido)} style={{
+              padding: '10px 14px', backgroundColor: '#f8f9fa', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#555' }}>
+                <Icon icon="mdi:account-group" width={18} style={{ color: '#344848' }} />
+                {carregandoDest ? 'Carregando...' : (
+                  <span><strong>{destinatarios.length - destDesmarcados.size}</strong> de {destinatarios.length} aluno{destinatarios.length !== 1 ? 's' : ''} selecionado{destinatarios.length - destDesmarcados.size !== 1 ? 's' : ''}</span>
+                )}
+              </div>
+              <Icon icon={destExpandido ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={18} style={{ color: '#888' }} />
+            </div>
+            {destExpandido && destinatarios.length > 0 && (
+              <div style={{ maxHeight: 250, overflowY: 'auto', borderTop: '1px solid #e5e7eb' }}>
+                {/* Marcar/desmarcar todos */}
+                <div style={{ padding: '8px 14px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#fafafa' }}>
+                  <input type="checkbox" checked={destDesmarcados.size === 0} onChange={() => {
+                    if (destDesmarcados.size === 0) setDestDesmarcados(new Set(destinatarios.map(d => d.id)))
+                    else setDestDesmarcados(new Set())
+                  }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>
+                    {destDesmarcados.size === 0 ? 'Desmarcar todos' : 'Marcar todos'}
+                  </span>
+                </div>
+                {destinatarios.map(d => {
+                  const marcado = !destDesmarcados.has(d.id)
+                  return (
+                    <div key={d.id} onClick={() => {
+                      setDestDesmarcados(prev => {
+                        const novo = new Set(prev)
+                        if (novo.has(d.id)) novo.delete(d.id); else novo.add(d.id)
+                        return novo
+                      })
+                    }} style={{
+                      padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8,
+                      cursor: 'pointer', borderBottom: '1px solid #f8f8f8',
+                      opacity: marcado ? 1 : 0.5, backgroundColor: marcado ? '#fff' : '#fafafa'
+                    }}>
+                      <input type="checkbox" checked={marcado} readOnly style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                      <span style={{ fontSize: 13, color: '#333', flex: 1 }}>{d.nome}</span>
+                      <span style={{ fontSize: 11, color: '#999' }}>{d.responsavel_telefone || d.telefone}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Mensagem */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Mensagem</label>
+            <textarea value={mensagem} onChange={e => setMensagem(e.target.value)} rows={5}
+              placeholder="Escreva sua mensagem aqui..."
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              {['{{nomeCliente}}', '{{nomeEmpresa}}'].map(v => (
+                <button key={v} onClick={() => setMensagem(prev => prev + v)} style={{
+                  padding: '3px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#eef2ff',
+                  color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: 4, cursor: 'pointer'
+                }}>{v}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview mensagem */}
+          {mensagem && (
+            <div style={{ padding: '12px 14px', backgroundColor: '#f0fdf4', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', border: '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', marginBottom: 6 }}>Preview:</div>
+              {mensagem.replace(/\{\{nomeCliente\}\}/g, 'João').replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa || 'Sua Empresa')}
+            </div>
+          )}
+
+          {/* Regras e avisos — colapsável */}
+          <div style={{ marginBottom: 20, border: '1px solid #fde68a', borderRadius: 10, overflow: 'hidden', backgroundColor: '#fffbeb' }}>
+            <div onClick={() => setRegrasExpandidas && setRegrasExpandidas(!regrasExpandidas)}
+              style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon icon="mdi:alert-outline" width={16} style={{ color: '#d97706' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Regras de envio</span>
+              </div>
+              <Icon icon={regrasExpandidas ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={18} style={{ color: '#92400e' }} />
+            </div>
+            {regrasExpandidas && (
+              <div style={{ padding: '0 14px 14px' }}>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#92400e', lineHeight: 1.8 }}>
+                  <li>Evite enviar mais de <strong>100 mensagens por dia</strong> — risco de bloqueio</li>
+                  <li>Envie apenas para alunos que <strong>já têm seu número salvo</strong> — reduz risco de denúncia</li>
+                  <li>Não envie conteúdo promocional em excesso — pode ser marcado como spam</li>
+                  <li>O WhatsApp pode <strong>bloquear temporariamente</strong> números que enviam muitas mensagens em pouco tempo</li>
+                  <li>O <strong>Mensalli não se responsabiliza</strong> por bloqueios decorrentes do uso de campanhas</li>
+                </ul>
+              </div>
+            )}
+            {destinatariosSelecionados.length > 0 && (
+              <div style={{ padding: '8px 14px', borderTop: '1px solid #fde68a', fontSize: 12, fontWeight: 600, color: '#92400e' }}>
+                Tempo estimado: ~{Math.ceil(destinatariosSelecionados.length * 30 / 60)} minutos para {destinatariosSelecionados.length} destinatário{destinatariosSelecionados.length !== 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+
+          {/* Botão enviar */}
+          <button onClick={enviarCampanha} disabled={!titulo.trim() || !mensagem.trim() || destinatariosSelecionados.length === 0}
+            style={{
+              width: '100%', padding: '12px', backgroundColor: titulo.trim() && mensagem.trim() && destinatariosSelecionados.length > 0 ? '#344848' : '#ccc',
+              color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600,
+              cursor: titulo.trim() && mensagem.trim() && destinatariosSelecionados.length > 0 ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+            }}>
+            <Icon icon="mdi:send" width={18} /> Enviar Campanha ({destinatariosSelecionados.length})
+          </button>
+        </div>
+      )}
+
+      {/* Progresso de envio */}
+      {enviando && (
+        <div style={{ backgroundColor: '#fff', borderRadius: 12, padding: isSmallScreen ? 16 : 24, border: '1px solid #e5e7eb', textAlign: 'center' }}>
+          <Icon icon="mdi:send-clock" width={48} style={{ color: '#344848', marginBottom: 12 }} />
+          <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>Enviando campanha...</h3>
+          <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>"{campanhaAtiva?.titulo}"</p>
+
+          {/* Barra de progresso */}
+          <div style={{ height: 8, borderRadius: 4, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 12 }}>
+            <div style={{
+              height: '100%', borderRadius: 4, transition: 'width 0.3s',
+              width: `${progresso.total > 0 ? ((progresso.enviados + progresso.falhas) / progresso.total * 100) : 0}%`,
+              background: 'linear-gradient(90deg, #22c55e, #16a34a)'
+            }} />
+          </div>
+
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 4 }}>
+            {progresso.enviados + progresso.falhas} / {progresso.total}
+          </div>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>
+            <span style={{ color: '#16a34a' }}>✓ {progresso.enviados} enviados</span>
+            {progresso.falhas > 0 && <span style={{ color: '#ef4444', marginLeft: 12 }}>✗ {progresso.falhas} falhas</span>}
+          </div>
+
+          <button onClick={() => { cancelarRef.current = true }} style={{
+            padding: '8px 24px', backgroundColor: '#fef2f2', color: '#ef4444',
+            border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer'
+          }}>
+            <Icon icon="mdi:stop" width={16} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Cancelar envio
+          </button>
+        </div>
+      )}
+
+      {/* Histórico */}
+      {tab === 'historico' && !enviando && (
+        <div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Carregando...</div>
+          ) : campanhas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+              <Icon icon="mdi:bullhorn-outline" width={48} style={{ color: '#ddd', marginBottom: 12 }} />
+              <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>Nenhuma campanha enviada</p>
+            </div>
+          ) : (
+            campanhas.map(c => {
+              const isExpandida = campanhaExpandida === c.id
+              return (
+              <div key={c.id} style={{
+                backgroundColor: '#fff', borderRadius: 10, marginBottom: 8,
+                border: '1px solid #e5e7eb', overflow: 'hidden'
+              }}>
+                {/* Header clicável */}
+                <div onClick={async () => {
+                  if (isExpandida) { setCampanhaExpandida(null); return }
+                  setCampanhaExpandida(c.id)
+                  const { data } = await supabase.from('campanha_envios')
+                    .select('*, devedores(nome)').eq('campanha_id', c.id).order('enviado_em', { ascending: true })
+                  setEnviosDaCampanha(data || [])
+                }} style={{
+                  padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  cursor: 'pointer', userSelect: 'none'
+                }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a' }}>{c.titulo}</div>
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                      {new Date(c.created_at).toLocaleDateString('pt-BR')} · {c.segmento === 'todos' ? 'Todos ativos' : c.segmento === 'plano' ? 'Por plano' : 'Inadimplentes'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: c.status === 'concluida' ? '#16a34a' : c.status === 'enviando' ? '#f59e0b' : c.status === 'cancelada' ? '#ef4444' : '#888' }}>
+                        {c.status === 'concluida' ? '✓ Concluída' : c.status === 'enviando' ? '⏳ Enviando' : c.status === 'cancelada' ? '✗ Cancelada' : 'Rascunho'}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                        {c.total_enviados}/{c.total_destinatarios} enviados
+                        {c.total_falhas > 0 && ` · ${c.total_falhas} falhas`}
+                      </div>
+                    </div>
+                    <Icon icon={isExpandida ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={18} style={{ color: '#888' }} />
+                  </div>
+                </div>
+
+                {/* Detalhes expandidos */}
+                {isExpandida && (
+                  <div style={{ borderTop: '1px solid #f0f0f0', padding: '12px 16px', maxHeight: 300, overflowY: 'auto' }}>
+                    {/* Mensagem */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mensagem enviada</div>
+                      <div style={{ padding: '10px 12px', backgroundColor: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#555', whiteSpace: 'pre-wrap', borderLeft: '3px solid #d1d5db' }}>
+                        {c.mensagem}
+                      </div>
+                    </div>
+
+                    {/* Lista de envios */}
+                    {enviosDaCampanha.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: 16, color: '#999', fontSize: 12 }}>Carregando...</div>
+                    ) : (
+                      enviosDaCampanha.map((e, idx) => (
+                        <div key={e.id} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '6px 0', borderTop: idx > 0 ? '1px solid #f8f8f8' : 'none'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Icon icon={e.status === 'enviado' ? 'mdi:check-circle' : e.status === 'falha' ? 'mdi:alert-circle' : 'mdi:clock-outline'}
+                              width={16} style={{ color: e.status === 'enviado' ? '#16a34a' : e.status === 'falha' ? '#ef4444' : '#999', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: '#333' }}>{e.devedores?.nome || 'Aluno'}</div>
+                              {e.erro && <div style={{ fontSize: 11, color: '#ef4444' }}>{e.erro}</div>}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
+                              backgroundColor: e.status === 'enviado' ? '#f0fdf4' : e.status === 'falha' ? '#fef2f2' : '#f8f8f8',
+                              color: e.status === 'enviado' ? '#16a34a' : e.status === 'falha' ? '#ef4444' : '#999'
+                            }}>
+                              {e.status === 'enviado' ? 'Enviado' : e.status === 'falha' ? 'Falha' : 'Pendente'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Estado global do status de conexão do WhatsApp
 let globalStatus = 'disconnected'
@@ -1557,7 +2038,8 @@ export default function WhatsAppConexao() {
         }}>
           {[
             { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
-            { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' }
+            { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' },
+            { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -1630,7 +2112,7 @@ export default function WhatsAppConexao() {
       </div>
 
       {/* Conteúdo */}
-      {activeTab === 'conexao' ? (
+      {activeTab === 'conexao' && (
         <>
 
           {/* Conteúdo Principal */}
@@ -2086,7 +2568,9 @@ export default function WhatsAppConexao() {
             </div>
           </div>
         </>
-      ) : (
+      )}
+
+      {activeTab === 'templates' && (
         /* Aba de Templates - Redesign */
         <div style={{
           backgroundColor: 'white',
@@ -2870,6 +3354,30 @@ export default function WhatsAppConexao() {
           </style>
         </>
       )}
+
+      {/* ===== ABA CAMPANHAS ===== */}
+      {activeTab === 'campanhas' && (() => {
+        if (isLocked('premium')) {
+          return (
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px', textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
+                <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+              </div>
+              <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>Campanhas de WhatsApp</h2>
+              <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+                Envie mensagens em massa pra seus alunos — avisos, promoções, comunicados.
+                Disponível no plano <strong>Premium</strong>.
+              </p>
+              <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+                style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+                Fazer Upgrade
+              </button>
+            </div>
+          )
+        }
+
+        return <CampanhasContent contextUserId={contextUserId} isSmallScreen={isSmallScreen} />
+      })()}
     </div>
   )
 }
