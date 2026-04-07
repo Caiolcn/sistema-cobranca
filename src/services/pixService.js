@@ -57,24 +57,59 @@ function tlv(tag, value) {
  */
 function formatarChavePix(chave) {
   const chaveLimpa = chave.trim()
+  const apenasNumeros = chaveLimpa.replace(/\D/g, '')
 
-  // Se já começa com +, é telefone formatado
+  // Email (tem @) — retorna limpo
+  if (chaveLimpa.includes('@')) {
+    return chaveLimpa.toLowerCase().trim()
+  }
+
+  // CPF/CNPJ — detectar se tem ponto, traço ou barra (formatação de documento)
+  if (/[.\-\/]/.test(chaveLimpa)) {
+    if (/^\d{11}$/.test(apenasNumeros) || /^\d{14}$/.test(apenasNumeros)) {
+      return apenasNumeros
+    }
+  }
+
+  // CNPJ puro (14 dígitos, sem formatação)
+  if (/^\d{14}$/.test(apenasNumeros)) {
+    return apenasNumeros
+  }
+
+  // Telefone com +55
+  if (chaveLimpa.startsWith('+55')) {
+    let tel = apenasNumeros.substring(2)
+    if (tel.startsWith('0')) tel = tel.substring(1)
+    return `+55${tel}`
+  }
+
+  // Se começa com +, retorna como está
   if (chaveLimpa.startsWith('+')) {
     return chaveLimpa
   }
 
-  // Se é apenas números e tem 10-11 dígitos, é telefone brasileiro
-  const apenasNumeros = chaveLimpa.replace(/\D/g, '')
-  if (/^\d{10,11}$/.test(apenasNumeros)) {
+  // 10 dígitos = telefone fixo (DDD + 8 dígitos)
+  if (/^\d{10}$/.test(apenasNumeros)) {
     return `+55${apenasNumeros}`
   }
 
-  // CPF (11 dígitos) ou CNPJ (14 dígitos) - retorna só números
-  if (/^\d{11}$/.test(apenasNumeros) || /^\d{14}$/.test(apenasNumeros)) {
-    return apenasNumeros
+  // 11 dígitos = ambíguo (CPF ou celular)
+  // Se começa com 0 = provavelmente CPF (CPFs podem começar com 0)
+  // Se o 3º dígito é 9 = celular (ex: 62 9xxxx-xxxx)
+  if (/^\d{11}$/.test(apenasNumeros)) {
+    const terceiro = apenasNumeros[2]
+    if (terceiro === '9') {
+      return `+55${apenasNumeros}` // celular
+    }
+    return apenasNumeros // CPF
   }
 
-  // Email ou chave aleatória - retorna como está
+  // 12-13 dígitos com 55 na frente = telefone
+  if (/^55\d{10,11}$/.test(apenasNumeros)) {
+    return `+${apenasNumeros}`
+  }
+
+  // Chave aleatória ou outro formato
   return chaveLimpa
 }
 
