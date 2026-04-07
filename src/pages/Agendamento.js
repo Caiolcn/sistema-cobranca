@@ -69,6 +69,11 @@ export default function Agendamento() {
   const [entrandoFila, setEntrandoFila] = useState(null) // aula_id_data loading
   const [saindoFila, setSaindoFila] = useState(null)
 
+  // Aulas fixas
+  const [aulasFixas, setAulasFixas] = useState([])
+  const [ausenciasFixos, setAusenciasFixos] = useState([])
+  const [cancelandoFixo, setCancelandoFixo] = useState(null)
+
   // Agendamento
   const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [agendando, setAgendando] = useState(null)
@@ -162,6 +167,8 @@ export default function Agendamento() {
         setAluno(json.aluno)
         setMeusAgendamentos(json.agendamentos || [])
         setMinhasFilas(json.filas || [])
+        setAulasFixas(json.aulas_fixas || [])
+        setAusenciasFixos(json.ausencias_fixos || [])
         setEtapa('grade')
       } else {
         setEtapa('nome')
@@ -191,6 +198,8 @@ export default function Agendamento() {
         setAluno(json.aluno)
         setMeusAgendamentos(json.agendamentos || [])
         setMinhasFilas(json.filas || [])
+        setAulasFixas(json.aulas_fixas || [])
+        setAusenciasFixos(json.ausencias_fixos || [])
         setEtapa('grade')
       }
     } catch {
@@ -248,6 +257,46 @@ export default function Agendamento() {
     } finally {
       setSaindoFila(null)
     }
+  }
+
+  // Cancelar/desfazer ausência de aluno fixo
+  const isFixoNaAula = (aulaId) => aulasFixas.some(f => f.aula_id === aulaId)
+  const ausenciaFixo = (aulaId, data) => ausenciasFixos.find(a => a.aula_id === aulaId && a.data === data)
+
+  const cancelarAulaFixo = async (aulaId, data) => {
+    setCancelandoFixo(`${aulaId}_${data}`)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fixo-cancelar`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ slug, devedor_id: aluno.id, aula_id: aulaId, data, acao: 'cancelar' })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        setAusenciasFixos(prev => [...prev, { id: Date.now().toString(), aula_id: aulaId, data }])
+        mostrarToast('Aula cancelada para este dia', 'success')
+      } else {
+        mostrarToast(json.error || 'Erro ao cancelar', 'error')
+      }
+    } catch { mostrarToast('Erro ao cancelar', 'error') }
+    finally { setCancelandoFixo(null) }
+  }
+
+  const desfazerAusenciaFixo = async (aulaId, data) => {
+    setCancelandoFixo(`${aulaId}_${data}`)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/agendamento-fixo-cancelar`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ slug, devedor_id: aluno.id, aula_id: aulaId, data, acao: 'desfazer' })
+      })
+      const json = await res.json()
+      if (json.sucesso) {
+        setAusenciasFixos(prev => prev.filter(a => !(a.aula_id === aulaId && a.data === data)))
+        mostrarToast('Presença confirmada novamente', 'success')
+      } else {
+        mostrarToast(json.error || 'Erro', 'error')
+      }
+    } catch { mostrarToast('Erro', 'error') }
+    finally { setCancelandoFixo(null) }
   }
 
   // Confirmar vaga da lista de espera (veio pelo link do WhatsApp)
@@ -980,26 +1029,29 @@ export default function Agendamento() {
                   const nFila = filaCount(aula.id, diaSelecionado)
                   const isEntrandoFila = entrandoFila === `${aula.id}_${diaSelecionado}`
                   const isSaindoFila = filaAtiva && saindoFila === filaAtiva.id
+                  const isFixo = isFixoNaAula(aula.id)
+                  const ausencia = ausenciaFixo(aula.id, diaSelecionado)
+                  const isCancelandoFixo = cancelandoFixo === `${aula.id}_${diaSelecionado}`
 
                   return (
                     <div key={aula.id} style={{
                       background: '#fff', borderRadius: 14, padding: 16,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                      border: agendado ? '2px solid #22c55e' : filaAtiva ? '2px solid #f59e0b' : '1px solid #f1f5f9',
-                      opacity: lotado && !agendado && !filaAtiva ? 0.7 : 1,
+                      border: isFixo && !ausencia ? '2px solid #8b5cf6' : agendado ? '2px solid #22c55e' : filaAtiva ? '2px solid #f59e0b' : ausencia ? '2px solid #ef4444' : '1px solid #f1f5f9',
+                      opacity: (lotado && !agendado && !filaAtiva && !isFixo) || ausencia ? 0.7 : 1,
                       transition: 'all 0.2s'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{
                             width: 44, height: 44, borderRadius: 12,
-                            background: agendado ? 'linear-gradient(135deg, #22c55e, #16a34a)' : filaAtiva ? '#fef3c7' : lotado ? '#fef2f2' : '#f0fdf4',
+                            background: isFixo && !ausencia ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : ausencia ? '#fef2f2' : agendado ? 'linear-gradient(135deg, #22c55e, #16a34a)' : filaAtiva ? '#fef3c7' : lotado ? '#fef2f2' : '#f0fdf4',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}>
                             <Icon
-                              icon={agendado ? 'mdi:check' : filaAtiva ? 'mdi:clock-outline' : lotado ? 'mdi:account-group' : 'mdi:dumbbell'}
+                              icon={isFixo && !ausencia ? 'mdi:pin' : ausencia ? 'mdi:close' : agendado ? 'mdi:check' : filaAtiva ? 'mdi:clock-outline' : lotado ? 'mdi:account-group' : 'mdi:dumbbell'}
                               width="22"
-                              style={{ color: agendado ? '#fff' : filaAtiva ? '#f59e0b' : lotado ? '#ef4444' : '#22c55e' }}
+                              style={{ color: isFixo && !ausencia ? '#fff' : ausencia ? '#ef4444' : agendado ? '#fff' : filaAtiva ? '#f59e0b' : lotado ? '#ef4444' : '#22c55e' }}
                             />
                           </div>
                           <div>
@@ -1015,7 +1067,21 @@ export default function Agendamento() {
                         </div>
 
                         <div style={{ textAlign: 'right' }}>
-                          {agendado ? (
+                          {isFixo && !ausencia ? (
+                            <div style={{
+                              background: '#f5f3ff', padding: '4px 10px', borderRadius: 8,
+                              fontSize: 11, fontWeight: 700, color: '#7c3aed'
+                            }}>
+                              Fixo
+                            </div>
+                          ) : ausencia ? (
+                            <div style={{
+                              background: '#fef2f2', padding: '4px 10px', borderRadius: 8,
+                              fontSize: 11, fontWeight: 700, color: '#ef4444'
+                            }}>
+                              Não vou
+                            </div>
+                          ) : agendado ? (
                             <div style={{
                               background: '#f0fdf4', padding: '4px 10px', borderRadius: 8,
                               fontSize: 11, fontWeight: 700, color: '#22c55e'
@@ -1053,8 +1119,33 @@ export default function Agendamento() {
                         </div>
                       </div>
 
+                      {/* Botão fixo: cancelar ou desfazer */}
+                      {isFixo && !ausencia && (
+                        <button onClick={() => cancelarAulaFixo(aula.id, diaSelecionado)} disabled={isCancelandoFixo}
+                          style={{
+                            width: '100%', marginTop: 12, padding: '10px 16px',
+                            background: '#fff', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 10,
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                          }}>
+                          {isCancelandoFixo ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #fecaca', borderTopColor: '#ef4444', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:close-circle-outline" width="18" /> Não vou neste dia</>}
+                        </button>
+                      )}
+
+                      {ausencia && (
+                        <button onClick={() => desfazerAusenciaFixo(aula.id, diaSelecionado)} disabled={isCancelandoFixo}
+                          style={{
+                            width: '100%', marginTop: 12, padding: '10px 16px',
+                            background: '#fff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: 10,
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                          }}>
+                          {isCancelandoFixo ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #ddd6fe', borderTopColor: '#7c3aed', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:undo" width="18" /> Vou neste dia (desfazer)</>}
+                        </button>
+                      )}
+
                       {/* Botão agendar (tem vaga) */}
-                      {!agendado && !lotado && !filaAtiva && (
+                      {!agendado && !lotado && !filaAtiva && !isFixo && !ausencia && (
                         <button
                           onClick={() => agendarAula(aula, diaSelecionado)}
                           disabled={isAgendando}
