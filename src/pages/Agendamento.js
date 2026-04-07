@@ -1128,7 +1128,7 @@ export default function Agendamento() {
                             fontSize: 14, fontWeight: 700, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                           }}>
-                          {isCancelandoFixo ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #fecaca', borderTopColor: '#ef4444', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:close-circle-outline" width="18" /> Não vou neste dia</>}
+                          {isCancelandoFixo ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #fecaca', borderTopColor: '#ef4444', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:calendar-remove" width="18" /> Não irei nesta aula</>}
                         </button>
                       )}
 
@@ -1140,7 +1140,7 @@ export default function Agendamento() {
                             fontSize: 14, fontWeight: 700, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                           }}>
-                          {isCancelandoFixo ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #ddd6fe', borderTopColor: '#7c3aed', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:undo" width="18" /> Vou neste dia (desfazer)</>}
+                          {isCancelandoFixo ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #ddd6fe', borderTopColor: '#7c3aed', animation: 'spin 0.6s linear infinite' }} /> : <><Icon icon="mdi:calendar-check" width="18" /> Irei nesta aula</>}
                         </button>
                       )}
 
