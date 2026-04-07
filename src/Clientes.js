@@ -862,6 +862,17 @@ export default function Clientes() {
         showToast('Assinatura ativada com plano pacote!', 'success')
       }
 
+      // Log de auditoria
+      await supabase.from('log_auditoria').insert({
+        user_id: userId,
+        devedor_id: clienteId,
+        acao: 'assinatura_ativada',
+        campo: 'assinatura_ativa',
+        valor_anterior: 'false',
+        valor_novo: 'true',
+        detalhes: `Ativada com plano: ${plano.nome}`
+      }).then(() => {}).catch(e => console.error('Erro log auditoria:', e))
+
       // Atualizar cliente selecionado se existir
       if (clienteSelecionado?.id === clienteId) {
         setClienteSelecionado(prev => ({
@@ -901,6 +912,17 @@ export default function Clientes() {
         .eq('id', clienteId)
 
       if (error) throw error
+
+      // Log de auditoria
+      await supabase.from('log_auditoria').insert({
+        user_id: userId,
+        devedor_id: clienteId,
+        acao: novoStatus ? 'assinatura_ativada' : 'assinatura_desativada',
+        campo: 'assinatura_ativa',
+        valor_anterior: String(!novoStatus),
+        valor_novo: String(novoStatus),
+        detalhes: `Assinatura ${novoStatus ? 'ativada' : 'desativada'} manualmente`
+      }).then(() => {}).catch(e => console.error('Erro log auditoria:', e))
 
       showToast(
         novoStatus ? 'Assinatura ativada com sucesso!' : 'Assinatura desativada!',
