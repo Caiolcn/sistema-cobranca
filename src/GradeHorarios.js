@@ -80,7 +80,7 @@ export default function GradeHorarios() {
   const [fixoClienteId, setFixoClienteId] = useState('')
   const [confirmRemoverFixo, setConfirmRemoverFixo] = useState({ show: false, fixo: null })
   const [listaEspera, setListaEspera] = useState([]) // lista_espera com devedores join
-  const [filtroAgendamentoDia, setFiltroAgendamentoDia] = useState('todos')
+  const [filtroAgendamentoDia, setFiltroAgendamentoDia] = useState(String(new Date().getDay()))
   const [formAulaHorarioFim, setFormAulaHorarioFim] = useState('18:00')
   const [formAulaIntervalo, setFormAulaIntervalo] = useState(60) // minutos
 
