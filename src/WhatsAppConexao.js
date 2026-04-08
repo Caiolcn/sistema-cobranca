@@ -640,6 +640,7 @@ export default function WhatsAppConexao() {
   const [automacaoConfirmacaoPgtoAtiva, setAutomacaoConfirmacaoPgtoAtiva] = useState(true) // Ativo por padrão
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
   const [enviarDomingoAtivo, setEnviarDomingoAtivo] = useState(true)
+  const [automacaoResumoDiarioAtiva, setAutomacaoResumoDiarioAtiva] = useState(false)
 
   // Estado para Chave PIX
   const [chavePix, setChavePix] = useState('')
@@ -699,7 +700,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -823,6 +824,7 @@ export default function WhatsAppConexao() {
         setAutomacaoAniversarioAtiva(configCobranca?.enviar_aniversario === true)
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
         setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
+        setAutomacaoResumoDiarioAtiva(configCobranca?.enviar_resumo_diario === true)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -1058,6 +1060,7 @@ export default function WhatsAppConexao() {
         'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula',
         'automacao_aniversario_ativa': 'enviar_aniversario',
         'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento',
+        'automacao_resumo_diario_ativa': 'enviar_resumo_diario',
         'enviar_domingo_ativo': 'enviar_domingo'
       }
 
@@ -1517,6 +1520,14 @@ export default function WhatsAppConexao() {
     const sucesso = await salvarConfiguracaoAutomacao('automacao_confirmacao_pgto_ativa', novoValor)
     if (sucesso) {
       setAutomacaoConfirmacaoPgtoAtiva(novoValor)
+    }
+  }
+
+  const toggleResumoDiario = async () => {
+    const novoValor = !automacaoResumoDiarioAtiva
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_resumo_diario_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoResumoDiarioAtiva(novoValor)
     }
   }
 
@@ -2597,7 +2608,8 @@ export default function WhatsAppConexao() {
                   { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked },
                   { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked },
                   { tipo: 'payment_confirmed', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
-                  { tipo: 'welcome', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true }
+                  { tipo: 'welcome', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true },
+                  { tipo: 'resumo_diario', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true }
                 ].map((item) => (
                   <div
                     key={item.tipo}

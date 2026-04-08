@@ -1,0 +1,80 @@
+{
+  "name": "MensalliZap - Resumo Diário Agendamento (7h)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-resumo",
+      "name": "Disparo 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_resumo_diario_agendamento",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-resumo",
+      "name": "Buscar Aulas do Dia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];\nconst hoje = new Date();\nconst diaStr = diasSemana[hoje.getDay()];\nconst dataStr = hoje.toLocaleDateString('pt-BR');\n\n// Agrupar por user_id\nconst porUser = {};\nfor (const item of items) {\n  const d = item.json;\n  if (!porUser[d.user_id]) {\n    porUser[d.user_id] = {\n      user_id: d.user_id,\n      nome_empresa: d.nome_empresa,\n      telefone_admin: d.telefone_admin,\n      evolution_instance_name: d.evolution_instance_name,\n      evolution_api_key: d.evolution_api_key,\n      evolution_api_url: d.evolution_api_url || 'http://service-evolution-api:8080',\n      aulas: []\n    };\n  }\n  porUser[d.user_id].aulas.push(d);\n}\n\nconst results = [];\nfor (const userId in porUser) {\n  const u = porUser[userId];\n  let totalFixos = 0, totalAgendados = 0;\n  let msg = `📋 *Resumo do dia — ${diaStr} ${dataStr}*\\n`;\n  \n  for (const aula of u.aulas) {\n    const horario = aula.horario ? aula.horario.substring(0, 5) : '--:--';\n    const total = (aula.total_fixos || 0) + (aula.total_agendados || 0);\n    msg += `\\n🕐 ${horario}`;\n    if (aula.descricao) msg += ` - ${aula.descricao}`;\n    msg += ` (${total}/${aula.capacidade})`;\n    \n    if (aula.nomes_fixos) {\n      msg += `\\n   📌 Fixos: ${aula.nomes_fixos}`;\n      totalFixos += aula.total_fixos;\n    }\n    if (aula.nomes_agendados) {\n      msg += `\\n   📅 Agendados: ${aula.nomes_agendados}`;\n      totalAgendados += aula.total_agendados;\n    }\n    if (!aula.nomes_fixos && !aula.nomes_agendados) {\n      msg += `\\n   Sem alunos agendados`;\n    }\n  }\n  \n  msg += `\\n\\n📊 Total: ${u.aulas.length} aula(s) | ${totalFixos} fixo(s) | ${totalAgendados} agendado(s)`;\n  \n  let telefone = String(u.telefone_admin || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n  \n  results.push({\n    json: {\n      user_id: userId,\n      mensagem: msg,\n      telefone,\n      evolution_url: `${u.evolution_api_url}/message/sendText/${u.evolution_instance_name}`,\n      evolution_api_key: u.evolution_api_key\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "montar-mensagem",
+      "name": "Montar Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  if (i > 0) await new Promise(r => setTimeout(r, 2000));\n\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: data.evolution_url,\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: { number: data.telefone, text: data.mensagem },\n      returnFullResponse: true,\n      json: true\n    });\n\n    const body = resp.body;\n    if (body?.key?.id) {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: false, erro: body?.message || 'Sem key.id' } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro: err.message } });\n  }\n}\n\nreturn results;\n"
+      },
+      "id": "enviar-resumo",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Disparo 7h": {
+      "main": [[{ "node": "Buscar Aulas do Dia", "type": "main", "index": 0 }]]
+    },
+    "Buscar Aulas do Dia": {
+      "main": [[{ "node": "Montar Resumo", "type": "main", "index": 0 }]]
+    },
+    "Montar Resumo": {
+      "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  }
+}
