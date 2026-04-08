@@ -2092,7 +2092,19 @@ export default function GradeHorarios() {
                     const nTotal = nFixos + nAgendados
                     const nFila = contagemFilaEspera(aula.id)
                     const fixosDaAula = fixosAulas.filter(f => f.aula_id === aula.id)
-                    const agendadosLista = agendamentosOnline.filter(a => a.aula_id === aula.id)
+                    // Calcular próxima data desta aula (próximo dia_semana a partir de hoje)
+                    const proximaData = (() => {
+                      const hoje = new Date()
+                      for (let i = 0; i < 7; i++) {
+                        const d = new Date(hoje)
+                        d.setDate(d.getDate() + i)
+                        if (d.getDay() === aula.dia_semana) {
+                          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                        }
+                      }
+                      return null
+                    })()
+                    const agendadosLista = agendamentosOnline.filter(a => a.aula_id === aula.id && a.data === proximaData)
                     const filaDaAula = listaEspera.filter(f => f.aula_id === aula.id)
 
                     return (
@@ -2187,63 +2199,41 @@ export default function GradeHorarios() {
                           </div>
                         )}
 
-                        {/* Lista de agendados online */}
+                        {/* Lista de agendados — só da próxima ocorrência */}
                         {agendadosLista.length > 0 && (
                           <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
                             <div style={{ fontSize: '11px', fontWeight: '600', color: '#888', marginBottom: '6px', textTransform: 'uppercase' }}>
-                              Próximos agendados
+                              Agendados {proximaData && new Date(proximaData + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ({agendadosLista.length})
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                              {agendadosLista.slice(0, 8).map(ag => {
+                              {agendadosLista.map(ag => {
                                 const isExperimental = ag.devedores?.origem === 'agendamento' && !ag.devedores?.assinatura_ativa && !ag.devedores?.plano_id
                                 const isAgHoje = ag.data === hojeStr
                                 const pKey = presAgKey(aula.id, ag.devedor_id)
                                 const presenca = presencasAgendamento[pKey]
                                 return (
-                                <div key={ag.id}
-                                  onClick={() => isAgHoje && abrirPresencaAgendamento(aula, ag.devedor_id, ag.devedores)}
-                                  style={{
-                                  fontSize: '12px', padding: '4px 10px',
-                                  backgroundColor: presenca ? (presenca.presente ? '#d1fae5' : '#fee2e2') : (isExperimental ? '#fef3c7' : '#f0fdf4'),
-                                  borderRadius: '6px', color: presenca ? (presenca.presente ? '#065f46' : '#991b1b') : (isExperimental ? '#92400e' : '#16a34a'), fontWeight: '500',
-                                  display: 'flex', alignItems: 'center', gap: '4px',
-                                  cursor: isAgHoje ? 'pointer' : 'default',
-                                  transition: 'all 0.15s'
-                                }}>
-                                  {presenca && (
-                                    <Icon icon={presenca.presente ? 'mdi:check-circle' : 'mdi:close-circle'} width="12" style={{ color: presenca.presente ? '#16a34a' : '#ef4444' }} />
-                                  )}
-                                  <span>{ag.devedores?.nome?.split(' ')[0] || 'Aluno'}</span>
-                                  <span style={{ color: '#94a3b8', fontSize: '10px' }}>
-                                    {new Date(ag.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                  </span>
-                                  {isExperimental && (
-                                    <span style={{
-                                      fontSize: '9px', padding: '1px 5px', backgroundColor: '#f59e0b',
-                                      borderRadius: '4px', color: '#fff', fontWeight: '700', textTransform: 'uppercase'
-                                    }}>
-                                      Experimental
-                                    </span>
-                                  )}
-                                  <span
-                                    onClick={(e) => { e.stopPropagation(); setConfirmRemoverAgendamento({ show: true, agendamento: ag }) }}
+                                  <div key={ag.id}
+                                    onClick={() => isAgHoje && abrirPresencaAgendamento(aula, ag.devedor_id, ag.devedores)}
                                     style={{
-                                      cursor: 'pointer', marginLeft: '2px', color: '#ef4444',
-                                      fontSize: '14px', fontWeight: '700', lineHeight: '1',
-                                      display: 'flex', alignItems: 'center'
-                                    }}
-                                    title="Remover aluno deste horário"
-                                  >
-                                    ×
-                                  </span>
-                                </div>
+                                      fontSize: '12px', padding: '4px 10px',
+                                      backgroundColor: presenca ? (presenca.presente ? '#d1fae5' : '#fee2e2') : (isExperimental ? '#fef3c7' : '#f0fdf4'),
+                                      borderRadius: '6px', color: presenca ? (presenca.presente ? '#065f46' : '#991b1b') : (isExperimental ? '#92400e' : '#16a34a'), fontWeight: '500',
+                                      display: 'flex', alignItems: 'center', gap: '4px',
+                                      cursor: isAgHoje ? 'pointer' : 'default'
+                                    }}>
+                                    {presenca && (
+                                      <Icon icon={presenca.presente ? 'mdi:check-circle' : 'mdi:close-circle'} width="12" style={{ color: presenca.presente ? '#16a34a' : '#ef4444' }} />
+                                    )}
+                                    <span>{ag.devedores?.nome?.split(' ')[0] || 'Aluno'}</span>
+                                    {isExperimental && (
+                                      <span style={{ fontSize: '9px', padding: '1px 5px', backgroundColor: '#f59e0b', borderRadius: '4px', color: '#fff', fontWeight: '700' }}>Exp</span>
+                                    )}
+                                    <span onClick={(e) => { e.stopPropagation(); setConfirmRemoverAgendamento({ show: true, agendamento: ag }) }}
+                                      style={{ cursor: 'pointer', marginLeft: '2px', color: '#ef4444', fontSize: '14px', fontWeight: '700', lineHeight: '1', display: 'flex', alignItems: 'center' }}
+                                      title="Remover">×</span>
+                                  </div>
                                 )
                               })}
-                              {agendadosLista.length > 8 && (
-                                <div style={{ fontSize: '12px', padding: '4px 10px', backgroundColor: '#f3f4f6', borderRadius: '6px', color: '#666' }}>
-                                  +{agendadosLista.length - 8}
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
