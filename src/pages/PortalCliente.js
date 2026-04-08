@@ -9,6 +9,8 @@ import { FUNCTIONS_URL, SUPABASE_ANON_KEY as ANON_KEY } from '../supabaseClient'
 export default function PortalCliente() {
   const { token } = useParams()
   const [loading, setLoading] = useState(true)
+  const [portalToast, setPortalToast] = useState(null) // { msg, tipo }
+  const mostrarPortalToast = (msg, tipo = 'info') => { setPortalToast({ msg, tipo }); setTimeout(() => setPortalToast(null), 4000) }
   const [erro, setErro] = useState(null)
   const [dados, setDados] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
@@ -136,14 +138,14 @@ export default function PortalCliente() {
             window.open(json.invoice_url, '_blank')
           }
           await carregarDados()
-        } else { alert(json.error || 'Erro ao gerar pagamento'); setExpandedId(null) }
-      } catch { alert('Erro ao processar pagamento'); setExpandedId(null) }
+        } else { mostrarPortalToast(json.error || 'Erro ao gerar pagamento', 'error'); setExpandedId(null) }
+      } catch { mostrarPortalToast('Erro ao processar pagamento', 'error'); setExpandedId(null) }
       finally { setPagandoId(null) }
       return
     }
 
     if (!dados.empresa.chave_pix) {
-      alert('Chave PIX nao configurada. Entre em contato com o estabelecimento.'); return
+      mostrarPortalToast('Chave PIX não configurada. Entre em contato com o estabelecimento.', 'error'); return
     }
 
     const pixCode = gerarPixCopiaCola({
@@ -179,7 +181,7 @@ export default function PortalCliente() {
         dataPagamento: mensalidade.updated_at, formaPagamento: mensalidade.forma_pagamento || 'PIX',
         chavePix: dados.empresa.chave_pix
       })
-    } catch (error) { console.error('Erro ao gerar recibo:', error); alert('Erro ao gerar recibo.') }
+    } catch (error) { console.error('Erro ao gerar recibo:', error); mostrarPortalToast('Erro ao gerar recibo', 'error') }
   }
 
   const formatarValor = (valor) => parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -334,9 +336,9 @@ export default function PortalCliente() {
         setAgendamentoContagem(prev => ({ ...prev, [chave]: (prev[chave] || 0) + 1 }))
         setMeusAgendamentos(prev => [...prev, { ...json.agendamento, aula: { dia_semana: aula.dia_semana, horario: aula.horario, descricao: aula.descricao } }])
       } else {
-        alert(json.error || 'Erro ao agendar')
+        mostrarPortalToast(json.error || 'Erro ao agendar', 'error')
       }
-    } catch { alert('Erro ao agendar') }
+    } catch { mostrarPortalToast('Erro ao agendar', 'error') }
     finally { setAgendando(null) }
   }
 
@@ -352,8 +354,8 @@ export default function PortalCliente() {
         const chave = `${agendamento.aula_id}_${agendamento.data}`
         setAgendamentoContagem(prev => ({ ...prev, [chave]: Math.max(0, (prev[chave] || 1) - 1) }))
         setMeusAgendamentos(prev => prev.filter(a => a.id !== agendamento.id))
-      } else { alert(json.error || 'Erro ao cancelar') }
-    } catch { alert('Erro ao cancelar') }
+      } else { mostrarPortalToast(json.error || 'Erro ao cancelar', 'error') }
+    } catch { mostrarPortalToast('Erro ao cancelar', 'error') }
     finally { setCancelando(null) }
   }
 
@@ -369,8 +371,8 @@ export default function PortalCliente() {
         setMinhasFilas(prev => [...prev, { id: json.fila_id, aula_id: aula.id, data, posicao: json.posicao, status: 'aguardando', aula: { dia_semana: aula.dia_semana, horario: aula.horario, descricao: aula.descricao } }])
         const key = `${aula.id}_${data}`
         setAgendamentoFila(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
-      } else { alert(json.error || 'Erro ao entrar na fila') }
-    } catch { alert('Erro ao entrar na fila') }
+      } else { mostrarPortalToast(json.error || 'Erro ao entrar na fila', 'error') }
+    } catch { mostrarPortalToast('Erro ao entrar na fila', 'error') }
     finally { setEntrandoFila(null) }
   }
 
@@ -386,8 +388,8 @@ export default function PortalCliente() {
         setMinhasFilas(prev => prev.filter(f => f.id !== fila.id))
         const key = `${fila.aula_id}_${fila.data}`
         setAgendamentoFila(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 1) - 1) }))
-      } else { alert(json.error || 'Erro') }
-    } catch { alert('Erro') }
+      } else { mostrarPortalToast(json.error || 'Erro', 'error') }
+    } catch { mostrarPortalToast('Erro', 'error') }
     finally { setSaindoFila(null) }
   }
 
@@ -440,6 +442,19 @@ export default function PortalCliente() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f1f5f9', paddingBottom: 80 }}>
+      {/* Toast */}
+      {portalToast && (
+        <div style={{
+          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          padding: '10px 20px', borderRadius: 10, zIndex: 9999,
+          backgroundColor: portalToast.tipo === 'error' ? '#fef2f2' : portalToast.tipo === 'success' ? '#f0fdf4' : '#f8f9fa',
+          color: portalToast.tipo === 'error' ? '#dc2626' : portalToast.tipo === 'success' ? '#16a34a' : '#333',
+          border: `1px solid ${portalToast.tipo === 'error' ? '#fecaca' : portalToast.tipo === 'success' ? '#bbf7d0' : '#e5e7eb'}`,
+          fontSize: 13, fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          maxWidth: '90%', textAlign: 'center', animation: 'fadeIn 0.2s ease'
+        }}>{portalToast.msg}</div>
+      )}
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
@@ -1037,26 +1052,6 @@ export default function PortalCliente() {
                             ))}
                           </div>
 
-                          {/* QR Code colapsável */}
-                          <details style={{ textAlign: 'center' }}>
-                            <summary style={{
-                              fontSize: 12, color: '#94a3b8', cursor: 'pointer', fontWeight: 600,
-                              listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
-                            }}>
-                              <Icon icon="mdi:qrcode" width="14" />
-                              Ver QR Code
-                            </summary>
-                            <div style={{
-                              background: '#fff', borderRadius: 12, padding: 20, display: 'inline-block',
-                              border: '1px solid #e2e8f0', marginTop: 12
-                            }}>
-                              {pixData.qrImage ? (
-                                <img src={`data:image/png;base64,${pixData.qrImage}`} alt="QR Code PIX" style={{ width: 180, height: 180 }} />
-                              ) : (
-                                <QRCodeSVG value={pixData.pixCode} size={180} />
-                              )}
-                            </div>
-                          </details>
                         </div>
                       )}
 
