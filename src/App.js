@@ -74,11 +74,7 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Rotas públicas */}
-              <Route path="/" element={session ? <Navigate to="/app/home" replace /> : (() => {
-                const portalToken = localStorage.getItem('portal_token')
-                if (portalToken) return <Navigate to={`/portal/${portalToken}`} replace />
-                return <LandingPage />
-              })()} />
+              <Route path="/" element={session ? <Navigate to="/app/home" replace /> : <LandingPage />} />
               <Route path="/signup" element={session ? <Navigate to="/app/home" replace /> : <Signup />} />
               <Route path="/login" element={session ? <Navigate to="/app/home" replace /> : <Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
