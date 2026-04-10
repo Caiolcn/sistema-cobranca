@@ -28,6 +28,7 @@ const GradeHorarios = lazy(() => import('./GradeHorarios'))
 const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
 const CRM = lazy(() => import('./CRM'))
+const Admin = lazy(() => import('./Admin'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 
@@ -100,6 +101,7 @@ function App() {
                     <Route path="ajuda" element={<Ajuda />} />
                     <Route path="avisos" element={<Avisos />} />
                     <Route path="crm" element={<CRM />} />
+                    <Route path="admin" element={<Admin />} />
                   </Route>
                 </>
               ) : (

@@ -88,7 +88,7 @@
           "batching": {
             "batch": {
               "batchSize": 1,
-              "batchInterval": 3000
+              "batchInterval": 45000
             }
           }
         }
@@ -107,7 +107,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $('Criar Mensagens').item.json.parcela_id }}",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/mensalidades?id=eq.{{ $json.parcela_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -131,7 +131,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"enviado_vencimento\": true,\n  \"total_envios\": {{ ($('Criar Mensagens').item.json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "jsonBody": "={\n  \"enviado_3dias_depois\": true,\n  \"total_envios\": {{ ($json.total_envios || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "id": "marcar-enviado-vencimento",

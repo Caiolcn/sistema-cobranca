@@ -429,6 +429,37 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>WhatsApp</span>}
           </div>
 
+          {/* CRM */}
+          <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="CRM"
+            onClick={() => { navigate('/app/crm'); if (isMobile) setMenuAberto(false) }}
+            style={{
+              width: isMobile ? '100%' : '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'crm' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'crm' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'crm') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'crm') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="fluent:people-team-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>CRM</span>}
+          </div>
+
           {/* Configuração */}
           {isMobile ? (
             /* Mobile: Menu com submenu expansível */
@@ -788,7 +819,7 @@ export default function Dashboard() {
           </div>
         )}
         <PlanExpirationBanner />
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', backgroundColor: '#ffffff' }}>
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'flex-start', backgroundColor: '#f8f9fc' }}>
           <Outlet />
         </div>
       </div>

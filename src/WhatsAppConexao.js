@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { supabase } from './supabaseClient'
+import { supabase, FUNCTIONS_URL } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import useWindowSize from './hooks/useWindowSize'
@@ -641,6 +641,12 @@ export default function WhatsAppConexao() {
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
   const [enviarDomingoAtivo, setEnviarDomingoAtivo] = useState(true)
   const [automacaoResumoDiarioAtiva, setAutomacaoResumoDiarioAtiva] = useState(false)
+  const [botAtivo, setBotAtivo] = useState(false)
+  const [botSaudacao, setBotSaudacao] = useState('Olá {{nomeCliente}}! 👋 Sou o assistente virtual da {{nomeEmpresa}}.')
+  const [botOpcoesAtivas, setBotOpcoesAtivas] = useState({ mensalidade: true, horarios: true, pix: true, agendar: true })
+  const [botLeadOpcoesAtivas, setBotLeadOpcoesAtivas] = useState({ conhecer: true, valores: true, experimental: true })
+  const [botLeadSaudacao, setBotLeadSaudacao] = useState('Olá {{nomeCliente}}! 👋 Bem-vindo(a) à {{nomeEmpresa}}!')
+  const [salvandoBot, setSalvandoBot] = useState(false)
 
   // Estado para Chave PIX
   const [chavePix, setChavePix] = useState('')
@@ -700,7 +706,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -825,6 +831,24 @@ export default function WhatsAppConexao() {
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
         setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
         setAutomacaoResumoDiarioAtiva(configCobranca?.enviar_resumo_diario === true)
+        setBotAtivo(configCobranca?.bot_ativo === true)
+        if (configCobranca?.bot_saudacao) setBotSaudacao(configCobranca.bot_saudacao)
+        if (configCobranca?.bot_opcoes_ativas && typeof configCobranca.bot_opcoes_ativas === 'object') {
+          setBotOpcoesAtivas({
+            mensalidade: configCobranca.bot_opcoes_ativas.mensalidade !== false,
+            horarios: configCobranca.bot_opcoes_ativas.horarios !== false,
+            pix: configCobranca.bot_opcoes_ativas.pix !== false,
+            agendar: configCobranca.bot_opcoes_ativas.agendar !== false,
+          })
+        }
+        if (configCobranca?.bot_lead_opcoes_ativas && typeof configCobranca.bot_lead_opcoes_ativas === 'object') {
+          setBotLeadOpcoesAtivas({
+            conhecer: configCobranca.bot_lead_opcoes_ativas.conhecer !== false,
+            valores: configCobranca.bot_lead_opcoes_ativas.valores !== false,
+            experimental: configCobranca.bot_lead_opcoes_ativas.experimental !== false,
+          })
+        }
+        if (configCobranca?.bot_lead_saudacao) setBotLeadSaudacao(configCobranca.bot_lead_saudacao)
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -1061,7 +1085,9 @@ export default function WhatsAppConexao() {
         'automacao_aniversario_ativa': 'enviar_aniversario',
         'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento',
         'automacao_resumo_diario_ativa': 'enviar_resumo_diario',
-        'enviar_domingo_ativo': 'enviar_domingo'
+        'enviar_domingo_ativo': 'enviar_domingo',
+        'bot_ativo': 'bot_ativo',
+        'bot_saudacao': 'bot_saudacao'
       }
 
       const coluna = mapeamentoColunas[chave]
@@ -1528,6 +1554,171 @@ export default function WhatsAppConexao() {
     const sucesso = await salvarConfiguracaoAutomacao('automacao_resumo_diario_ativa', novoValor)
     if (sucesso) {
       setAutomacaoResumoDiarioAtiva(novoValor)
+    }
+  }
+
+  // Toggle do Bot WhatsApp - ativa/desativa e configura webhook na Evolution
+  const toggleBot = async () => {
+    if (status !== 'connected') {
+      setFeedbackModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'WhatsApp não conectado',
+        message: 'Conecte o WhatsApp antes de ativar o bot.'
+      })
+      return
+    }
+
+    const novoValor = !botAtivo
+    setSalvandoBot(true)
+
+    try {
+      // 1. Salvar flag no banco
+      const sucesso = await salvarConfiguracaoAutomacao('bot_ativo', novoValor)
+      if (!sucesso) {
+        setSalvandoBot(false)
+        return
+      }
+
+      // 2. Configurar webhook na Evolution API
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch(`${FUNCTIONS_URL}/whatsapp-bot-config`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ acao: novoValor ? 'ativar' : 'desativar' })
+      })
+
+      const result = await resp.json()
+      if (!resp.ok) {
+        // Reverter flag se webhook falhou
+        await salvarConfiguracaoAutomacao('bot_ativo', !novoValor)
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro ao configurar webhook',
+          message: result.error || 'Não foi possível configurar o bot. Tente novamente.'
+        })
+        setSalvandoBot(false)
+        return
+      }
+
+      setBotAtivo(novoValor)
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: novoValor ? 'Bot ativado' : 'Bot desativado',
+        message: novoValor
+          ? 'Pronto! Agora quando alguém mandar mensagem pro WhatsApp, o bot vai responder com o menu.'
+          : 'O bot foi desativado. Mensagens não serão mais respondidas automaticamente.'
+      })
+    } catch (err) {
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: err.message || 'Erro ao configurar bot'
+      })
+    } finally {
+      setSalvandoBot(false)
+    }
+  }
+
+  const toggleBotOpcao = async (key) => {
+    const novoValor = botOpcoesAtivas[key] === false ? true : false
+    const novasOpcoes = { ...botOpcoesAtivas, [key]: novoValor }
+    setBotOpcoesAtivas(novasOpcoes)
+    try {
+      const { error } = await supabase
+        .from('configuracoes_cobranca')
+        .update({ bot_opcoes_ativas: novasOpcoes, updated_at: new Date().toISOString() })
+        .eq('user_id', contextUserId)
+      if (error) throw error
+    } catch (err) {
+      setBotOpcoesAtivas(botOpcoesAtivas)
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: 'Não foi possível salvar: ' + err.message
+      })
+    }
+  }
+
+  const toggleBotLeadOpcao = async (key) => {
+    const novoValor = botLeadOpcoesAtivas[key] === false ? true : false
+    const novasOpcoes = { ...botLeadOpcoesAtivas, [key]: novoValor }
+    setBotLeadOpcoesAtivas(novasOpcoes)
+    try {
+      const { error } = await supabase
+        .from('configuracoes_cobranca')
+        .update({ bot_lead_opcoes_ativas: novasOpcoes, updated_at: new Date().toISOString() })
+        .eq('user_id', contextUserId)
+      if (error) throw error
+    } catch (err) {
+      setBotLeadOpcoesAtivas(botLeadOpcoesAtivas)
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: 'Não foi possível salvar: ' + err.message
+      })
+    }
+  }
+
+  const salvarSaudacaoLeadBot = async () => {
+    setSalvandoBot(true)
+    try {
+      const { error } = await supabase
+        .from('configuracoes_cobranca')
+        .update({ bot_lead_saudacao: botLeadSaudacao, updated_at: new Date().toISOString() })
+        .eq('user_id', contextUserId)
+      if (error) throw error
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Saudação salva',
+        message: 'A nova mensagem de boas-vindas para novos alunos foi salva.'
+      })
+    } catch (err) {
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: 'Não foi possível salvar: ' + err.message
+      })
+    } finally {
+      setSalvandoBot(false)
+    }
+  }
+
+  const salvarSaudacaoBot = async () => {
+    setSalvandoBot(true)
+    try {
+      const { error } = await supabase
+        .from('configuracoes_cobranca')
+        .update({ bot_saudacao: botSaudacao, updated_at: new Date().toISOString() })
+        .eq('user_id', contextUserId)
+
+      if (error) throw error
+
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Saudação salva',
+        message: 'A nova mensagem de boas-vindas do bot foi salva.'
+      })
+    } catch (err) {
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: 'Não foi possível salvar: ' + err.message
+      })
+    } finally {
+      setSalvandoBot(false)
     }
   }
 
@@ -2026,7 +2217,7 @@ export default function WhatsAppConexao() {
   // ========== RENDER ==========
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh', paddingBottom: isSmallScreen ? '40px' : '60px', boxSizing: 'border-box' }}>
       {/* Título */}
       <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
         <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
@@ -2050,7 +2241,8 @@ export default function WhatsAppConexao() {
           {[
             { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
             { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' },
-            { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' }
+            { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' },
+            { id: 'bot', label: 'Bot', icon: 'mdi:robot-happy' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -3389,6 +3581,335 @@ export default function WhatsAppConexao() {
         }
 
         return <CampanhasContent contextUserId={contextUserId} isSmallScreen={isSmallScreen} />
+      })()}
+
+      {/* ===== ABA BOT WHATSAPP ===== */}
+      {activeTab === 'bot' && (() => {
+        if (isLocked('premium')) {
+          return (
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px', textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
+                <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+              </div>
+              <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>Bot WhatsApp</h2>
+              <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+                Atendimento automático com menu numérico — seus alunos consultam mensalidade, horários e agendam sozinhos.
+                Disponível no plano <strong>Premium</strong>.
+              </p>
+              <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+                style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+                Fazer Upgrade
+              </button>
+            </div>
+          )
+        }
+
+        return (
+          <div style={{ maxWidth: '1100px' }}>
+            {/* Cabeçalho + Toggle */}
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '28px', border: '1px solid #e5e7eb', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon icon="mdi:robot-happy" width="28" style={{ color: '#7c3aed' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>Bot de Atendimento</h2>
+                    <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
+                      Quando um aluno mandar mensagem, o bot responde automaticamente com um menu de opções.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Toggle switch */}
+                <button
+                  onClick={toggleBot}
+                  disabled={salvandoBot}
+                  style={{
+                    position: 'relative',
+                    width: '52px',
+                    height: '30px',
+                    borderRadius: '15px',
+                    backgroundColor: botAtivo ? '#7c3aed' : '#d1d5db',
+                    border: 'none',
+                    cursor: salvandoBot ? 'not-allowed' : 'pointer',
+                    opacity: salvandoBot ? 0.6 : 1,
+                    transition: 'background-color 0.2s',
+                    flexShrink: 0
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute',
+                    top: '3px',
+                    left: botAtivo ? '25px' : '3px',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: 'white',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </button>
+              </div>
+
+              {status !== 'connected' && (
+                <div style={{ marginTop: '16px', padding: '12px 14px', backgroundColor: '#fef3c7', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#92400e' }}>
+                  <Icon icon="mdi:alert" width="18" />
+                  Conecte o WhatsApp na aba "Conexão" antes de ativar o bot.
+                </div>
+              )}
+            </div>
+
+            {/* Cards lado a lado: Alunos + Leads */}
+            {(() => {
+              const catalogoAluno = [
+                { key: 'mensalidade', icon: 'mdi:cash', cor: '#10b981', titulo: 'Minha mensalidade', desc: 'Mostra valor e vencimento da próxima mensalidade pendente' },
+                { key: 'horarios', icon: 'mdi:calendar-clock', cor: '#3b82f6', titulo: 'Horários das aulas', desc: 'Lista todos os horários da grade fixa' },
+                { key: 'pix', icon: 'mdi:qrcode', cor: '#8b5cf6', titulo: '2ª via do PIX', desc: 'Gera o PIX Copia e Cola direto no WhatsApp' },
+                { key: 'agendar', icon: 'mdi:calendar-plus', cor: '#f59e0b', titulo: 'Agendar aula', desc: 'Envia o link do agendamento online (se ativado)' },
+                { key: 'atendente', icon: 'mdi:account-tie', cor: '#ef4444', titulo: 'Falar com atendente', desc: 'Silencia o bot por 30 minutos pra você atender', obrigatorio: true }
+              ]
+              const ativosAluno = catalogoAluno.filter(c => c.obrigatorio || botOpcoesAtivas[c.key] !== false)
+
+              const catalogoLead = [
+                { key: 'conhecer', icon: 'mdi:school-outline', cor: '#3b82f6', titulo: 'Conhecer as aulas', desc: 'Envia a grade de horários + link de agendamento' },
+                { key: 'valores', icon: 'mdi:tag-outline', cor: '#10b981', titulo: 'Saber valores', desc: 'Lista todos os planos cadastrados com preços' },
+                { key: 'experimental', icon: 'mdi:gift-outline', cor: '#f59e0b', titulo: 'Aula experimental', desc: 'Envia o link de agendamento direto' },
+                { key: 'outro', icon: 'mdi:dots-horizontal', cor: '#6b7280', titulo: 'Outro assunto', desc: 'Avisa o admin e silencia o bot', obrigatorio: true }
+              ]
+              const ativosLead = catalogoLead.filter(c => c.obrigatorio || botLeadOpcoesAtivas[c.key] !== false)
+
+              const renderCard = (titulo, badge, badgeCor, badgeBg, descricao, catalogo, ativos, opcoesAtivasObj, toggleFn) => (
+                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', flex: '1 1 0', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>{titulo}</h3>
+                    <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '10px', backgroundColor: badgeBg, color: badgeCor }}>
+                      {badge}
+                    </span>
+                  </div>
+                  <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+                    {descricao}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {catalogo.map(opt => {
+                      const ativo = opt.obrigatorio || opcoesAtivasObj[opt.key] !== false
+                      const numeroNoMenu = ativo ? (ativos.findIndex(a => a.key === opt.key) + 1) : null
+                      return (
+                        <div key={opt.key} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px',
+                          backgroundColor: ativo ? '#f9fafb' : '#fafafa',
+                          borderRadius: '8px',
+                          opacity: ativo ? 1 : 0.5,
+                          transition: 'opacity 0.2s'
+                        }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '7px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: opt.cor, fontSize: '13px', flexShrink: 0 }}>
+                            {numeroNoMenu || '—'}
+                          </div>
+                          <Icon icon={opt.icon} width="18" style={{ color: opt.cor, flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>{opt.titulo}</div>
+                            <div style={{ fontSize: '11px', color: '#666' }}>{opt.desc}</div>
+                          </div>
+                          {opt.obrigatorio ? (
+                            <div style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic', flexShrink: 0 }}>
+                              sempre
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => toggleFn(opt.key)}
+                              disabled={salvandoBot}
+                              style={{
+                                position: 'relative',
+                                width: '36px',
+                                height: '20px',
+                                borderRadius: '10px',
+                                backgroundColor: ativo ? '#7c3aed' : '#d1d5db',
+                                border: 'none',
+                                cursor: salvandoBot ? 'not-allowed' : 'pointer',
+                                flexShrink: 0,
+                                transition: 'background-color 0.2s'
+                              }}
+                            >
+                              <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: ativo ? '18px' : '2px',
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                backgroundColor: 'white',
+                                transition: 'left 0.2s',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                              }} />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+
+              return (
+                <>
+                  <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: '16px', marginBottom: '20px' }}>
+                    {renderCard(
+                      'Para alunos cadastrados',
+                      '👤 Alunos',
+                      '#0369a1',
+                      '#e0f2fe',
+                      'Quando um aluno manda mensagem, o bot envia este menu. Desative as opções que você não quer oferecer — a numeração é ajustada automaticamente.',
+                      catalogoAluno,
+                      ativosAluno,
+                      botOpcoesAtivas,
+                      toggleBotOpcao
+                    )}
+                    {renderCard(
+                      'Para novos alunos',
+                      '🔥 Leads',
+                      '#9a3412',
+                      '#fff7ed',
+                      'Quando alguém que ainda NÃO é aluno manda mensagem, o bot pergunta o interesse e cria um lead no CRM, te avisando aqui no WhatsApp.',
+                      catalogoLead,
+                      ativosLead,
+                      botLeadOpcoesAtivas,
+                      toggleBotLeadOpcao
+                    )}
+                  </div>
+
+                  {/* Mini-call to action: ver leads no CRM */}
+                  <div style={{
+                    backgroundColor: '#fff7ed',
+                    border: '1px solid #fed7aa',
+                    borderRadius: '10px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '20px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <Icon icon="mdi:fire" width="22" style={{ color: '#ea580c', flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#9a3412' }}>
+                        Os leads capturados aparecem no seu CRM
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#9a3412', opacity: 0.85 }}>
+                        Quando o bot capturar um visitante, ele cai automaticamente no kanban de leads.
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('/app/crm')}
+                      style={{
+                        padding: '8px 14px',
+                        backgroundColor: '#ea580c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      Ver CRM →
+                    </button>
+                  </div>
+                </>
+              )
+            })()}
+
+            {/* Saudações editáveis: lado a lado */}
+            <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: '16px' }}>
+              {/* Saudação Alunos */}
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', flex: '1 1 0', minWidth: 0 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>Saudação para alunos</h3>
+                <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666' }}>
+                  Aparece antes do menu de alunos. Use <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeCliente}}'}</code> e <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeEmpresa}}'}</code>.
+                </p>
+                <textarea
+                  value={botSaudacao}
+                  onChange={(e) => setBotSaudacao(e.target.value)}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                  <button
+                    onClick={salvarSaudacaoBot}
+                    disabled={salvandoBot}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#7c3aed',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: salvandoBot ? 'not-allowed' : 'pointer',
+                      opacity: salvandoBot ? 0.6 : 1
+                    }}
+                  >
+                    {salvandoBot ? 'Salvando...' : 'Salvar saudação'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Saudação Novos Alunos (Leads) */}
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', flex: '1 1 0', minWidth: 0 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>Saudação para novos alunos</h3>
+                <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666' }}>
+                  Aparece antes do menu de leads. Use <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeCliente}}'}</code> e <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeEmpresa}}'}</code>.
+                </p>
+                <textarea
+                  value={botLeadSaudacao}
+                  onChange={(e) => setBotLeadSaudacao(e.target.value)}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                  <button
+                    onClick={salvarSaudacaoLeadBot}
+                    disabled={salvandoBot}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#ea580c',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: salvandoBot ? 'not-allowed' : 'pointer',
+                      opacity: salvandoBot ? 0.6 : 1
+                    }}
+                  >
+                    {salvandoBot ? 'Salvando...' : 'Salvar saudação'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
       })()}
     </div>
   )

@@ -101,7 +101,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/grade_horarios?id=eq.{{ $('2. Criar Msg Aula').item.json.horario_id }}",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/{{ $('2. Criar Msg Aula').item.json.tabela_origem }}?id=eq.{{ $('2. Criar Msg Aula').item.json.horario_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
