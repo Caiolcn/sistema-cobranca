@@ -1559,7 +1559,11 @@ export default function WhatsAppConexao() {
 
   // Toggle do Bot WhatsApp - ativa/desativa e configura webhook na Evolution
   const toggleBot = async () => {
-    if (status !== 'connected') {
+    const novoValor = !botAtivo
+
+    // Só bloqueia se tentar ATIVAR com WhatsApp desconectado.
+    // Desativar é permitido mesmo sem conexão (permite sair de um estado inválido).
+    if (novoValor && status !== 'connected') {
       setFeedbackModal({
         isOpen: true,
         type: 'warning',
@@ -1568,8 +1572,6 @@ export default function WhatsAppConexao() {
       })
       return
     }
-
-    const novoValor = !botAtivo
     setSalvandoBot(true)
 
     try {
@@ -1593,16 +1595,30 @@ export default function WhatsAppConexao() {
 
       const result = await resp.json()
       if (!resp.ok) {
-        // Reverter flag se webhook falhou
-        await salvarConfiguracaoAutomacao('bot_ativo', !novoValor)
-        setFeedbackModal({
-          isOpen: true,
-          type: 'danger',
-          title: 'Erro ao configurar webhook',
-          message: result.error || 'Não foi possível configurar o bot. Tente novamente.'
-        })
-        setSalvandoBot(false)
-        return
+        // Se estava tentando ATIVAR e o webhook falhou → reverter flag
+        // Se estava tentando DESATIVAR → manter flag false (o importante é o bot parar)
+        if (novoValor) {
+          await salvarConfiguracaoAutomacao('bot_ativo', !novoValor)
+          setFeedbackModal({
+            isOpen: true,
+            type: 'danger',
+            title: 'Erro ao configurar webhook',
+            message: result.error || 'Não foi possível configurar o bot. Tente novamente.'
+          })
+          setSalvandoBot(false)
+          return
+        } else {
+          // Desativou mas webhook não respondeu — alerta mas mantém desativado
+          setBotAtivo(false)
+          setFeedbackModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Bot desativado',
+            message: 'O bot foi desativado no sistema, mas não consegui confirmar com a Evolution API. Se o WhatsApp voltar a conectar e o bot ainda responder, me avise.'
+          })
+          setSalvandoBot(false)
+          return
+        }
       }
 
       setBotAtivo(novoValor)
@@ -3605,7 +3621,7 @@ export default function WhatsAppConexao() {
         }
 
         return (
-          <div style={{ maxWidth: '1100px' }}>
+          <div>
             {/* Cabeçalho + Toggle */}
             <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '28px', border: '1px solid #e5e7eb', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>

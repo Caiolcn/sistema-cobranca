@@ -819,7 +819,7 @@ export default function Dashboard() {
           </div>
         )}
         <PlanExpirationBanner />
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'flex-start', backgroundColor: '#f8f9fc' }}>
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'flex-start', backgroundColor: '#ffffff' }}>
           <Outlet />
         </div>
       </div>

@@ -96,11 +96,11 @@ export default function CRM() {
   const leadsPorColuna = (colId) => leadsFiltrados.filter(l => l.status === colId)
 
   return (
-    <div style={{ padding: isSmallScreen ? '16px' : '24px', flex: 1, backgroundColor: '#ffffff', minHeight: '100vh', boxSizing: 'border-box' }}>
+    <div style={{ padding: isSmallScreen ? '16px' : '24px', flex: 1, width: '100%', backgroundColor: '#ffffff', minHeight: '100vh', boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: isSmallScreen ? '18px' : '22px', fontWeight: '600', color: '#1a1a1a' }}>CRM de Leads</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>CRM de Leads</h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'} no funil
           </p>
@@ -156,7 +156,8 @@ export default function CRM() {
               <div
                 key={col.id}
                 style={{
-                  flex: '0 0 280px',
+                  flex: '1 1 240px',
+                  minWidth: '240px',
                   backgroundColor: col.bg,
                   borderRadius: '12px',
                   padding: '12px',
