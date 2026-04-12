@@ -646,6 +646,7 @@ export default function WhatsAppConexao() {
   const [botOpcoesAtivas, setBotOpcoesAtivas] = useState({ mensalidade: true, horarios: true, pix: true, agendar: true })
   const [botLeadOpcoesAtivas, setBotLeadOpcoesAtivas] = useState({ conhecer: true, valores: true, experimental: true })
   const [botLeadSaudacao, setBotLeadSaudacao] = useState('Olá {{nomeCliente}}! 👋 Bem-vindo(a) à {{nomeEmpresa}}!')
+  const [botTextoConhecer, setBotTextoConhecer] = useState('')
   const [salvandoBot, setSalvandoBot] = useState(false)
 
   // Estado para Chave PIX
@@ -706,7 +707,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -849,6 +850,7 @@ export default function WhatsAppConexao() {
           })
         }
         if (configCobranca?.bot_lead_saudacao) setBotLeadSaudacao(configCobranca.bot_lead_saudacao)
+        if (configCobranca?.bot_texto_conhecer != null) setBotTextoConhecer(configCobranca.bot_texto_conhecer || '')
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
@@ -1697,6 +1699,32 @@ export default function WhatsAppConexao() {
         type: 'success',
         title: 'Saudação salva',
         message: 'A nova mensagem de boas-vindas para novos alunos foi salva.'
+      })
+    } catch (err) {
+      setFeedbackModal({
+        isOpen: true,
+        type: 'danger',
+        title: 'Erro',
+        message: 'Não foi possível salvar: ' + err.message
+      })
+    } finally {
+      setSalvandoBot(false)
+    }
+  }
+
+  const salvarTextoConhecer = async () => {
+    setSalvandoBot(true)
+    try {
+      const { error } = await supabase
+        .from('configuracoes_cobranca')
+        .update({ bot_texto_conhecer: botTextoConhecer, updated_at: new Date().toISOString() })
+        .eq('user_id', contextUserId)
+      if (error) throw error
+      setFeedbackModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Apresentação salva',
+        message: 'A apresentação da opção "Conhecer as aulas" foi salva.'
       })
     } catch (err) {
       setFeedbackModal({
@@ -3688,7 +3716,7 @@ export default function WhatsAppConexao() {
               const ativosAluno = catalogoAluno.filter(c => c.obrigatorio || botOpcoesAtivas[c.key] !== false)
 
               const catalogoLead = [
-                { key: 'conhecer', icon: 'mdi:school-outline', cor: '#3b82f6', titulo: 'Conhecer as aulas', desc: 'Envia a grade de horários + link de agendamento' },
+                { key: 'conhecer', icon: 'mdi:school-outline', cor: '#3b82f6', titulo: 'Conhecer as aulas', desc: 'Envia apresentação + link de aula experimental (configurável abaixo)' },
                 { key: 'valores', icon: 'mdi:tag-outline', cor: '#10b981', titulo: 'Saber valores', desc: 'Lista todos os planos cadastrados com preços' },
                 { key: 'experimental', icon: 'mdi:gift-outline', cor: '#f59e0b', titulo: 'Aula experimental', desc: 'Envia o link de agendamento direto' },
                 { key: 'outro', icon: 'mdi:dots-horizontal', cor: '#6b7280', titulo: 'Outro assunto', desc: 'Avisa o admin e silencia o bot', obrigatorio: true }
@@ -3922,6 +3950,58 @@ export default function WhatsAppConexao() {
                     {salvandoBot ? 'Salvando...' : 'Salvar saudação'}
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* Apresentação para opção "Conhecer as aulas" */}
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', marginTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>Apresentação — "Conhecer as aulas"</h3>
+                <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#3b82f6' }}>
+                  Bot de leads
+                </span>
+              </div>
+              <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                Enviada quando o lead seleciona a opção <b>"Conhecer as aulas"</b>. Use para apresentar brevemente seu serviço.
+                Após essa mensagem, o bot envia automaticamente o link de agendamento da aula experimental.
+                <br />
+                <b>Deixe em branco</b> para usar o comportamento padrão (envia a grade de horários).
+                Variável disponível: <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeEmpresa}}'}</code>
+              </p>
+              <textarea
+                value={botTextoConhecer}
+                onChange={(e) => setBotTextoConhecer(e.target.value)}
+                rows={6}
+                placeholder={'Ex: Olá! Somos a {{nomeEmpresa}} e trabalhamos com aulas de pilates há 10 anos. Nosso método é personalizado e focado em bem-estar e qualidade de vida. Temos profissionais qualificados e um ambiente acolhedor para você iniciar sua jornada.'}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button
+                  onClick={salvarTextoConhecer}
+                  disabled={salvandoBot}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: salvandoBot ? 'not-allowed' : 'pointer',
+                    opacity: salvandoBot ? 0.6 : 1
+                  }}
+                >
+                  {salvandoBot ? 'Salvando...' : 'Salvar apresentação'}
+                </button>
               </div>
             </div>
           </div>

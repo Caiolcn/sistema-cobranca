@@ -622,6 +622,7 @@ serve(async (req) => {
     const textoLower = texto.toLowerCase().trim()
     const nomeEmpresa = usuario.nome_empresa || 'nossa equipe'
     let resposta = ''
+    let mensagemExtra = ''
     let novoEstado = conversa.estado || 'aguardando_opcao'
     let novoContexto = conversa.contexto || {}
 
@@ -793,19 +794,40 @@ serve(async (req) => {
 
           // Monta resposta personalizada por chave
           if (optSelecionada.key === 'conhecer') {
-            // Conhecer aulas → manda horários + link de agendamento
-            const horarios = await respostaHorarios(supabase, userId)
-            // Pega slug pra link de agendamento
+            // Buscar texto de apresentação customizado + slug de agendamento
+            const { data: cfg } = await supabase
+              .from('configuracoes_cobranca')
+              .select('bot_texto_conhecer')
+              .eq('user_id', userId)
+              .maybeSingle()
+
             const { data: u } = await supabase
               .from('usuarios')
               .select('agendamento_slug, agendamento_ativo')
               .eq('id', userId)
               .single()
-            let extra = ''
-            if (u?.agendamento_ativo && u?.agendamento_slug) {
-              extra = `\n\nQuer agendar uma aula? 👉 ${APP_URL}/agendar/${u.agendamento_slug}`
+
+            const textoCustom = cfg?.bot_texto_conhecer?.trim()
+
+            if (textoCustom) {
+              // 1ª mensagem: apresentação customizada
+              resposta = textoCustom.replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
+
+              // 2ª mensagem (extra): pergunta + link de agendamento
+              if (u?.agendamento_ativo && u?.agendamento_slug) {
+                mensagemExtra = `Quer agendar uma aula experimental? 👉 ${APP_URL}/agendar/${u.agendamento_slug}`
+              } else {
+                mensagemExtra = `_Nossa equipe vai te chamar em breve pra marcar uma aula experimental!_ 😊`
+              }
+            } else {
+              // Fallback: grade de horários (comportamento antigo)
+              const horarios = await respostaHorarios(supabase, userId)
+              let extra = ''
+              if (u?.agendamento_ativo && u?.agendamento_slug) {
+                extra = `\n\nQuer agendar uma aula? 👉 ${APP_URL}/agendar/${u.agendamento_slug}`
+              }
+              resposta = `Que ótimo! 😊 Aqui estão nossos horários:\n\n${horarios.replace('\n_Digite *0* para voltar ao menu._', '')}${extra}\n\n_Nossa equipe também vai te chamar em breve!_`
             }
-            resposta = `Que ótimo! 😊 Aqui estão nossos horários:\n\n${horarios.replace('\n_Digite *0* para voltar ao menu._', '')}${extra}\n\n_Nossa equipe também vai te chamar em breve!_`
           } else if (optSelecionada.key === 'valores') {
             // Valores → lista os planos
             const { data: planos } = await supabase
@@ -978,6 +1000,12 @@ serve(async (req) => {
       console.log('📤 Enviando mensagem para:', telefone)
       await enviarMensagem(evolutionUrl, evolutionKey, instanceName, telefone, resposta)
       console.log('✅ Mensagem enviada')
+    }
+    if (mensagemExtra) {
+      await new Promise(r => setTimeout(r, 1200))
+      console.log('📤 Enviando mensagem extra para:', telefone)
+      await enviarMensagem(evolutionUrl, evolutionKey, instanceName, telefone, mensagemExtra)
+      console.log('✅ Mensagem extra enviada')
     }
 
     await supabase
