@@ -7,6 +7,7 @@ import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import { useUserPlan } from './hooks/useUserPlan';
 import { useUser } from './contexts/UserContext';
 import FeatureLocked from './FeatureLocked';
+import NpsRelatorio from './components/NpsRelatorio';
 import { SkeletonDashboard } from './components/Skeleton';
 import './Home.css';
 import './Relatorios.css';
@@ -746,6 +747,9 @@ function Relatorios() {
           </div>
         </div>
       </FeatureLocked>
+
+      {/* NPS - Satisfação dos alunos (Premium) */}
+      <NpsRelatorio userId={userId} isLocked={isLocked} />
     </div>
   );
 }

@@ -604,17 +604,35 @@ serve(async (req) => {
     }
 
     // Se estado='atendente' e <30min desde última interação → ignora
+    // EXCETO: se existe NPS pendente pra algum dos devedores candidatos,
+    // a captura de NPS tem prioridade sobre o estado "atendente".
     if (conversa.estado === 'atendente') {
       const agora = Date.now()
       const ultima = new Date(conversa.ultima_interacao).getTime()
       if (agora - ultima < 30 * 60 * 1000 && texto.toLowerCase() !== 'menu') {
-        await supabase
-          .from('bot_conversas')
-          .update({ ultima_interacao: new Date().toISOString() })
-          .eq('id', conversa.id)
-        return new Response(JSON.stringify({ ok: true, ignored: 'atendente_ativo' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        // Pre-check rápido: existe NPS pendente pra esse telefone?
+        let temNpsPendente = false
+        if (devedoresMatch.length > 0) {
+          const { count } = await supabase
+            .from('nps_respostas')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .in('devedor_id', devedoresMatch.map((d: any) => d.id))
+            .is('nota', null)
+          temNpsPendente = (count || 0) > 0
+        }
+
+        if (!temNpsPendente) {
+          await supabase
+            .from('bot_conversas')
+            .update({ ultima_interacao: new Date().toISOString() })
+            .eq('id', conversa.id)
+          return new Response(JSON.stringify({ ok: true, ignored: 'atendente_ativo' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        // Tem NPS pendente → deixa passar pra captura de NPS processar
+        console.log('⚡ Estado atendente, mas tem NPS pendente — prosseguindo pra captura')
       }
     }
 
@@ -712,6 +730,96 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, handled: 'midia' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // ============================================================
+    // CAPTURA DE RESPOSTA DE NPS
+    // Se algum devedor (entre os candidatos com esse telefone) tem
+    // resposta NPS pendente, a próxima mensagem é interpretada como
+    // resposta. Prioridade máxima — executa antes do fluxo normal.
+    // Buscamos pra TODOS os devedores que batem com esse telefone
+    // (cobre casos de múltiplos devedores com mesmo número).
+    // ============================================================
+    if (devedoresMatch.length > 0) {
+      const idsCandidatos = devedoresMatch.map((d: any) => d.id)
+      const { data: npsPendente } = await supabase
+        .from('nps_respostas')
+        .select('id, enviado_em, devedor_id')
+        .eq('user_id', userId)
+        .in('devedor_id', idsCandidatos)
+        .is('nota', null)
+        .order('enviado_em', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (npsPendente) {
+        // Janela de 7 dias pra responder (depois disso ignora)
+        const enviadoEm = new Date(npsPendente.enviado_em).getTime()
+        const limiteMs = 7 * 24 * 60 * 60 * 1000
+        const dentroJanela = (Date.now() - enviadoEm) < limiteMs
+
+        if (dentroJanela) {
+          // Tenta extrair nota 0-10 do texto
+          // Procura 1º número de 0 a 10 na mensagem
+          const match = texto.match(/\b(10|[0-9])\b/)
+          const notaExtraida = match ? parseInt(match[1], 10) : null
+
+          if (notaExtraida !== null && notaExtraida >= 0 && notaExtraida <= 10) {
+            // Pega o devedor correto (o que tem a pendência, pode ser diferente do "devedor" principal)
+            const devedorDaPendencia = devedoresMatch.find((d: any) => d.id === npsPendente.devedor_id) || devedor || { nome: 'Aluno' }
+            const nomeDev = (devedorDaPendencia?.nome || 'Aluno').split(' ')[0]
+
+            // Salva a resposta
+            await supabase
+              .from('nps_respostas')
+              .update({
+                nota: notaExtraida,
+                comentario: texto,
+                respondido_em: new Date().toISOString()
+              })
+              .eq('id', npsPendente.id)
+
+            // Resposta de agradecimento, variando por faixa
+            let agradecimento
+            if (notaExtraida >= 9) {
+              agradecimento = `Que ótimo, ${nomeDev}! 🎉\n\nFico muito feliz que você curtiu! Obrigado pela nota ${notaExtraida} — sua opinião é super importante pra nós. 💛`
+            } else if (notaExtraida >= 7) {
+              agradecimento = `Obrigado, ${nomeDev}! 😊\n\nAnotei sua nota ${notaExtraida}. Se tiver alguma sugestão do que podemos melhorar, só me mandar por aqui!`
+            } else {
+              agradecimento = `Obrigado pela sinceridade, ${nomeDev}. 🙏\n\nQueremos melhorar, e sua nota ${notaExtraida} é importante pra isso. Já repassei pro time que vai entrar em contato pra entender melhor.`
+            }
+
+            await enviarMensagem(evolutionUrl, evolutionKey, instanceName, telefone, agradecimento)
+
+            // Notifica admin se nota baixa
+            if (notaExtraida <= 6) {
+              const { data: admin } = await supabase
+                .from('usuarios')
+                .select('telefone')
+                .eq('id', userId)
+                .single()
+              if (admin?.telefone) {
+                const telAdmin = normalizarTelefone(admin.telefone)
+                const avisoAdmin = `⚠️ *NPS baixo recebido*\n\n👤 ${devedorDaPendencia?.nome || 'Aluno'}\n📱 ${telefone}\n⭐ Nota: ${notaExtraida}/10\n💬 "${texto.substring(0, 200)}"\n\n_Recomendo falar com esse aluno o quanto antes._`
+                await enviarMensagem(evolutionUrl, evolutionKey, instanceName, telAdmin, avisoAdmin)
+              }
+            }
+
+            await supabase
+              .from('bot_conversas')
+              .update({
+                ultima_interacao: new Date().toISOString(),
+              })
+              .eq('id', conversa.id)
+
+            return new Response(JSON.stringify({ ok: true, handled: 'nps', nota: notaExtraida }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+          }
+          // Se não tem nota válida, segue pro fluxo normal do bot
+          // (o aluno pode ter mandado "oi" ou outra coisa; responderemos normalmente)
+        }
+      }
     }
 
     // ============================================================

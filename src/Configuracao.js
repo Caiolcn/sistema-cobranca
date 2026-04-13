@@ -62,6 +62,8 @@ function Configuracao() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'empresa')
   const [loading, setLoading] = useState(false)
+  const [anamneseCamposExtras, setAnamneseCamposExtras] = useState([])
+  const [anamneseSalvando, setAnamneseSalvando] = useState(false)
   const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
   const { isLocked } = useUserPlan()
 
@@ -214,6 +216,11 @@ function Configuracao() {
         ativo: data.agendamento_ativo || false,
         antecedenciaHoras: data.agendamento_antecedencia_horas || 2
       })
+
+      // Carregar campos extras da anamnese
+      if (Array.isArray(data.anamnese_campos_extras)) {
+        setAnamneseCamposExtras(data.anamnese_campos_extras)
+      }
     }
   }
 
@@ -3237,13 +3244,263 @@ function Configuracao() {
   // MAIN RENDER
   // ==========================================
 
+  // ==========================================
+  // ANAMNESE - CAMPOS EXTRAS
+  // ==========================================
+
+  const TIPOS_CAMPO_EXTRA = [
+    { value: 'texto', label: 'Texto curto' },
+    { value: 'textarea', label: 'Texto longo' },
+    { value: 'numero', label: 'Número' },
+    { value: 'sim_nao', label: 'Sim/Não' },
+    { value: 'select', label: 'Múltipla escolha' }
+  ]
+
+  const adicionarCampoExtra = () => {
+    if (anamneseCamposExtras.length >= 10) {
+      showToast('Máximo de 10 campos extras', 'warning')
+      return
+    }
+    const novo = {
+      id: `extra_${Date.now()}`,
+      label: 'Nova pergunta',
+      tipo: 'texto',
+      opcoes: [],
+      obrigatorio: false
+    }
+    setAnamneseCamposExtras([...anamneseCamposExtras, novo])
+  }
+
+  const removerCampoExtra = (id) => {
+    setAnamneseCamposExtras(anamneseCamposExtras.filter(c => c.id !== id))
+  }
+
+  const atualizarCampoExtra = (id, patch) => {
+    setAnamneseCamposExtras(anamneseCamposExtras.map(c =>
+      c.id === id ? { ...c, ...patch } : c
+    ))
+  }
+
+  const moverCampoExtra = (id, direcao) => {
+    const idx = anamneseCamposExtras.findIndex(c => c.id === id)
+    if (idx === -1) return
+    const novoIdx = idx + direcao
+    if (novoIdx < 0 || novoIdx >= anamneseCamposExtras.length) return
+    const arr = [...anamneseCamposExtras]
+    ;[arr[idx], arr[novoIdx]] = [arr[novoIdx], arr[idx]]
+    setAnamneseCamposExtras(arr)
+  }
+
+  const salvarAnamneseCamposExtras = async () => {
+    setAnamneseSalvando(true)
+    try {
+      // Validação básica
+      for (const c of anamneseCamposExtras) {
+        if (!c.label || c.label.trim().length < 2) {
+          showToast('Cada pergunta precisa ter um título', 'warning')
+          setAnamneseSalvando(false)
+          return
+        }
+        if (c.tipo === 'select' && (!c.opcoes || c.opcoes.length < 2)) {
+          showToast(`A pergunta "${c.label}" precisa ter pelo menos 2 opções`, 'warning')
+          setAnamneseSalvando(false)
+          return
+        }
+      }
+
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ anamnese_campos_extras: anamneseCamposExtras })
+        .eq('id', contextUserId)
+
+      if (error) throw error
+      showToast('Campos da anamnese salvos!', 'success')
+    } catch (err) {
+      showToast('Erro ao salvar: ' + err.message, 'error')
+    } finally {
+      setAnamneseSalvando(false)
+    }
+  }
+
+  const renderAnamnese = () => {
+    if (isLocked('pro')) {
+      return (
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px', textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
+            <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+          </div>
+          <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>Anamnese</h2>
+          <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+            Cadastre fichas de avaliação física dos seus alunos com histórico de evolução.
+            Disponível no plano <strong>Pro</strong> ou superior.
+          </p>
+          <button onClick={() => setAbaAtiva('upgrade')}
+            style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+            Fazer Upgrade
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ maxWidth: '800px' }}>
+        {/* Cabeçalho */}
+        <div style={{ marginBottom: '24px' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '600', color: '#1a1a1a' }}>Anamnese</h2>
+          <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
+            A ficha de anamnese já vem com perguntas padrão (saúde, histórico, objetivo, medidas).
+            Aqui você adiciona perguntas extras específicas da sua academia.
+          </p>
+        </div>
+
+        {/* Box de info */}
+        <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 16px', display: 'flex', gap: '12px', marginBottom: '20px' }}>
+          <Icon icon="mdi:information-outline" width="22" style={{ color: '#2563eb', flexShrink: 0 }} />
+          <div style={{ fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>
+            Os campos padrão (peso, altura, dores, objetivo, etc) já aparecem na ficha do aluno automaticamente.
+            Use os campos extras pra coisas específicas como <em>"Faz uso de proteína?"</em> ou <em>"Já fez Pilates antes?"</em>
+          </div>
+        </div>
+
+        {/* Lista de campos extras */}
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>
+              Perguntas extras ({anamneseCamposExtras.length}/10)
+            </h3>
+            <button
+              onClick={adicionarCampoExtra}
+              disabled={anamneseCamposExtras.length >= 10}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#7c3aed',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: anamneseCamposExtras.length >= 10 ? 'not-allowed' : 'pointer',
+                opacity: anamneseCamposExtras.length >= 10 ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Icon icon="mdi:plus" width="18" /> Adicionar pergunta
+            </button>
+          </div>
+
+          {anamneseCamposExtras.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: '#9ca3af' }}>
+              <Icon icon="mdi:clipboard-text-outline" width="40" style={{ opacity: 0.5 }} />
+              <p style={{ margin: '8px 0 0', fontSize: '14px' }}>Nenhuma pergunta extra cadastrada.</p>
+              <p style={{ margin: '4px 0 0', fontSize: '13px' }}>Os campos padrão já são suficientes pra maioria dos casos.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {anamneseCamposExtras.map((campo, idx) => (
+                <div key={campo.id} style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px', backgroundColor: '#fafafa' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    {/* Botões de reorder */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                      <button onClick={() => moverCampoExtra(campo.id, -1)} disabled={idx === 0}
+                        style={{ padding: '2px 6px', background: 'white', border: '1px solid #d1d5db', borderRadius: '4px', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.4 : 1 }}>
+                        <Icon icon="mdi:chevron-up" width="14" />
+                      </button>
+                      <button onClick={() => moverCampoExtra(campo.id, 1)} disabled={idx === anamneseCamposExtras.length - 1}
+                        style={{ padding: '2px 6px', background: 'white', border: '1px solid #d1d5db', borderRadius: '4px', cursor: idx === anamneseCamposExtras.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === anamneseCamposExtras.length - 1 ? 0.4 : 1 }}>
+                        <Icon icon="mdi:chevron-down" width="14" />
+                      </button>
+                    </div>
+
+                    {/* Conteúdo do campo */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                        <input
+                          type="text"
+                          value={campo.label}
+                          onChange={(e) => atualizarCampoExtra(campo.id, { label: e.target.value })}
+                          placeholder="Pergunta..."
+                          style={{ flex: '2 1 200px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+                        />
+                        <select
+                          value={campo.tipo}
+                          onChange={(e) => atualizarCampoExtra(campo.id, { tipo: e.target.value, opcoes: e.target.value === 'select' ? campo.opcoes || [] : [] })}
+                          style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px', backgroundColor: 'white' }}
+                        >
+                          {TIPOS_CAMPO_EXTRA.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </div>
+
+                      {campo.tipo === 'select' && (
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Opções (uma por linha):</div>
+                          <textarea
+                            value={(campo.opcoes || []).join('\n')}
+                            onChange={(e) => atualizarCampoExtra(campo.id, { opcoes: e.target.value.split('\n').filter(x => x.trim()) })}
+                            rows={3}
+                            placeholder="Opção 1&#10;Opção 2&#10;Opção 3"
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '10px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#666', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!campo.obrigatorio}
+                            onChange={(e) => atualizarCampoExtra(campo.id, { obrigatorio: e.target.checked })}
+                          />
+                          Obrigatório
+                        </label>
+                        <button onClick={() => removerCampoExtra(campo.id)}
+                          style={{ marginLeft: 'auto', padding: '4px 10px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Icon icon="mdi:delete-outline" width="14" /> Remover
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Botão salvar */}
+          {anamneseCamposExtras.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+              <button
+                onClick={salvarAnamneseCamposExtras}
+                disabled={anamneseSalvando}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: '#7c3aed',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: anamneseSalvando ? 'not-allowed' : 'pointer',
+                  opacity: anamneseSalvando ? 0.6 : 1
+                }}
+              >
+                {anamneseSalvando ? 'Salvando...' : 'Salvar campos'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const tabs = [
     { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
     { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
     { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
-    { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' }
+    { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
+    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' }
   ]
 
   // Encontrar a aba atual para mostrar no header mobile
@@ -3338,6 +3595,7 @@ function Configuracao() {
               {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
               {abaAtiva === 'agendamento' && renderAgendamento()}
+              {abaAtiva === 'anamnese' && renderAnamnese()}
             </>
           )}
         </div>

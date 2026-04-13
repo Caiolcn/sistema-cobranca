@@ -7,6 +7,7 @@ import ConfirmModal from './ConfirmModal'
 import whatsappService from './services/whatsappService'
 import { exportarClientes } from './utils/exportUtils'
 import CsvImportModal from './components/CsvImportModal'
+import AnamneseSection from './components/AnamneseSection'
 import { validarTelefone, validarCPF } from './utils/validators'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
@@ -16,7 +17,7 @@ import DateInput from './components/DateInput'
 
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
-  const { limiteClientes, plano } = useUserPlan()
+  const { limiteClientes, plano, isLocked } = useUserPlan()
   const { userId, loading: loadingUser } = useUser()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clientes, setClientes] = useState([])
@@ -3250,6 +3251,15 @@ Equipe ${nomeEmpresa}`
                   )}
                 </div>
               )}
+
+              {/* Anamnese */}
+              <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
+                <AnamneseSection
+                  clienteId={clienteSelecionado?.id}
+                  userId={userId}
+                  isLocked={isLocked}
+                />
+              </div>
 
               {/* Lista de Mensalidades */}
               <div>

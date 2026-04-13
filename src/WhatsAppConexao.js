@@ -581,7 +581,41 @@ Este é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receb
 
 *Salve nosso número* para não perder nenhuma mensagem!
 
-Qualquer dúvida, estamos à disposição.`
+Qualquer dúvida, estamos à disposição.`,
+
+  recuperacao_15: `Oi, {{nomeCliente}}! 👋
+
+Sentimos sua falta aqui na *{{nomeEmpresa}}* 💛
+Tá tudo bem por aí? Já faz {{diasSemAparecer}} dias que não te vemos em aula.
+
+Qualquer coisa, me chama aqui que a gente te ajuda! 💪`,
+
+  recuperacao_30: `Oi, {{nomeCliente}}, tudo bem? 😊
+
+Estamos com saudades na *{{nomeEmpresa}}*!
+Já faz {{diasSemAparecer}} dias desde sua última aula. Que tal voltar essa semana? Sua vaga ainda tá aqui! 🙌
+
+Se precisar reagendar ou tiver alguma dificuldade, me conta que a gente ajuda a resolver.`,
+
+  recuperacao_45: `{{nomeCliente}}, tudo bem? 💛
+
+Tá fazendo {{diasSemAparecer}} dias que você não aparece e queremos saber como você está.
+
+Se quiser voltar, a gente te ajuda a remarcar sua rotina. Se tá com alguma dificuldade, me conta — a gente pode achar uma solução juntos. 🤝
+
+Qualquer coisa é só responder aqui!
+
+_{{nomeEmpresa}}_`,
+
+  nps_experimental: `Oi, {{nomeCliente}}! 👋
+
+Vi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que tenha curtido! 💛
+
+*Como foi sua experiência?*
+Me manda uma nota de 0 a 10:
+0 = péssimo   10 = excelente
+
+Se quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -641,6 +675,10 @@ export default function WhatsAppConexao() {
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
   const [enviarDomingoAtivo, setEnviarDomingoAtivo] = useState(true)
   const [automacaoResumoDiarioAtiva, setAutomacaoResumoDiarioAtiva] = useState(false)
+  const [automacaoRecuperacaoAtiva, setAutomacaoRecuperacaoAtiva] = useState(false)
+  const [temPresencasRecentes, setTemPresencasRecentes] = useState(null)
+  const [automacaoNpsAtiva, setAutomacaoNpsAtiva] = useState(false)
+  const [categoriaAutomacao, setCategoriaAutomacao] = useState('cobrancas')
   const [botAtivo, setBotAtivo] = useState(false)
   const [botSaudacao, setBotSaudacao] = useState('Olá {{nomeCliente}}! 👋 Sou o assistente virtual da {{nomeEmpresa}}.')
   const [botOpcoesAtivas, setBotOpcoesAtivas] = useState({ mensalidade: true, horarios: true, pix: true, agendar: true })
@@ -707,7 +745,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, recuperacao_inativos_ativa, nps_experimental_ativo, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -774,7 +812,11 @@ export default function WhatsAppConexao() {
           { tipo: 'pre_due_3days', titulo: 'Lembrete - 3 Dias Antes do Vencimento', mensagem: TEMPLATES_PADRAO.pre_due_3days },
           { tipo: 'overdue', titulo: 'Cobrança - 3 Dias Após o Vencimento', mensagem: TEMPLATES_PADRAO.overdue },
           { tipo: 'payment_confirmed', titulo: 'Confirmação de Pagamento', mensagem: TEMPLATES_PADRAO.payment_confirmed },
-          { tipo: 'welcome', titulo: 'Boas-vindas', mensagem: TEMPLATES_PADRAO.welcome }
+          { tipo: 'welcome', titulo: 'Boas-vindas', mensagem: TEMPLATES_PADRAO.welcome },
+          { tipo: 'recuperacao_15', titulo: 'Recuperação - 15 dias', mensagem: 'Oi {{nomeCliente}}! 👋\n\nSentimos sua falta aqui na *{{nomeEmpresa}}* 💛\nTá tudo bem por aí? Já faz {{diasSemAparecer}} dias que não te vemos em aula.\n\nQualquer coisa, me chama aqui!' },
+          { tipo: 'recuperacao_30', titulo: 'Recuperação - 30 dias', mensagem: 'Oi {{nomeCliente}}, tudo bem? 😊\n\nEstamos com saudades na *{{nomeEmpresa}}*!\nJá faz {{diasSemAparecer}} dias desde sua última aula. Que tal voltar essa semana? Sua vaga ainda tá aqui!\n\nSe precisar reagendar ou tiver alguma dificuldade, me conta que a gente ajuda 🙌' },
+          { tipo: 'recuperacao_45', titulo: 'Recuperação - 45 dias', mensagem: '{{nomeCliente}}, tudo bem? 💛\n\nTá fazendo {{diasSemAparecer}} dias que você não aparece e queremos saber como você está.\n\nSe quiser voltar, a gente te ajuda a remarcar. Se tá com alguma dificuldade, me conta, a gente pode achar uma solução juntos.\n\nFalar com atendente é só responder aqui! 🤝\n\n_{{nomeEmpresa}}_' },
+          { tipo: 'nps_experimental', titulo: 'NPS - Pós-Experimental', mensagem: 'Oi {{nomeCliente}}! 👋\n\nVi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que tenha curtido! 💛\n\n*Como foi sua experiência?*\nMe manda uma nota de 0 a 10:\n0 = péssimo   10 = excelente\n\nSe quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏' }
         ]
 
         for (const tmpl of templatesParaCriar) {
@@ -832,6 +874,8 @@ export default function WhatsAppConexao() {
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
         setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
         setAutomacaoResumoDiarioAtiva(configCobranca?.enviar_resumo_diario === true)
+        setAutomacaoRecuperacaoAtiva(configCobranca?.recuperacao_inativos_ativa === true)
+        setAutomacaoNpsAtiva(configCobranca?.nps_experimental_ativo === true)
         setBotAtivo(configCobranca?.bot_ativo === true)
         if (configCobranca?.bot_saudacao) setBotSaudacao(configCobranca.bot_saudacao)
         if (configCobranca?.bot_opcoes_ativas && typeof configCobranca.bot_opcoes_ativas === 'object') {
@@ -1087,6 +1131,8 @@ export default function WhatsAppConexao() {
         'automacao_aniversario_ativa': 'enviar_aniversario',
         'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento',
         'automacao_resumo_diario_ativa': 'enviar_resumo_diario',
+        'automacao_recuperacao_ativa': 'recuperacao_inativos_ativa',
+        'automacao_nps_ativa': 'nps_experimental_ativo',
         'enviar_domingo_ativo': 'enviar_domingo',
         'bot_ativo': 'bot_ativo',
         'bot_saudacao': 'bot_saudacao'
@@ -1556,6 +1602,62 @@ export default function WhatsAppConexao() {
     const sucesso = await salvarConfiguracaoAutomacao('automacao_resumo_diario_ativa', novoValor)
     if (sucesso) {
       setAutomacaoResumoDiarioAtiva(novoValor)
+    }
+  }
+
+  const toggleNps = async () => {
+    const novoValor = !automacaoNpsAtiva
+    // Se ativando, avisa que precisa do bot ativo (porque captura depende do bot)
+    if (novoValor && !botAtivo) {
+      setFeedbackModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Bot WhatsApp necessário',
+        message: 'O NPS depende do bot pra capturar as respostas dos alunos. Ative o bot na aba "Bot" antes de ativar essa automação. Sem ele, as mensagens são enviadas mas as notas dos alunos não serão registradas automaticamente.'
+      })
+    }
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_nps_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoNpsAtiva(novoValor)
+    }
+  }
+
+  // Toggle da Recuperação de Inativos — verifica se a academia usa presenças
+  // antes de ativar. Se não usa, mostra aviso educativo mas permite ativar.
+  const toggleRecuperacaoInativos = async () => {
+    const novoValor = !automacaoRecuperacaoAtiva
+
+    // Ao ATIVAR, checa se tem presenças recentes pra avisar
+    if (novoValor) {
+      try {
+        const trintaDiasAtras = new Date()
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30)
+        const { count } = await supabase
+          .from('presencas')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', contextUserId)
+          .eq('presente', true)
+          .gte('data', trintaDiasAtras.toISOString().slice(0, 10))
+
+        const temPresencas = (count || 0) > 0
+        setTemPresencasRecentes(temPresencas)
+
+        if (!temPresencas) {
+          setFeedbackModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Atenção',
+            message: 'Essa automação detecta alunos inativos pela presença em aulas. Como você ainda não marcou presença de nenhum aluno nos últimos 30 dias, a recuperação não vai disparar nada até que você comece a marcar presenças. A automação foi ativada mesmo assim.'
+          })
+        }
+      } catch (err) {
+        console.error('Erro ao verificar presenças:', err)
+      }
+    }
+
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_recuperacao_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoRecuperacaoAtiva(novoValor)
     }
   }
 
@@ -2836,17 +2938,85 @@ export default function WhatsAppConexao() {
                 </h3>
                 <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Ative e selecione para editar</p>
               </div>
+
+              {/* Sub-tabs de categoria */}
+              <div style={{
+                display: 'flex',
+                gap: '4px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '10px',
+                padding: '4px',
+                marginBottom: '12px',
+                overflowX: 'auto'
+              }}>
+                {[
+                  { id: 'cobrancas', label: 'Cobranças', icon: 'mdi:cash-multiple' },
+                  { id: 'aulas', label: 'Aulas', icon: 'mdi:calendar-clock' },
+                  { id: 'relacionamento', label: 'Relacionamento', icon: 'mdi:heart-outline' },
+                  { id: 'retencao', label: 'Retenção', icon: 'mdi:account-reactivate' }
+                ].map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategoriaAutomacao(cat.id)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 10px',
+                      backgroundColor: categoriaAutomacao === cat.id ? 'white' : 'transparent',
+                      color: categoriaAutomacao === cat.id ? '#1a1a1a' : '#555',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: isSmallScreen ? '11px' : '12px',
+                      fontWeight: categoriaAutomacao === cat.id ? '600' : '400',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s',
+                      boxShadow: categoriaAutomacao === cat.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                    }}
+                  >
+                    <Icon icon={cat.icon} width={isSmallScreen ? 14 : 16} />
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Aviso educativo quando categoria = retenção */}
+              {categoriaAutomacao === 'retencao' && (
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #fcd34d',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'flex-start'
+                }}>
+                  <Icon icon="mdi:alert" width="18" style={{ color: '#b45309', flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '12px', color: '#78350f', lineHeight: '1.5' }}>
+                    <strong>Importante:</strong> a recuperação de inativos depende de você <strong>marcar presença</strong> dos alunos nas aulas. Sem o registro de presença, o sistema não consegue identificar quem sumiu. Se ainda não usa, a régua fica ativada mas silenciosa.
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                 {[
-                  { tipo: 'pre_due_3days', nome: '3 Dias Antes', descricao: 'Lembrete 3 dias antes do vencimento', icone: 'mdi:calendar-clock', cor: '#2196F3', ativo: automacao3DiasAtiva, toggle: toggleAutomacao3Dias, locked: automacaoLocked, plano: 'Pro' },
-                  { tipo: 'due_day', nome: 'No Dia', descricao: 'Lembrete no dia do vencimento', icone: 'mdi:calendar-today', cor: '#ff9800', ativo: automacaoNoDiaAtiva, toggle: toggleAutomacaoNoDia, locked: false },
-                  { tipo: 'overdue', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked, plano: 'Pro' },
-                  { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked, plano: 'Pro' },
-                  { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked, plano: 'Pro' },
-                  { tipo: 'payment_confirmed', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
-                  { tipo: 'welcome', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true },
-                  { tipo: 'resumo_diario', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true, plano: 'Premium' }
-                ].map((item) => (
+                  { tipo: 'pre_due_3days', categoria: 'cobrancas', nome: '3 Dias Antes', descricao: 'Lembrete 3 dias antes do vencimento', icone: 'mdi:calendar-clock', cor: '#2196F3', ativo: automacao3DiasAtiva, toggle: toggleAutomacao3Dias, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'due_day', categoria: 'cobrancas', nome: 'No Dia', descricao: 'Lembrete no dia do vencimento', icone: 'mdi:calendar-today', cor: '#ff9800', ativo: automacaoNoDiaAtiva, toggle: toggleAutomacaoNoDia, locked: false },
+                  { tipo: 'overdue', categoria: 'cobrancas', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'payment_confirmed', categoria: 'cobrancas', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
+                  { tipo: 'class_reminder', categoria: 'aulas', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'resumo_diario', categoria: 'aulas', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true, plano: 'Premium' },
+                  { tipo: 'birthday', categoria: 'relacionamento', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'welcome', categoria: 'relacionamento', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true },
+                  { tipo: 'nps_experimental', categoria: 'relacionamento', nome: 'NPS Pós-Experimental', descricao: 'Pesquisa de satisfação 24h após a 1ª aula', icone: 'mdi:star-outline', cor: '#fbbf24', ativo: automacaoNpsAtiva, toggle: toggleNps, locked: isLocked('premium'), plano: 'Premium' },
+                  { tipo: 'recuperacao_15', categoria: 'retencao', nome: 'Recuperação — 15 dias', descricao: '1º toque: aluno sumido há 15 dias', icone: 'mdi:account-reactivate', cor: '#a855f7', ativo: automacaoRecuperacaoAtiva, toggle: toggleRecuperacaoInativos, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'recuperacao_30', categoria: 'retencao', nome: 'Recuperação — 30 dias', descricao: '2º toque: aluno sumido há 30 dias', icone: 'mdi:account-reactivate', cor: '#a855f7', ativo: automacaoRecuperacaoAtiva, toggle: null, locked: automacaoLocked, semToggle: true, plano: 'Pro' },
+                  { tipo: 'recuperacao_45', categoria: 'retencao', nome: 'Recuperação — 45 dias', descricao: '3º toque: aluno sumido há 45 dias', icone: 'mdi:account-reactivate', cor: '#a855f7', ativo: automacaoRecuperacaoAtiva, toggle: null, locked: automacaoLocked, semToggle: true, plano: 'Pro' }
+                ].filter(item => item.categoria === categoriaAutomacao).map((item) => (
                   <div
                     key={item.tipo}
                     onClick={() => {

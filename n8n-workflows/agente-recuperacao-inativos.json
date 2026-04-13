@@ -1,0 +1,285 @@
+{
+  "name": "MensalliZap - Recuperação de Inativos",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Disparo Diário (10h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_alunos_inativos_regua",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-inativos",
+      "name": "Buscar Inativos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cria mensagem de recuperação baseada no estágio da régua (15/30/45 dias)\n// Se o template do usuário não existe, usa fallback padrão\n\nconst FALLBACK_15 = 'Oi {{nomeCliente}}! 👋\\n\\nSentimos sua falta aqui na *{{nomeEmpresa}}* 💛\\nTá tudo bem por aí? Já faz {{diasSemAparecer}} dias que não te vemos em aula.\\n\\nQualquer coisa, me chama aqui!';\n\nconst FALLBACK_30 = 'Oi {{nomeCliente}}, tudo bem? 😊\\n\\nEstamos com saudades na *{{nomeEmpresa}}*!\\nJá faz {{diasSemAparecer}} dias desde sua última aula. Que tal voltar essa semana? Sua vaga ainda tá aqui!\\n\\nSe precisar reagendar ou tiver alguma dificuldade, me conta que a gente ajuda 🙌';\n\nconst FALLBACK_45 = '{{nomeCliente}}, tudo bem? 💛\\n\\nTá fazendo {{diasSemAparecer}} dias que você não aparece e queremos saber como você está.\\n\\nSe quiser voltar, a gente te ajuda a remarcar. Se tá com alguma dificuldade, me conta, a gente pode achar uma solução juntos.\\n\\nFalar com atendente é só responder aqui! 🤝\\n\\n_{{nomeEmpresa}}_';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const proxima = data.proxima_mensagem; // '15dias', '30dias' ou '45dias'\n\n  if (!proxima) continue; // segurança\n\n  // Escolhe template baseado no estágio\n  let mensagem;\n  if (proxima === '15dias') {\n    mensagem = data.template_15 && data.template_15.trim() !== '' ? data.template_15 : FALLBACK_15;\n  } else if (proxima === '30dias') {\n    mensagem = data.template_30 && data.template_30.trim() !== '' ? data.template_30 : FALLBACK_30;\n  } else if (proxima === '45dias') {\n    mensagem = data.template_45 && data.template_45.trim() !== '' ? data.template_45 : FALLBACK_45;\n  }\n\n  // Substitui variáveis\n  const variaveis = {\n    '{{nomeCliente}}': (data.nome_cliente || 'aluno').split(' ')[0],\n    '{{nomeEmpresa}}': data.nome_empresa || 'nossa equipe',\n    '{{diasSemAparecer}}': String(data.dias_sem_aparecer || 0)\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  // Normaliza telefone\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      novo_status: proxima, // vai virar o recuperacao_status após o envio\n      tipo_lembrete: 'recuperacao_inativos'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "criar-msg-recuperacao",
+      "name": "Criar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {}
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar resultado do envio\nconst items = $input.all();\nconst originalItems = $('Criar Mensagem').all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json;\n  const original = originalItems[i] ? originalItems[i].json : {};\n\n  const hasError = !!(response.error && typeof response.error === 'object' && 'message' in response.error);\n\n  if (hasError) {\n    const msg = String(response.error.message || 'Erro desconhecido');\n    results.push({\n      json: {\n        ...original,\n        envio_sucesso: false,\n        erro_mensagem: msg\n      }\n    });\n  } else {\n    results.push({\n      json: {\n        ...original,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "id": "check-resultado",
+      "name": "Check Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.envio_sucesso }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-sucesso",
+      "name": "Envio OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/devedores?id=eq.{{ $('Envio OK?').item.json.devedor_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"recuperacao_status\": \"{{ $('Envio OK?').item.json.novo_status }}\",\n  \"recuperacao_ultimo_envio\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "marcar-status",
+      "name": "Marcar Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/controle_planos?user_id=eq.{{ $('Envio OK?').item.json.user_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"usage_count\": {{ ($('Envio OK?').item.json.usage_count || 0) + 1 }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "incrementar-usage",
+      "name": "Incrementar Usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK?').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('Envio OK?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK?').item.json.mensagem) }},\n  \"status\": \"enviado\"\n}",
+        "options": {}
+      },
+      "id": "log-recuperacao",
+      "name": "Log Recuperação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2250, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK?').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('Envio OK?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK?').item.json.mensagem) }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($('Envio OK?').item.json.erro_mensagem || 'Erro desconhecido') }}\n}",
+        "options": {}
+      },
+      "id": "log-falha",
+      "name": "Log Falha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 450]
+    }
+  ],
+  "connections": {
+    "Disparo Diário (10h)": {
+      "main": [[{ "node": "Buscar Inativos", "type": "main", "index": 0 }]]
+    },
+    "Buscar Inativos": {
+      "main": [[{ "node": "Criar Mensagem", "type": "main", "index": 0 }]]
+    },
+    "Criar Mensagem": {
+      "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Enviar WhatsApp": {
+      "main": [[{ "node": "Check Resultado", "type": "main", "index": 0 }]]
+    },
+    "Check Resultado": {
+      "main": [[{ "node": "Envio OK?", "type": "main", "index": 0 }]]
+    },
+    "Envio OK?": {
+      "main": [
+        [{ "node": "Marcar Status", "type": "main", "index": 0 }],
+        [{ "node": "Log Falha", "type": "main", "index": 0 }]
+      ]
+    },
+    "Marcar Status": {
+      "main": [[{ "node": "Incrementar Usage", "type": "main", "index": 0 }]]
+    },
+    "Incrementar Usage": {
+      "main": [[{ "node": "Log Recuperação", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
