@@ -378,8 +378,8 @@ function Relatorios() {
       {/* Header */}
       <div className="relatorios-header">
         <div>
-          <h1>Relatórios</h1>
-          <p>Analise o desempenho do seu negocio</p>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Relatórios</h2>
+          <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>Analise o desempenho do seu negócio</p>
         </div>
         <DateRangePicker value={periodo} onChange={setPeriodo} />
       </div>

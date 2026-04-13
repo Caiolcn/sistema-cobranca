@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useUser } from './contexts/UserContext'
+import { useUserPlan } from './hooks/useUserPlan'
 import { supabase } from './supabaseClient'
 import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
@@ -28,7 +29,9 @@ const ORIGEM_ICON = {
 
 export default function CRM() {
   const { userId } = useUser()
+  const { isLocked } = useUserPlan()
   const { isSmallScreen } = useWindowSize()
+  const crmLocked = isLocked('pro')
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
@@ -97,6 +100,23 @@ export default function CRM() {
 
   return (
     <div style={{ padding: isSmallScreen ? '16px' : '24px', flex: 1, width: '100%', backgroundColor: '#ffffff', minHeight: '100vh', boxSizing: 'border-box' }}>
+      {crmLocked ? (
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px', textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
+            <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+          </div>
+          <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>CRM de Leads</h2>
+          <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+            Capture e gerencie leads em um funil visual. Bot do WhatsApp captura visitantes automaticamente.
+            Disponível no plano <strong>Pro</strong> ou superior.
+          </p>
+          <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+            style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+            Fazer Upgrade
+          </button>
+        </div>
+      ) : (
+      <>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
         <div>
@@ -342,6 +362,8 @@ export default function CRM() {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )

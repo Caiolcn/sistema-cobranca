@@ -2838,19 +2838,19 @@ export default function WhatsAppConexao() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                 {[
-                  { tipo: 'pre_due_3days', nome: '3 Dias Antes', descricao: 'Lembrete 3 dias antes do vencimento', icone: 'mdi:calendar-clock', cor: '#2196F3', ativo: automacao3DiasAtiva, toggle: toggleAutomacao3Dias, locked: automacaoLocked },
+                  { tipo: 'pre_due_3days', nome: '3 Dias Antes', descricao: 'Lembrete 3 dias antes do vencimento', icone: 'mdi:calendar-clock', cor: '#2196F3', ativo: automacao3DiasAtiva, toggle: toggleAutomacao3Dias, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'due_day', nome: 'No Dia', descricao: 'Lembrete no dia do vencimento', icone: 'mdi:calendar-today', cor: '#ff9800', ativo: automacaoNoDiaAtiva, toggle: toggleAutomacaoNoDia, locked: false },
-                  { tipo: 'overdue', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked },
-                  { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked },
-                  { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked },
+                  { tipo: 'overdue', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'class_reminder', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'birthday', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'payment_confirmed', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
                   { tipo: 'welcome', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true },
-                  { tipo: 'resumo_diario', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true }
+                  { tipo: 'resumo_diario', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true, plano: 'Premium' }
                 ].map((item) => (
                   <div
                     key={item.tipo}
                     onClick={() => {
-                      if (item.locked) { setUpgradeModal({ isOpen: true, featureName: item.nome }); return }
+                      if (item.locked) { setUpgradeModal({ isOpen: true, featureName: item.nome, plano: item.plano || 'Pro' }); return }
                       if (!item.ativo) return
                       setTipoTemplateSelecionado(item.tipo)
                       const template = templatesAgrupados[item.tipo]
@@ -2872,7 +2872,7 @@ export default function WhatsAppConexao() {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {item.nome}
-                          {item.locked && <span style={{ fontSize: '10px', fontWeight: '600', color: '#e65100', backgroundColor: '#fff3e0', padding: '1px 6px', borderRadius: '4px' }}>PRO</span>}
+                          {item.locked && <span style={{ fontSize: '10px', fontWeight: '600', color: '#e65100', backgroundColor: '#fff3e0', padding: '1px 6px', borderRadius: '4px' }}>{(item.plano || 'Pro').toUpperCase()}</span>}
                           {templatesAgrupados[item.tipo] && item.ativo && !item.locked && <Icon icon="mdi:check-circle" width="14" style={{ color: '#4CAF50' }} />}
                         </div>
                         <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.descricao}</div>
@@ -2880,9 +2880,9 @@ export default function WhatsAppConexao() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       {item.semToggle ? null : item.locked ? (
-                        <button onClick={(e) => { e.stopPropagation(); setUpgradeModal({ isOpen: true, featureName: item.nome }) }}
+                        <button onClick={(e) => { e.stopPropagation(); setUpgradeModal({ isOpen: true, featureName: item.nome, plano: item.plano || 'Pro' }) }}
                           style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', backgroundColor: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', color: '#e65100' }}>
-                          <Icon icon="mdi:lock" width="12" /> Pro
+                          <Icon icon="mdi:lock" width="12" /> {item.plano || 'Pro'}
                         </button>
                       ) : (
                         <button onClick={(e) => { e.stopPropagation(); item.toggle() }}
@@ -3525,7 +3525,7 @@ export default function WhatsAppConexao() {
               color: '#666',
               lineHeight: '1.5'
             }}>
-              <strong>{upgradeModal.featureName}</strong> está disponível no plano <strong>Pro</strong> ou superior.
+              <strong>{upgradeModal.featureName}</strong> está disponível no plano <strong>{upgradeModal.plano || 'Pro'}</strong>{upgradeModal.plano === 'Premium' ? '.' : ' ou superior.'}
             </p>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
