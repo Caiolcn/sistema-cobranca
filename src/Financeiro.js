@@ -37,7 +37,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
 
   // Aba ativa do menu financeiro
-  const [abaAtiva, setAbaAtiva] = useState('mensalidades')
+  const [abaAtiva, setAbaAtiva] = useState(
+    searchParams.get('novadespesa') === 'true' ? 'despesas' : 'mensalidades'
+  )
+  const [autoAbrirNovaDespesa, setAutoAbrirNovaDespesa] = useState(
+    searchParams.get('novadespesa') === 'true'
+  )
 
   // Portal para botões das abas embarcadas + contagens
   const buttonsPortalRef = useRef(null)
@@ -1564,7 +1569,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       {abaAtiva === 'avulsas' && <CobrancasAvulsas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={handleVendasCountUpdate} />}
 
       {/* ========== ABA: DESPESAS ========== */}
-      {abaAtiva === 'despesas' && <Despesas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={handleDespesasCountUpdate} />}
+      {abaAtiva === 'despesas' && <Despesas embedded buttonsPortal={buttonsPortalRef.current} onCountUpdate={handleDespesasCountUpdate} autoAbrirNova={autoAbrirNovaDespesa} onAutoAbrirConsumido={() => setAutoAbrirNovaDespesa(false)} />}
 
       {/* ========== ABA: MENSALIDADES ========== */}
       {abaAtiva === 'mensalidades' && (<>

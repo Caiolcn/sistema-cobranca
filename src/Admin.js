@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
+import RetencaoSaas from './components/RetencaoSaas'
 
 export default function Admin() {
   const { isAdmin, loading: userLoading } = useUser()
@@ -774,6 +775,11 @@ export default function Admin() {
       {/* Rodapé */}
       <div style={{ marginTop: '14px', textAlign: 'center', fontSize: '12px', color: '#999' }}>
         {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''} exibido{clientesFiltrados.length !== 1 ? 's' : ''}
+      </div>
+
+      {/* Retenção SaaS - painel de mensagens de retenção manuais */}
+      <div style={{ marginTop: '40px' }}>
+        <RetencaoSaas />
       </div>
     </div>
   )

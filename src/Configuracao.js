@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
@@ -14,6 +14,65 @@ import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
+
+// Preview da landing page publica (renderiza o componente real em modo preview)
+const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+
+function mascararNomePreview(nome) {
+  if (!nome) return 'Aluno(a)'
+  const partes = String(nome).trim().split(/\s+/)
+  if (partes.length === 1) return partes[0]
+  return `${partes[0]} ${partes[partes.length - 1][0]}.`
+}
+
+function CollapseCard({ open, onToggle, title, icon, children }) {
+  return (
+    <div style={{
+      border: '1px solid #e5e7eb',
+      borderRadius: '10px',
+      marginBottom: '10px',
+      backgroundColor: 'white',
+      overflow: 'hidden'
+    }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          padding: '14px 16px',
+          background: open ? '#f9fafb' : 'white',
+          border: 'none',
+          borderBottom: open ? '1px solid #e5e7eb' : 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontSize: '14px',
+          fontWeight: '600',
+          color: '#344848',
+          textAlign: 'left'
+        }}>
+        <Icon icon={icon} width="18" style={{ color: '#344848', flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>{title}</span>
+        <svg
+          width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{
+            flexShrink: 0,
+            transform: open ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.2s'
+          }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{ padding: '18px 16px' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Templates padrão para criação automática
 const TEMPLATES_PADRAO = {
@@ -143,6 +202,60 @@ function Configuracao() {
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
   const [gerandoSlug, setGerandoSlug] = useState(false)
 
+  // Landing Page Publica
+  const [landingConfig, setLandingConfig] = useState({
+    ativo: false,
+    slug: '',
+    descricao: '',
+    corPrimaria: '#344848',
+    fotoCapaUrl: '',
+    instagramUrl: '',
+    facebookUrl: '',
+    tiktokUrl: '',
+    rodapeTexto: '',
+    heroTitulo: '',
+    heroSubtitulo: '',
+    ctaTexto: '',
+    ctaFinalTitulo: '',
+    ctaFinalSubtitulo: '',
+    galeria: [],
+    faq: [],
+    depoimentosManuais: [],
+    ordemSecoes: ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa'],
+    mostrarDepoimentos: true,
+    mostrarPlanos: true,
+    mostrarHorarios: true,
+    mostrarGaleria: true,
+    mostrarFaq: true,
+    mostrarCtaWhatsapp: true,
+    mostrarCtaAgendar: true,
+    mostrarCtaFinal: true,
+    ctaFinalMostrarBotao: true
+  })
+  const [salvandoLanding, setSalvandoLanding] = useState(false)
+  const [uploadingCapa, setUploadingCapa] = useState(false)
+  const [uploadingGaleria, setUploadingGaleria] = useState(false)
+
+  // Dados reais pro preview (planos/aulas/NPS)
+  const [previewPlanos, setPreviewPlanos] = useState([])
+  const [previewAulas, setPreviewAulas] = useState([])
+  const [previewNpsDepoimentos, setPreviewNpsDepoimentos] = useState([])
+  const [previewDadosCarregados, setPreviewDadosCarregados] = useState(false)
+
+  // Quais secoes do accordion estao abertas (so 1 aberta por padrao)
+  const [landingSecoesAbertas, setLandingSecoesAbertas] = useState({
+    iniciais: true,
+    topo: false,
+    sobre: false,
+    galeria: false,
+    depoimentos: false,
+    faq: false,
+    ctaFinal: false,
+    rodape: false,
+    avancado: false
+  })
+  const toggleLandingSecao = (key) => setLandingSecoesAbertas(prev => ({ ...prev, [key]: !prev[key] }))
+
   // Automação WhatsApp - REMOVIDO (movido para /whatsapp)
   // const [configAutomacao, setConfigAutomacao] = useState({...})
   // const [testando, setTestando] = useState(false)
@@ -154,7 +267,7 @@ function Configuracao() {
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade', 'integracoes', 'agendamento'].includes(abaUrl)) {
+    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade', 'integracoes', 'agendamento', 'landing', 'anamnese'].includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
   }, [searchParams])
@@ -215,6 +328,39 @@ function Configuracao() {
         slug: data.agendamento_slug || '',
         ativo: data.agendamento_ativo || false,
         antecedenciaHoras: data.agendamento_antecedencia_horas || 2
+      })
+
+      // Carregar config da landing page
+      setLandingConfig({
+        ativo: data.landing_ativo || false,
+        slug: data.landing_slug || '',
+        descricao: data.landing_descricao || '',
+        corPrimaria: data.landing_cor_primaria || '#344848',
+        fotoCapaUrl: data.landing_foto_capa_url || '',
+        instagramUrl: data.instagram_url || '',
+        facebookUrl: data.facebook_url || '',
+        tiktokUrl: data.tiktok_url || '',
+        rodapeTexto: data.landing_rodape_texto || '',
+        heroTitulo: data.landing_hero_titulo || '',
+        heroSubtitulo: data.landing_hero_subtitulo || '',
+        ctaTexto: data.landing_cta_texto || '',
+        ctaFinalTitulo: data.landing_cta_final_titulo || '',
+        ctaFinalSubtitulo: data.landing_cta_final_subtitulo || '',
+        galeria: Array.isArray(data.landing_galeria) ? data.landing_galeria : [],
+        faq: Array.isArray(data.landing_faq) ? data.landing_faq : [],
+        depoimentosManuais: Array.isArray(data.landing_depoimentos_manuais) ? data.landing_depoimentos_manuais : [],
+        ordemSecoes: Array.isArray(data.landing_ordem_secoes) && data.landing_ordem_secoes.length > 0
+          ? data.landing_ordem_secoes
+          : ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa'],
+        mostrarDepoimentos: data.landing_mostrar_depoimentos !== false,
+        mostrarPlanos: data.landing_mostrar_planos !== false,
+        mostrarHorarios: data.landing_mostrar_horarios !== false,
+        mostrarGaleria: data.landing_mostrar_galeria !== false,
+        mostrarFaq: data.landing_mostrar_faq !== false,
+        mostrarCtaWhatsapp: data.landing_mostrar_cta_whatsapp !== false,
+        mostrarCtaAgendar: data.landing_mostrar_cta_agendar !== false,
+        mostrarCtaFinal: data.landing_mostrar_cta_final !== false,
+        ctaFinalMostrarBotao: data.landing_cta_final_mostrar_botao !== false
       })
 
       // Carregar campos extras da anamnese
@@ -3033,6 +3179,1280 @@ function Configuracao() {
     })
   }
 
+  // ==========================================
+  // LANDING PAGE PUBLICA
+  // ==========================================
+
+  const slugifyLocal = (txt) => {
+    return String(txt || '').toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-').replace(/^-|-$/g, '')
+  }
+
+  const gerarLandingSlug = () => {
+    const slug = slugifyLocal(dadosEmpresa.nomeEmpresa || 'academia')
+    setLandingConfig(prev => ({ ...prev, slug }))
+    showToast('Slug gerado!', 'success')
+  }
+
+  const salvarLanding = async () => {
+    if (landingConfig.ativo && !landingConfig.slug) {
+      showToast('Defina um endereço antes de ativar', 'warning')
+      return
+    }
+    if (landingConfig.slug && landingConfig.slug.length < 3) {
+      showToast('O endereço precisa ter pelo menos 3 caracteres', 'warning')
+      return
+    }
+    if (slugEhReservado(landingConfig.slug)) {
+      showToast(`"${landingConfig.slug}" é uma palavra reservada do sistema. Escolha outro endereço.`, 'warning')
+      return
+    }
+    if (landingConfig.descricao && landingConfig.descricao.length > 500) {
+      showToast('A descrição deve ter no máximo 500 caracteres', 'warning')
+      return
+    }
+    setSalvandoLanding(true)
+    try {
+      // Limpa FAQ e depoimentos vazios antes de salvar
+      const faqLimpo = (landingConfig.faq || []).filter(f => f && (f.pergunta || '').trim() && (f.resposta || '').trim())
+      const depoimentosLimpo = (landingConfig.depoimentosManuais || []).filter(d => d && (d.nome || '').trim() && (d.comentario || '').trim())
+
+      const { error } = await supabase
+        .from('usuarios')
+        .update({
+          landing_ativo: landingConfig.ativo,
+          landing_slug: landingConfig.slug || null,
+          landing_descricao: landingConfig.descricao || null,
+          landing_cor_primaria: landingConfig.corPrimaria || '#344848',
+          landing_foto_capa_url: landingConfig.fotoCapaUrl || null,
+          instagram_url: landingConfig.instagramUrl || null,
+          facebook_url: (landingConfig.facebookUrl || '').trim() || null,
+          tiktok_url: (landingConfig.tiktokUrl || '').trim() || null,
+          landing_rodape_texto: (landingConfig.rodapeTexto || '').trim() || null,
+          landing_hero_titulo: (landingConfig.heroTitulo || '').trim() || null,
+          landing_hero_subtitulo: (landingConfig.heroSubtitulo || '').trim() || null,
+          landing_cta_texto: (landingConfig.ctaTexto || '').trim() || null,
+          landing_cta_final_titulo: (landingConfig.ctaFinalTitulo || '').trim() || null,
+          landing_cta_final_subtitulo: (landingConfig.ctaFinalSubtitulo || '').trim() || null,
+          landing_galeria: landingConfig.galeria || [],
+          landing_faq: faqLimpo,
+          landing_depoimentos_manuais: depoimentosLimpo,
+          landing_ordem_secoes: landingConfig.ordemSecoes,
+          landing_mostrar_depoimentos: landingConfig.mostrarDepoimentos,
+          landing_mostrar_planos: landingConfig.mostrarPlanos,
+          landing_mostrar_horarios: landingConfig.mostrarHorarios,
+          landing_mostrar_galeria: landingConfig.mostrarGaleria,
+          landing_mostrar_faq: landingConfig.mostrarFaq,
+          landing_mostrar_cta_whatsapp: landingConfig.mostrarCtaWhatsapp,
+          landing_mostrar_cta_agendar: landingConfig.mostrarCtaAgendar,
+          landing_mostrar_cta_final: landingConfig.mostrarCtaFinal,
+          landing_cta_final_mostrar_botao: landingConfig.ctaFinalMostrarBotao
+        })
+        .eq('id', contextUserId)
+
+      if (error) {
+        if (String(error.message || '').includes('duplicate') || error.code === '23505') {
+          throw new Error('Este endereço já está em uso. Escolha outro.')
+        }
+        throw error
+      }
+      showToast('Site atualizado!', 'success')
+    } catch (err) {
+      console.error('Erro ao salvar landing:', err)
+      showToast('Erro ao salvar: ' + (err.message || 'erro desconhecido'), 'error')
+    }
+    setSalvandoLanding(false)
+  }
+
+  const handleCapaUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      showToast('Selecione uma imagem (PNG, JPG)', 'warning')
+      return
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      showToast('A imagem deve ter no máximo 3MB', 'warning')
+      return
+    }
+    setUploadingCapa(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const fileName = `${contextUserId}/capa.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, { upsert: true })
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName)
+      // Cache-bust pra atualizar preview imediatamente
+      const url = `${urlData.publicUrl}?t=${Date.now()}`
+      setLandingConfig(prev => ({ ...prev, fotoCapaUrl: url }))
+      showToast('Foto de capa carregada! Lembre de salvar.', 'success')
+    } catch (err) {
+      console.error('Erro upload capa:', err)
+      showToast('Erro ao enviar foto: ' + err.message, 'error')
+    } finally {
+      setUploadingCapa(false)
+    }
+  }
+
+  const removerCapa = () => {
+    setLandingConfig(prev => ({ ...prev, fotoCapaUrl: '' }))
+    showToast('Foto removida. Lembre de salvar.', 'info')
+  }
+
+  const copiarLinkLanding = () => {
+    const link = `${window.location.origin}/${landingConfig.slug}`
+    navigator.clipboard.writeText(link).then(() => {
+      showToast('Link copiado!', 'success')
+    }).catch(() => showToast('Erro ao copiar', 'error'))
+  }
+
+  const abrirLandingPreview = () => {
+    if (!landingConfig.slug) {
+      showToast('Defina um endereço primeiro', 'warning')
+      return
+    }
+    window.open(`${window.location.origin}/${landingConfig.slug}`, '_blank')
+  }
+
+  const CORES_PRESET = ['#344848', '#007bff', '#16a34a', '#dc2626', '#f59e0b', '#7c3aed', '#0891b2', '#db2777']
+
+  // Slugs que conflitam com rotas do sistema - nao podem ser usados
+  const SLUGS_RESERVADOS = new Set([
+    'login', 'signup', 'logout', 'reset-password', 'reset',
+    'pagar', 'portal', 'agendar', 'academia', 'app', 'admin', 'api',
+    'www', 'assets', 'static', 'public', 'img', 'images', 'css', 'js',
+    'help', 'ajuda', 'home', 'sobre', 'about', 'contact', 'contato',
+    'upgrade', 'success', 'onboarding', 'configuracao', 'dashboard',
+    'mensalli', 'suporte', 'termos', 'privacidade', 'financeiro',
+    'clientes', 'horarios', 'relatorios', 'whatsapp', 'crm', 'avisos',
+    'null', 'undefined', 'index', 'root'
+  ])
+
+  const slugEhReservado = (slug) => {
+    const s = String(slug || '').trim().toLowerCase()
+    return SLUGS_RESERVADOS.has(s)
+  }
+
+  const LABELS_SECAO = {
+    sobre: 'Sobre nós',
+    planos: 'Planos',
+    galeria: 'Galeria de fotos',
+    horarios: 'Horários das aulas',
+    depoimentos: 'Depoimentos',
+    faq: 'Perguntas frequentes',
+    mapa: 'Como chegar (mapa)'
+  }
+
+  const ORDEM_PADRAO = ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa']
+
+  // Carrega dados reais pro preview quando abre a aba landing
+  useEffect(() => {
+    if (abaAtiva !== 'landing' || !contextUserId || previewDadosCarregados) return
+    let cancelado = false
+    async function carregarDadosPreview() {
+      try {
+        const [planosR, aulasR, npsR] = await Promise.all([
+          supabase.from('planos').select('nome, valor, ciclo, descricao')
+            .eq('user_id', contextUserId).eq('ativo', true).order('valor', { ascending: true }),
+          supabase.from('aulas').select('dia_semana, horario, descricao')
+            .eq('user_id', contextUserId).eq('ativo', true)
+            .order('dia_semana', { ascending: true }).order('horario', { ascending: true }),
+          supabase.from('nps_respostas').select('nota, comentario, respondido_em, devedor_id')
+            .eq('user_id', contextUserId).gte('nota', 9).not('comentario', 'is', null)
+            .order('respondido_em', { ascending: false }).limit(12)
+        ])
+        if (cancelado) return
+        setPreviewPlanos(planosR.data || [])
+        setPreviewAulas(aulasR.data || [])
+
+        // Busca nomes dos devedores pra mascarar
+        const npsValidos = (npsR.data || []).filter(n => n.comentario && String(n.comentario).trim().length >= 10)
+        const idsDev = [...new Set(npsValidos.map(n => n.devedor_id).filter(Boolean))]
+        let nomesPorId = {}
+        if (idsDev.length > 0) {
+          const { data: devs } = await supabase.from('devedores').select('id, nome').in('id', idsDev)
+          for (const d of devs || []) nomesPorId[d.id] = d.nome
+        }
+        if (cancelado) return
+        setPreviewNpsDepoimentos(npsValidos.map(n => ({
+          nota: n.nota,
+          comentario: n.comentario,
+          nome: mascararNomePreview(nomesPorId[n.devedor_id] || null)
+        })))
+        setPreviewDadosCarregados(true)
+      } catch (err) {
+        console.error('Erro ao carregar dados de preview:', err)
+      }
+    }
+    carregarDadosPreview()
+    return () => { cancelado = true }
+  }, [abaAtiva, contextUserId, previewDadosCarregados])
+
+  // Monta o objeto previewData (formato igual ao que a edge function retorna)
+  // useMemo pra nao recalcular a cada render desnecessario
+  const landingPreviewData = useMemo(() => {
+    const manuais = (landingConfig.depoimentosManuais || [])
+      .filter(d => d && (d.comentario || '').trim().length >= 5)
+      .map(d => ({
+        nota: d.nota || 10,
+        comentario: String(d.comentario).trim(),
+        nome: String(d.nome || 'Aluno(a)').trim()
+      }))
+    const depoimentos = [...manuais, ...previewNpsDepoimentos].slice(0, 8)
+
+    const enderecoCompleto = [
+      dadosEmpresa.endereco,
+      dadosEmpresa.numero,
+      dadosEmpresa.bairro,
+      dadosEmpresa.cidade,
+      dadosEmpresa.estado
+    ].filter(Boolean).join(', ')
+
+    return {
+      empresa: {
+        nome_empresa: dadosEmpresa.nomeEmpresa || 'Sua Academia',
+        logo_url: dadosEmpresa.logoUrl,
+        foto_capa_url: landingConfig.fotoCapaUrl,
+        descricao: landingConfig.descricao,
+        cor_primaria: landingConfig.corPrimaria || '#344848',
+        telefone: dadosEmpresa.telefone,
+        instagram_url: landingConfig.instagramUrl,
+        facebook_url: landingConfig.facebookUrl,
+        tiktok_url: landingConfig.tiktokUrl,
+        rodape_texto: landingConfig.rodapeTexto,
+        site: dadosEmpresa.site,
+        endereco_completo: enderecoCompleto,
+        cidade: dadosEmpresa.cidade,
+        estado: dadosEmpresa.estado,
+        agendamento_slug: agendamentoConfig.slug,
+        agendamento_ativo: agendamentoConfig.ativo,
+        hero_titulo: landingConfig.heroTitulo,
+        hero_subtitulo: landingConfig.heroSubtitulo,
+        cta_texto: landingConfig.ctaTexto,
+        cta_final_titulo: landingConfig.ctaFinalTitulo,
+        cta_final_subtitulo: landingConfig.ctaFinalSubtitulo,
+        galeria: landingConfig.galeria || [],
+        faq: (landingConfig.faq || []).filter(f => f && (f.pergunta || '').trim() && (f.resposta || '').trim()),
+        ordem_secoes: landingConfig.ordemSecoes || ORDEM_PADRAO,
+        mostrar_depoimentos: landingConfig.mostrarDepoimentos,
+        mostrar_planos: landingConfig.mostrarPlanos,
+        mostrar_horarios: landingConfig.mostrarHorarios,
+        mostrar_galeria: landingConfig.mostrarGaleria,
+        mostrar_faq: landingConfig.mostrarFaq,
+        mostrar_cta_whatsapp: landingConfig.mostrarCtaWhatsapp,
+        mostrar_cta_agendar: landingConfig.mostrarCtaAgendar,
+        mostrar_cta_final: landingConfig.mostrarCtaFinal,
+        cta_final_mostrar_botao: landingConfig.ctaFinalMostrarBotao
+      },
+      planos: previewPlanos,
+      aulas: previewAulas,
+      depoimentos
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landingConfig, dadosEmpresa, agendamentoConfig, previewPlanos, previewAulas, previewNpsDepoimentos])
+
+  const moverSecao = (idx, delta) => {
+    const novo = [...(landingConfig.ordemSecoes || ORDEM_PADRAO)]
+    const destino = idx + delta
+    if (destino < 0 || destino >= novo.length) return
+    ;[novo[idx], novo[destino]] = [novo[destino], novo[idx]]
+    setLandingConfig(prev => ({ ...prev, ordemSecoes: novo }))
+  }
+
+  // Galeria
+  const handleGaleriaUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      showToast('Selecione uma imagem', 'warning')
+      return
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      showToast('Máximo 3MB por imagem', 'warning')
+      return
+    }
+    if ((landingConfig.galeria || []).length >= 6) {
+      showToast('Máximo de 6 fotos na galeria', 'warning')
+      return
+    }
+    setUploadingGaleria(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const fileName = `${contextUserId}/galeria-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('logos').upload(fileName, file, { upsert: false })
+      if (upErr) throw upErr
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName)
+      setLandingConfig(prev => ({ ...prev, galeria: [...(prev.galeria || []), urlData.publicUrl] }))
+      showToast('Foto adicionada! Lembre de salvar.', 'success')
+    } catch (err) {
+      console.error('Erro upload galeria:', err)
+      showToast('Erro ao enviar foto: ' + err.message, 'error')
+    } finally {
+      setUploadingGaleria(false)
+      // reset input pra permitir re-upload do mesmo arquivo
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const removerFotoGaleria = (idx) => {
+    setLandingConfig(prev => ({
+      ...prev,
+      galeria: (prev.galeria || []).filter((_, i) => i !== idx)
+    }))
+  }
+
+  // FAQ
+  const addFaq = () => {
+    setLandingConfig(prev => ({
+      ...prev,
+      faq: [...(prev.faq || []), { pergunta: '', resposta: '' }]
+    }))
+  }
+  const atualizarFaq = (idx, campo, valor) => {
+    setLandingConfig(prev => ({
+      ...prev,
+      faq: (prev.faq || []).map((f, i) => i === idx ? { ...f, [campo]: valor } : f)
+    }))
+  }
+  const removerFaq = (idx) => {
+    setLandingConfig(prev => ({
+      ...prev,
+      faq: (prev.faq || []).filter((_, i) => i !== idx)
+    }))
+  }
+
+  // Depoimentos manuais
+  const addDepoimento = () => {
+    setLandingConfig(prev => ({
+      ...prev,
+      depoimentosManuais: [...(prev.depoimentosManuais || []), { nome: '', comentario: '', nota: 10 }]
+    }))
+  }
+  const atualizarDepoimento = (idx, campo, valor) => {
+    setLandingConfig(prev => ({
+      ...prev,
+      depoimentosManuais: (prev.depoimentosManuais || []).map((d, i) => i === idx ? { ...d, [campo]: valor } : d)
+    }))
+  }
+  const removerDepoimento = (idx) => {
+    setLandingConfig(prev => ({
+      ...prev,
+      depoimentosManuais: (prev.depoimentosManuais || []).filter((_, i) => i !== idx)
+    }))
+  }
+
+  const renderLanding = () => {
+    if (isLocked('pro')) {
+      return (
+        <div style={{
+          backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px',
+          textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto'
+        }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto'
+          }}>
+            <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
+          </div>
+          <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+            Seu site profissional
+          </h2>
+          <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
+            Tenha um site pronto pra sua empresa com planos, horários, depoimentos e botão direto pro WhatsApp.
+            Disponível no plano <strong>Pro</strong>.
+          </p>
+          <button onClick={() => setAbaAtiva('upgrade')}
+            style={{
+              padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
+              border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
+            }}>
+            Fazer Upgrade
+          </button>
+        </div>
+      )
+    }
+
+    const formContent = (
+      <div style={{ maxWidth: '680px', width: '100%', boxSizing: 'border-box' }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
+          Meu site
+        </h3>
+        <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#888' }}>
+          Monte o site da sua empresa: destaque, planos, horários, depoimentos, mapa e botão direto pro WhatsApp.
+        </p>
+
+        <CollapseCard
+          open={landingSecoesAbertas.iniciais}
+          onToggle={() => toggleLandingSecao('iniciais')}
+          title="Configurações iniciais"
+          icon="mdi:cog-outline">
+        {/* Toggle Ativar */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: isMobile ? '12px' : '16px',
+          backgroundColor: landingConfig.ativo ? '#f0fdf4' : '#f9fafb',
+          borderRadius: '10px', marginBottom: '20px',
+          border: landingConfig.ativo ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0, flex: 1 }}>
+            <Icon icon={landingConfig.ativo ? 'mdi:web-check' : 'mdi:web-off'} width={isMobile ? 20 : 24}
+              style={{ color: landingConfig.ativo ? '#16a34a' : '#999', flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#1a1a1a' }}>
+                {landingConfig.ativo ? 'Site ativo' : 'Site desativado'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#888' }}>
+                {landingConfig.ativo ? 'Seu site está no ar' : 'Ninguém consegue acessar ainda'}
+              </div>
+            </div>
+          </div>
+          <div
+            onClick={() => setLandingConfig(prev => ({ ...prev, ativo: !prev.ativo }))}
+            style={{
+              width: '44px', minWidth: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
+              backgroundColor: landingConfig.ativo ? '#16a34a' : '#d1d5db',
+              position: 'relative', transition: 'background-color 0.2s', marginLeft: '8px'
+            }}
+          >
+            <div style={{
+              width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
+              position: 'absolute', top: '2px',
+              left: landingConfig.ativo ? '22px' : '2px',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+            }} />
+          </div>
+        </div>
+
+        {/* Slug */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Endereço da página
+          </label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+            <div style={{
+              flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
+              border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9fafb'
+            }}>
+              <span style={{ padding: '10px 0 10px 12px', fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>
+                mensalli.com.br/
+              </span>
+              <input
+                type="text"
+                value={landingConfig.slug}
+                onChange={e => setLandingConfig(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                placeholder="meunegocio"
+                style={{
+                  flex: 1, minWidth: 0, padding: '10px 12px 10px 0', border: 'none', outline: 'none',
+                  fontSize: '14px', fontWeight: '500', backgroundColor: 'transparent', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <button
+              onClick={gerarLandingSlug}
+              style={{
+                padding: '10px 14px', backgroundColor: '#f3f4f6', border: '1px solid #ddd',
+                borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                fontSize: '12px', fontWeight: '600', color: '#555', flexShrink: 0
+              }}
+            >
+              <Icon icon="mdi:auto-fix" width="16" />
+              Gerar
+            </button>
+          </div>
+          {slugEhReservado(landingConfig.slug) && (
+            <div style={{
+              marginTop: '8px', padding: '8px 12px', backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px',
+              color: '#991b1b', display: 'flex', alignItems: 'center', gap: '6px'
+            }}>
+              <Icon icon="mdi:alert-circle-outline" width="16" />
+              "{landingConfig.slug}" é uma palavra reservada do sistema. Escolha outro endereço.
+            </div>
+          )}
+          {landingConfig.slug && !slugEhReservado(landingConfig.slug) && (
+            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <code style={{
+                flex: 1, minWidth: 0, fontSize: isMobile ? '11px' : '12px', padding: '8px 12px', backgroundColor: '#f1f5f9',
+                borderRadius: '6px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap', display: 'block', boxSizing: 'border-box',
+                ...(isMobile ? { width: '100%' } : {})
+              }}>
+                {window.location.origin}/{landingConfig.slug}
+              </code>
+              <div style={{ display: 'flex', gap: '6px', ...(isMobile ? { width: '100%' } : {}) }}>
+                <button onClick={copiarLinkLanding}
+                  style={{
+                    padding: '8px 12px', backgroundColor: '#344848', color: 'white',
+                    border: 'none', borderRadius: '6px', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px',
+                    flex: isMobile ? 1 : 'none', justifyContent: 'center'
+                  }}>
+                  <Icon icon="mdi:content-copy" width="14" /> Copiar
+                </button>
+                <button onClick={abrirLandingPreview}
+                  style={{
+                    padding: '8px 12px', backgroundColor: 'white', color: '#344848',
+                    border: '1px solid #344848', borderRadius: '6px', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px',
+                    flex: isMobile ? 1 : 'none', justifyContent: 'center'
+                  }}>
+                  <Icon icon="mdi:open-in-new" width="14" /> Abrir
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Cor primária */}
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Cor principal
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Define a cor dos botões, títulos de seção e do bloco "Bora começar?".
+          </p>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {CORES_PRESET.map(c => (
+              <div key={c}
+                onClick={() => setLandingConfig(prev => ({ ...prev, corPrimaria: c }))}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  backgroundColor: c, cursor: 'pointer',
+                  border: landingConfig.corPrimaria === c ? '3px solid #1a1a1a' : '3px solid transparent',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                }} />
+            ))}
+            <input
+              type="color"
+              value={landingConfig.corPrimaria}
+              onChange={e => setLandingConfig(prev => ({ ...prev, corPrimaria: e.target.value }))}
+              style={{ width: '40px', height: '40px', border: 'none', padding: 0, cursor: 'pointer', backgroundColor: 'transparent' }}
+            />
+          </div>
+        </div>
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.topo}
+          onToggle={() => toggleLandingSecao('topo')}
+          title="Topo da página (hero)"
+          icon="mdi:view-headline">
+        <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#888' }}>
+          Título, subtítulo, texto do botão e quais CTAs aparecem no topo da página.
+        </p>
+
+        {/* HERO: Título, subtítulo e CTA customizáveis */}
+        <div style={{ marginBottom: '20px' }}>
+
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+            Título do hero
+          </label>
+          <input
+            type="text"
+            value={landingConfig.heroTitulo}
+            onChange={e => setLandingConfig(prev => ({ ...prev, heroTitulo: e.target.value.slice(0, 80) }))}
+            placeholder="Ex: Transforme seu corpo em 90 dias"
+            style={{
+              width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+              borderRadius: '8px', fontSize: '14px', marginBottom: '12px', boxSizing: 'border-box'
+            }}
+          />
+
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+            Subtítulo do hero
+          </label>
+          <input
+            type="text"
+            value={landingConfig.heroSubtitulo}
+            onChange={e => setLandingConfig(prev => ({ ...prev, heroSubtitulo: e.target.value.slice(0, 160) }))}
+            placeholder="Ex: Treinos funcionais no coração de Goiânia"
+            style={{
+              width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+              borderRadius: '8px', fontSize: '14px', marginBottom: '12px', boxSizing: 'border-box'
+            }}
+          />
+
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+            Texto do botão principal
+          </label>
+          <input
+            type="text"
+            value={landingConfig.ctaTexto}
+            onChange={e => setLandingConfig(prev => ({ ...prev, ctaTexto: e.target.value.slice(0, 40) }))}
+            placeholder="Ex: Quero minha aula grátis"
+            style={{
+              width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+              borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ fontSize: '11px', color: '#999', marginTop: '4px', marginBottom: '14px' }}>
+            Padrão: "Agendar experimental"
+          </div>
+
+          {/* Toggles dos CTAs do hero */}
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+              Botões exibidos no hero
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 12px', border: '1px solid #eee', borderRadius: '8px',
+                cursor: 'pointer', backgroundColor: landingConfig.mostrarCtaWhatsapp ? '#f0fdf4' : '#fff'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={landingConfig.mostrarCtaWhatsapp}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, mostrarCtaWhatsapp: e.target.checked }))}
+                />
+                <Icon icon="mdi:whatsapp" width="18" style={{ color: '#25d366' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>Botão WhatsApp</div>
+                  <div style={{ fontSize: '11px', color: '#999' }}>Exibe o botão verde "Agendar experimental" no topo</div>
+                </div>
+              </label>
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 12px', border: '1px solid #eee', borderRadius: '8px',
+                cursor: 'pointer', backgroundColor: landingConfig.mostrarCtaAgendar ? '#f0fdf4' : '#fff'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={landingConfig.mostrarCtaAgendar}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, mostrarCtaAgendar: e.target.checked }))}
+                />
+                <Icon icon="mdi:calendar-check" width="18" style={{ color: '#666' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>Botão "Agendar online"</div>
+                  <div style={{ fontSize: '11px', color: '#999' }}>Só aparece se o agendamento online estiver ativo</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Foto de capa (banner do hero) */}
+        <div style={{ marginBottom: '0', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Foto de capa (banner do topo)
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Recomendado: paisagem, 1600×900, até 3MB. Se não enviar, usa a cor principal como fundo.
+          </p>
+          {landingConfig.fotoCapaUrl ? (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <img src={landingConfig.fotoCapaUrl} alt="Capa"
+                style={{ width: '120px', height: '68px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd' }} />
+              <button onClick={removerCapa}
+                style={{
+                  padding: '8px 14px', backgroundColor: '#fef2f2', color: '#dc2626',
+                  border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px',
+                  fontWeight: '600', cursor: 'pointer'
+                }}>
+                Remover
+              </button>
+            </div>
+          ) : (
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '10px 16px', backgroundColor: '#f3f4f6', border: '1px dashed #aaa',
+              borderRadius: '8px', cursor: uploadingCapa ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: '600', color: '#555'
+            }}>
+              <Icon icon={uploadingCapa ? 'eos-icons:loading' : 'mdi:image-plus'} width="18" />
+              {uploadingCapa ? 'Enviando...' : 'Enviar foto de capa'}
+              <input type="file" accept="image/*" onChange={handleCapaUpload} disabled={uploadingCapa} style={{ display: 'none' }} />
+            </label>
+          )}
+        </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.sobre}
+          onToggle={() => toggleLandingSecao('sobre')}
+          title="Sobre a academia"
+          icon="mdi:information-outline">
+        {/* Descrição */}
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Texto de apresentação
+          </label>
+          <textarea
+            value={landingConfig.descricao}
+            onChange={e => setLandingConfig(prev => ({ ...prev, descricao: e.target.value.slice(0, 500) }))}
+            rows={4}
+            placeholder="Conte em poucas palavras quem é sua academia, modalidades, diferenciais..."
+            style={{
+              width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+              fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ fontSize: '11px', color: '#999', textAlign: 'right', marginTop: '4px' }}>
+            {(landingConfig.descricao || '').length}/500
+          </div>
+        </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.galeria}
+          onToggle={() => toggleLandingSecao('galeria')}
+          title="Galeria de fotos"
+          icon="mdi:image-multiple-outline">
+        {/* GALERIA DE FOTOS */}
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Até 6 fotos
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Mostre o espaço da sua academia. Fotos 4:3 ficam melhores.
+          </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gap: '10px'
+          }}>
+            {(landingConfig.galeria || []).map((url, i) => (
+              <div key={i} style={{
+                position: 'relative', aspectRatio: '4/3', borderRadius: '8px',
+                overflow: 'hidden', border: '1px solid #ddd'
+              }}>
+                <img src={url} alt={`Foto ${i+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button
+                  onClick={() => removerFotoGaleria(i)}
+                  style={{
+                    position: 'absolute', top: '6px', right: '6px',
+                    width: '26px', height: '26px', borderRadius: '50%',
+                    backgroundColor: 'rgba(220,38,38,0.92)', color: 'white',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                  <Icon icon="mdi:close" width="16" />
+                </button>
+              </div>
+            ))}
+            {(landingConfig.galeria || []).length < 6 && (
+              <label style={{
+                aspectRatio: '4/3', borderRadius: '8px', border: '2px dashed #aaa',
+                backgroundColor: '#fafafa', cursor: uploadingGaleria ? 'not-allowed' : 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '4px', color: '#888', fontSize: '12px', fontWeight: '600'
+              }}>
+                <Icon icon={uploadingGaleria ? 'eos-icons:loading' : 'mdi:image-plus'} width="24" />
+                {uploadingGaleria ? 'Enviando...' : 'Adicionar foto'}
+                <input type="file" accept="image/*" onChange={handleGaleriaUpload} disabled={uploadingGaleria} style={{ display: 'none' }} />
+              </label>
+            )}
+          </div>
+        </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.depoimentos}
+          onToggle={() => toggleLandingSecao('depoimentos')}
+          title="Depoimentos"
+          icon="mdi:star-outline">
+        {/* DEPOIMENTOS MANUAIS */}
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Depoimentos manuais
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Adicione depoimentos de alunos diretamente. Eles aparecem <strong>antes</strong> dos depoimentos automáticos vindos do NPS.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {(landingConfig.depoimentosManuais || []).map((d, i) => (
+              <div key={i} style={{
+                padding: '14px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: '#fafafa'
+              }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    value={d.nome || ''}
+                    onChange={e => atualizarDepoimento(i, 'nome', e.target.value)}
+                    placeholder="Nome do aluno"
+                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px' }}
+                  />
+                  <button onClick={() => removerDepoimento(i)}
+                    style={{
+                      padding: '8px 10px', backgroundColor: '#fef2f2', color: '#dc2626',
+                      border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center'
+                    }}>
+                    <Icon icon="mdi:delete-outline" width="16" />
+                  </button>
+                </div>
+                <textarea
+                  value={d.comentario || ''}
+                  onChange={e => atualizarDepoimento(i, 'comentario', e.target.value.slice(0, 280))}
+                  rows={2}
+                  placeholder="O que o aluno disse sobre a academia..."
+                  style={{
+                    width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px',
+                    fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            ))}
+            <button onClick={addDepoimento}
+              style={{
+                padding: '10px', backgroundColor: 'white', border: '1px dashed #aaa',
+                borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+                color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}>
+              <Icon icon="mdi:plus" width="16" /> Adicionar depoimento
+            </button>
+          </div>
+        </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.faq}
+          onToggle={() => toggleLandingSecao('faq')}
+          title="Perguntas frequentes (FAQ)"
+          icon="mdi:help-circle-outline">
+        {/* FAQ */}
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Lista de perguntas
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Responda dúvidas comuns: contrato, experimental, horários, valores...
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {(landingConfig.faq || []).map((f, i) => (
+              <div key={i} style={{
+                padding: '14px', border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: '#fafafa'
+              }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    value={f.pergunta || ''}
+                    onChange={e => atualizarFaq(i, 'pergunta', e.target.value.slice(0, 140))}
+                    placeholder="Pergunta"
+                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}
+                  />
+                  <button onClick={() => removerFaq(i)}
+                    style={{
+                      padding: '8px 10px', backgroundColor: '#fef2f2', color: '#dc2626',
+                      border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center'
+                    }}>
+                    <Icon icon="mdi:delete-outline" width="16" />
+                  </button>
+                </div>
+                <textarea
+                  value={f.resposta || ''}
+                  onChange={e => atualizarFaq(i, 'resposta', e.target.value.slice(0, 400))}
+                  rows={2}
+                  placeholder="Resposta"
+                  style={{
+                    width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px',
+                    fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            ))}
+            <button onClick={addFaq}
+              style={{
+                padding: '10px', backgroundColor: 'white', border: '1px dashed #aaa',
+                borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
+                color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}>
+              <Icon icon="mdi:plus" width="16" /> Adicionar pergunta
+            </button>
+          </div>
+        </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.ctaFinal}
+          onToggle={() => toggleLandingSecao('ctaFinal')}
+          title={'Seção "Bora começar?"'}
+          icon="mdi:bullhorn-outline">
+        <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#888' }}>
+          O bloco grande colorido com chamada final. O texto do botão é o mesmo do hero.
+        </p>
+
+          {/* Toggles de visibilidade */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', border: '1px solid #eee', borderRadius: '8px',
+              cursor: 'pointer',
+              backgroundColor: landingConfig.mostrarCtaFinal ? '#f0fdf4' : '#fff'
+            }}>
+              <input
+                type="checkbox"
+                checked={landingConfig.mostrarCtaFinal}
+                onChange={e => setLandingConfig(prev => ({ ...prev, mostrarCtaFinal: e.target.checked }))}
+              />
+              <Icon icon="mdi:bullhorn" width="18" style={{ color: landingConfig.corPrimaria }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>Mostrar seção inteira</div>
+                <div style={{ fontSize: '11px', color: '#999' }}>Título + subtítulo + botão</div>
+              </div>
+            </label>
+
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', border: '1px solid #eee', borderRadius: '8px',
+              cursor: landingConfig.mostrarCtaFinal ? 'pointer' : 'not-allowed',
+              opacity: landingConfig.mostrarCtaFinal ? 1 : 0.5,
+              backgroundColor: (landingConfig.mostrarCtaFinal && landingConfig.ctaFinalMostrarBotao) ? '#f0fdf4' : '#fff'
+            }}>
+              <input
+                type="checkbox"
+                disabled={!landingConfig.mostrarCtaFinal}
+                checked={landingConfig.ctaFinalMostrarBotao}
+                onChange={e => setLandingConfig(prev => ({ ...prev, ctaFinalMostrarBotao: e.target.checked }))}
+              />
+              <Icon icon="mdi:whatsapp" width="18" style={{ color: '#25d366' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>Mostrar botão WhatsApp nessa seção</div>
+                <div style={{ fontSize: '11px', color: '#999' }}>Desmarque se quer só o texto (sem CTA clicável)</div>
+              </div>
+            </label>
+          </div>
+
+          {/* Título */}
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+            Título
+          </label>
+          <input
+            type="text"
+            value={landingConfig.ctaFinalTitulo}
+            onChange={e => setLandingConfig(prev => ({ ...prev, ctaFinalTitulo: e.target.value.slice(0, 60) }))}
+            placeholder="Ex: Pronto pra começar?"
+            style={{
+              width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+              borderRadius: '8px', fontSize: '14px', marginBottom: '12px', boxSizing: 'border-box'
+            }}
+          />
+
+          {/* Subtítulo */}
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+            Subtítulo
+          </label>
+          <textarea
+            value={landingConfig.ctaFinalSubtitulo}
+            onChange={e => setLandingConfig(prev => ({ ...prev, ctaFinalSubtitulo: e.target.value.slice(0, 200) }))}
+            rows={2}
+            placeholder="Ex: Chama a gente no WhatsApp e agende sua aula experimental gratuita."
+            style={{
+              width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+              borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit',
+              resize: 'vertical', boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+            Padrão: "Bora começar?" / "Sua primeira aula experimental é por nossa conta."
+          </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.rodape}
+          onToggle={() => toggleLandingSecao('rodape')}
+          title="Rodapé da página"
+          icon="mdi:page-layout-footer">
+        <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#888' }}>
+          Redes sociais e texto extra que aparecem no final da página.
+        </p>
+
+          {/* Redes sociais */}
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+              Redes sociais (aparecem no rodapé)
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon icon="mdi:instagram" width="18" style={{ color: '#E4405F', flexShrink: 0 }} />
+                <input
+                  type="url"
+                  value={landingConfig.instagramUrl}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, instagramUrl: e.target.value }))}
+                  placeholder="https://instagram.com/suaempresa"
+                  style={{
+                    flex: 1, padding: '9px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                    fontSize: '13px', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon icon="mdi:facebook" width="18" style={{ color: '#1877F2', flexShrink: 0 }} />
+                <input
+                  type="url"
+                  value={landingConfig.facebookUrl}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, facebookUrl: e.target.value }))}
+                  placeholder="https://facebook.com/suaempresa"
+                  style={{
+                    flex: 1, padding: '9px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                    fontSize: '13px', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon icon="simple-icons:tiktok" width="16" style={{ color: '#000', flexShrink: 0 }} />
+                <input
+                  type="url"
+                  value={landingConfig.tiktokUrl}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, tiktokUrl: e.target.value }))}
+                  placeholder="https://tiktok.com/@suaempresa"
+                  style={{
+                    flex: 1, padding: '9px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                    fontSize: '13px', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Texto extra do rodapé */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+              Texto extra no rodapé
+            </label>
+            <p style={{ fontSize: '11px', color: '#888', margin: '0 0 6px' }}>
+              Ex: CNPJ, endereço completo, horário de funcionamento. Aparece acima do copyright.
+            </p>
+            <textarea
+              value={landingConfig.rodapeTexto}
+              onChange={e => setLandingConfig(prev => ({ ...prev, rodapeTexto: e.target.value.slice(0, 300) }))}
+              rows={3}
+              placeholder="Ex: CNPJ 12.345.678/0001-00 — Rua X, 123, Centro — Funcionamento seg-sex 6h às 22h"
+              style={{
+                width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+                fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box'
+              }}
+            />
+            <div style={{ fontSize: '11px', color: '#999', textAlign: 'right', marginTop: '4px' }}>
+              {(landingConfig.rodapeTexto || '').length}/300
+            </div>
+          </div>
+
+        </CollapseCard>
+
+        <CollapseCard
+          open={landingSecoesAbertas.avancado}
+          onToggle={() => toggleLandingSecao('avancado')}
+          title="Ordem e visibilidade das seções"
+          icon="mdi:sort">
+        {/* ORDEM DAS SEÇÕES */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Ordem das seções
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Reordene as seções da página. Use as setas para mover cada uma pra cima ou pra baixo.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {(landingConfig.ordemSecoes || ORDEM_PADRAO).map((secao, idx) => (
+              <div key={secao} style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 14px', backgroundColor: 'white',
+                border: '1px solid #e5e7eb', borderRadius: '8px'
+              }}>
+                <span style={{
+                  width: '22px', height: '22px', borderRadius: '50%',
+                  backgroundColor: '#f3f4f6', color: '#555',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '12px', fontWeight: '700', flexShrink: 0
+                }}>
+                  {idx + 1}
+                </span>
+                <span style={{ flex: 1, fontSize: '14px', color: '#333' }}>
+                  {LABELS_SECAO[secao] || secao}
+                </span>
+                <button
+                  onClick={() => moverSecao(idx, -1)}
+                  disabled={idx === 0}
+                  title="Mover pra cima"
+                  style={{
+                    width: '30px', height: '30px', padding: 0, backgroundColor: 'white',
+                    border: '1px solid #d1d5db', borderRadius: '6px',
+                    cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                    opacity: idx === 0 ? 0.3 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#555', fontSize: '18px', lineHeight: 1
+                  }}>
+                  ▲
+                </button>
+                <button
+                  onClick={() => moverSecao(idx, 1)}
+                  disabled={idx === (landingConfig.ordemSecoes || ORDEM_PADRAO).length - 1}
+                  title="Mover pra baixo"
+                  style={{
+                    width: '30px', height: '30px', padding: 0, backgroundColor: 'white',
+                    border: '1px solid #d1d5db', borderRadius: '6px',
+                    cursor: idx === (landingConfig.ordemSecoes || ORDEM_PADRAO).length - 1 ? 'not-allowed' : 'pointer',
+                    opacity: idx === (landingConfig.ordemSecoes || ORDEM_PADRAO).length - 1 ? 0.3 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#555', fontSize: '18px', lineHeight: 1
+                  }}>
+                  ▼
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Seções visíveis */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '10px' }}>
+            Seções visíveis na página
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { key: 'mostrarPlanos', label: 'Mostrar planos', icon: 'mdi:package-variant-closed' },
+              { key: 'mostrarGaleria', label: 'Mostrar galeria de fotos', icon: 'mdi:image-multiple' },
+              { key: 'mostrarHorarios', label: 'Mostrar horários das aulas', icon: 'mdi:calendar-clock' },
+              { key: 'mostrarDepoimentos', label: 'Mostrar depoimentos', icon: 'mdi:star' },
+              { key: 'mostrarFaq', label: 'Mostrar FAQ', icon: 'mdi:help-circle-outline' }
+            ].map(opt => (
+              <label key={opt.key} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', border: '1px solid #eee', borderRadius: '8px',
+                cursor: 'pointer', backgroundColor: landingConfig[opt.key] ? '#f0fdf4' : '#fafafa'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={landingConfig[opt.key]}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, [opt.key]: e.target.checked }))}
+                />
+                <Icon icon={opt.icon} width="18" style={{ color: '#666' }} />
+                <span style={{ fontSize: '14px', color: '#333' }}>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        </CollapseCard>
+
+        {/* Botão salvar */}
+        <button
+          onClick={salvarLanding}
+          disabled={salvandoLanding}
+          style={{
+            padding: '12px 28px',
+            backgroundColor: salvandoLanding ? '#ccc' : '#344848',
+            color: 'white', border: 'none', borderRadius: '8px',
+            fontSize: '14px', fontWeight: '600',
+            cursor: salvandoLanding ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            width: isMobile ? '100%' : 'auto', justifyContent: 'center'
+          }}
+        >
+          {salvandoLanding ? (
+            <><Icon icon="eos-icons:loading" width="18" /> Salvando...</>
+          ) : (
+            <><Icon icon="mdi:check" width="18" /> Salvar site</>
+          )}
+        </button>
+      </div>
+    )
+
+    // Mobile: só o form (preview seria esmagado). Desktop: 2 colunas.
+    if (isMobile || isTablet) {
+      return formContent
+    }
+
+    return (
+      <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start', width: '100%' }}>
+        {/* Form (lado esquerdo) */}
+        <div style={{ flex: '0 0 680px', minWidth: 0 }}>
+          {formContent}
+        </div>
+
+        {/* Preview (lado direito, sticky) */}
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          position: 'sticky',
+          top: '20px',
+          maxHeight: 'calc(100vh - 40px)'
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: '10px', padding: '0 4px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icon icon="mdi:eye-outline" width="18" style={{ color: '#666' }} />
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>
+                Preview ao vivo
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#999' }}>
+              atualiza enquanto você edita
+            </span>
+          </div>
+
+          {/* Container que simula um browser com escala */}
+          <div style={{
+            width: '100%',
+            height: 'calc(100vh - 100px)',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.08)',
+            backgroundColor: '#f8f9fa',
+            position: 'relative'
+          }}>
+            {/* Barra tipo browser */}
+            <div style={{
+              height: '28px',
+              backgroundColor: '#f1f5f9',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0 12px',
+              flexShrink: 0
+            }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
+              <div style={{
+                flex: 1,
+                textAlign: 'center',
+                fontSize: '10px',
+                color: '#888',
+                fontFamily: 'monospace',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                mensalli.com.br/{landingConfig.slug || 'meunegocio'}
+              </div>
+            </div>
+
+            {/* Conteudo do preview (scroll interno) */}
+            <div style={{
+              height: 'calc(100% - 28px)',
+              overflowY: 'auto',
+              overflowX: 'hidden'
+            }}>
+              <Suspense fallback={
+                <div style={{ padding: '40px', textAlign: 'center', color: '#888', fontSize: '13px' }}>
+                  Carregando preview...
+                </div>
+              }>
+                <LandingAcademia previewData={landingPreviewData} />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderAgendamento = () => {
     if (isLocked('premium')) {
       return (
@@ -3500,6 +4920,7 @@ function Configuracao() {
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
     { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
+    { id: 'landing', label: 'Site', icon: 'mdi:web' },
     { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' }
   ]
 
@@ -3595,6 +5016,7 @@ function Configuracao() {
               {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
               {abaAtiva === 'agendamento' && renderAgendamento()}
+              {abaAtiva === 'landing' && renderLanding()}
               {abaAtiva === 'anamnese' && renderAnamnese()}
             </>
           )}

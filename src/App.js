@@ -31,6 +31,7 @@ const CRM = lazy(() => import('./CRM'))
 const Admin = lazy(() => import('./Admin'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
+const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -107,6 +108,11 @@ function App() {
               ) : (
                 <Route path="/app/*" element={<Navigate to="/login" replace />} />
               )}
+
+              {/* Landing page publica da academia por slug raiz.
+                  Deve ser a ULTIMA rota — React Router prioriza as rotas
+                  nomeadas acima (/login, /app/*, etc) sobre esta dinamica. */}
+              <Route path="/:slug" element={<LandingAcademia />} />
             </Routes>
           </Suspense>
           <Toast />

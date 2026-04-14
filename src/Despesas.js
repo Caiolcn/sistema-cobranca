@@ -12,7 +12,7 @@ import { useUser } from './contexts/UserContext'
 import { exportarDespesas } from './utils/exportUtils'
 import { gerarRelatorioDespesasPDF } from './utils/pdfGenerator'
 
-export default function Despesas({ embedded = false, buttonsPortal = null, onCountUpdate = null }) {
+export default function Despesas({ embedded = false, buttonsPortal = null, onCountUpdate = null, autoAbrirNova = false, onAutoAbrirConsumido = null }) {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked, loading: loadingPlan } = useUserPlan()
@@ -331,6 +331,15 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
     setFormRecorrenciaTipo('mensal')
     setMostrarModalDespesa(true)
   }
+
+  // Auto-abrir modal quando vier do atalho da busca global
+  useEffect(() => {
+    if (autoAbrirNova && categorias.length >= 0 && !loading) {
+      abrirModalNovaDespesa()
+      if (onAutoAbrirConsumido) onAutoAbrirConsumido()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAbrirNova, loading])
 
   const abrirModalEditarDespesa = (despesa) => {
     setDespesaEditando(despesa)
