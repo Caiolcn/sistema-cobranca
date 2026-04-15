@@ -39,3 +39,29 @@ code {
 .sidebar-tooltip:hover::after {
   opacity: 1;
 }
+
+/* ============================================================
+   Fix do auto-zoom do iOS Safari
+   ============================================================
+   O Safari zoa automaticamente em inputs com font-size < 16px.
+   Essa regra força 16px em todos os campos de texto no mobile,
+   resolvendo o bug em todo o sistema de uma vez. Desktop mantém
+   o tamanho original (definido inline em cada componente).
+*/
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  input[type="password"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input:not([type]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
