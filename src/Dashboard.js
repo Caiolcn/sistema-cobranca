@@ -11,6 +11,7 @@ import { usePaymentNotifications } from './hooks/usePaymentNotifications'
 import { useAgendamentoNotifications } from './hooks/useAgendamentoNotifications'
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
+import NotificacoesDropdown, { contarNaoLidas } from './components/NotificacoesDropdown'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -21,6 +22,12 @@ export default function Dashboard() {
   const [menuAberto, setMenuAberto] = useState(false)
   const [configSubmenuAberto, setConfigSubmenuAberto] = useState(false)
   const [perfilMenuAberto, setPerfilMenuAberto] = useState(false)
+  const [buscaAberta, setBuscaAberta] = useState(false)
+  const [buscaTexto, setBuscaTexto] = useState('')
+  const [buscaResultados, setBuscaResultados] = useState([])
+  const [buscaCarregando, setBuscaCarregando] = useState(false)
+  const [notifAberta, setNotifAberta] = useState(false)
+  const [notifCount, setNotifCount] = useState(0)
 
   const { isMobile, isTablet } = useWindowSize()
 
@@ -35,6 +42,59 @@ export default function Dashboard() {
   // Notificacoes em tempo real de pagamentos e agendamentos
   usePaymentNotifications(realUserId || userId)
   useAgendamentoNotifications(realUserId || userId)
+
+  // Fechar dropdown de busca ao navegar pra outra tela
+  useEffect(() => {
+    setBuscaAberta(false)
+    setBuscaTexto('')
+    setNotifAberta(false)
+  }, [location.pathname])
+
+  // Contador de notificações não-lidas (roda a cada 2 min)
+  useEffect(() => {
+    const uid = adminViewingAs || userId
+    if (!uid) return
+    let cancelado = false
+    const atualizar = async () => {
+      try {
+        const n = await contarNaoLidas(uid)
+        if (!cancelado) setNotifCount(n)
+      } catch (_) {}
+    }
+    atualizar()
+    const timer = setInterval(atualizar, 120000)
+    return () => {
+      cancelado = true
+      clearInterval(timer)
+    }
+  }, [userId, adminViewingAs])
+
+  // Busca ao vivo de alunos (debounce 250ms)
+  useEffect(() => {
+    const termo = buscaTexto.trim()
+    if (termo.length < 2) {
+      setBuscaResultados([])
+      setBuscaCarregando(false)
+      return
+    }
+    const uid = adminViewingAs || userId
+    if (!uid) return
+    setBuscaCarregando(true)
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('devedores')
+        .select('id, nome, telefone, foto_url, planos:plano_id(nome)')
+        .eq('user_id', uid)
+        .or('lixo.is.null,lixo.eq.false')
+        .or(`nome.ilike.%${termo}%,telefone.ilike.%${termo}%`)
+        .order('nome', { ascending: true })
+        .limit(8)
+      if (error) console.error('Busca alunos erro:', error)
+      setBuscaResultados(data || [])
+      setBuscaCarregando(false)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [buscaTexto, userId, adminViewingAs])
 
   // Determinar tela ativa pela rota atual
   const telaAtiva = location.pathname.replace('/app/', '') || 'home'
@@ -168,8 +228,205 @@ export default function Dashboard() {
             alt="Mensalli"
             style={{ height: '28px', objectFit: 'contain' }}
           />
-          <div style={{ width: '40px', flexShrink: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            <button
+              onClick={() => setBuscaAberta(true)}
+              title="Buscar"
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#333'
+              }}
+            >
+              <Icon icon="fluent:search-20-regular" width="22" height="22" />
+            </button>
+            <button
+              onClick={() => navigate('/app/ajuda')}
+              title="Ajuda"
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#333'
+              }}
+            >
+              <Icon icon="fluent:question-circle-20-regular" width="22" height="22" />
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Dropdown de busca no mobile */}
+      {isMobile && buscaAberta && (
+        <>
+          <div
+            onClick={() => { setBuscaAberta(false); setBuscaTexto('') }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 10000 }}
+          />
+          <div style={{
+            position: 'fixed',
+            top: '64px',
+            left: '8px',
+            right: '8px',
+            maxHeight: 'calc(100vh - 80px)',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.18)',
+            zIndex: 10001,
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{
+              padding: '10px',
+              borderBottom: '1px solid #f0f0f0',
+              flexShrink: 0
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                backgroundColor: '#f5f7fa',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <Icon icon="fluent:search-20-regular" width="18" height="18" color="#999" />
+                <input
+                  autoFocus
+                  placeholder="Buscar aluno por nome ou telefone..."
+                  value={buscaTexto}
+                  onChange={(e) => setBuscaTexto(e.target.value)}
+                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '14px', color: '#333' }}
+                />
+                {buscaTexto && (
+                  <Icon
+                    icon="mdi:close-circle"
+                    width="18"
+                    height="18"
+                    color="#999"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setBuscaTexto('')}
+                  />
+                )}
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+            {buscaTexto.trim().length >= 2 && (
+              <>
+                <div style={{ padding: '8px 12px 4px', fontSize: '11px', fontWeight: '700', color: '#999', letterSpacing: '0.5px' }}>
+                  ALUNOS
+                </div>
+                {buscaCarregando && (
+                  <div style={{ padding: '16px', fontSize: '14px', color: '#999', textAlign: 'center' }}>
+                    Buscando...
+                  </div>
+                )}
+                {!buscaCarregando && buscaResultados.length === 0 && (
+                  <div style={{ padding: '16px', fontSize: '14px', color: '#999', textAlign: 'center' }}>
+                    Nenhum aluno encontrado
+                  </div>
+                )}
+                {!buscaCarregando && buscaResultados.map((aluno) => (
+                  <div
+                    key={aluno.id}
+                    onClick={() => {
+                      navigate(`/app/clientes?abrir=${aluno.id}`)
+                      setBuscaAberta(false)
+                      setBuscaTexto('')
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {aluno.foto_url ? (
+                      <img src={aluno.foto_url} alt={aluno.nome} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#344848', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>
+                        {(aluno.nome || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {aluno.nome}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                        {aluno.telefone || 'Sem telefone'}{aluno.planos?.nome ? ` · ${aluno.planos.nome}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '8px' }} />
+              </>
+            )}
+            <div style={{ padding: '8px 12px 4px', fontSize: '11px', fontWeight: '700', color: '#999', letterSpacing: '0.5px' }}>
+              AÇÕES RÁPIDAS
+            </div>
+            {[
+              { icon: 'fluent:person-add-20-regular', cor: '#3b82f6', bg: '#eff6ff', titulo: 'Novo Aluno', sub: 'Cadastrar aluno e mensalidade', acao: () => navigate('/app/clientes?novo=true') },
+              { icon: 'fluent:receipt-add-20-regular', cor: '#ef4444', bg: '#fef2f2', titulo: 'Nova Despesa', sub: 'Registrar uma despesa do mês', acao: () => navigate('/app/financeiro?novadespesa=true') },
+              { icon: 'fluent:chat-20-regular', cor: '#f59e0b', bg: '#fffbeb', titulo: 'CRM de Leads', sub: 'Ver conversas e leads do bot', acao: () => navigate('/app/crm') },
+              { icon: 'fluent:people-24-regular', cor: '#8b5cf6', bg: '#f5f3ff', titulo: 'Alunos', sub: 'Lista completa de alunos', acao: () => navigate('/app/clientes') },
+              { icon: 'fluent:calendar-20-regular', cor: '#ec4899', bg: '#fdf2f8', titulo: 'Horários', sub: 'Grade de aulas da semana', acao: () => navigate('/app/horarios') },
+              { icon: 'fluent:money-20-regular', cor: '#059669', bg: '#ecfdf5', titulo: 'Financeiro', sub: 'Cobranças, recebimentos e despesas', acao: () => navigate('/app/financeiro') },
+              { icon: 'fluent:settings-20-regular', cor: '#6b7280', bg: '#f3f4f6', titulo: 'Configurações', sub: 'Empresa, plano e integrações', acao: () => navigate('/app/configuracao') },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                onClick={() => { item.acao(); setBuscaAberta(false); setBuscaTexto('') }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: item.bg,
+                  color: item.cor,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Icon icon={item.icon} width="22" height="22" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>
+                    {item.titulo}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>
+                    {item.sub}
+                  </div>
+                </div>
+              </div>
+            ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Menu lateral */}
@@ -256,37 +513,6 @@ export default function Dashboard() {
           >
             <Icon icon="fluent:calendar-20-regular" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Horários</span>}
-          </div>
-
-          {/* Avisos */}
-          <div
-            className={!isMobile ? 'sidebar-tooltip' : ''}
-            data-tooltip="Avisos"
-            onClick={() => { navigate('/app/avisos'); if (isMobile) setMenuAberto(false) }}
-            style={{
-              width: isMobile ? '100%' : '40px',
-              height: '40px',
-              backgroundColor: telaAtiva === 'avisos' ? '#333' : 'transparent',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isMobile ? 'flex-start' : 'center',
-              gap: isMobile ? '12px' : '0',
-              paddingLeft: isMobile ? '12px' : '0',
-              color: telaAtiva === 'avisos' ? 'white' : '#666',
-              fontSize: '20px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (telaAtiva !== 'avisos') e.currentTarget.style.backgroundColor = '#f5f5f5'
-            }}
-            onMouseLeave={(e) => {
-              if (telaAtiva !== 'avisos') e.currentTarget.style.backgroundColor = 'transparent'
-            }}
-          >
-            <Icon icon="fluent:megaphone-20-regular" width="22" height="22" />
-            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Avisos</span>}
           </div>
 
           {/* Clientes */}
@@ -460,8 +686,8 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>CRM</span>}
           </div>
 
-          {/* Configuração */}
-          {isMobile ? (
+          {/* Configuração (só no mobile — no desktop fica no ícone de engrenagem da top bar) */}
+          {isMobile && (
             /* Mobile: Menu com submenu expansível */
             <div style={{ width: '100%' }}>
               <div
@@ -537,34 +763,6 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-            </div>
-          ) : (
-            /* Desktop: Item simples */
-            <div
-              className="sidebar-tooltip"
-              data-tooltip="Configurações"
-              onClick={() => navigate('/app/configuracao')}
-              style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: telaAtiva === 'configuracao' ? '#333' : 'transparent',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: telaAtiva === 'configuracao' ? 'white' : '#666',
-                fontSize: '20px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = '#f5f5f5'
-              }}
-              onMouseLeave={(e) => {
-                if (telaAtiva !== 'configuracao') e.currentTarget.style.backgroundColor = 'transparent'
-              }}
-            >
-              <Icon icon="fluent:settings-20-regular" width="22" height="22" />
             </div>
           )}
         </div>
@@ -733,6 +931,328 @@ export default function Dashboard() {
         flexDirection: 'column',
         paddingTop: isMobile ? '64px' : '0'
       }}>
+        {/* Topbar desktop (estilo Krooa) */}
+        {!isMobile && (
+          <div style={{
+            height: '56px',
+            backgroundColor: 'white',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 20px',
+            gap: '16px',
+            flexShrink: 0,
+            position: 'relative',
+            zIndex: 100
+          }}>
+            <img
+              src="/logo-f.png"
+              alt="Mensalli"
+              style={{ height: '28px', objectFit: 'contain' }}
+            />
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+              <div style={{ position: 'relative', width: '100%', maxWidth: '420px' }}>
+                {buscaAberta && (
+                  <div
+                    onClick={() => setBuscaAberta(false)}
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200 }}
+                  />
+                )}
+                <div
+                  onClick={() => setBuscaAberta(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    backgroundColor: '#f5f7fa',
+                    borderRadius: '8px',
+                    border: `1px solid ${buscaAberta ? '#344848' : '#e5e7eb'}`,
+                    cursor: 'text',
+                    position: 'relative',
+                    zIndex: 201
+                  }}
+                >
+                  <Icon icon="fluent:search-20-regular" width="18" height="18" color="#999" />
+                  <input
+                    placeholder="Buscar aluno por nome ou telefone..."
+                    value={buscaTexto}
+                    onChange={(e) => { setBuscaTexto(e.target.value); setBuscaAberta(true) }}
+                    onFocus={() => setBuscaAberta(true)}
+                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', color: '#333' }}
+                  />
+                  {buscaTexto ? (
+                    <Icon
+                      icon="mdi:close-circle"
+                      width="16"
+                      height="16"
+                      color="#999"
+                      style={{ cursor: 'pointer' }}
+                      onClick={(e) => { e.stopPropagation(); setBuscaTexto('') }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#999', backgroundColor: 'white', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
+                      Ctrl K
+                    </span>
+                  )}
+                </div>
+                {buscaAberta && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                    padding: '8px',
+                    zIndex: 202,
+                    maxHeight: '420px',
+                    overflowY: 'auto'
+                  }}>
+                    {buscaTexto.trim().length >= 2 && (
+                      <>
+                        <div style={{ padding: '8px 12px 4px', fontSize: '11px', fontWeight: '700', color: '#999', letterSpacing: '0.5px' }}>
+                          ALUNOS
+                        </div>
+                        {buscaCarregando && (
+                          <div style={{ padding: '12px', fontSize: '13px', color: '#999', textAlign: 'center' }}>
+                            Buscando...
+                          </div>
+                        )}
+                        {!buscaCarregando && buscaResultados.length === 0 && (
+                          <div style={{ padding: '12px', fontSize: '13px', color: '#999', textAlign: 'center' }}>
+                            Nenhum aluno encontrado
+                          </div>
+                        )}
+                        {!buscaCarregando && buscaResultados.map((aluno) => (
+                          <div
+                            key={aluno.id}
+                            onClick={() => {
+                              navigate(`/app/clientes?abrir=${aluno.id}`)
+                              setBuscaAberta(false)
+                              setBuscaTexto('')
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '10px 12px',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.15s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            {aluno.foto_url ? (
+                              <img src={aluno.foto_url} alt={aluno.nome} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#344848', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '600', flexShrink: 0 }}>
+                                {(aluno.nome || '?').charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {aluno.nome}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>
+                                {aluno.telefone || 'Sem telefone'}{aluno.planos?.nome ? ` · ${aluno.planos.nome}` : ''}
+                              </div>
+                            </div>
+                            <Icon icon="fluent:chevron-right-16-regular" width="16" height="16" color="#999" />
+                          </div>
+                        ))}
+                        <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '6px 8px' }} />
+                      </>
+                    )}
+                    <div style={{ padding: '8px 12px 4px', fontSize: '11px', fontWeight: '700', color: '#999', letterSpacing: '0.5px' }}>
+                      AÇÕES RÁPIDAS
+                    </div>
+                    {[
+                      { icon: 'fluent:person-add-20-regular', cor: '#3b82f6', bg: '#eff6ff', titulo: 'Novo Aluno', sub: 'Cadastrar aluno e mensalidade', acao: () => navigate('/app/clientes?novo=true') },
+                      { icon: 'fluent:receipt-add-20-regular', cor: '#ef4444', bg: '#fef2f2', titulo: 'Nova Despesa', sub: 'Registrar uma despesa do mês', acao: () => navigate('/app/financeiro?novadespesa=true') },
+                      { icon: 'fluent:chat-20-regular', cor: '#f59e0b', bg: '#fffbeb', titulo: 'CRM de Leads', sub: 'Ver conversas e leads do bot', acao: () => navigate('/app/crm') },
+                      { icon: 'fluent:people-24-regular', cor: '#8b5cf6', bg: '#f5f3ff', titulo: 'Alunos', sub: 'Lista completa de alunos', acao: () => navigate('/app/clientes') },
+                      { icon: 'fluent:calendar-20-regular', cor: '#ec4899', bg: '#fdf2f8', titulo: 'Horários', sub: 'Grade de aulas da semana', acao: () => navigate('/app/horarios') },
+                      { icon: 'fluent:money-20-regular', cor: '#059669', bg: '#ecfdf5', titulo: 'Financeiro', sub: 'Cobranças, recebimentos e despesas', acao: () => navigate('/app/financeiro') },
+                      { icon: 'fluent:settings-20-regular', cor: '#6b7280', bg: '#f3f4f6', titulo: 'Configurações', sub: 'Empresa, plano e integrações', acao: () => navigate('/app/configuracao') },
+                    ].map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => { item.acao(); setBuscaAberta(false) }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '8px',
+                          backgroundColor: item.bg,
+                          color: item.cor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Icon icon={item.icon} width="20" height="20" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#111' }}>
+                            {item.titulo}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>
+                            {item.sub}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ position: 'relative' }}>
+                {notifAberta && (
+                  <div
+                    onClick={() => setNotifAberta(false)}
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200 }}
+                  />
+                )}
+                <div
+                  title="Notificações"
+                  onClick={() => setNotifAberta((v) => !v)}
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#555',
+                    position: 'relative',
+                    zIndex: 201
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Icon icon="fluent:alert-20-regular" width="20" height="20" />
+                  {notifCount > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '4px',
+                      minWidth: '16px',
+                      height: '16px',
+                      padding: '0 4px',
+                      borderRadius: '999px',
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid white',
+                      boxSizing: 'content-box'
+                    }}>
+                      {notifCount > 9 ? '9+' : notifCount}
+                    </div>
+                  )}
+                </div>
+                {notifAberta && (
+                  <NotificacoesDropdown
+                    userId={adminViewingAs || userId}
+                    onClose={() => setNotifAberta(false)}
+                    onMarcarLidos={() => setNotifCount(0)}
+                  />
+                )}
+              </div>
+              <div
+                title="Ajuda"
+                onClick={() => navigate('/app/ajuda')}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#555'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Icon icon="fluent:question-circle-20-regular" width="20" height="20" />
+              </div>
+              <div
+                title="Configurações"
+                onClick={() => navigate('/app/configuracao')}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#555'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Icon icon="fluent:settings-20-regular" width="20" height="20" />
+              </div>
+              <div
+                onClick={() => setMostrarPerfil(true)}
+                title="Meu perfil"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '4px 10px 4px 4px',
+                  marginLeft: '6px',
+                  borderRadius: '999px',
+                  cursor: 'pointer',
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#fafafa'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fafafa'}
+              >
+                <div style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  backgroundColor: '#344848',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}>
+                  {((userData?.nome_completo || userData?.email || 'U')).charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: '13px', color: '#333', fontWeight: '500', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {userData?.nome_empresa || userData?.nome_completo || 'Minha conta'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Barra Admin: seletor de cliente */}
         {isAdmin && adminBarVisivel && !isMobile && (
           <div style={{

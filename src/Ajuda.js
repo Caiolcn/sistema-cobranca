@@ -1,86 +1,394 @@
+import { useState } from 'react'
 import { Icon } from '@iconify/react'
 import './Ajuda.css'
 
-const FAQ_ITEMS = [
+// Videos da central de ajuda. videoUrl: null = placeholder "Em breve"
+// Quando o usuario subir os videos, basta preencher o videoUrl de cada item.
+const CATEGORIAS = [
   {
-    pergunta: 'Como funciona a cobrança automática?',
-    resposta: 'O Mensalli envia lembretes automáticos via WhatsApp em até 3 momentos: 3 dias antes do vencimento, no dia do vencimento e 3 dias após. Cada automação pode ser ativada ou desativada individualmente em Configurações. As mensagens são enviadas apenas para alunos com mensalidades pendentes.'
+    titulo: 'GESTÃO',
+    videos: [
+      {
+        id: 'dashboard',
+        titulo: 'Dashboard',
+        descricao: 'Visão geral do sistema com métricas, recebimentos e resumo do dia',
+        icon: 'material-symbols-light:home-outline-rounded',
+        cor: '#3b82f6',
+        bg: '#eff6ff',
+        videoUrl: null
+      },
+      {
+        id: 'alunos',
+        titulo: 'Alunos',
+        descricao: 'Cadastrar, editar e gerenciar alunos e mensalidades',
+        icon: 'fluent:people-24-regular',
+        cor: '#8b5cf6',
+        bg: '#f5f3ff',
+        videoUrl: null
+      },
+      {
+        id: 'horarios',
+        titulo: 'Grade de Horários',
+        descricao: 'Organizar turmas, vincular alunos e controlar presença',
+        icon: 'fluent:calendar-20-regular',
+        cor: '#ec4899',
+        bg: '#fdf2f8',
+        videoUrl: null
+      },
+      {
+        id: 'financeiro',
+        titulo: 'Financeiro',
+        descricao: 'Acompanhar mensalidades, cobranças avulsas e recebimentos',
+        icon: 'fluent:money-20-regular',
+        cor: '#059669',
+        bg: '#ecfdf5',
+        videoUrl: null
+      },
+      {
+        id: 'despesas',
+        titulo: 'Despesas',
+        descricao: 'Cadastrar categorias, despesas recorrentes e controle de gastos',
+        icon: 'mdi:wallet-outline',
+        cor: '#ef4444',
+        bg: '#fef2f2',
+        videoUrl: null
+      },
+      {
+        id: 'relatorios',
+        titulo: 'Relatórios',
+        descricao: 'Analisar faturamento, inadimplência e desempenho do mês',
+        icon: 'fluent:chart-multiple-20-regular',
+        cor: '#f59e0b',
+        bg: '#fffbeb',
+        videoUrl: null
+      }
+    ]
   },
   {
-    pergunta: 'Como conectar meu WhatsApp?',
-    resposta: 'Acesse o menu WhatsApp na barra lateral e escolha entre duas formas: escanear o QR Code com seu celular ou usar o código de pareamento (ideal para conectar pelo próprio celular). Vá em WhatsApp → Dispositivos conectados → Conectar dispositivo. A conexão é feita em segundos e seu WhatsApp continua funcionando normalmente.'
+    titulo: 'COMUNICAÇÃO',
+    videos: [
+      {
+        id: 'whatsapp',
+        titulo: 'Conectar WhatsApp',
+        descricao: 'Como conectar seu WhatsApp via QR Code ou código de pareamento',
+        icon: 'mdi:whatsapp',
+        cor: '#10b981',
+        bg: '#ecfdf5',
+        videoUrl: null
+      },
+      {
+        id: 'templates',
+        titulo: 'Templates de Mensagens',
+        descricao: 'Personalizar mensagens automáticas de cobrança e lembretes',
+        icon: 'fluent:chat-20-regular',
+        cor: '#0ea5e9',
+        bg: '#eff6ff',
+        videoUrl: null
+      },
+      {
+        id: 'bot',
+        titulo: 'Bot & CRM de Leads',
+        descricao: 'Atendimento automático via WhatsApp e captura de leads',
+        icon: 'fluent:bot-20-regular',
+        cor: '#8b5cf6',
+        bg: '#f5f3ff',
+        videoUrl: null
+      },
+      {
+        id: 'avisos',
+        titulo: 'Avisos em Massa',
+        descricao: 'Enviar comunicados para grupos de alunos de uma só vez',
+        icon: 'fluent:megaphone-20-regular',
+        cor: '#f59e0b',
+        bg: '#fffbeb',
+        videoUrl: null
+      }
+    ]
   },
   {
-    pergunta: 'Posso personalizar as mensagens?',
-    resposta: 'Sim! Você pode personalizar todos os templates de mensagens em Configurações → Templates de Mensagens. Cada template suporta variáveis dinâmicas como nome do aluno, data de vencimento, valor e chave PIX. O número de templates editáveis depende do seu plano.'
-  },
-  {
-    pergunta: 'Como meus alunos pagam?',
-    resposta: 'Seus alunos recebem um link de pagamento via WhatsApp com a opção de pagar por PIX (QR Code ou copia e cola). Basta configurar sua chave PIX em Configurações → Dados da Empresa. O pagamento é rápido e seguro.'
-  },
-  {
-    pergunta: 'Posso importar meus alunos de uma planilha?',
-    resposta: 'Sim! Na página de Alunos, clique em "Importar CSV". O sistema aceita arquivos .csv com campos como nome, telefone, CPF, plano e data de vencimento. Há um modelo disponível para download. O sistema detecta automaticamente as colunas e valida os dados antes de importar.'
-  },
-  {
-    pergunta: 'Como funciona a grade de horários?',
-    resposta: 'A grade de horários permite organizar os horários das suas turmas e vincular alunos a cada horário. Você pode filtrar por dia da semana, buscar por aluno e o sistema envia lembretes automáticos 1 hora antes de cada aula via WhatsApp.'
-  },
-  {
-    pergunta: 'Posso controlar minhas despesas?',
-    resposta: 'Sim! O módulo de Despesas permite cadastrar gastos com categorias personalizadas, definir recorrência (mensal, semanal, etc.) e acompanhar o que está pendente ou pago. Você também pode exportar relatórios em CSV e PDF.'
-  },
-  {
-    pergunta: 'Meus dados estão seguros?',
-    resposta: 'Sim! Utilizamos criptografia de ponta a ponta, autenticação segura e armazenamento em nuvem com backup automático. Seus dados e os dados dos seus alunos estão protegidos com os mais altos padrões de segurança.'
+    titulo: 'CONFIGURAÇÕES',
+    videos: [
+      {
+        id: 'empresa',
+        titulo: 'Dados da Empresa',
+        descricao: 'Configurar nome, logo, endereço e chave PIX',
+        icon: 'fluent:building-20-regular',
+        cor: '#6366f1',
+        bg: '#eef2ff',
+        videoUrl: null
+      },
+      {
+        id: 'planos',
+        titulo: 'Planos e Preços',
+        descricao: 'Criar planos mensais, trimestrais, semestrais e por aulas',
+        icon: 'fluent:tag-20-regular',
+        cor: '#10b981',
+        bg: '#ecfdf5',
+        videoUrl: null
+      },
+      {
+        id: 'automacoes',
+        titulo: 'Automações',
+        descricao: 'Configurar lembretes automáticos de cobrança e aulas',
+        icon: 'fluent:flash-20-regular',
+        cor: '#f59e0b',
+        bg: '#fffbeb',
+        videoUrl: null
+      },
+      {
+        id: 'agendamento',
+        titulo: 'Agendamento Online',
+        descricao: 'Link público para alunos marcarem aulas sozinhos',
+        icon: 'fluent:calendar-checkmark-20-regular',
+        cor: '#0891b2',
+        bg: '#ecfeff',
+        videoUrl: null
+      },
+      {
+        id: 'anamnese',
+        titulo: 'Anamnese',
+        descricao: 'Personalizar perguntas de anamnese para os alunos',
+        icon: 'fluent:clipboard-text-ltr-20-regular',
+        cor: '#7c3aed',
+        bg: '#f5f3ff',
+        videoUrl: null
+      },
+      {
+        id: 'site',
+        titulo: 'Site',
+        descricao: 'Criar o site público da sua empresa para captar alunos',
+        icon: 'fluent:globe-20-regular',
+        cor: '#ec4899',
+        bg: '#fdf2f8',
+        videoUrl: null
+      }
+    ]
   }
 ]
 
 export default function Ajuda() {
+  const [videoAberto, setVideoAberto] = useState(null)
+
   const abrirWhatsApp = () => {
     window.open('https://wa.me/5562981618862?text=Olá! Preciso de ajuda com o Mensalli', '_blank')
   }
 
   return (
-    <div className="ajuda-container">
-      {/* Header com botão de suporte */}
-      <div className="ajuda-header">
+    <div style={{ padding: '24px', flex: 1, width: '100%', backgroundColor: '#ffffff', minHeight: '100vh', boxSizing: 'border-box' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h1>Central de Ajuda</h1>
-          <p>Estamos aqui para ajudar você a aproveitar ao máximo o Mensalli</p>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Central de Ajuda</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
+            Assista aos tutoriais para aprender a usar cada módulo do sistema
+          </p>
         </div>
-        <button className="ajuda-whatsapp-btn" onClick={abrirWhatsApp}>
-          <Icon icon="mdi:whatsapp" width="18" />
+        <button
+          onClick={abrirWhatsApp}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 16px',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Icon icon="mdi:whatsapp" width="18" height="18" />
           Falar com Suporte
         </button>
       </div>
 
-      {/* FAQ */}
-      <h2 className="ajuda-faq-title">Perguntas Frequentes</h2>
-      <div className="ajuda-faq-list">
-        {FAQ_ITEMS.map((item, i) => (
-          <div key={i} className="ajuda-faq-item">
-            <div className="ajuda-faq-question">
-              <div className="ajuda-faq-question-icon">
-                <Icon icon="mdi:help-circle-outline" width="18" />
-              </div>
-              <span>{item.pergunta}</span>
-            </div>
-            <div className="ajuda-faq-answer">{item.resposta}</div>
+      {/* Categorias */}
+      {CATEGORIAS.map((categoria) => (
+        <div key={categoria.titulo} style={{ marginBottom: '32px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#9ca3af', letterSpacing: '1px', marginBottom: '12px' }}>
+            {categoria.titulo}
           </div>
-        ))}
-      </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '16px'
+          }}>
+            {categoria.videos.map((video) => (
+              <div
+                key={video.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#e5e7eb'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    backgroundColor: video.bg,
+                    color: video.cor,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Icon icon={video.icon} width="24" height="24" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#111', marginBottom: '4px' }}>
+                      {video.titulo}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>
+                      {video.descricao}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setVideoAberto(video)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    backgroundColor: 'white',
+                    color: '#111',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    marginTop: 'auto'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <Icon icon="fluent:play-20-regular" width="16" height="16" />
+                  Assistir
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
 
-      {/* Card final */}
-      <div className="ajuda-bottom-card">
-        <h3>Não encontrou o que procurava?</h3>
-        <p>Entre em contato conosco e teremos prazer em ajudar!</p>
-        <button className="ajuda-bottom-btn" onClick={abrirWhatsApp}>
-          <Icon icon="mdi:whatsapp" width="18" />
-          Falar com Suporte
-        </button>
-      </div>
-      <div style={{ height: '60px' }} />
+      {/* Modal de Video */}
+      {videoAberto && (
+        <div
+          onClick={() => setVideoAberto(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '840px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px'
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {videoAberto.titulo}
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
+                  {videoAberto.descricao}
+                </div>
+              </div>
+              <button
+                onClick={() => setVideoAberto(null)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  color: '#6b7280'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Icon icon="mdi:close" width="22" height="22" />
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              backgroundColor: '#000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              aspectRatio: '16 / 9',
+              minHeight: '300px'
+            }}>
+              {videoAberto.videoUrl ? (
+                <video
+                  src={videoAberto.videoUrl}
+                  controls
+                  autoPlay
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>
+                  <Icon icon="fluent:video-clip-20-regular" width="48" height="48" />
+                  <div style={{ fontSize: '15px', fontWeight: '600', marginTop: '12px', color: '#d1d5db' }}>
+                    Vídeo em breve
+                  </div>
+                  <div style={{ fontSize: '13px', marginTop: '4px' }}>
+                    Esse tutorial ainda está sendo gravado
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

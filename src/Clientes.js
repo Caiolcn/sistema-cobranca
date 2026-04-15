@@ -35,7 +35,7 @@ export default function Clientes() {
   const [emailEdit, setEmailEdit] = useState('')
   const [responsavelNomeEdit, setResponsavelNomeEdit] = useState('')
   const [responsavelTelefoneEdit, setResponsavelTelefoneEdit] = useState('')
-  const [busca, setBusca] = useState('')
+  const [busca, setBusca] = useState(searchParams.get('busca') || '')
 
   // Filtros
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
@@ -108,6 +108,20 @@ export default function Clientes() {
       carregarPlanos()
     }
   }, [userId])
+
+  // Auto-abrir ficha quando vier da busca global (?abrir=<id>)
+  useEffect(() => {
+    const abrirId = searchParams.get('abrir')
+    if (!abrirId || clientes.length === 0) return
+    const alvo = clientes.find(c => c.id === abrirId)
+    if (alvo) {
+      handleClienteClick(alvo)
+      const next = new URLSearchParams(searchParams)
+      next.delete('abrir')
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes, searchParams])
 
   // Fechar popover ao clicar fora
   useEffect(() => {

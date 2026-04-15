@@ -120,7 +120,7 @@ export default function CRM() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>CRM de Leads</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>CRM de Leads</h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'} no funil
           </p>

@@ -345,7 +345,8 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
             plano: planoFromRef,
             limite_mensal: limiteMensal,
             trial_ativo: false,
-            trial_fim: dataExpiracao.toISOString(), // Reutilizando campo para expiração do Pix
+            trial_fim: dataExpiracao.toISOString(),
+            plano_vencimento: dataExpiracao.toISOString(),
             status_conta: 'ativo',
             updated_at: new Date().toISOString(),
           })
