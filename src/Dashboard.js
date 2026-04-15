@@ -310,7 +310,7 @@ export default function Dashboard() {
                   placeholder="Buscar aluno por nome ou telefone..."
                   value={buscaTexto}
                   onChange={(e) => setBuscaTexto(e.target.value)}
-                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '14px', color: '#333' }}
+                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '16px', color: '#333' }}
                 />
                 {buscaTexto && (
                   <Icon
@@ -979,7 +979,7 @@ export default function Dashboard() {
                     value={buscaTexto}
                     onChange={(e) => { setBuscaTexto(e.target.value); setBuscaAberta(true) }}
                     onFocus={() => setBuscaAberta(true)}
-                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', color: '#333' }}
+                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: isMobile ? '16px' : '13px', color: '#333' }}
                   />
                   {buscaTexto ? (
                     <Icon

@@ -2376,46 +2376,78 @@ export default function WhatsAppConexao() {
 
       {/* Menu de Abas + Status */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isSmallScreen ? '16px' : '24px', flexWrap: 'wrap' }}>
-        {/* Tabs segmented control */}
-        <div style={{
-          display: 'inline-flex',
-          gap: '4px',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '10px',
-          padding: '4px'
-        }}>
-          {[
-            { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
-            { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' },
-            { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' },
-            { id: 'bot', label: 'Bot', icon: 'mdi:robot-happy' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+        {/* Tabs - dropdown no mobile, segmented control no desktop */}
+        {isMobile ? (
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
               style={{
-                padding: isSmallScreen ? '8px 16px' : '8px 20px',
-                backgroundColor: activeTab === tab.id ? 'white' : 'transparent',
-                color: activeTab === tab.id ? '#1a1a1a' : '#555',
-                border: 'none',
-                borderRadius: '8px',
+                width: '100%',
+                padding: '12px 40px 12px 14px',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #e5e7eb',
+                borderRadius: '10px',
+                fontSize: '15px',
+                fontWeight: '600',
+                color: '#1a1a1a',
                 cursor: 'pointer',
-                fontSize: isSmallScreen ? '13px' : '14px',
-                fontWeight: activeTab === tab.id ? '600' : '400',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                opacity: activeTab === tab.id ? 1 : 0.75
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 12px center',
+                backgroundSize: '20px',
+                boxSizing: 'border-box'
               }}
             >
-              <Icon icon={tab.icon} width={isSmallScreen ? 16 : 18} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <option value="conexao">Conexão</option>
+              <option value="templates">Templates de Mensagens</option>
+              <option value="campanhas">Campanhas</option>
+              <option value="bot">Bot</option>
+            </select>
+          </div>
+        ) : (
+          <div style={{
+            display: 'inline-flex',
+            gap: '4px',
+            backgroundColor: '#f3f4f6',
+            borderRadius: '10px',
+            padding: '4px'
+          }}>
+            {[
+              { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
+              { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' },
+              { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' },
+              { id: 'bot', label: 'Bot', icon: 'mdi:robot-happy' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: isSmallScreen ? '8px 16px' : '8px 20px',
+                  backgroundColor: activeTab === tab.id ? 'white' : 'transparent',
+                  color: activeTab === tab.id ? '#1a1a1a' : '#555',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: isSmallScreen ? '13px' : '14px',
+                  fontWeight: activeTab === tab.id ? '600' : '400',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                  boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  opacity: activeTab === tab.id ? 1 : 0.75
+                }}
+              >
+                <Icon icon={tab.icon} width={isSmallScreen ? 16 : 18} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Status badge + Desconectar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
