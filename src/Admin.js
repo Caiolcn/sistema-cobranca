@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
-import RetencaoSaas from './components/RetencaoSaas'
+// import RetencaoSaas from './components/RetencaoSaas' // TODO: reativar quando estiver pronto
 
 export default function Admin() {
   const { isAdmin, loading: userLoading } = useUser()
@@ -777,10 +777,10 @@ export default function Admin() {
         {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''} exibido{clientesFiltrados.length !== 1 ? 's' : ''}
       </div>
 
-      {/* Retenção SaaS - painel de mensagens de retenção manuais */}
-      <div style={{ marginTop: '40px' }}>
+      {/* Retenção SaaS - painel de retenção manual (em estruturação — reativar depois) */}
+      {/* <div style={{ marginTop: '40px' }}>
         <RetencaoSaas />
-      </div>
+      </div> */}
     </div>
   )
 }

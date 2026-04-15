@@ -136,9 +136,27 @@ const CATEGORIAS = [
         videoUrl: null
       },
       {
-        id: 'landing',
-        titulo: 'Landing Page',
-        descricao: 'Criar página pública da sua academia para captar alunos',
+        id: 'agendamento',
+        titulo: 'Agendamento Online',
+        descricao: 'Link público para alunos marcarem aulas sozinhos',
+        icon: 'fluent:calendar-checkmark-20-regular',
+        cor: '#0891b2',
+        bg: '#ecfeff',
+        videoUrl: null
+      },
+      {
+        id: 'anamnese',
+        titulo: 'Anamnese',
+        descricao: 'Personalizar perguntas de anamnese para os alunos',
+        icon: 'fluent:clipboard-text-ltr-20-regular',
+        cor: '#7c3aed',
+        bg: '#f5f3ff',
+        videoUrl: null
+      },
+      {
+        id: 'site',
+        titulo: 'Site',
+        descricao: 'Criar o site público da sua empresa para captar alunos',
         icon: 'fluent:globe-20-regular',
         cor: '#ec4899',
         bg: '#fdf2f8',
