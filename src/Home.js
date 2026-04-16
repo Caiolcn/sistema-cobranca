@@ -21,7 +21,8 @@ function Home() {
     recebimentosMes: 0,
     valorEmAtraso: 0,
     filaWhatsapp: [],
-    mensagensRecentes: []
+    mensagensRecentes: [],
+    alunosEmRisco: 0
   });
 
   // Estado para mensagens não enviadas (falhas de automação)
@@ -77,7 +78,8 @@ function Home() {
         { data: mensagens },
         { data: falhasEnvio },
         { data: whatsappConectado },
-        { data: vendasData }
+        { data: vendasData },
+        { count: radarRiscoCount }
       ] = await Promise.all([
         // 1. Mensalidades - para KPIs
         supabase
@@ -141,7 +143,14 @@ function Home() {
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
-          .or('lixo.is.null,lixo.eq.false')
+          .or('lixo.is.null,lixo.eq.false'),
+
+        // 8. Radar de evasão - contagem de alunos em risco alto+critico (score >= 50)
+        supabase
+          .from('vw_radar_evasao')
+          .select('devedor_id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('score_total', 50)
       ]);
 
       // ========== PROCESSAMENTO LOCAL ==========
@@ -224,7 +233,8 @@ function Home() {
         recebimentosMes: recebidoMes,
         valorEmAtraso: valorAtraso,
         filaWhatsapp: fila || [],
-        mensagensRecentes: mensagens || []
+        mensagensRecentes: mensagens || [],
+        alunosEmRisco: radarRiscoCount || 0
       });
 
     } catch (error) {
@@ -429,7 +439,7 @@ function Home() {
     );
   }
 
-  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, filaWhatsapp, mensagensRecentes } = dashboardData;
+  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, filaWhatsapp, mensagensRecentes, alunosEmRisco } = dashboardData;
 
   const nomeEmpresa = nomeEmpresaContext || 'Empresa';
 

@@ -9,6 +9,7 @@ const TIPOS = {
   agendamento: { icon: 'fluent:calendar-20-regular', cor: '#ec4899', bg: '#fdf2f8' },
   vencendo: { icon: 'fluent:alert-20-regular', cor: '#f59e0b', bg: '#fffbeb' },
   atrasada: { icon: 'fluent:error-circle-20-regular', cor: '#ef4444', bg: '#fef2f2' },
+  evasao: { icon: 'mdi:shield-alert-outline', cor: '#dc2626', bg: '#fef2f2' },
 }
 
 const storageKey = (userId) => `mensalli_notif_last_read_${userId}`
@@ -36,7 +37,7 @@ export async function carregarNotificacoes(userId) {
   const hojeStr = agora.toISOString().split('T')[0]
   const hojeIni = `${hojeStr}T00:00:00`
 
-  const [pgRes, leadRes, agRes, vencRes, atrRes] = await Promise.all([
+  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes] = await Promise.all([
     supabase
       .from('mensalidades')
       .select('id, valor, data_pagamento, devedores(nome)')
@@ -74,6 +75,13 @@ export async function carregarNotificacoes(userId) {
       .lt('data_vencimento', hojeStr)
       .order('data_vencimento', { ascending: false })
       .limit(10),
+    supabase
+      .from('vw_radar_evasao')
+      .select('devedor_id, nome, score_total, dias_sem_aparecer, dias_atraso')
+      .eq('user_id', userId)
+      .gte('score_total', 50)
+      .order('score_total', { ascending: false })
+      .limit(5),
   ])
 
   const itens = []
@@ -126,6 +134,19 @@ export async function carregarNotificacoes(userId) {
       sub: `${fmtValor(m.valor)} · venceu ${fmtDataBr(m.data_vencimento)}`,
       timestamp: `${m.data_vencimento}T08:00:00`,
       link: '/app/financeiro?inadimplente=true',
+    })
+  }
+  for (const r of radarRes.data || []) {
+    const motivos = []
+    if (r.dias_sem_aparecer > 7 && r.dias_sem_aparecer < 999) motivos.push(`${r.dias_sem_aparecer}d sem vir`)
+    if (r.dias_atraso > 0) motivos.push(`${r.dias_atraso}d atraso`)
+    itens.push({
+      tipo: 'evasao',
+      id: `ev-${r.devedor_id}`,
+      titulo: `${r.nome || 'Aluno'} em risco de evasão`,
+      sub: `Score ${r.score_total}${motivos.length ? ' · ' + motivos.join(', ') : ''}`,
+      timestamp: hojeIni,
+      link: '/app/clientes?aba=radar',
     })
   }
 

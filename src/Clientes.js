@@ -14,12 +14,14 @@ import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import DateInput from './components/DateInput'
+import RadarEvasao from './components/RadarEvasao'
 
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { limiteClientes, plano, isLocked } = useUserPlan()
   const { userId, loading: loadingUser } = useUser()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'alunos')
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1407,9 +1409,111 @@ Equipe ${nomeEmpresa}`
   const temFiltrosAtivos = filtroStatus !== 'todos' || filtroPlano !== 'todos' ||
                            filtroAssinatura !== 'todos' || filtroInadimplente
 
+  const TABS_CLIENTES = [
+    { id: 'alunos', label: 'Alunos', icon: 'fluent:people-24-regular' },
+    { id: 'radar', label: 'Radar de Evasão', icon: 'mdi:shield-alert-outline' }
+  ]
+
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
-      {/* Header */}
+      {/* Título global (acima das tabs) */}
+      <div style={{ marginBottom: isSmallScreen ? '12px' : '16px' }}>
+        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+          Alunos
+        </h2>
+        <p style={{ margin: '4px 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
+          {abaAtiva === 'radar'
+            ? 'Identifique alunos em risco de cancelamento'
+            : `${clientesFiltrados.length} de ${clientes.filter(c => !c.deleted_at).length} aluno(s)`}
+        </p>
+      </div>
+
+      {/* Tabs — dropdown no mobile, segmented control no desktop */}
+      {isMobile ? (
+        <div style={{ position: 'relative', marginBottom: '16px' }}>
+          <select
+            value={abaAtiva}
+            onChange={(e) => setAbaAtiva(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 40px 12px 14px',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #e5e7eb',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+              cursor: 'pointer',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '20px',
+              boxSizing: 'border-box'
+            }}
+          >
+            {TABS_CLIENTES.map(tab => (
+              <option key={tab.id} value={tab.id}>{tab.label}</option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div style={{
+          display: 'inline-flex',
+          gap: '4px',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '10px',
+          padding: '4px',
+          marginBottom: '25px'
+        }}>
+          {TABS_CLIENTES.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setAbaAtiva(tab.id)}
+              style={{
+                padding: '8px 20px',
+                backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
+                color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: abaAtiva === tab.id ? '600' : '400',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                opacity: abaAtiva === tab.id ? 1 : 0.75,
+                flexShrink: 0
+              }}
+            >
+              <Icon icon={tab.icon} width={18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Conteúdo da aba Radar de Evasão */}
+      {abaAtiva === 'radar' && <RadarEvasao onAbrirPerfil={async (devedorId) => {
+        // Busca o cliente completo e abre o modal de perfil
+        const cliente = clientes.find(c => c.id === devedorId)
+        if (cliente) {
+          await handleClienteClick(cliente)
+        } else {
+          // Se não tá na lista carregada, busca direto
+          const { data } = await supabase.from('devedores').select('*').eq('id', devedorId).single()
+          if (data) await handleClienteClick(data)
+          else showToast('Aluno não encontrado', 'error')
+        }
+      }} />}
+
+      {/* Conteúdo da aba Alunos (conteúdo original) */}
+      {abaAtiva === 'alunos' && <>
+      {/* Busca + Botões */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '0',
@@ -1418,24 +1522,17 @@ Equipe ${nomeEmpresa}`
         border: 'none',
         boxShadow: 'none'
       }}>
-        <div style={{ marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-            Alunos
-          </h2>
-          <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-            {clientesFiltrados.length} de {clientes.filter(c => !c.deleted_at).length} aluno(s)
-            <span style={{
-              marginLeft: '10px',
-              padding: '2px 8px',
-              backgroundColor: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#ffebee' : '#e8f5e9',
-              color: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#c62828' : '#2e7d32',
-              borderRadius: '10px',
-              fontSize: '11px',
-              fontWeight: '600'
-            }}>
-              {clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length}/{limiteClientes} ativos
-            </span>
-          </p>
+        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{
+            padding: '2px 8px',
+            backgroundColor: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#ffebee' : '#e8f5e9',
+            color: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#c62828' : '#2e7d32',
+            borderRadius: '10px',
+            fontSize: '11px',
+            fontWeight: '600'
+          }}>
+            {clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length}/{limiteClientes} ativos
+          </span>
         </div>
 
         {/* Busca + Botões */}
@@ -4727,6 +4824,7 @@ Equipe ${nomeEmpresa}`
         limiteClientes={limiteClientes}
         clientesAtivos={clientes.filter(c => c.assinatura_ativa && !c.deleted_at && !c.lixo).length}
       />
+      </>}
     </div>
   )
 }
