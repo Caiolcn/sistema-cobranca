@@ -27,6 +27,15 @@ const CATEGORIAS = [
         videoUrl: null
       },
       {
+        id: 'radar',
+        titulo: 'Radar de Evasão',
+        descricao: 'Identificar alunos em risco de cancelamento antes que saiam',
+        icon: 'mdi:shield-alert-outline',
+        cor: '#dc2626',
+        bg: '#fef2f2',
+        videoUrl: null
+      },
+      {
         id: 'horarios',
         titulo: 'Grade de Horários',
         descricao: 'Organizar turmas, vincular alunos e controlar presença',

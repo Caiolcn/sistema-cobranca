@@ -116,7 +116,7 @@ export default function Dashboard() {
     const carregarClientes = async () => {
       const { data } = await supabase
         .from('usuarios')
-        .select('id, email, nome_empresa, nome_completo, plano')
+        .select('id, email, nome_empresa, nome_completo, plano, plano_pago, plano_vencimento, trial_fim')
         .or('role.neq.admin,role.is.null')
         .order('nome_empresa', { ascending: true, nullsFirst: false })
 
@@ -1287,11 +1287,44 @@ export default function Dashboard() {
               }}
             >
               <option value="">Minha conta</option>
-              {adminClientes.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.nome_empresa || c.nome_completo || c.email} ({c.plano}) — ID: {c.id.substring(0, 8)}
-                </option>
-              ))}
+              {(() => {
+                const now = new Date()
+                const getStatus = (c) => {
+                  if (c.plano_pago) {
+                    if (!c.plano_vencimento) return 'pago'
+                    return new Date(c.plano_vencimento) > now ? 'pago' : 'expirado'
+                  }
+                  if (!c.trial_fim) return 'expirado'
+                  return new Date(c.trial_fim) > now ? 'trial' : 'expirado'
+                }
+                const pagos = adminClientes.filter(c => getStatus(c) === 'pago')
+                const trial = adminClientes.filter(c => getStatus(c) === 'trial')
+                const expirados = adminClientes.filter(c => getStatus(c) === 'expirado')
+                const renderOption = (c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome_empresa || c.nome_completo || c.email} ({c.plano}) — ID: {c.id.substring(0, 8)}
+                  </option>
+                )
+                return (
+                  <>
+                    {pagos.length > 0 && (
+                      <optgroup label={`✅ Pagos (${pagos.length})`}>
+                        {pagos.map(renderOption)}
+                      </optgroup>
+                    )}
+                    {trial.length > 0 && (
+                      <optgroup label={`⏳ Trial ativo (${trial.length})`}>
+                        {trial.map(renderOption)}
+                      </optgroup>
+                    )}
+                    {expirados.length > 0 && (
+                      <optgroup label={`❌ Expirados (${expirados.length})`}>
+                        {expirados.map(renderOption)}
+                      </optgroup>
+                    )}
+                  </>
+                )
+              })()}
             </select>
             {adminViewingAs && !isMobile && (
               <span style={{ color: '#ffd700', fontSize: '12px', whiteSpace: 'nowrap' }}
