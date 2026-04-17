@@ -1,9 +1,107 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Icon } from '@iconify/react'
+import Plyr from 'plyr'
+import 'plyr/dist/plyr.css'
 import './Ajuda.css'
 
 // Videos da central de ajuda. videoUrl: null = placeholder "Em breve"
-// Quando o usuario subir os videos, basta preencher o videoUrl de cada item.
+// Aceita link do YouTube (watch?v=, youtu.be/, shorts/) ou URL direta de arquivo .mp4/.webm.
+
+function getYoutubeVideoId(url) {
+  if (!url) return null
+  const match = url.match(
+    /(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
+  )
+  return match ? match[1] : null
+}
+
+const PLYR_CONTROLS = [
+  'play-large',
+  'play',
+  'progress',
+  'current-time',
+  'duration',
+  'mute',
+  'volume',
+  'settings',
+  'fullscreen',
+]
+
+function VideoPlayer({ videoUrl }) {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!videoUrl || !containerRef.current) return
+
+    const container = containerRef.current
+    container.innerHTML = ''
+
+    const ytId = getYoutubeVideoId(videoUrl)
+    let mediaEl
+
+    if (ytId) {
+      mediaEl = document.createElement('div')
+      mediaEl.setAttribute('data-plyr-provider', 'youtube')
+      mediaEl.setAttribute('data-plyr-embed-id', ytId)
+    } else {
+      mediaEl = document.createElement('video')
+      mediaEl.setAttribute('playsinline', '')
+      mediaEl.setAttribute('controls', '')
+      const source = document.createElement('source')
+      source.src = videoUrl
+      source.type = 'video/mp4'
+      mediaEl.appendChild(source)
+    }
+
+    container.appendChild(mediaEl)
+
+    const player = new Plyr(mediaEl, {
+      controls: PLYR_CONTROLS,
+      settings: ['quality', 'speed'],
+      ratio: '16:9',
+      autoplay: true,
+      quality: {
+        default: 1080,
+        options: [2160, 1440, 1080, 720, 480, 360, 240],
+      },
+      youtube: {
+        noCookie: true,
+        rel: 0,
+        showinfo: 0,
+        iv_load_policy: 3,
+        modestbranding: 1,
+      },
+    })
+
+    player.on('ready', () => {
+      try {
+        player.quality = 1080
+      } catch (e) {
+        // YouTube pode ignorar, sem problemas
+      }
+      const playPromise = player.play()
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          // Browser bloqueou autoplay com som, tenta mudo
+          player.muted = true
+          player.play()
+        })
+      }
+    })
+
+    return () => {
+      player.destroy()
+    }
+  }, [videoUrl])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', maxWidth: '100%' }}
+    />
+  )
+}
+
 const CATEGORIAS = [
   {
     titulo: 'GESTÃO',
@@ -24,7 +122,7 @@ const CATEGORIAS = [
         icon: 'fluent:people-24-regular',
         cor: '#8b5cf6',
         bg: '#f5f3ff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Cadastro%20-%20edit.mp4'
       },
       {
         id: 'radar',
@@ -51,7 +149,7 @@ const CATEGORIAS = [
         icon: 'fluent:money-20-regular',
         cor: '#059669',
         bg: '#ecfdf5',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Financeiro%20-%20edit.mp4'
       },
       {
         id: 'despesas',
@@ -60,7 +158,7 @@ const CATEGORIAS = [
         icon: 'mdi:wallet-outline',
         cor: '#ef4444',
         bg: '#fef2f2',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Despesas%20-%20edit.mp4'
       },
       {
         id: 'relatorios',
@@ -69,7 +167,7 @@ const CATEGORIAS = [
         icon: 'fluent:chart-multiple-20-regular',
         cor: '#f59e0b',
         bg: '#fffbeb',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Relatorios%20-%20edit.mp4'
       }
     ]
   },
@@ -83,7 +181,7 @@ const CATEGORIAS = [
         icon: 'mdi:whatsapp',
         cor: '#10b981',
         bg: '#ecfdf5',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/ConectaWhatsapp%20-%20Edit.mp4'
       },
       {
         id: 'templates',
@@ -92,7 +190,7 @@ const CATEGORIAS = [
         icon: 'fluent:chat-20-regular',
         cor: '#0ea5e9',
         bg: '#eff6ff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/TemplatesMensagem%20-%20edit.mp4'
       },
       {
         id: 'bot',
@@ -377,12 +475,7 @@ export default function Ajuda() {
               minHeight: '300px'
             }}>
               {videoAberto.videoUrl ? (
-                <video
-                  src={videoAberto.videoUrl}
-                  controls
-                  autoPlay
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
+                <VideoPlayer videoUrl={videoAberto.videoUrl} />
               ) : (
                 <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>
                   <Icon icon="fluent:video-clip-20-regular" width="48" height="48" />

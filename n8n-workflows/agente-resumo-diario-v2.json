@@ -1,0 +1,80 @@
+{
+  "name": "MensalliZap - Dashboard Diário WhatsApp (7h)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-resumo",
+      "name": "Disparo 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_resumo_diario_completo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" },
+            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2bG5ra21jeXRqdHJpZGlvanh4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTk5MzEwNCwiZXhwIjoyMDgxNTY5MTA0fQ.akRZREO0U-O6eii2m9ZonpIqvFILZa51qhUjm1PhuZM" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buscar-dados",
+      "name": "Buscar Dashboard Completo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];\nconst hoje = new Date();\nconst diaStr = diasSemana[hoje.getDay()];\nconst dataStr = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });\n\nconst fmt = (v) => parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\nconst results = [];\n\nfor (const item of items) {\n  const d = item.json;\n  const isPremium = d.plano === 'premium';\n  const nomeEmpresa = d.nome_empresa || 'Sua empresa';\n\n  let msg = `☀️ *Bom dia, ${nomeEmpresa}!* • ${diaStr}, ${dataStr}`;\n\n  // ═══════════ ONTEM ═══════════\n  const temOntem = d.ontem_checkins > 0 || d.ontem_recebido > 0 || d.ontem_matriculas > 0 || d.ontem_leads > 0;\n  if (temOntem) {\n    msg += `\\n\\n📊 *ONTEM*`;\n    if (d.ontem_checkins > 0) msg += `\\n✅ ${d.ontem_checkins} check-in${d.ontem_checkins > 1 ? 's' : ''}`;\n    if (d.ontem_recebido > 0) msg += `\\n💰 R$ ${fmt(d.ontem_recebido)} recebidos`;\n    if (d.ontem_matriculas > 0) msg += `\\n🆕 ${d.ontem_matriculas} matrícula${d.ontem_matriculas > 1 ? 's' : ''} nova${d.ontem_matriculas > 1 ? 's' : ''} (${d.ontem_matriculas_nomes})`;\n    if (d.ontem_leads > 0) msg += `\\n📩 ${d.ontem_leads} lead${d.ontem_leads > 1 ? 's' : ''} novo${d.ontem_leads > 1 ? 's' : ''}`;\n    if (isPremium && d.ontem_nps_count > 0) msg += `\\n⭐ ${d.ontem_nps_count} NPS (média ${d.ontem_nps_media})`;\n  }\n\n  // ═══════════ FOCO DO DIA ═══════════\n  const temFoco = d.atencao_leads_sem_resposta > 0 || d.atencao_atrasados > 0 || d.atencao_risco_evasao > 0 || d.hoje_vencimentos > 0;\n  if (temFoco) {\n    msg += `\\n\\n🎯 *FOCO DO DIA*`;\n    if (d.atencao_leads_sem_resposta > 0) msg += `\\n⚠️ ${d.atencao_leads_sem_resposta} lead${d.atencao_leads_sem_resposta > 1 ? 's' : ''} aguardando resposta`;\n    if (d.atencao_atrasados > 0) msg += `\\n⚠️ ${d.atencao_atrasados} cobrança${d.atencao_atrasados > 1 ? 's' : ''} em atraso (R$ ${fmt(d.atencao_atrasados_valor)})`;\n    if (isPremium && d.atencao_risco_evasao > 0) msg += `\\n⚠️ ${d.atencao_risco_evasao} aluno${d.atencao_risco_evasao > 1 ? 's' : ''} em risco de evasão`;\n    if (d.hoje_vencimentos > 0) msg += `\\n💸 ${d.hoje_vencimentos} mensalidade${d.hoje_vencimentos > 1 ? 's' : ''} vence${d.hoje_vencimentos > 1 ? 'm' : ''} hoje (R$ ${fmt(d.hoje_vencimentos_valor)})`;\n  }\n\n  // ═══════════ AGENDA DE HOJE ═══════════\n  const allAulas = d.hoje_aulas_detalhe || [];\n  const aulasComAluno = allAulas.filter(a => (a.total_fixos || 0) + (a.total_agendados || 0) > 0);\n  msg += `\\n\\n📅 *AGENDA DE HOJE*`;\n  if (aulasComAluno.length > 0) {\n    for (const aula of aulasComAluno) {\n      const horario = aula.horario ? String(aula.horario).substring(0, 5) : '--:--';\n      const total = (aula.total_fixos || 0) + (aula.total_agendados || 0);\n      msg += `\\n🕐 ${horario}`;\n      if (aula.descricao) msg += ` - ${aula.descricao}`;\n      msg += ` (${total}/${aula.capacidade})`;\n      const nomes = [aula.nomes_fixos, aula.nomes_agendados].filter(Boolean).join(', ');\n      if (nomes) msg += `\\n${nomes}`;\n    }\n  } else {\n    msg += `\\n📋 Sem aulas confirmadas pra hoje`;\n  }\n\n  // ═══════════ ANIVERSARIANTE ═══════════\n  if (d.hoje_aniversariantes > 0) {\n    msg += `\\n\\n🎂 *ANIVERSARIANTE${d.hoje_aniversariantes > 1 ? 'S' : ''}*`;\n    const nomes = (d.hoje_aniversariantes_nomes || '').split(', ');\n    for (const nome of nomes) {\n      if (nome.trim()) msg += `\\n🎈 ${nome.trim()} (Mandar parabéns!)`;\n    }\n  }\n\n  // ═══════════ MÊS (Premium) ═══════════\n  if (isPremium && d.mes_mrr > 0) {\n    msg += `\\n\\n📈 *MÊS:* R$ ${fmt(d.mes_recebido)} de R$ ${fmt(d.mes_mrr)} (${d.mes_percentual_meta}%)`;\n    if (d.mes_novos > 0 || d.mes_cancelamentos > 0) {\n      msg += ` • +${d.mes_novos} novo${d.mes_novos > 1 ? 's' : ''}`;\n      if (d.mes_cancelamentos > 0) msg += ` -${d.mes_cancelamentos} saída${d.mes_cancelamentos > 1 ? 's' : ''}`;\n    }\n  }\n\n  msg += `\\n\\n_${nomeEmpresa} • Mensalli_`;\n\n  let telefone = String(d.telefone_admin || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      user_id: d.user_id,\n      plano: d.plano,\n      mensagem: msg,\n      telefone,\n      evolution_url: `${d.evolution_api_url || 'http://service-evolution-api:8080'}/message/sendText/${d.evolution_instance_name}`,\n      evolution_api_key: d.evolution_api_key\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "id": "montar-mensagem",
+      "name": "Montar Dashboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  if (i > 0) await new Promise(r => setTimeout(r, 2000));\n\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: data.evolution_url,\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: { number: data.telefone, text: data.mensagem },\n      returnFullResponse: true,\n      json: true\n    });\n\n    const body = resp.body;\n    if (body?.key?.id) {\n      results.push({ json: { ...data, envio_sucesso: true } });\n    } else {\n      results.push({ json: { ...data, envio_sucesso: false, erro: body?.message || 'Sem key.id' } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro: err.message } });\n  }\n}\n\nreturn results;\n"
+      },
+      "id": "enviar-resumo",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Disparo 7h": {
+      "main": [[{ "node": "Buscar Dashboard Completo", "type": "main", "index": 0 }]]
+    },
+    "Buscar Dashboard Completo": {
+      "main": [[{ "node": "Montar Dashboard", "type": "main", "index": 0 }]]
+    },
+    "Montar Dashboard": {
+      "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  }
+}
