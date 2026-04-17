@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, FUNCTIONS_URL } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -615,7 +615,16 @@ Vi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que ten
 Me manda uma nota de 0 a 10:
 0 = péssimo   10 = excelente
 
-Se quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏`
+Se quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏`,
+
+  despesa_vencendo: `💸 *Alerta de Despesa — {{nomeEmpresa}}*
+
+{{descricao}}
+💰 Valor: {{valor}}
+📆 Vencimento: {{dataVencimento}} ({{diasRestantesTexto}})
+🏷️ Categoria: {{categoria}}
+
+Não esqueça de quitar pra evitar juros/multa!`
 }
 
 // Mensagem padrão do template (fallback para compatibilidade)
@@ -675,6 +684,8 @@ export default function WhatsAppConexao() {
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
   const [enviarDomingoAtivo, setEnviarDomingoAtivo] = useState(true)
   const [automacaoResumoDiarioAtiva, setAutomacaoResumoDiarioAtiva] = useState(false)
+  const [automacaoAlertaDespesasAtiva, setAutomacaoAlertaDespesasAtiva] = useState(false)
+  const [alertaDespesasDiasAntes, setAlertaDespesasDiasAntes] = useState(3)
   const [automacaoRecuperacaoAtiva, setAutomacaoRecuperacaoAtiva] = useState(false)
   const [temPresencasRecentes, setTemPresencasRecentes] = useState(null)
   const [automacaoNpsAtiva, setAutomacaoNpsAtiva] = useState(false)
@@ -745,7 +756,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, recuperacao_inativos_ativa, nps_experimental_ativo, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, alertar_despesas, alertar_despesas_dias_antes, recuperacao_inativos_ativa, nps_experimental_ativo, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -816,7 +827,8 @@ export default function WhatsAppConexao() {
           { tipo: 'recuperacao_15', titulo: 'Recuperação - 15 dias', mensagem: 'Oi {{nomeCliente}}! 👋\n\nSentimos sua falta aqui na *{{nomeEmpresa}}* 💛\nTá tudo bem por aí? Já faz {{diasSemAparecer}} dias que não te vemos em aula.\n\nQualquer coisa, me chama aqui!' },
           { tipo: 'recuperacao_30', titulo: 'Recuperação - 30 dias', mensagem: 'Oi {{nomeCliente}}, tudo bem? 😊\n\nEstamos com saudades na *{{nomeEmpresa}}*!\nJá faz {{diasSemAparecer}} dias desde sua última aula. Que tal voltar essa semana? Sua vaga ainda tá aqui!\n\nSe precisar reagendar ou tiver alguma dificuldade, me conta que a gente ajuda 🙌' },
           { tipo: 'recuperacao_45', titulo: 'Recuperação - 45 dias', mensagem: '{{nomeCliente}}, tudo bem? 💛\n\nTá fazendo {{diasSemAparecer}} dias que você não aparece e queremos saber como você está.\n\nSe quiser voltar, a gente te ajuda a remarcar. Se tá com alguma dificuldade, me conta, a gente pode achar uma solução juntos.\n\nFalar com atendente é só responder aqui! 🤝\n\n_{{nomeEmpresa}}_' },
-          { tipo: 'nps_experimental', titulo: 'NPS - Pós-Experimental', mensagem: 'Oi {{nomeCliente}}! 👋\n\nVi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que tenha curtido! 💛\n\n*Como foi sua experiência?*\nMe manda uma nota de 0 a 10:\n0 = péssimo   10 = excelente\n\nSe quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏' }
+          { tipo: 'nps_experimental', titulo: 'NPS - Pós-Experimental', mensagem: 'Oi {{nomeCliente}}! 👋\n\nVi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que tenha curtido! 💛\n\n*Como foi sua experiência?*\nMe manda uma nota de 0 a 10:\n0 = péssimo   10 = excelente\n\nSe quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏' },
+          { tipo: 'despesa_vencendo', titulo: 'Alerta de Despesa Vencendo', mensagem: TEMPLATES_PADRAO.despesa_vencendo }
         ]
 
         for (const tmpl of templatesParaCriar) {
@@ -874,6 +886,10 @@ export default function WhatsAppConexao() {
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
         setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
         setAutomacaoResumoDiarioAtiva(configCobranca?.enviar_resumo_diario === true)
+        setAutomacaoAlertaDespesasAtiva(configCobranca?.alertar_despesas === true)
+        if (configCobranca?.alertar_despesas_dias_antes != null) {
+          setAlertaDespesasDiasAntes(configCobranca.alertar_despesas_dias_antes)
+        }
         setAutomacaoRecuperacaoAtiva(configCobranca?.recuperacao_inativos_ativa === true)
         setAutomacaoNpsAtiva(configCobranca?.nps_experimental_ativo === true)
         setBotAtivo(configCobranca?.bot_ativo === true)
@@ -1131,6 +1147,8 @@ export default function WhatsAppConexao() {
         'automacao_aniversario_ativa': 'enviar_aniversario',
         'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento',
         'automacao_resumo_diario_ativa': 'enviar_resumo_diario',
+        'automacao_alerta_despesas_ativa': 'alertar_despesas',
+        'alerta_despesas_dias_antes': 'alertar_despesas_dias_antes',
         'automacao_recuperacao_ativa': 'recuperacao_inativos_ativa',
         'automacao_nps_ativa': 'nps_experimental_ativo',
         'enviar_domingo_ativo': 'enviar_domingo',
@@ -1603,6 +1621,23 @@ export default function WhatsAppConexao() {
     if (sucesso) {
       setAutomacaoResumoDiarioAtiva(novoValor)
     }
+  }
+
+  const toggleAlertaDespesas = async () => {
+    const novoValor = !automacaoAlertaDespesasAtiva
+    if (novoValor) {
+      await criarTemplatePadraoSeNaoExiste('despesa_vencendo')
+    }
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_alerta_despesas_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoAlertaDespesasAtiva(novoValor)
+    }
+  }
+
+  const salvarAlertaDespesasDias = async (dias) => {
+    const n = Math.max(1, Math.min(30, parseInt(dias, 10) || 3))
+    setAlertaDespesasDiasAntes(n)
+    await salvarConfiguracaoAutomacao('alerta_despesas_dias_antes', n)
   }
 
   const toggleNps = async () => {
@@ -2165,7 +2200,8 @@ export default function WhatsAppConexao() {
       class_reminder: 'Lembrete de Aula',
       birthday: 'Mensagem de Aniversário',
       payment_confirmed: 'Confirmação de Pagamento',
-      welcome: 'Boas-vindas'
+      welcome: 'Boas-vindas',
+      despesa_vencendo: 'Alerta de Despesa Vencendo'
     }
     return titulos[tipo] || ''
   }
@@ -3040,6 +3076,7 @@ export default function WhatsAppConexao() {
                   { tipo: 'due_day', categoria: 'cobrancas', nome: 'No Dia', descricao: 'Lembrete no dia do vencimento', icone: 'mdi:calendar-today', cor: '#ff9800', ativo: automacaoNoDiaAtiva, toggle: toggleAutomacaoNoDia, locked: false },
                   { tipo: 'overdue', categoria: 'cobrancas', nome: '3 Dias Depois', descricao: 'Cobrança 3 dias após o vencimento', icone: 'mdi:alert-circle', cor: '#f44336', ativo: automacao3DiasDepoisAtiva, toggle: toggleAutomacao3DiasDepois, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'payment_confirmed', categoria: 'cobrancas', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
+                  { tipo: 'despesa_vencendo', categoria: 'cobrancas', nome: 'Alerta de Despesa', descricao: `Avisa no WhatsApp do dono ${alertaDespesasDiasAntes} dia(s) antes do vencimento`, icone: 'mdi:cash-clock', cor: '#dc2626', ativo: automacaoAlertaDespesasAtiva, toggle: toggleAlertaDespesas, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'class_reminder', categoria: 'aulas', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'resumo_diario', categoria: 'aulas', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true, plano: 'Premium' },
                   { tipo: 'birthday', categoria: 'relacionamento', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked, plano: 'Pro' },
@@ -3049,8 +3086,8 @@ export default function WhatsAppConexao() {
                   { tipo: 'recuperacao_30', categoria: 'retencao', nome: 'Recuperação — 30 dias', descricao: '2º toque: aluno sumido há 30 dias', icone: 'mdi:account-reactivate', cor: '#a855f7', ativo: automacaoRecuperacaoAtiva, toggle: null, locked: automacaoLocked, semToggle: true, plano: 'Pro' },
                   { tipo: 'recuperacao_45', categoria: 'retencao', nome: 'Recuperação — 45 dias', descricao: '3º toque: aluno sumido há 45 dias', icone: 'mdi:account-reactivate', cor: '#a855f7', ativo: automacaoRecuperacaoAtiva, toggle: null, locked: automacaoLocked, semToggle: true, plano: 'Pro' }
                 ].filter(item => item.categoria === categoriaAutomacao).map((item) => (
+                  <Fragment key={item.tipo}>
                   <div
-                    key={item.tipo}
                     onClick={() => {
                       if (item.locked) { setUpgradeModal({ isOpen: true, featureName: item.nome, plano: item.plano || 'Pro' }); return }
                       if (!item.ativo) return
@@ -3094,6 +3131,26 @@ export default function WhatsAppConexao() {
                       )}
                     </div>
                   </div>
+                  {item.tipo === 'despesa_vencendo' && item.ativo && !item.locked && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', marginTop: '-4px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#7f1d1d' }}>
+                      <Icon icon="mdi:information-outline" width="16" style={{ color: '#dc2626', flexShrink: 0 }} />
+                      <span>Avisar com</span>
+                      <select
+                        value={alertaDespesasDiasAntes}
+                        onChange={(e) => salvarAlertaDespesasDias(e.target.value)}
+                        style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #fecaca', backgroundColor: 'white', fontSize: '12px', fontWeight: '600', color: '#7f1d1d', cursor: 'pointer' }}
+                      >
+                        <option value={1}>1 dia</option>
+                        <option value={2}>2 dias</option>
+                        <option value={3}>3 dias</option>
+                        <option value={5}>5 dias</option>
+                        <option value={7}>7 dias</option>
+                        <option value={15}>15 dias</option>
+                      </select>
+                      <span>de antecedência + no dia do vencimento.</span>
+                    </div>
+                  )}
+                  </Fragment>
                 ))}
               </div>
 

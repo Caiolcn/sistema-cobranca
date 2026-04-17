@@ -172,6 +172,14 @@ serve(async (req) => {
         .eq('id', devedor_id)
     }
 
+    // 9b. Se for experimental e ainda nao tem primeira_aula no lead, popular
+    await supabase
+      .from('leads')
+      .update({ primeira_aula_data: data, primeira_aula_id: aula_id })
+      .eq('convertido_em_devedor_id', devedor_id)
+      .eq('status', 'experimental')
+      .is('primeira_aula_data', null)
+
     // 10. Notificar admin via WhatsApp
     try {
       const { data: conexao } = await supabase

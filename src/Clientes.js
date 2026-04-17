@@ -266,6 +266,7 @@ export default function Clientes() {
           `)
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false')
+          .or('experimental.is.null,experimental.eq.false')
           .order('nome', { ascending: true }),
 
         // Buscar próximas mensalidades (apenas futuras ou pendentes)
@@ -438,23 +439,16 @@ export default function Clientes() {
       const totalMensagensEnviadas = logsData?.length || 0
       const ultimoContato = logsData?.[0]?.enviado_em || null
 
-      // Calcular tempo de casa (baseado na primeira mensalidade ou data de criação)
+      // Calcular tempo de casa (data de cadastro do aluno)
       let tempoDeCasa = null
       let tempoDeCasaDias = null
-      if (mensalidades.length > 0) {
-        const primeiraData = new Date(mensalidades[0].data_vencimento)
-        const diffTime = Math.abs(hoje - primeiraData)
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-        const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30))
+      if (cliente.created_at) {
+        const dataCadastro = new Date(cliente.created_at)
+        dataCadastro.setHours(0, 0, 0, 0)
+        const diffMs = hoje - dataCadastro
+        const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
         tempoDeCasaDias = diffDays
-        tempoDeCasa = diffMonths
-      } else if (cliente.created_at) {
-        const dataCreated = new Date(cliente.created_at)
-        const diffTime = Math.abs(hoje - dataCreated)
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-        const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30))
-        tempoDeCasaDias = diffDays
-        tempoDeCasa = diffMonths
+        tempoDeCasa = Math.floor(diffDays / 30)
       }
 
       // Atualizar cliente com as estatísticas

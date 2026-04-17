@@ -83,7 +83,8 @@ serve(async (req) => {
     // 3. Gerar portal_token
     const portalToken = crypto.randomUUID().replace(/-/g, '')
 
-    // 4. Criar devedor
+    // 4. Criar devedor (marcado como experimental pra sair da lista de clientes pagantes
+    //    e entrar no CRM de Experimentais)
     const { data: novoAluno, error: insertError } = await supabase
       .from('devedores')
       .insert({
@@ -95,6 +96,7 @@ serve(async (req) => {
         status: 'pendente',
         assinatura_ativa: false,
         origem: 'agendamento',
+        experimental: true,
         portal_token: portalToken,
       })
       .select('id, nome, telefone')
@@ -107,6 +109,17 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // 4b. Criar lead vinculado (feeds no CRM/kanban coluna "Aula experimental")
+    await supabase.from('leads').insert({
+      user_id: empresa.id,
+      nome: nome.trim(),
+      telefone: telefone.trim(),
+      origem: 'agendamento',
+      interesse: 'Aula experimental',
+      status: 'experimental',
+      convertido_em_devedor_id: novoAluno.id,
+    })
 
     // 5. Notificar admin via WhatsApp (buscar conexao)
     try {
