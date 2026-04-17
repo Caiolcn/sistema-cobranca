@@ -202,6 +202,15 @@ const CATEGORIAS = [
         videoUrl: null
       },
       {
+        id: 'gerador',
+        titulo: 'Gerador de Post IA',
+        descricao: 'Criar artes e legendas pro Instagram com inteligência artificial',
+        icon: 'mdi:auto-fix',
+        cor: '#3b82f6',
+        bg: '#eff6ff',
+        videoUrl: null
+      },
+      {
         id: 'avisos',
         titulo: 'Avisos em Massa',
         descricao: 'Enviar comunicados para grupos de alunos de uma só vez',

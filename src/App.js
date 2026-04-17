@@ -32,6 +32,7 @@ const Admin = lazy(() => import('./Admin'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+const GeradorPosts = lazy(() => import('./GeradorPosts'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -102,6 +103,7 @@ function App() {
                     <Route path="ajuda" element={<Ajuda />} />
                     <Route path="avisos" element={<Avisos />} />
                     <Route path="crm" element={<CRM />} />
+                    <Route path="posts" element={<GeradorPosts />} />
                     <Route path="admin" element={<Admin />} />
                   </Route>
                 </>

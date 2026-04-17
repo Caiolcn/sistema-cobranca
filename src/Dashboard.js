@@ -686,6 +686,37 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>CRM</span>}
           </div>
 
+          {/* Gerador de Posts IA */}
+          <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Gerador IA"
+            onClick={() => { navigate('/app/posts'); if (isMobile) setMenuAberto(false) }}
+            style={{
+              width: isMobile ? '100%' : '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'posts' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'posts' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'posts') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'posts') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="mdi:auto-fix" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Gerador IA</span>}
+          </div>
+
           {/* Configuração (só no mobile — no desktop fica no ícone de engrenagem da top bar) */}
           {isMobile && (
             /* Mobile: Menu com submenu expansível */
