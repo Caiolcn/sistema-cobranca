@@ -8,6 +8,7 @@ import whatsappService from './services/whatsappService'
 import { exportarClientes } from './utils/exportUtils'
 import CsvImportModal from './components/CsvImportModal'
 import AnamneseSection from './components/AnamneseSection'
+import ContratosSection from './ContratosSection'
 import { validarTelefone, validarCPF } from './utils/validators'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
@@ -19,7 +20,7 @@ import RadarEvasao from './components/RadarEvasao'
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { limiteClientes, plano, isLocked } = useUserPlan()
-  const { userId, loading: loadingUser } = useUser()
+  const { userId, nomeEmpresa, loading: loadingUser } = useUser()
   const [searchParams, setSearchParams] = useSearchParams()
   const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'alunos')
   const [clientes, setClientes] = useState([])
@@ -3365,6 +3366,14 @@ Equipe ${nomeEmpresa}`
                   isLocked={isLocked}
                 />
               </div>
+
+              {/* Contratos */}
+              <ContratosSection
+                clienteId={clienteSelecionado?.id}
+                devedor={clienteSelecionado}
+                userId={userId}
+                nomeEmpresa={nomeEmpresa}
+              />
 
               {/* Lista de Mensalidades */}
               <div>

@@ -23,6 +23,7 @@ const UpgradePage = lazy(() => import('./UpgradePage'))
 const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
 const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
 const PortalCliente = lazy(() => import('./pages/PortalCliente'))
+const PaginaContrato = lazy(() => import('./pages/PaginaContrato'))
 const Onboarding = lazy(() => import('./Onboarding'))
 const GradeHorarios = lazy(() => import('./GradeHorarios'))
 const Relatorios = lazy(() => import('./Relatorios'))
@@ -82,6 +83,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
               <Route path="/portal/:token" element={<PortalCliente />} />
+              <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}

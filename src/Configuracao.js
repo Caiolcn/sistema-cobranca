@@ -17,6 +17,7 @@ import { useUserPlan } from './hooks/useUserPlan'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 
 function mascararNomePreview(nome) {
   if (!nome) return 'Aluno(a)'
@@ -4921,7 +4922,8 @@ function Configuracao() {
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
     { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
     { id: 'landing', label: 'Site', icon: 'mdi:web' },
-    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' }
+    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
+    { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
   ]
 
   // Encontrar a aba atual para mostrar no header mobile
@@ -5018,6 +5020,11 @@ function Configuracao() {
               {abaAtiva === 'agendamento' && renderAgendamento()}
               {abaAtiva === 'landing' && renderLanding()}
               {abaAtiva === 'anamnese' && renderAnamnese()}
+              {abaAtiva === 'contratos' && (
+                <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
+                  <ContratosTemplates />
+                </Suspense>
+              )}
             </>
           )}
         </div>
