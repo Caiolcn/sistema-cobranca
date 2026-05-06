@@ -113,7 +113,7 @@ const CATEGORIAS = [
         icon: 'material-symbols-light:home-outline-rounded',
         cor: '#3b82f6',
         bg: '#eff6ff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Dashboard%20-%201.mp4'
       },
       {
         id: 'alunos',
@@ -122,7 +122,7 @@ const CATEGORIAS = [
         icon: 'fluent:people-24-regular',
         cor: '#8b5cf6',
         bg: '#f5f3ff',
-        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Cadastro%20-%20edit.mp4'
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Cadastro%20-%201.mp4'
       },
       {
         id: 'radar',
@@ -131,7 +131,7 @@ const CATEGORIAS = [
         icon: 'mdi:shield-alert-outline',
         cor: '#dc2626',
         bg: '#fef2f2',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Radar-De-Evasao%20-%201.mp4'
       },
       {
         id: 'horarios',
@@ -140,7 +140,7 @@ const CATEGORIAS = [
         icon: 'fluent:calendar-20-regular',
         cor: '#ec4899',
         bg: '#fdf2f8',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Grade-Horarios-1.mp4'
       },
       {
         id: 'financeiro',
@@ -149,7 +149,7 @@ const CATEGORIAS = [
         icon: 'fluent:money-20-regular',
         cor: '#059669',
         bg: '#ecfdf5',
-        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Financeiro%20-%20edit.mp4'
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Financeiro%20-%201.mp4'
       },
       {
         id: 'despesas',
@@ -158,7 +158,7 @@ const CATEGORIAS = [
         icon: 'mdi:wallet-outline',
         cor: '#ef4444',
         bg: '#fef2f2',
-        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Despesas%20-%20edit.mp4'
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Despesas%20-%201.mp4'
       },
       {
         id: 'relatorios',
@@ -167,7 +167,7 @@ const CATEGORIAS = [
         icon: 'fluent:chart-multiple-20-regular',
         cor: '#f59e0b',
         bg: '#fffbeb',
-        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Relatorios%20-%20edit.mp4'
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Relatorios%20-%201.mp4'
       }
     ]
   },
@@ -181,7 +181,7 @@ const CATEGORIAS = [
         icon: 'mdi:whatsapp',
         cor: '#10b981',
         bg: '#ecfdf5',
-        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/ConectaWhatsapp%20-%20Edit.mp4'
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/ConectaWhatsapp%20-%201.mp4'
       },
       {
         id: 'templates',
@@ -190,7 +190,7 @@ const CATEGORIAS = [
         icon: 'fluent:chat-20-regular',
         cor: '#0ea5e9',
         bg: '#eff6ff',
-        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/TemplatesMensagem%20-%20edit.mp4'
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/TemplatesMensagem%20-%201.mp4'
       },
       {
         id: 'bot',
@@ -199,7 +199,7 @@ const CATEGORIAS = [
         icon: 'fluent:bot-20-regular',
         cor: '#8b5cf6',
         bg: '#f5f3ff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Bot-CRM%20-%201.mp4'
       },
       {
         id: 'avisos',
@@ -208,7 +208,7 @@ const CATEGORIAS = [
         icon: 'fluent:megaphone-20-regular',
         cor: '#f59e0b',
         bg: '#fffbeb',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Campanha%20-%201.mp4'
       }
     ]
   },
@@ -222,7 +222,7 @@ const CATEGORIAS = [
         icon: 'fluent:building-20-regular',
         cor: '#6366f1',
         bg: '#eef2ff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Dados-Empresa%20-%201.mp4'
       },
       {
         id: 'planos',
@@ -231,17 +231,18 @@ const CATEGORIAS = [
         icon: 'fluent:tag-20-regular',
         cor: '#10b981',
         bg: '#ecfdf5',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Planos%20-%201.mp4'
       },
-      {
-        id: 'automacoes',
-        titulo: 'Automações',
-        descricao: 'Configurar lembretes automáticos de cobrança e aulas',
-        icon: 'fluent:flash-20-regular',
-        cor: '#f59e0b',
-        bg: '#fffbeb',
-        videoUrl: null
-      },
+      // {
+      //   id: 'automacoes',
+      //   titulo: 'Automações',
+      //   descricao: 'Configurar lembretes automáticos de cobrança e aulas',
+      //   icon: 'fluent:flash-20-regular',
+      //   cor: '#f59e0b',
+      //   bg: '#fffbeb',
+      //   videoUrl: null
+      // },
+      // Coberto pelo card "Templates de Mensagens" — mesma tela.
       {
         id: 'agendamento',
         titulo: 'Agendamento Online',
@@ -249,7 +250,7 @@ const CATEGORIAS = [
         icon: 'fluent:calendar-checkmark-20-regular',
         cor: '#0891b2',
         bg: '#ecfeff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Link-Agendamento-1.mp4'
       },
       {
         id: 'anamnese',
@@ -258,17 +259,17 @@ const CATEGORIAS = [
         icon: 'fluent:clipboard-text-ltr-20-regular',
         cor: '#7c3aed',
         bg: '#f5f3ff',
-        videoUrl: null
+        videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Anamnese%20-%201.mp4'
       },
-      {
-        id: 'site',
-        titulo: 'Site',
-        descricao: 'Criar o site público da sua empresa para captar alunos',
-        icon: 'fluent:globe-20-regular',
-        cor: '#ec4899',
-        bg: '#fdf2f8',
-        videoUrl: null
-      }
+      // {
+      //   id: 'site',
+      //   titulo: 'Site',
+      //   descricao: 'Criar o site público da sua empresa para captar alunos',
+      //   icon: 'fluent:globe-20-regular',
+      //   cor: '#ec4899',
+      //   bg: '#fdf2f8',
+      //   videoUrl: null
+      // }
     ]
   }
 ]

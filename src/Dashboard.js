@@ -735,7 +735,8 @@ export default function Dashboard() {
                     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
                     { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
                     { id: 'landing', label: 'Site', icon: 'mdi:web' },
-                    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' }
+                    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
+                    { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
                   ].map((item) => (
                     <div
                       key={item.id}

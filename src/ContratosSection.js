@@ -44,6 +44,7 @@ export default function ContratosSection({ clienteId, devedor, userId, nomeEmpre
   const [mostrarModal, setMostrarModal] = useState(false)
   const [templateSelecionado, setTemplateSelecionado] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [mostrarContratos, setMostrarContratos] = useState(true)
 
   const carregar = useCallback(async () => {
     if (!clienteId || !userId) return
@@ -136,37 +137,75 @@ export default function ContratosSection({ clienteId, devedor, userId, nomeEmpre
   if (locked) return null
 
   return (
-    <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '8px', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-          Contratos ({contratos.length})
-        </h3>
-        <button
-          onClick={() => {
-            if (templates.length === 0) {
-              showToast('Crie um template em Configuração → Contratos primeiro', 'warning')
-              return
-            }
-            setMostrarModal(true)
-          }}
-          style={{
-            padding: '8px 14px', backgroundColor: '#4f46e5', color: 'white',
-            border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-          }}
-        >
-          <Icon icon="mdi:file-send-outline" width="16" /> Enviar contrato
-        </button>
+    <div style={{
+      backgroundColor: '#f8f9fa',
+      borderRadius: '10px',
+      padding: '16px',
+      border: '1px solid #e9ecef',
+      marginBottom: '16px'
+    }}>
+      <div
+        onClick={() => setMostrarContratos(!mostrarContratos)}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          gap: '8px',
+          flexWrap: 'wrap'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Icon icon="mdi:file-document-outline" width="20" style={{ color: '#344848' }} />
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#344848' }}>
+            Contratos
+          </span>
+          {contratos.length > 0 && (
+            <span style={{
+              fontSize: '12px',
+              fontWeight: '600',
+              backgroundColor: '#e0e7ff',
+              color: '#4f46e5',
+              padding: '2px 8px',
+              borderRadius: '10px'
+            }}>
+              {contratos.length} {contratos.length === 1 ? 'contrato' : 'contratos'}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (templates.length === 0) {
+                showToast('Crie um template em Configuração → Contratos primeiro', 'warning')
+                return
+              }
+              setMostrarModal(true)
+            }}
+            style={{
+              padding: '6px 12px', backgroundColor: '#4f46e5', color: 'white',
+              border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+            }}
+          >
+            <Icon icon="mdi:plus" width="14" /> Enviar contrato
+          </button>
+          <Icon icon={mostrarContratos ? 'mdi:chevron-up' : 'mdi:chevron-down'} width="20" color="#888" />
+        </div>
       </div>
 
-      {loading ? (
-        <p style={{ textAlign: 'center', color: '#999', padding: '12px', fontSize: '13px' }}>Carregando...</p>
-      ) : contratos.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#999', padding: '16px', fontSize: '13px', fontStyle: 'italic' }}>
-          Nenhum contrato enviado ainda.
-        </p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {mostrarContratos && (
+        <div style={{ marginTop: '16px' }}>
+          {loading ? (
+            <p style={{ textAlign: 'center', color: '#999', padding: '12px', fontSize: '13px' }}>Carregando...</p>
+          ) : contratos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 16px', color: '#9ca3af' }}>
+              <Icon icon="mdi:file-document-outline" width="32" style={{ opacity: 0.5 }} />
+              <p style={{ margin: '8px 0 0', fontSize: '13px' }}>Nenhum contrato enviado ainda</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {contratos.map(c => (
             <div key={c.id} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
@@ -227,6 +266,8 @@ export default function ContratosSection({ clienteId, devedor, userId, nomeEmpre
               </div>
             </div>
           ))}
+            </div>
+          )}
         </div>
       )}
 

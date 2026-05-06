@@ -33,3 +33,10 @@ yarn-error.log*
 # Arquivos sensíveis
 *.env
 credentials.json
+
+# Pessoais / locais (não commitar)
+/.agents/
+/*.docx
+/vercel-caio.pdf
+/sql-popular-demo-radar-evasao.sql
+/deno.lock
