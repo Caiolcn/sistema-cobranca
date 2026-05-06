@@ -162,7 +162,9 @@ function Configuracao() {
     nome: '',
     valor: '',
     ciclo: 'mensal',
-    descricao: ''
+    descricao: '',
+    tipo: 'recorrente',
+    numero_aulas: ''
   })
   const [atualizarMensalidadesFuturas, setAtualizarMensalidadesFuturas] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState({ show: false, plano: null })
@@ -644,7 +646,7 @@ function Configuracao() {
 
   const abrirModalNovoPlan = () => {
     setPlanoEditando(null)
-    setFormPlano({ nome: '', valor: '', ciclo: 'mensal', descricao: '' })
+    setFormPlano({ nome: '', valor: '', ciclo: 'mensal', descricao: '', tipo: 'recorrente', numero_aulas: '' })
     setAtualizarMensalidadesFuturas(false)
     setMostrarModalPlano(true)
   }
@@ -655,7 +657,9 @@ function Configuracao() {
       nome: plano.nome,
       valor: plano.valor,
       ciclo: plano.ciclo_cobranca || 'mensal',
-      descricao: plano.descricao || ''
+      descricao: plano.descricao || '',
+      tipo: plano.tipo || 'recorrente',
+      numero_aulas: plano.numero_aulas?.toString() || ''
     })
 
     // Count future mensalidades
@@ -693,13 +697,20 @@ function Configuracao() {
       return
     }
 
+    if (formPlano.tipo === 'pacote' && (!formPlano.numero_aulas || parseInt(formPlano.numero_aulas) <= 0)) {
+      showToast('Preencha o número de aulas do pacote', 'warning')
+      return
+    }
+
     try {
       const { error } = await supabase.from('planos').insert({
         user_id: contextUserId,
         nome: formPlano.nome.trim(),
         valor: parseFloat(formPlano.valor),
-        ciclo_cobranca: formPlano.ciclo,
+        ciclo_cobranca: formPlano.tipo === 'pacote' ? 'mensal' : formPlano.ciclo,
         descricao: formPlano.descricao?.trim() || null,
+        tipo: formPlano.tipo,
+        numero_aulas: formPlano.tipo === 'pacote' ? parseInt(formPlano.numero_aulas) : null,
         ativo: true
       })
 
@@ -725,14 +736,21 @@ function Configuracao() {
       return
     }
 
+    if (formPlano.tipo === 'pacote' && (!formPlano.numero_aulas || parseInt(formPlano.numero_aulas) <= 0)) {
+      showToast('Preencha o número de aulas do pacote', 'warning')
+      return
+    }
+
     try {
       // Update plan
       const { error } = await supabase.from('planos')
         .update({
           nome: formPlano.nome.trim(),
           valor: parseFloat(formPlano.valor),
-          ciclo_cobranca: formPlano.ciclo,
+          ciclo_cobranca: formPlano.tipo === 'pacote' ? 'mensal' : formPlano.ciclo,
           descricao: formPlano.descricao?.trim() || null,
+          tipo: formPlano.tipo,
+          numero_aulas: formPlano.tipo === 'pacote' ? parseInt(formPlano.numero_aulas) : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', planoEditando.id)
@@ -1778,29 +1796,97 @@ function Configuracao() {
                 />
               </div>
 
+              {/* Tipo do Plano */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-                  Ciclo de Cobrança *
+                  Tipo do Plano *
                 </label>
-                <select
-                  value={formPlano.ciclo}
-                  onChange={(e) => setFormPlano({ ...formPlano, ciclo: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    cursor: 'pointer',
-                    boxSizing: 'border-box',
-                    backgroundColor: 'white'
-                  }}
-                >
-                  <option value="mensal">Mensal</option>
-                  <option value="trimestral">Trimestral</option>
-                  <option value="anual">Anual</option>
-                </select>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[
+                    { value: 'recorrente', label: 'Recorrente', icon: 'mdi:refresh' },
+                    { value: 'pacote', label: 'Pacote de Aulas', icon: 'mdi:package-variant' }
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormPlano({ ...formPlano, tipo: opt.value })}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${formPlano.tipo === opt.value ? '#2196F3' : '#e0e0e0'}`,
+                        backgroundColor: formPlano.tipo === opt.value ? '#e3f2fd' : 'white',
+                        color: formPlano.tipo === opt.value ? '#1565C0' : '#666',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Icon icon={opt.icon} width={18} />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Número de Aulas (só para pacote) */}
+              {formPlano.tipo === 'pacote' && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
+                    Número de Aulas *
+                  </label>
+                  <input
+                    type="number"
+                    value={formPlano.numero_aulas}
+                    onChange={(e) => setFormPlano({ ...formPlano, numero_aulas: e.target.value })}
+                    placeholder="Ex: 8"
+                    min="1"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#888', marginTop: '4px', display: 'block' }}>
+                    Quantidade de aulas que o aluno pode fazer com este pacote
+                  </span>
+                </div>
+              )}
+
+              {/* Ciclo de Cobrança (só para recorrente) */}
+              {formPlano.tipo === 'recorrente' && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
+                    Ciclo de Cobrança *
+                  </label>
+                  <select
+                    value={formPlano.ciclo}
+                    onChange={(e) => setFormPlano({ ...formPlano, ciclo: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      boxSizing: 'border-box',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    <option value="mensal">Mensal</option>
+                    <option value="trimestral">Trimestral</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                </div>
+              )}
 
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>

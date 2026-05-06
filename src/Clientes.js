@@ -28,8 +28,8 @@ export default function Clientes() {
   const [loading, setLoading] = useState(true)
   const [clienteSelecionado, setClienteSelecionado] = useState(null)
   const [mostrarModal, setMostrarModal] = useState(false)
+  const [abaPerfil, setAbaPerfil] = useState('dados')
   const [mensalidadesCliente, setMensalidadesCliente] = useState([])
-  const [editando, setEditando] = useState(false)
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
   const [cpfEdit, setCpfEdit] = useState('')
@@ -500,7 +500,7 @@ export default function Clientes() {
       const pendente = mensalidades.find(m => m.status === 'pendente')
       const refMens = pendente || mensalidades[mensalidades.length - 1]
       setDiaVencimentoEdit(refMens ? String(new Date(refMens.data_vencimento + 'T00:00:00').getDate()) : '')
-      setEditando(false)
+      setAbaPerfil('dados')
       setMostrarModal(true)
       await carregarMensalidadesCliente(cliente.id)
     } catch (error) {
@@ -609,7 +609,6 @@ export default function Clientes() {
         }).catch(() => {})
       }
 
-      setEditando(false)
       setMostrarModal(false)
       carregarClientes()
     } catch (error) {
@@ -2619,10 +2618,78 @@ Equipe ${nomeEmpresa}`
               </button>
             </div>
 
+            {/* Tab bar do perfil */}
+            {(() => {
+              const ABAS_PERFIL = [
+                { id: 'dados', label: 'Dados do Aluno', icon: 'fluent:person-20-regular' },
+                { id: 'financeiro', label: 'Financeiro', icon: 'fluent:money-20-regular' },
+                { id: 'documentos', label: 'Documentos', icon: 'fluent:document-20-regular' },
+                { id: 'estatisticas', label: 'Estatísticas', icon: 'fluent:chart-multiple-20-regular' }
+              ]
+              return isMobile ? (
+                <div style={{ padding: '12px 16px 0' }}>
+                  <select
+                    value={abaPerfil}
+                    onChange={(e) => setAbaPerfil(e.target.value)}
+                    style={{
+                      width: '100%', padding: '12px 40px 12px 14px', backgroundColor: '#f3f4f6',
+                      border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px',
+                      fontWeight: '600', color: '#1a1a1a', cursor: 'pointer',
+                      appearance: 'none', WebkitAppearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
+                      backgroundSize: '20px', boxSizing: 'border-box'
+                    }}
+                  >
+                    {ABAS_PERFIL.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <div style={{ padding: '16px 24px 0' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    gap: '4px',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '10px',
+                    padding: '4px'
+                  }}>
+                    {ABAS_PERFIL.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setAbaPerfil(t.id)}
+                        style={{
+                          padding: '8px 20px',
+                          backgroundColor: abaPerfil === t.id ? 'white' : 'transparent',
+                          color: abaPerfil === t.id ? '#1a1a1a' : '#555',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: abaPerfil === t.id ? '600' : '400',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s',
+                          boxShadow: abaPerfil === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          opacity: abaPerfil === t.id ? 1 : 0.75
+                        }}
+                      >
+                        <Icon icon={t.icon} width={18} />
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Corpo do Modal */}
-            <div style={{ padding: isSmallScreen ? '16px' : '24px' }}>
+            <div style={{ padding: isSmallScreen ? '16px' : '24px', minHeight: isSmallScreen ? '500px' : '600px' }}>
+              {/* ========== ABA: DADOS DO ALUNO ========== */}
+              {abaPerfil === 'dados' && <>
               {/* Informações do Aluno + Assinatura - Colapsável */}
-              <details style={{
+              <details open style={{
                 backgroundColor: '#f8f9fa',
                 borderRadius: '10px',
                 border: '1px solid #e5e7eb',
@@ -2659,25 +2726,51 @@ Equipe ${nomeEmpresa}`
                   </div>
                 </summary>
                 <div style={{ padding: '0 16px 16px' }}>
-                  {/* Dados do aluno em modo leitura ou edição */}
-                  {!editando ? (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr 1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                        {[
-                          { label: 'Telefone', value: clienteSelecionado.telefone },
-                          { label: 'CPF/CNPJ', value: clienteSelecionado.cpf || '—' },
-                          { label: 'Nascimento', value: clienteSelecionado.data_nascimento ? new Date(clienteSelecionado.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
-                          { label: 'E-mail', value: clienteSelecionado.email || '—' },
-                          { label: 'Dia Vencimento', value: (() => { const pend = mensalidadesCliente.find(m => m.status === 'pendente'); const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]; return ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '—' })() },
-                          { label: 'Responsável', value: clienteSelecionado.responsavel_nome || '—' },
-                          { label: 'Tel. Responsável', value: clienteSelecionado.responsavel_telefone || '—' },
-                        ].map((item, i) => (
-                          <div key={i}>
-                            <p style={{ margin: 0, fontSize: '11px', color: '#888', fontWeight: '500' }}>{item.label}</p>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '600', color: '#333' }}>{item.value}</p>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Dados editáveis (sempre visíveis) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nome</label>
+                      <input type="text" value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Telefone</label>
+                      <input type="tel" value={telefoneEdit} onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>CPF/CNPJ</label>
+                      <input type="text" value={cpfEdit} onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))} maxLength="18" placeholder="000.000.000-00"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cpfEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>E-mail</label>
+                      <input type="email" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} placeholder="email@exemplo.com"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: emailEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nascimento</label>
+                      <input type="date" value={dataNascimentoEdit} onChange={(e) => setDataNascimentoEdit(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: dataNascimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Dia Vencimento</label>
+                      <input type="number" min="1" max="31" value={diaVencimentoEdit} placeholder="1-31"
+                        onChange={(e) => { const val = e.target.value; if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) setDiaVencimentoEdit(val) }}
+                        onFocus={(e) => e.target.select()}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: diaVencimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Responsável Legal</label>
+                      <input type="text" value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} placeholder="Nome do responsável"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelNomeEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tel. Responsável</label>
+                      <input type="tel" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15" placeholder="(00) 00000-0000"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelTelefoneEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
 
                       {/* Assinatura inline */}
                       {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
@@ -2794,102 +2887,20 @@ Equipe ${nomeEmpresa}`
                         </label>
                       </div>
 
-                      <button
-                        onClick={() => setEditando(true)}
-                        style={{
-                          padding: '6px 14px',
-                          backgroundColor: 'white',
-                          color: '#344848',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <Icon icon="mdi:pencil" width="14" />
-                        Editar dados
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px' }}>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nome</label>
-                          <input type="text" value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)}
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Telefone</label>
-                          <input type="tel" value={telefoneEdit} onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>CPF/CNPJ</label>
-                          <input type="text" value={cpfEdit} onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))} maxLength="18" placeholder="000.000.000-00"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cpfEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>E-mail</label>
-                          <input type="email" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} placeholder="email@exemplo.com"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: emailEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nascimento</label>
-                          <input type="date" value={dataNascimentoEdit} onChange={(e) => setDataNascimentoEdit(e.target.value)}
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: dataNascimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Dia Vencimento</label>
-                          <input type="number" min="1" max="31" value={diaVencimentoEdit} placeholder="1-31"
-                            onChange={(e) => { const val = e.target.value; if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) setDiaVencimentoEdit(val) }}
-                            onFocus={(e) => e.target.select()}
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: diaVencimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Responsável Legal</label>
-                          <input type="text" value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} placeholder="Nome do responsável"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelNomeEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tel. Responsável</label>
-                          <input type="tel" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15" placeholder="(00) 00000-0000"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelTelefoneEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => {
-                            setEditando(false)
-                            setNomeEdit(clienteSelecionado.nome)
-                            setTelefoneEdit(clienteSelecionado.telefone)
-                            setCpfEdit(clienteSelecionado.cpf || '')
-                            setDataNascimentoEdit(clienteSelecionado.data_nascimento || '')
-                            setEmailEdit(clienteSelecionado.email || '')
-                            setResponsavelNomeEdit(clienteSelecionado.responsavel_nome || '')
-                            setResponsavelTelefoneEdit(clienteSelecionado.responsavel_telefone || '')
-                            const pend = mensalidadesCliente.find(m => m.status === 'pendente')
-                            const ref = pend || mensalidadesCliente[mensalidadesCliente.length - 1]
-                            setDiaVencimentoEdit(ref ? String(new Date(ref.data_vencimento + 'T00:00:00').getDate()) : '')
-                          }}
-                          style={{ padding: '6px 14px', backgroundColor: 'white', color: '#666', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
-                        >
-                          Cancelar
-                        </button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                         <button onClick={handleSalvarEdicao}
-                          style={{ padding: '6px 14px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                          style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}
                         >
-                          Salvar
+                          <Icon icon="mdi:content-save-outline" width="16" />
+                          Salvar alterações
                         </button>
                       </div>
-                    </>
-                  )}
                 </div>
               </details>
+              </>}
 
+              {/* ========== ABA: ESTATÍSTICAS ========== */}
+              {abaPerfil === 'estatisticas' && <>
               {/* Indicadores do Aluno - 4 Cards */}
               <div style={{
                 display: 'grid',
@@ -3190,7 +3201,10 @@ Equipe ${nomeEmpresa}`
                   )}
                 </div>
               )}
+              </>}
 
+              {/* ========== ABA: FINANCEIRO ========== */}
+              {abaPerfil === 'financeiro' && <>
               {/* Resumo Financeiro */}
               <div style={{
                 backgroundColor: clienteSelecionado.mensalidadesAtrasadas > 0 ? '#fef2f2' : '#f8f9fa',
@@ -3245,7 +3259,10 @@ Equipe ${nomeEmpresa}`
                   </div>
                 )}
               </div>
+              </>}
 
+              {/* ========== ABA: ESTATÍSTICAS (continua — Frequência) ========== */}
+              {abaPerfil === 'estatisticas' && <>
               {/* Seção de Frequência */}
               {presencasAluno.length > 0 && (
                 <div style={{
@@ -3357,7 +3374,10 @@ Equipe ${nomeEmpresa}`
                   )}
                 </div>
               )}
+              </>}
 
+              {/* ========== ABA: DOCUMENTOS ========== */}
+              {abaPerfil === 'documentos' && <>
               {/* Anamnese */}
               <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
                 <AnamneseSection
@@ -3374,7 +3394,10 @@ Equipe ${nomeEmpresa}`
                 userId={userId}
                 nomeEmpresa={nomeEmpresa}
               />
+              </>}
 
+              {/* ========== ABA: FINANCEIRO (continua — Histórico) ========== */}
+              {abaPerfil === 'financeiro' && <>
               {/* Lista de Mensalidades */}
               <div>
                 <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
@@ -3455,6 +3478,7 @@ Equipe ${nomeEmpresa}`
                   </div>
                 )}
               </div>
+              </>}
 
               {/* Botão de excluir no rodapé do modal */}
               <div style={{
