@@ -1,0 +1,127 @@
+{
+  "name": "Mensalli — Recuperar Trials Expirados",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recuperar-trial",
+        "responseMode": "onReceived",
+        "responseData": "={ \"ok\": true, \"recebidos\": $json.body.total }",
+        "options": {}
+      },
+      "id": "webhook-recuperar",
+      "name": "Webhook Recuperar Trial",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "recuperar-trial-mensalli"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recebe o payload do Admin/Mensalli e gera 1 item por usuário com mensagem pronta\nconst body = $input.first().json.body || {};\nconst usuarios = body.usuarios || [];\nconst grupo = body.grupo || 'trial';   // trial | churn | venc_d3 | venc_hoje | venc_vencido\nconst oferta = body.oferta || 'extensao_14_dias';\n\n// Helpers de data e dinheiro\nconst formatarBR = (iso) => {\n  if (!iso) return '';\n  const d = new Date(iso);\n  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });\n};\nconst diasAteVencimento = (iso) => {\n  if (!iso) return null;\n  const hoje = new Date(); hoje.setHours(0,0,0,0);\n  const venc = new Date(iso); venc.setHours(0,0,0,0);\n  return Math.round((venc - hoje) / (1000 * 60 * 60 * 24));\n};\nconst formatarBRL = (n) => {\n  if (n === null || n === undefined || isNaN(n)) return '';\n  return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n};\nconst pixAdmin = body.chave_pix || '';\n\n// Templates por grupo — edite à vontade\nconst templatesOferta = {\n  trial: {\n    extensao_7_dias:\n      'Oi {{nome}}! 👋\\n\\nVi que seu teste do Mensalli expirou esses dias e queria fazer uma cortesia: tô liberando *+7 dias* extras pra você terminar de configurar.\\n\\nDá pra automatizar suas cobranças por WhatsApp em poucos cliques. Posso reativar sua conta?',\n\n    extensao_14_dias:\n      'Oi {{nome}}! 👋\\n\\nNotei que o trial do Mensalli encerrou e queria te dar mais uma chance: vou estender *+14 dias gratuitos* pra você testar com calma — sem compromisso.\\n\\nSe quiser, eu reativo já. É só responder \"sim\".',\n\n    desconto_50_1mes:\n      'Oi {{nome}}! 👋\\n\\nSeu teste do Mensalli acabou e tô com uma oferta que fecha hoje: *50% OFF no primeiro mês* do plano *{{plano}}*.\\n\\nDe R$ {{valor}} por *R$ {{valor_com_desconto}}* só no 1º mês. É a melhor forma de validar o sistema cobrando seus alunos no automático sem pagar tudo de uma.\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nÉ só me chamar com o comprovante que ativo na hora.',\n\n    desconto_30_3meses:\n      'Oi {{nome}}! 👋\\n\\nTô voltando aqui porque seu teste do Mensalli ficou parado. Pra te chamar de volta sem peso, separei *30% OFF nos 3 primeiros meses* do plano *{{plano}}*.\\n\\nDe R$ {{valor}} por *R$ {{valor_com_desconto}}/mês* nos 3 primeiros meses.\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nQuer que eu libere o cupom? Manda comprovante e ativo.'\n  },\n  churn: {\n    extensao_7_dias:\n      'Oi {{nome}}! 👋\\n\\nFaz um tempo que você não tá com a gente no Mensalli e a gente quer te ter de volta. Liberei *7 dias grátis* pra você reativar e voltar a usar agora.\\n\\nSeus dados continuam aqui, é só dar o sim. Posso ativar?',\n\n    extensao_14_dias:\n      'Oi {{nome}}! 👋\\n\\nSentimos sua falta no Mensalli. Pra você voltar sem pressão, abri *14 dias grátis* — você reativa, testa de novo, e só decide depois.\\n\\nQuer que eu solte agora?',\n\n    desconto_50_proximo_mes:\n      'Oi {{nome}}! 👋\\n\\nPra te ter de volta no Mensalli, separei uma oferta de retorno: *50% OFF no próximo mês* do seu plano *{{plano}}*.\\n\\nDe R$ {{valor}} por *R$ {{valor_com_desconto}}* na renovação. Você volta a cobrar seus alunos no automático pagando metade.\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nManda comprovante quando pagar e eu ativo na hora.',\n\n    desconto_30_proximo_mes:\n      'Oi {{nome}}! 👋\\n\\nTô voltando aqui pra te oferecer um retorno suave ao Mensalli: *30% OFF no próximo mês* do plano *{{plano}}*.\\n\\nDe R$ {{valor}} por *R$ {{valor_com_desconto}}*. Mesmo plano, mesmos dados, só com um descontinho pra facilitar a volta.\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nQuer que eu prepare?'\n  }\n};\n\n// Templates de lembrete (sem oferta — usam {{vencimento}}, {{dias}}, {{plano}}, {{valor}}, {{pix}})\nconst templatesLembrete = {\n  venc_d3:\n    'Oi {{nome}}! 👋\\n\\nPassando aqui pra avisar que seu plano *{{plano}}* (R$ {{valor}}/mês) no Mensalli vence em *{{dias}} dias* ({{vencimento}}).\\n\\nPra evitar interrupção do serviço e suas cobranças automáticas continuarem rodando, confirma o pagamento até a data.\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nQualquer dúvida, é só chamar.',\n\n  venc_hoje:\n    'Oi {{nome}}! 👋\\n\\nSeu plano *{{plano}}* (R$ {{valor}}) no Mensalli vence *hoje* ({{vencimento}}).\\n\\nPra suas cobranças continuarem rodando sem interrupção, garante o pagamento ainda hoje, beleza?\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nQualquer problema, me chama agora.',\n\n  venc_vencido:\n    'Oi {{nome}}! 👋\\n\\nSeu plano *{{plano}}* (R$ {{valor}}) no Mensalli venceu há *{{dias_atraso}} dia(s)* ({{vencimento}}) e ainda não vi a renovação.\\n\\nPra reativar o sistema e suas automações de cobrança voltarem a rodar, é só fazer o pagamento agora.\\n\\n💳 *Pix (chave):*\\n{{pix}}\\n\\nPosso te ajudar com algo?'\n};\n\nlet tmpl;\nif (grupo.startsWith('venc_')) {\n  tmpl = templatesLembrete[grupo] || templatesLembrete.venc_hoje;\n} else {\n  const tmplDoGrupo = templatesOferta[grupo] || templatesOferta.trial;\n  tmpl = tmplDoGrupo[oferta] || tmplDoGrupo.extensao_14_dias || templatesOferta.trial.extensao_14_dias;\n}\n\nconst itens = [];\nfor (const u of usuarios) {\n  const telLimpo = String(u.telefone || '').replace(/\\D/g, '');\n  if (telLimpo.length < 10) continue; // pula sem telefone válido\n  const telE164 = telLimpo.startsWith('55') ? telLimpo : `55${telLimpo}`;\n  const primeiroNome = (u.nome_completo || u.nome_empresa || 'Cliente').split(' ')[0];\n  const dias = diasAteVencimento(u.plano_vencimento);\n  const diasAtraso = dias !== null && dias < 0 ? Math.abs(dias) : '';\n  const valorCheio = Number(u.plano_valor || 0);\n  // Calcula valor com desconto baseado na oferta escolhida\n  let valorComDesconto = valorCheio;\n  if (oferta === 'desconto_50_1mes' || oferta === 'desconto_50_proximo_mes') valorComDesconto = valorCheio * 0.5;\n  else if (oferta === 'desconto_30_3meses' || oferta === 'desconto_30_proximo_mes') valorComDesconto = valorCheio * 0.7;\n  const mensagem = tmpl\n    .replace(/\\{\\{nome\\}\\}/g, primeiroNome)\n    .replace(/\\{\\{email\\}\\}/g, u.email || '')\n    .replace(/\\{\\{vencimento\\}\\}/g, formatarBR(u.plano_vencimento))\n    .replace(/\\{\\{dias\\}\\}/g, dias !== null && dias > 0 ? String(dias) : '')\n    .replace(/\\{\\{dias_atraso\\}\\}/g, String(diasAtraso))\n    .replace(/\\{\\{plano\\}\\}/g, u.plano_nome || 'Starter')\n    .replace(/\\{\\{valor\\}\\}/g, formatarBRL(valorCheio))\n    .replace(/\\{\\{valor_com_desconto\\}\\}/g, formatarBRL(valorComDesconto))\n    .replace(/\\{\\{pix\\}\\}/g, pixAdmin || '(PIX não configurado)');\n  itens.push({\n    json: {\n      id: u.id,\n      email: u.email,\n      nome: primeiroNome,\n      nome_completo: u.nome_completo,\n      nome_empresa: u.nome_empresa,\n      telefone_e164: telE164,\n      mensagem,\n      grupo,\n      oferta,\n      oferta_label: body.oferta_label,\n      evolution_api_url: body.evolution_api_url,\n      evolution_api_key: body.evolution_api_key\n    }\n  });\n}\nreturn itens;"
+      },
+      "id": "gerar-mensagens",
+      "name": "Gerar mensagens",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-batches",
+      "name": "Loop (1 por vez)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_api_url }}/message/sendText/instance_c93b3e8d",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.evolution_api_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefone_e164 }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
+        "options": {}
+      },
+      "id": "enviar-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "aguardar",
+      "name": "Aguardar 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1120, 300],
+      "webhookId": "wait-recuperar-trial"
+    }
+  ],
+  "connections": {
+    "Webhook Recuperar Trial": {
+      "main": [
+        [
+          { "node": "Gerar mensagens", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Gerar mensagens": {
+      "main": [
+        [
+          { "node": "Loop (1 por vez)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop (1 por vez)": {
+      "main": [
+        [],
+        [
+          { "node": "Enviar WhatsApp", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          { "node": "Aguardar 30s", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Aguardar 30s": {
+      "main": [
+        [
+          { "node": "Loop (1 por vez)", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
