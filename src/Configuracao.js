@@ -5007,7 +5007,7 @@ function Configuracao() {
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
     { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
-    { id: 'landing', label: 'Site', icon: 'mdi:web' },
+    // { id: 'landing', label: 'Site', icon: 'mdi:web' },
     { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
     { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
   ]
