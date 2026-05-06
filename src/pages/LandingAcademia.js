@@ -36,27 +36,22 @@ export default function LandingAcademia({ previewData = null }) {
   const isPreview = !!previewData
   const [loading, setLoading] = useState(!isPreview)
   const [erro, setErro] = useState(null)
-  const [empresa, setEmpresa] = useState(previewData?.empresa || null)
-  const [planos, setPlanos] = useState(previewData?.planos || [])
-  const [aulas, setAulas] = useState(previewData?.aulas || [])
-  const [depoimentos, setDepoimentos] = useState(previewData?.depoimentos || [])
+  const [fetched, setFetched] = useState(null)
   const [faqAberto, setFaqAberto] = useState(null)
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768)
+
+  // Em preview, le direto da prop (sem estado intermediario) pra nao atrasar updates.
+  // Fora do preview, usa os dados carregados via edge function.
+  const empresa = isPreview ? (previewData?.empresa || null) : fetched?.empresa || null
+  const planos = isPreview ? (previewData?.planos || []) : fetched?.planos || []
+  const aulas = isPreview ? (previewData?.aulas || []) : fetched?.aulas || []
+  const depoimentos = isPreview ? (previewData?.depoimentos || []) : fetched?.depoimentos || []
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-
-  // Sincroniza estado quando previewData muda (preview reativo no painel)
-  useEffect(() => {
-    if (!isPreview) return
-    setEmpresa(previewData.empresa || null)
-    setPlanos(previewData.planos || [])
-    setAulas(previewData.aulas || [])
-    setDepoimentos(previewData.depoimentos || [])
-  }, [isPreview, previewData])
 
   useEffect(() => {
     if (isPreview) return // preview usa dados das props, nao fetcha
@@ -68,10 +63,12 @@ export default function LandingAcademia({ previewData = null }) {
           throw new Error(json.error || 'Página não encontrada')
         }
         const json = await res.json()
-        setEmpresa(json.empresa)
-        setPlanos(json.planos || [])
-        setAulas(json.aulas || [])
-        setDepoimentos(json.depoimentos || [])
+        setFetched({
+          empresa: json.empresa,
+          planos: json.planos || [],
+          aulas: json.aulas || [],
+          depoimentos: json.depoimentos || []
+        })
         setLoading(false)
       } catch (err) {
         setErro(err.message)
@@ -191,19 +188,6 @@ export default function LandingAcademia({ previewData = null }) {
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '720px', width: '100%' }}>
-          {empresa.logo_url && (
-            <img src={empresa.logo_url} alt={empresa.nome_empresa}
-              style={{
-                width: isMobile ? '92px' : '112px',
-                height: isMobile ? '92px' : '112px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: '4px solid white',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                marginBottom: '20px',
-                backgroundColor: 'white'
-              }} />
-          )}
           <h1 style={{
             fontSize: isMobile ? '30px' : '44px',
             fontWeight: '800',

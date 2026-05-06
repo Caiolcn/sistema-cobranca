@@ -338,8 +338,8 @@ export default function AnamneseSection({ clienteId, userId, isLocked }) {
               <span style={{
                 fontSize: '12px',
                 fontWeight: '600',
-                backgroundColor: '#ede9fe',
-                color: '#7c3aed',
+                backgroundColor: '#e0e7ff',
+                color: '#4f46e5',
                 padding: '2px 8px',
                 borderRadius: '10px'
               }}>
@@ -350,7 +350,7 @@ export default function AnamneseSection({ clienteId, userId, isLocked }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={(e) => { e.stopPropagation(); abrirNova() }}
-              style={{ padding: isSmallScreen ? '8px 14px' : '6px 12px', backgroundColor: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', fontSize: isSmallScreen ? '13px' : '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', minHeight: isSmallScreen ? '40px' : 'auto' }}
+              style={{ padding: '6px 12px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <Icon icon="mdi:plus" width="14" /> {isSmallScreen ? 'Nova' : 'Nova avaliação'}
             </button>

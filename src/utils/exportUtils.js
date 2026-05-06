@@ -12,20 +12,19 @@ export const exportToCSV = (data, filename) => {
   // Extrair headers
   const headers = Object.keys(data[0]);
 
-  // Criar linhas CSV
+  // Usar ; como separador — padrão do Excel em pt-BR (vírgula é decimal)
   const csvContent = [
-    headers.join(','), // Header
+    headers.join(';'),
     ...data.map(row =>
       headers.map(header => {
         const value = row[header];
-        // Escapar valores que contêm vírgula ou quebra de linha
-        if (typeof value === 'string' && (value.includes(',') || value.includes('\n'))) {
+        if (typeof value === 'string' && (value.includes(';') || value.includes('\n') || value.includes('"'))) {
           return `"${value.replace(/"/g, '""')}"`;
         }
         return value ?? '';
-      }).join(',')
+      }).join(';')
     )
-  ].join('\n');
+  ].join('\r\n');
 
   // Adicionar BOM para UTF-8 (corrige acentos no Excel)
   const BOM = '\uFEFF';
