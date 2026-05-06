@@ -8,6 +8,7 @@ const BUCKETS = {
   retencao_d: { label: 'Onboarding', icon: 'mdi:account-plus', cor: '#3b82f6', bg: '#eff6ff' },
   retencao_a: { label: 'Trial acabando', icon: 'mdi:clock-alert', cor: '#f59e0b', bg: '#fffbeb' },
   retencao_b: { label: 'Trial expirado', icon: 'mdi:account-alert', cor: '#ef4444', bg: '#fef2f2' },
+  retencao_e: { label: 'Vence em breve', icon: 'mdi:calendar-clock', cor: '#f97316', bg: '#fff7ed' },
   retencao_c1: { label: 'Ex-pagante', icon: 'mdi:account-reactivate', cor: '#7c3aed', bg: '#f5f3ff' },
   retencao_c2: { label: 'Trial antigo', icon: 'mdi:history', cor: '#6b7280', bg: '#f3f4f6' }
 }
@@ -37,7 +38,7 @@ export default function RetencaoSaas() {
         supabase
           .from('templates_admin')
           .select('*')
-          .in('tipo', ['retencao_a', 'retencao_b', 'retencao_d', 'retencao_c1', 'retencao_c2'])
+          .in('tipo', ['retencao_a', 'retencao_b', 'retencao_d', 'retencao_c1', 'retencao_c2', 'retencao_e'])
       ])
 
       setCandidatos(candResult.data || [])
@@ -97,7 +98,8 @@ export default function RetencaoSaas() {
         retencao_b: 'retencao_b_enviado_em',
         retencao_d: 'retencao_d_enviado_em',
         retencao_c1: 'retencao_c1_enviado_em',
-        retencao_c2: 'retencao_c2_enviado_em'
+        retencao_c2: 'retencao_c2_enviado_em',
+        retencao_e: 'retencao_e_enviado_em'
       }[candidato.bucket]
 
       if (colunaFlag) {
@@ -120,6 +122,7 @@ export default function RetencaoSaas() {
       retencao_d: templates.retencao_d?.mensagem || '',
       retencao_a: templates.retencao_a?.mensagem || '',
       retencao_b: templates.retencao_b?.mensagem || '',
+      retencao_e: templates.retencao_e?.mensagem || '',
       retencao_c1: templates.retencao_c1?.mensagem || '',
       retencao_c2: templates.retencao_c2?.mensagem || ''
     })
@@ -152,15 +155,23 @@ export default function RetencaoSaas() {
   // ============================================================
   if (!isAdmin) return null
 
-  const candidatosFiltrados = bucketFiltro === 'todos'
-    ? candidatos
+  const candidatosFiltrados = (bucketFiltro === 'todos'
+    ? [...candidatos]
     : candidatos.filter(c => c.bucket === bucketFiltro)
+  ).sort((a, b) => {
+    // No bucket "Vence em breve", ordena pelos que vencem antes
+    if (a.bucket === 'retencao_e' && b.bucket === 'retencao_e') {
+      return (a.dias_para_plano_vencer ?? 999) - (b.dias_para_plano_vencer ?? 999)
+    }
+    return 0
+  })
 
   const contadores = {
     todos: candidatos.length,
     retencao_d: candidatos.filter(c => c.bucket === 'retencao_d').length,
     retencao_a: candidatos.filter(c => c.bucket === 'retencao_a').length,
     retencao_b: candidatos.filter(c => c.bucket === 'retencao_b').length,
+    retencao_e: candidatos.filter(c => c.bucket === 'retencao_e').length,
     retencao_c1: candidatos.filter(c => c.bucket === 'retencao_c1').length,
     retencao_c2: candidatos.filter(c => c.bucket === 'retencao_c2').length
   }
@@ -210,6 +221,7 @@ export default function RetencaoSaas() {
           { id: 'retencao_d', label: 'Onboarding', cor: '#3b82f6', bg: '#eff6ff' },
           { id: 'retencao_a', label: 'Trial acabando', cor: '#f59e0b', bg: '#fffbeb' },
           { id: 'retencao_b', label: 'Trial expirado', cor: '#ef4444', bg: '#fef2f2' },
+          { id: 'retencao_e', label: 'Vence em breve', cor: '#f97316', bg: '#fff7ed' },
           { id: 'retencao_c1', label: 'Ex-pagante', cor: '#7c3aed', bg: '#f5f3ff' },
           { id: 'retencao_c2', label: 'Trial antigo', cor: '#6b7280', bg: '#f3f4f6' }
         ].map(f => (
@@ -406,6 +418,7 @@ export default function RetencaoSaas() {
                 { tipo: 'retencao_d', label: '👋 Onboarding - Não logou há 1 dia' },
                 { tipo: 'retencao_a', label: '⏰ Trial acabando (1 dia antes)' },
                 { tipo: 'retencao_b', label: '💛 Trial expirou ontem' },
+                { tipo: 'retencao_e', label: '📅 Vence em breve (3 dias antes do plano vencer)' },
                 { tipo: 'retencao_c1', label: '💜 Reativação - Ex-pagante sumido (7-90 dias)' },
                 { tipo: 'retencao_c2', label: '🕰️ Reativação - Trial antigo, nunca pagou (7-90 dias)' }
               ].map(({ tipo, label }) => (
