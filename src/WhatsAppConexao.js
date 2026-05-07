@@ -3009,13 +3009,13 @@ export default function WhatsAppConexao() {
 
               {/* Sub-tabs de categoria */}
               <div style={{
-                display: 'flex',
+                display: isSmallScreen ? 'grid' : 'flex',
+                gridTemplateColumns: isSmallScreen ? '1fr 1fr' : undefined,
                 gap: '4px',
                 backgroundColor: '#f3f4f6',
                 borderRadius: '10px',
                 padding: '4px',
-                marginBottom: '12px',
-                overflowX: 'auto'
+                marginBottom: '12px'
               }}>
                 {[
                   { id: 'cobrancas', label: 'Cobranças', icon: 'mdi:cash-multiple' },
@@ -3027,7 +3027,8 @@ export default function WhatsAppConexao() {
                     key={cat.id}
                     onClick={() => setCategoriaAutomacao(cat.id)}
                     style={{
-                      flex: 1,
+                      flex: isSmallScreen ? undefined : 1,
+                      minWidth: 0,
                       padding: '8px 10px',
                       backgroundColor: categoriaAutomacao === cat.id ? 'white' : 'transparent',
                       color: categoriaAutomacao === cat.id ? '#1a1a1a' : '#555',
@@ -3041,12 +3042,14 @@ export default function WhatsAppConexao() {
                       justifyContent: 'center',
                       gap: '5px',
                       whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       transition: 'all 0.2s',
                       boxShadow: categoriaAutomacao === cat.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
                     }}
                   >
-                    <Icon icon={cat.icon} width={isSmallScreen ? 14 : 16} />
-                    {cat.label}
+                    <Icon icon={cat.icon} width={isSmallScreen ? 14 : 16} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.label}</span>
                   </button>
                 ))}
               </div>
