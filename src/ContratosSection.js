@@ -18,8 +18,59 @@ function formatarData(iso) {
   return `${dia}/${mes}/${ano}`
 }
 
-function substituirVariaveis(conteudo, devedor, nomeEmpresa) {
+function formatarBlocoDadosCliente(devedor) {
+  const partes = []
+  if (devedor?.nome) partes.push(devedor.nome)
+  if (devedor?.cpf) partes.push(devedor.cpf)
+  if (devedor?.data_nascimento) partes.push(formatarData(devedor.data_nascimento))
+  if (devedor?.telefone) partes.push(devedor.telefone)
+  if (devedor?.email) partes.push(devedor.email)
+  let texto = partes.join(', ')
+
+  const respPartes = []
+  if (devedor?.responsavel_nome) respPartes.push(devedor.responsavel_nome)
+  if (devedor?.responsavel_telefone) respPartes.push(devedor.responsavel_telefone)
+  if (respPartes.length > 0) {
+    texto += `${texto ? ', ' : ''}representado(a) por ${respPartes.join(', ')}`
+  }
+  return texto
+}
+
+function formatarEnderecoEmpresa(empresa) {
+  const partes = []
+  if (empresa?.endereco) {
+    let rua = empresa.endereco
+    if (empresa?.numero) rua += `, ${empresa.numero}`
+    if (empresa?.complemento) rua += ` - ${empresa.complemento}`
+    partes.push(rua)
+  }
+  if (empresa?.bairro) partes.push(empresa.bairro)
+  if (empresa?.cidade && empresa?.estado) partes.push(`${empresa.cidade}/${empresa.estado}`)
+  else if (empresa?.cidade) partes.push(empresa.cidade)
+  if (empresa?.cep) partes.push(`CEP ${empresa.cep}`)
+  return partes.join(', ')
+}
+
+function formatarBlocoDadosEmpresa(empresa) {
+  if (!empresa) return ''
+  const partes = []
+  if (empresa.nome_empresa) partes.push(empresa.nome_empresa)
+  if (empresa.cpf_cnpj) partes.push(empresa.cpf_cnpj)
+  const endereco = formatarEnderecoEmpresa(empresa)
+  if (endereco) partes.push(endereco)
+  if (empresa.telefone) partes.push(empresa.telefone)
+  const email = empresa.email_empresa || empresa.email
+  if (email) partes.push(email)
+  if (empresa.site) partes.push(empresa.site)
+  return partes.join(', ')
+}
+
+function substituirVariaveis(conteudo, devedor, empresa) {
+  const nomeEmpresa = typeof empresa === 'string' ? empresa : (empresa?.nome_empresa || '')
+  const empresaObj = typeof empresa === 'string' ? null : empresa
   return conteudo
+    .replaceAll('{{dadosCliente}}', formatarBlocoDadosCliente(devedor))
+    .replaceAll('{{dadosEmpresa}}', formatarBlocoDadosEmpresa(empresaObj))
     .replaceAll('{{nomeCliente}}', devedor?.nome || '')
     .replaceAll('{{cpfCliente}}', devedor?.cpf || '')
     .replaceAll('{{telefoneCliente}}', devedor?.telefone || '')
@@ -29,7 +80,7 @@ function substituirVariaveis(conteudo, devedor, nomeEmpresa) {
     .replaceAll('{{telefoneResponsavel}}', devedor?.responsavel_telefone || '')
     .replaceAll('{{nomePlano}}', devedor?.planos?.nome || devedor?.plano_nome || '')
     .replaceAll('{{valorPlano}}', formatarValor(devedor?.planos?.valor || devedor?.plano_valor))
-    .replaceAll('{{nomeEmpresa}}', nomeEmpresa || '')
+    .replaceAll('{{nomeEmpresa}}', nomeEmpresa)
     .replaceAll('{{dataAtual}}', new Date().toLocaleDateString('pt-BR'))
 }
 
@@ -82,8 +133,14 @@ export default function ContratosSection({ clienteId, devedor, userId, nomeEmpre
       const { data: tokenData, error: errToken } = await supabase.rpc('gerar_token_contrato')
       if (errToken) throw new Error('Erro ao gerar token: ' + errToken.message)
 
+      const { data: empresa } = await supabase
+        .from('usuarios')
+        .select('nome_empresa, cpf_cnpj, endereco, numero, complemento, bairro, cidade, estado, cep, telefone, email_empresa, email, site')
+        .eq('id', userId)
+        .maybeSingle()
+
       const token = tokenData
-      const conteudoInterpolado = substituirVariaveis(template.conteudo, devedor, nomeEmpresa)
+      const conteudoInterpolado = substituirVariaveis(template.conteudo, devedor, empresa || nomeEmpresa)
 
       const { error: errInsert } = await supabase.from('contratos_enviados').insert({
         user_id: userId,
