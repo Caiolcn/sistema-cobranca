@@ -2399,7 +2399,7 @@ export default function WhatsAppConexao() {
   // ========== RENDER ==========
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh', paddingBottom: isSmallScreen ? '40px' : '60px', boxSizing: 'border-box' }}>
+    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh', paddingBottom: isSmallScreen ? '40px' : '60px', boxSizing: 'border-box', minWidth: 0, overflowX: 'hidden' }}>
       {/* Título */}
       <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
         <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
@@ -2411,10 +2411,10 @@ export default function WhatsAppConexao() {
       </div>
 
       {/* Menu de Abas + Status */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isSmallScreen ? '16px' : '24px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: isSmallScreen ? '16px' : '24px', minWidth: 0, width: '100%' }}>
         {/* Tabs - dropdown no mobile, segmented control no desktop */}
         {isMobile ? (
-          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
             <select
               value={activeTab}
               onChange={(e) => setActiveTab(e.target.value)}
@@ -2486,43 +2486,54 @@ export default function WhatsAppConexao() {
         )}
 
         {/* Status badge + Desconectar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            backgroundColor: status === 'connected' ? '#e8f5e9' : status === 'connecting' ? '#fff3e0' : '#fef2f2',
-            border: `1px solid ${status === 'connected' ? '#c8e6c9' : status === 'connecting' ? '#ffe0b2' : '#fecaca'}`
-          }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <div
+            title={status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: isMobile ? '8px' : '6px 12px',
+              borderRadius: '20px',
+              backgroundColor: status === 'connected' ? '#e8f5e9' : status === 'connecting' ? '#fff3e0' : '#fef2f2',
+              border: `1px solid ${status === 'connected' ? '#c8e6c9' : status === 'connecting' ? '#ffe0b2' : '#fecaca'}`
+            }}>
             <div style={{
               width: '8px',
               height: '8px',
               borderRadius: '50%',
               backgroundColor: status === 'connected' ? '#4CAF50' : status === 'connecting' ? '#ff9800' : '#f44336'
             }} />
-            <span style={{ fontSize: '13px', fontWeight: '600', color: status === 'connected' ? '#2e7d32' : status === 'connecting' ? '#e65100' : '#c62828' }}>
-              {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
-            </span>
+            {!isMobile && (
+              <span style={{ fontSize: '13px', fontWeight: '600', color: status === 'connected' ? '#2e7d32' : status === 'connecting' ? '#e65100' : '#c62828' }}>
+                {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
+              </span>
+            )}
           </div>
           {status === 'connected' && (
             <button
               onClick={() => setConfirmDesconexaoModal(true)}
               disabled={loading}
+              title="Desconectar"
               style={{
-                padding: '6px 14px',
+                padding: isMobile ? '8px' : '6px 14px',
                 backgroundColor: '#f44336',
                 color: 'white',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: isMobile ? '50%' : '6px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontSize: '13px',
                 fontWeight: '500',
-                opacity: loading ? 0.7 : 1
+                opacity: loading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: isMobile ? '32px' : 'auto',
+                height: isMobile ? '32px' : 'auto',
+                flexShrink: 0
               }}
             >
-              Desconectar
+              {isMobile ? <Icon icon="mdi:logout-variant" width="16" /> : 'Desconectar'}
             </button>
           )}
         </div>
@@ -2993,13 +3004,14 @@ export default function WhatsAppConexao() {
           backgroundColor: 'white',
           borderRadius: '8px',
           padding: isSmallScreen ? '16px' : '24px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #e5e7eb',
+          boxSizing: 'border-box'
         }}>
           {/* Layout 2 colunas */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile || isTablet ? '1fr' : '1fr 1fr', gap: isSmallScreen ? '16px' : '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile || isTablet ? '1fr' : '1fr 1fr', gap: isSmallScreen ? '16px' : '24px', minWidth: 0 }}>
 
             {/* COLUNA ESQUERDA: Cards de automação + Config */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ marginBottom: '12px' }}>
                 <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
                   Automações
@@ -3007,52 +3019,83 @@ export default function WhatsAppConexao() {
                 <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Ative e selecione para editar</p>
               </div>
 
-              {/* Sub-tabs de categoria */}
-              <div style={{
-                display: isSmallScreen ? 'grid' : 'flex',
-                gridTemplateColumns: isSmallScreen ? '1fr 1fr' : undefined,
-                gap: '4px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '10px',
-                padding: '4px',
-                marginBottom: '12px'
-              }}>
-                {[
-                  { id: 'cobrancas', label: 'Cobranças', icon: 'mdi:cash-multiple' },
-                  { id: 'aulas', label: 'Aulas', icon: 'mdi:calendar-clock' },
-                  { id: 'relacionamento', label: 'Relacionamento', icon: 'mdi:heart-outline' },
-                  { id: 'retencao', label: 'Retenção', icon: 'mdi:account-reactivate' }
-                ].map(cat => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setCategoriaAutomacao(cat.id)}
+              {/* Sub-tabs de categoria — dropdown no mobile, segmented control no desktop */}
+              {isMobile ? (
+                <div style={{ position: 'relative', marginBottom: '12px' }}>
+                  <select
+                    value={categoriaAutomacao}
+                    onChange={(e) => setCategoriaAutomacao(e.target.value)}
                     style={{
-                      flex: isSmallScreen ? undefined : 1,
-                      minWidth: 0,
-                      padding: '8px 10px',
-                      backgroundColor: categoriaAutomacao === cat.id ? 'white' : 'transparent',
-                      color: categoriaAutomacao === cat.id ? '#1a1a1a' : '#555',
-                      border: 'none',
-                      borderRadius: '8px',
+                      width: '100%',
+                      padding: '10px 36px 10px 12px',
+                      backgroundColor: '#f3f4f6',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
                       cursor: 'pointer',
-                      fontSize: isSmallScreen ? '11px' : '12px',
-                      fontWeight: categoriaAutomacao === cat.id ? '600' : '400',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      transition: 'all 0.2s',
-                      boxShadow: categoriaAutomacao === cat.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 10px center',
+                      backgroundSize: '18px',
+                      boxSizing: 'border-box'
                     }}
                   >
-                    <Icon icon={cat.icon} width={isSmallScreen ? 14 : 16} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.label}</span>
-                  </button>
-                ))}
-              </div>
+                    <option value="cobrancas">Cobranças</option>
+                    <option value="aulas">Aulas</option>
+                    <option value="relacionamento">Relacionamento</option>
+                    <option value="retencao">Retenção</option>
+                  </select>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'flex',
+                  gap: '4px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '10px',
+                  padding: '4px',
+                  marginBottom: '12px'
+                }}>
+                  {[
+                    { id: 'cobrancas', label: 'Cobranças', icon: 'mdi:cash-multiple' },
+                    { id: 'aulas', label: 'Aulas', icon: 'mdi:calendar-clock' },
+                    { id: 'relacionamento', label: 'Relacionamento', icon: 'mdi:heart-outline' },
+                    { id: 'retencao', label: 'Retenção', icon: 'mdi:account-reactivate' }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setCategoriaAutomacao(cat.id)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '8px 10px',
+                        backgroundColor: categoriaAutomacao === cat.id ? 'white' : 'transparent',
+                        color: categoriaAutomacao === cat.id ? '#1a1a1a' : '#555',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: categoriaAutomacao === cat.id ? '600' : '400',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        transition: 'all 0.2s',
+                        boxShadow: categoriaAutomacao === cat.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                      }}
+                    >
+                      <Icon icon={cat.icon} width={16} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Aviso educativo quando categoria = retenção */}
               {categoriaAutomacao === 'retencao' && (
@@ -3104,7 +3147,8 @@ export default function WhatsAppConexao() {
                       padding: '12px 14px', backgroundColor: tipoTemplateSelecionado === item.tipo ? `${item.cor}08` : 'white',
                       borderRadius: '8px', border: tipoTemplateSelecionado === item.tipo ? `2px solid ${item.cor}` : '1px solid #e5e7eb',
                       cursor: item.locked ? 'pointer' : (item.ativo ? 'pointer' : 'default'),
-                      transition: 'all 0.2s', opacity: item.locked ? 0.7 : (!item.ativo ? 0.5 : 1)
+                      transition: 'all 0.2s', opacity: item.locked ? 0.7 : (!item.ativo ? 0.5 : 1),
+                      minWidth: 0, boxSizing: 'border-box'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
