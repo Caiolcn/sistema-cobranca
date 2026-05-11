@@ -1998,6 +1998,23 @@ export default function WhatsAppConexao() {
         const numeroCompleto = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`
         console.log('📱 Gerando código de pareamento para:', numeroCompleto)
 
+        // Se a instância já existe (não está 'open' — já tratamos esse caso acima),
+        // o socket pode estar preso em modo QR de uma tentativa anterior.
+        // Logout força recriação do socket e libera o pareamento por número.
+        if (instanciaExiste) {
+          console.log('🔄 Resetando socket da instância antes do pareamento...')
+          try {
+            await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
+              method: 'DELETE',
+              headers: { 'apikey': config.apiKey }
+            })
+            // Pequena espera para a Evolution API reiniciar o socket
+            await new Promise(r => setTimeout(r, 1500))
+          } catch (e) {
+            console.log('⚠️ Logout falhou (pode ser que já estivesse desconectado):', e.message)
+          }
+        }
+
         const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
           headers: { 'apikey': config.apiKey }
         })
@@ -2010,10 +2027,13 @@ export default function WhatsAppConexao() {
         const data = await connectResponse.json()
         console.log('📦 Resposta completa da API:', data)
 
-        const code = data.pairingCode || data.code || data.pairing_code
-        if (!code) {
-          console.error('❌ Código de pareamento não encontrado. Resposta:', JSON.stringify(data))
-          throw new Error('Código de pareamento não foi gerado. Tente novamente ou use o QR Code.')
+        // IMPORTANTE: data.code é o QR Code (link wa.me), NÃO o código de pareamento.
+        // Só aceitar campos específicos de pairing code.
+        const rawCode = data.pairingCode || data.pairing_code
+        const code = rawCode ? String(rawCode).replace(/[^A-Z0-9]/gi, '').toUpperCase() : null
+        if (!code || code.length !== 8) {
+          console.error('❌ Código de pareamento inválido. Resposta:', JSON.stringify(data))
+          throw new Error('A API não gerou um código de pareamento válido. Tente novamente em alguns segundos ou use o QR Code.')
         }
 
         console.log('✅ Código de pareamento gerado:', code)
