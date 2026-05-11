@@ -2003,8 +2003,10 @@ export default function WhatsAppConexao() {
       // 3. Se não existe, criar — em modo pareamento já passa o número aqui
       if (!instanciaExiste) {
         console.log('🔄 Criando instância...')
+        // Em modo pareamento NÃO passamos qrcode: true — o Baileys precisa
+        // inicializar em modo pairing puro, sem geração paralela de QR Code.
         const createBody = modoConexao === 'pairing'
-          ? { instanceName: config.instanceName, number: numeroCompleto, qrcode: true, integration: 'WHATSAPP-BAILEYS' }
+          ? { instanceName: config.instanceName, number: numeroCompleto, integration: 'WHATSAPP-BAILEYS' }
           : { instanceName: config.instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' }
 
         const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
