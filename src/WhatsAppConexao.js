@@ -1974,27 +1974,27 @@ export default function WhatsAppConexao() {
       }
 
       // No modo pareamento, deletar instância existente garante socket Baileys
-      // limpo e configurado para pairing — logout sozinho não é suficiente em
-      // várias versões da Evolution API porque a config inicial (qrcode: true)
-      // permanece no socket.
-      if (modoConexao === 'pairing' && instanciaExiste) {
-        console.log('🗑️ Deletando instância existente para recriar em modo pareamento...')
+      // limpo e configurado para pairing. fetchInstances não enxerga instâncias
+      // órfãs (a Evolution API retorna 403 no create porque "existe" mesmo
+      // depois de fetchInstances dizer que não), então deletamos INCONDICIONAL.
+      // Logout + Delete cobre ambos os casos sem efeito colateral se a
+      // instância de fato não existir (a Evolution responde 404, ignorado).
+      if (modoConexao === 'pairing') {
+        console.log('🗑️ Garantindo instância limpa antes do pareamento...')
         try {
-          // Logout primeiro pra encerrar sessão WhatsApp se houver
           await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
             method: 'DELETE',
             headers: { 'apikey': config.apiKey }
           }).catch(() => {})
-          // Depois apaga a instância
           await fetch(`${config.apiUrl}/instance/delete/${config.instanceName}`, {
             method: 'DELETE',
             headers: { 'apikey': config.apiKey }
-          })
-          await new Promise(r => setTimeout(r, 2000))
-          instanciaExiste = false
+          }).catch(() => {})
+          await new Promise(r => setTimeout(r, 2500))
         } catch (e) {
-          console.log('⚠️ Falha ao deletar instância:', e.message)
+          console.log('⚠️ Limpeza retornou erro (ok se instância não existia):', e.message)
         }
+        instanciaExiste = false
       }
 
       // 3. Se não existe, criar — em modo pareamento já passa o número aqui
@@ -2002,7 +2002,7 @@ export default function WhatsAppConexao() {
       if (!instanciaExiste) {
         console.log('🔄 Criando instância...')
         const createBody = modoConexao === 'pairing'
-          ? { instanceName: config.instanceName, number: numeroCompleto, integration: 'WHATSAPP-BAILEYS' }
+          ? { instanceName: config.instanceName, number: numeroCompleto, qrcode: true, integration: 'WHATSAPP-BAILEYS' }
           : { instanceName: config.instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' }
 
         const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
