@@ -2001,7 +2001,6 @@ export default function WhatsAppConexao() {
       }
 
       // 3. Se não existe, criar — em modo pareamento já passa o número aqui
-      let pairingCodeFromCreate = null
       if (!instanciaExiste) {
         console.log('🔄 Criando instância...')
         const createBody = modoConexao === 'pairing'
@@ -2023,11 +2022,13 @@ export default function WhatsAppConexao() {
           throw new Error(errorData.message || `Erro ao criar instância: HTTP ${createResponse.status}`)
         }
 
-        // Em modo pareamento, a Evolution API pode retornar o pairingCode direto na criação
+        // Em modo pareamento NÃO usamos o pairingCode da criação — ele vem antes
+        // do Baileys completar handshake com WhatsApp. Em vez disso, esperamos
+        // o socket estabilizar e pedimos via /instance/connect, que devolve um
+        // código já registrado nos servidores do WhatsApp.
         if (modoConexao === 'pairing' && createResponse.ok) {
           const createData = await createResponse.json().catch(() => ({}))
-          console.log('📦 Resposta da criação:', createData)
-          pairingCodeFromCreate = createData.pairingCode || createData.hash?.pairingCode || createData.qrcode?.pairingCode
+          console.log('📦 Resposta da criação (apenas debug, não usado):', createData)
         }
 
         console.log('✅ Instância criada/já existe')
@@ -2035,29 +2036,26 @@ export default function WhatsAppConexao() {
 
       // 4. Gerar QR Code ou Código de Pareamento
       if (modoConexao === 'pairing') {
-        let rawCode = pairingCodeFromCreate
+        // Espera Baileys conectar nos servidores do WhatsApp antes de pedir o código.
+        // Sem isso, o código retornado é "provisório" e o WhatsApp recusa o pareamento.
+        console.log('⏳ Aguardando Baileys estabelecer conexão com WhatsApp...')
+        await new Promise(r => setTimeout(r, 6000))
 
-        // Se o create não retornou, chama connect — espera mais tempo pra Baileys
-        // completar o handshake com servidores do WhatsApp. Sem essa espera, o
-        // pairingCode retorna mas não está registrado, e o WhatsApp rejeita.
-        if (!rawCode) {
-          await new Promise(r => setTimeout(r, 4000))
-          console.log('📡 Solicitando pairing code via /instance/connect...')
-          const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
-            headers: { 'apikey': config.apiKey }
-          })
+        console.log('📡 Solicitando pairing code via /instance/connect...')
+        const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
+          headers: { 'apikey': config.apiKey }
+        })
 
-          if (!connectResponse.ok) {
-            const errorData = await connectResponse.json().catch(() => ({}))
-            throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
-          }
-
-          const data = await connectResponse.json()
-          console.log('📦 Resposta completa da API:', data)
-
-          // IMPORTANTE: data.code é o QR Code (link wa.me), NÃO o código de pareamento.
-          rawCode = data.pairingCode || data.pairing_code
+        if (!connectResponse.ok) {
+          const errorData = await connectResponse.json().catch(() => ({}))
+          throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
         }
+
+        const data = await connectResponse.json()
+        console.log('📦 Resposta completa da API:', data)
+
+        // IMPORTANTE: data.code é o QR Code (link wa.me), NÃO o código de pareamento.
+        let rawCode = data.pairingCode || data.pairing_code
 
         const code = rawCode ? String(rawCode).replace(/[^A-Z0-9]/gi, '').toUpperCase() : null
         if (!code || code.length !== 8) {
