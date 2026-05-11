@@ -67,6 +67,7 @@ export const exportarClientes = (clientes) => {
     'Telefone': cliente.telefone || '',
     'CPF': cliente.cpf || '',
     'Plano': cliente.plano_nome || 'Sem plano',
+    'Tags': Array.isArray(cliente.tags) ? cliente.tags.join(', ') : '',
     'Status': cliente.status || '',
     'Assinatura Ativa': cliente.assinatura_ativa ? 'Sim' : 'Não',
     'Próxima Mensalidade': cliente.proxima_mensalidade ? formatarDataExport(cliente.proxima_mensalidade) : '',
@@ -74,6 +75,82 @@ export const exportarClientes = (clientes) => {
   }));
 
   exportToCSV(dados, 'clientes');
+};
+
+/**
+ * Exporta lista de clientes em PDF (formato relatório/turma)
+ */
+export const exportarClientesPDF = async (clientes, { titulo = 'Lista de Alunos', subtitulo = '' } = {}) => {
+  if (!clientes || clientes.length === 0) {
+    alert('Não há dados para exportar');
+    return;
+  }
+
+  const { default: jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 40;
+  let y = 50;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(titulo, marginX, y);
+  y += 18;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(110);
+  const dataExport = new Date().toLocaleDateString('pt-BR');
+  doc.text(`${subtitulo ? subtitulo + '  •  ' : ''}${clientes.length} aluno${clientes.length > 1 ? 's' : ''}  •  Gerado em ${dataExport}`, marginX, y);
+  y += 20;
+
+  doc.setDrawColor(220);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 18;
+
+  doc.setFontSize(10);
+  doc.setTextColor(80);
+  doc.setFont('helvetica', 'bold');
+  const colNome = marginX;
+  const colTel = marginX + 220;
+  const colPlano = marginX + 360;
+  doc.text('Aluno', colNome, y);
+  doc.text('Telefone', colTel, y);
+  doc.text('Plano', colPlano, y);
+  y += 8;
+  doc.setDrawColor(230);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 14;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(40);
+
+  clientes.forEach((cliente) => {
+    if (y > pageHeight - 60) {
+      doc.addPage();
+      y = 50;
+    }
+    const nome = (cliente.nome || '').substring(0, 38);
+    const tel = (cliente.telefone || '').substring(0, 18);
+    const plano = (cliente.plano_nome || 'Sem plano').substring(0, 22);
+    doc.text(nome, colNome, y);
+    doc.text(tel, colTel, y);
+    doc.text(plano, colPlano, y);
+
+    if (Array.isArray(cliente.tags) && cliente.tags.length > 0) {
+      y += 12;
+      doc.setFontSize(8);
+      doc.setTextColor(110);
+      doc.text(`Tags: ${cliente.tags.join(', ').substring(0, 90)}`, colNome + 10, y);
+      doc.setFontSize(10);
+      doc.setTextColor(40);
+    }
+    y += 18;
+  });
+
+  const filename = `alunos_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(filename);
 };
 
 /**

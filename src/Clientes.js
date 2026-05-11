@@ -5,7 +5,10 @@ import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 import whatsappService from './services/whatsappService'
-import { exportarClientes } from './utils/exportUtils'
+import { exportarClientes, exportarClientesPDF } from './utils/exportUtils'
+import TagInput from './components/TagInput'
+import TagFormModal from './components/TagFormModal'
+import { corTextoContrastante } from './utils/tagColors'
 import CsvImportModal from './components/CsvImportModal'
 import AnamneseSection from './components/AnamneseSection'
 import ContratosSection from './ContratosSection'
@@ -59,6 +62,13 @@ export default function Clientes() {
   const [novoClienteEmail, setNovoClienteEmail] = useState('')
   const [novoClienteResponsavelNome, setNovoClienteResponsavelNome] = useState('')
   const [novoClienteResponsavelTelefone, setNovoClienteResponsavelTelefone] = useState('')
+  const [novoClienteTags, setNovoClienteTags] = useState([])
+  const [tagsEdit, setTagsEdit] = useState([])
+  const [filtroTag, setFiltroTag] = useState(searchParams.get('tag') || 'todas')
+  const [mostrarDropdownExport, setMostrarDropdownExport] = useState(false)
+  const [tagsDisponiveis, setTagsDisponiveis] = useState([])
+  const [tagFormModal, setTagFormModal] = useState({ show: false, tag: null, contexto: null })
+  const [confirmDeleteTag, setConfirmDeleteTag] = useState({ show: false, tag: null })
   const [temResponsavel, setTemResponsavel] = useState(false)
   const [stepCadastro, setStepCadastro] = useState(1)
   const [criarAssinatura, setCriarAssinatura] = useState(false)
@@ -109,6 +119,7 @@ export default function Clientes() {
     if (userId) {
       carregarClientes()
       carregarPlanos()
+      carregarTags()
     }
   }, [userId])
 
@@ -132,10 +143,13 @@ export default function Clientes() {
       if (mostrarFiltros && !event.target.closest('.popover-filtros') && !event.target.closest('.btn-filtrar')) {
         setMostrarFiltros(false)
       }
+      if (mostrarDropdownExport && !event.target.closest('.dropdown-export')) {
+        setMostrarDropdownExport(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [mostrarFiltros])
+  }, [mostrarFiltros, mostrarDropdownExport])
 
   useEffect(() => {
     // Filtrar clientes quando busca ou filtros mudarem
@@ -168,6 +182,11 @@ export default function Clientes() {
     // Filtro de Plano
     if (filtroPlano !== 'todos') {
       filtrados = filtrados.filter(cliente => cliente.plano_id === filtroPlano)
+    }
+
+    // Filtro de Tag
+    if (filtroTag !== 'todas') {
+      filtrados = filtrados.filter(cliente => Array.isArray(cliente.tags) && cliente.tags.includes(filtroTag))
     }
 
     // Filtro de Assinatura Ativa/Desativada
@@ -206,7 +225,7 @@ export default function Clientes() {
 
     setClientesFiltrados(filtrados)
     setPaginaAtual(1) // Resetar para primeira página quando filtros mudam
-  }, [busca, clientes, filtroStatus, filtroPlano, filtroAssinatura, filtroInadimplente, filtroVencimentoDe, filtroVencimentoAte, filtroAniversariante])
+  }, [busca, clientes, filtroStatus, filtroPlano, filtroTag, filtroAssinatura, filtroInadimplente, filtroVencimentoDe, filtroVencimentoAte, filtroAniversariante])
 
   // Calcular dados de paginação
   const totalPaginas = Math.ceil(clientesFiltrados.length / itensPorPagina)
@@ -232,6 +251,96 @@ export default function Clientes() {
       console.error('Erro ao carregar planos:', error)
     }
   }, [userId])
+
+  const carregarTags = useCallback(async () => {
+    if (!userId) return
+    try {
+      const { data, error } = await supabase
+        .from('tags')
+        .select('id, nome, cor')
+        .eq('user_id', userId)
+        .order('nome', { ascending: true })
+      if (error) throw error
+      setTagsDisponiveis(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar tags:', error)
+    }
+  }, [userId])
+
+  const handleSalvarTag = async ({ nome, cor }) => {
+    if (!userId) return
+    const tagAtual = tagFormModal.tag
+    const contexto = tagFormModal.contexto
+    const ehEdicao = !!(tagAtual && tagAtual.id)
+    try {
+      if (ehEdicao) {
+        const nomeAntigo = tagAtual.nome
+        const { error } = await supabase
+          .from('tags')
+          .update({ nome, cor })
+          .eq('id', tagAtual.id)
+        if (error) throw error
+
+        if (nomeAntigo !== nome) {
+          const afetados = clientes.filter(c => Array.isArray(c.tags) && c.tags.includes(nomeAntigo))
+          await Promise.all(afetados.map(c =>
+            supabase.from('devedores')
+              .update({ tags: c.tags.map(t => t === nomeAntigo ? nome : t) })
+              .eq('id', c.id)
+          ))
+          if (tagsEdit.includes(nomeAntigo)) setTagsEdit(tagsEdit.map(t => t === nomeAntigo ? nome : t))
+          if (novoClienteTags.includes(nomeAntigo)) setNovoClienteTags(novoClienteTags.map(t => t === nomeAntigo ? nome : t))
+          if (filtroTag === nomeAntigo) setFiltroTag(nome)
+        }
+        showToast('Tag atualizada!', 'success')
+      } else {
+        const { error } = await supabase
+          .from('tags')
+          .insert({ user_id: userId, nome, cor })
+        if (error) {
+          if (error.code === '23505') {
+            showToast('Já existe uma tag com este nome', 'warning')
+            return
+          }
+          throw error
+        }
+        if (contexto === 'novo') setNovoClienteTags([...novoClienteTags, nome])
+        else if (contexto === 'edit') setTagsEdit([...tagsEdit, nome])
+        showToast('Tag adicionada!', 'success')
+      }
+      await carregarTags()
+      await carregarClientes()
+      setTagFormModal({ show: false, tag: null, contexto: null })
+    } catch (error) {
+      showToast('Erro ao salvar tag: ' + error.message, 'error')
+    }
+  }
+
+  const handleDeletarTag = async () => {
+    const tag = confirmDeleteTag.tag
+    if (!tag || !userId) return
+    try {
+      const afetados = clientes.filter(c => Array.isArray(c.tags) && c.tags.includes(tag.nome))
+      await Promise.all(afetados.map(c =>
+        supabase.from('devedores')
+          .update({ tags: c.tags.filter(t => t !== tag.nome) })
+          .eq('id', c.id)
+      ))
+      const { error } = await supabase.from('tags').delete().eq('id', tag.id)
+      if (error) throw error
+
+      if (tagsEdit.includes(tag.nome)) setTagsEdit(tagsEdit.filter(t => t !== tag.nome))
+      if (novoClienteTags.includes(tag.nome)) setNovoClienteTags(novoClienteTags.filter(t => t !== tag.nome))
+      if (filtroTag === tag.nome) setFiltroTag('todas')
+
+      await carregarTags()
+      await carregarClientes()
+      setConfirmDeleteTag({ show: false, tag: null })
+      showToast('Tag excluída', 'success')
+    } catch (error) {
+      showToast('Erro ao excluir tag: ' + error.message, 'error')
+    }
+  }
 
   const carregarClientes = useCallback(async () => {
     if (!userId) return
@@ -263,6 +372,7 @@ export default function Clientes() {
             aulas_restantes,
             aulas_total,
             foto_url,
+            tags,
             planos:plano_id (nome, tipo, numero_aulas, valor, ciclo_cobranca)
           `)
           .eq('user_id', userId)
@@ -497,6 +607,7 @@ export default function Clientes() {
       setEmailEdit(cliente.email || '')
       setResponsavelNomeEdit(cliente.responsavel_nome || '')
       setResponsavelTelefoneEdit(cliente.responsavel_telefone || '')
+      setTagsEdit(Array.isArray(cliente.tags) ? cliente.tags : [])
       const pendente = mensalidades.find(m => m.status === 'pendente')
       const refMens = pendente || mensalidades[mensalidades.length - 1]
       setDiaVencimentoEdit(refMens ? String(new Date(refMens.data_vencimento + 'T00:00:00').getDate()) : '')
@@ -563,7 +674,8 @@ export default function Clientes() {
           data_nascimento: dataNascimentoEdit || null,
           email: emailEdit.trim() || null,
           responsavel_nome: responsavelNomeEdit.trim() || null,
-          responsavel_telefone: responsavelTelefoneEdit.trim() || null
+          responsavel_telefone: responsavelTelefoneEdit.trim() || null,
+          tags: tagsEdit.length > 0 ? tagsEdit : null
         })
         .eq('id', clienteSelecionado.id)
 
@@ -1190,6 +1302,7 @@ export default function Clientes() {
           plano_id: criarAssinatura ? planoSelecionado : null,
           aulas_restantes: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
           aulas_total: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
+          tags: novoClienteTags.length > 0 ? novoClienteTags : null,
           portal_token: crypto.randomUUID().replace(/-/g, '')
         })
         .select()
@@ -1321,6 +1434,7 @@ Equipe ${nomeEmpresa}`
       setNovoClienteEmail('')
       setNovoClienteResponsavelNome('')
       setNovoClienteResponsavelTelefone('')
+      setNovoClienteTags([])
       setTemResponsavel(false)
       setStepCadastro(1)
       setCriarAssinatura(true)
@@ -1401,6 +1515,7 @@ Equipe ${nomeEmpresa}`
 
   // Verificar se existem filtros ativos
   const temFiltrosAtivos = filtroStatus !== 'todos' || filtroPlano !== 'todos' ||
+                           filtroTag !== 'todas' ||
                            filtroAssinatura !== 'todos' || filtroInadimplente
 
   const TABS_CLIENTES = [
@@ -1617,35 +1732,75 @@ Equipe ${nomeEmpresa}`
             >
               <Icon icon="iconoir:import" width="18" height="18" />
             </button>
-            <button
-              onClick={() => exportarClientes(clientesFiltrados)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: 'white',
-                color: '#333',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#344848'
-                e.currentTarget.style.color = '#344848'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#ddd'
-                e.currentTarget.style.color = '#333'
-              }}
-            >
-              <Icon icon="ph:export-light" width="18" height="18" />
-            </button>
+            <div style={{ position: 'relative', flex: isSmallScreen ? 1 : 'none' }} className="dropdown-export">
+              <button
+                onClick={() => setMostrarDropdownExport(!mostrarDropdownExport)}
+                style={{
+                  padding: isSmallScreen ? '10px 14px' : '10px 20px',
+                  backgroundColor: 'white',
+                  color: '#333',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  width: '100%'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#344848'
+                  e.currentTarget.style.color = '#344848'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#ddd'
+                  e.currentTarget.style.color = '#333'
+                }}
+                title="Exportar lista"
+              >
+                <Icon icon="ph:export-light" width="18" height="18" />
+              </button>
+              {mostrarDropdownExport && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  right: 0,
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  zIndex: 1000,
+                  minWidth: '180px',
+                  overflow: 'hidden'
+                }}>
+                  <button
+                    onClick={() => { exportarClientes(clientesFiltrados); setMostrarDropdownExport(false) }}
+                    style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    <Icon icon="mdi:file-delimited-outline" width="18" style={{ color: '#16a34a' }} />
+                    Exportar CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      const subtitulo = filtroTag !== 'todas' ? `Tag: ${filtroTag}` : ''
+                      exportarClientesPDF(clientesFiltrados, { subtitulo })
+                      setMostrarDropdownExport(false)
+                    }}
+                    style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#333', display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid #f0f0f0' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    <Icon icon="mdi:file-pdf-box" width="18" style={{ color: '#dc2626' }} />
+                    Exportar PDF
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               className="btn-filtrar"
@@ -1700,6 +1855,7 @@ Equipe ${nomeEmpresa}`
                   border: '2px solid white'
                 }}>
                   {(filtroStatus !== 'todos' ? 1 : 0) + (filtroPlano !== 'todos' ? 1 : 0) +
+                   (filtroTag !== 'todas' ? 1 : 0) +
                    (filtroAssinatura !== 'todos' ? 1 : 0) + (filtroInadimplente ? 1 : 0)}
                 </span>
               )}
@@ -1711,6 +1867,7 @@ Equipe ${nomeEmpresa}`
                 setNovoClienteNome(''); setNovoClienteTelefone(''); setNovoClienteCpf('')
                 setNovoClienteDataNascimento(''); setNovoClienteEmail('')
                 setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('')
+                setNovoClienteTags([])
                 setTemResponsavel(false); setStepCadastro(1)
                 setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
                 setPlanoSelecionado(''); setEnviarBoasVindas(true)
@@ -1906,6 +2063,35 @@ Equipe ${nomeEmpresa}`
                     </select>
                   </div>
 
+                  {/* Filtro Tag / Turma */}
+                  {tagsDisponiveis.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                        Tag / Turma
+                      </label>
+                      <select
+                        value={filtroTag}
+                        onChange={(e) => setFiltroTag(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          fontSize: '16px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <option value="todas">Todas as tags</option>
+                        {tagsDisponiveis.map(tag => (
+                          <option key={tag.id} value={tag.nome}>{tag.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Filtro Assinatura */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
@@ -2016,6 +2202,7 @@ Equipe ${nomeEmpresa}`
                     onClick={() => {
                       setFiltroStatus('todos')
                       setFiltroPlano('todos')
+                      setFiltroTag('todas')
                       setFiltroAssinatura('todos')
                       setFiltroInadimplente(false)
                       setFiltroVencimentoDe('')
@@ -2143,6 +2330,20 @@ Equipe ${nomeEmpresa}`
                   </span>
                 </div>
 
+                {/* Tags */}
+                {Array.isArray(cliente.tags) && cliente.tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '10px' }}>
+                    {cliente.tags.map(nome => {
+                      const cor = tagsDisponiveis.find(t => t.nome === nome)?.cor || '#3B82F6'
+                      return (
+                        <span key={nome} style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: cor, color: corTextoContrastante(cor), borderRadius: '10px', fontWeight: '500' }}>
+                          {nome}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+
                 {/* Info do card */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
@@ -2229,7 +2430,26 @@ Equipe ${nomeEmpresa}`
                             cliente.nome.charAt(0).toUpperCase()
                           )}
                         </div>
-                        {cliente.nome}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                          <span>{cliente.nome}</span>
+                          {Array.isArray(cliente.tags) && cliente.tags.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                              {cliente.tags.slice(0, 3).map(nome => {
+                                const cor = tagsDisponiveis.find(t => t.nome === nome)?.cor || '#3B82F6'
+                                return (
+                                  <span key={nome} style={{ fontSize: '10px', padding: '1px 6px', backgroundColor: cor, color: corTextoContrastante(cor), borderRadius: '8px', fontWeight: '500' }}>
+                                    {nome}
+                                  </span>
+                                )
+                              })}
+                              {cliente.tags.length > 3 && (
+                                <span style={{ fontSize: '10px', padding: '1px 6px', color: '#666', fontWeight: '500' }}>
+                                  +{cliente.tags.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td style={{ padding: '16px 24px', fontSize: '14px', color: '#666' }}>
@@ -2769,6 +2989,17 @@ Equipe ${nomeEmpresa}`
                       <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tel. Responsável</label>
                       <input type="tel" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15" placeholder="(00) 00000-0000"
                         style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelTelefoneEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tags / Turmas</label>
+                      <TagInput
+                        tags={tagsEdit}
+                        onChange={setTagsEdit}
+                        tagsDisponiveis={tagsDisponiveis}
+                        onCriar={(nomeInicial) => setTagFormModal({ show: true, tag: nomeInicial ? { nome: nomeInicial, cor: '#3B82F6' } : null, contexto: 'edit' })}
+                        onEditar={(tag) => setTagFormModal({ show: true, tag, contexto: 'edit' })}
+                        onDeletar={(tag) => setConfirmDeleteTag({ show: true, tag })}
+                      />
                     </div>
                   </div>
 
@@ -4009,6 +4240,21 @@ Equipe ${nomeEmpresa}`
                     </div>
                   )}
                 </div>
+
+                {/* Tags / Turmas */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
+                    Tags / Turmas <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
+                  </label>
+                  <TagInput
+                    tags={novoClienteTags}
+                    onChange={setNovoClienteTags}
+                    tagsDisponiveis={tagsDisponiveis}
+                    onCriar={(nomeInicial) => setTagFormModal({ show: true, tag: nomeInicial ? { nome: nomeInicial, cor: '#3B82F6' } : null, contexto: 'novo' })}
+                    onEditar={(tag) => setTagFormModal({ show: true, tag, contexto: 'novo' })}
+                    onDeletar={(tag) => setConfirmDeleteTag({ show: true, tag })}
+                  />
+                </div>
               </div>
             )}
 
@@ -4850,6 +5096,23 @@ Equipe ${nomeEmpresa}`
         planos={planos}
         limiteClientes={limiteClientes}
         clientesAtivos={clientes.filter(c => c.assinatura_ativa && !c.deleted_at && !c.lixo).length}
+      />
+
+      <TagFormModal
+        show={tagFormModal.show}
+        tag={tagFormModal.tag}
+        onClose={() => setTagFormModal({ show: false, tag: null, contexto: null })}
+        onSave={handleSalvarTag}
+      />
+
+      <ConfirmModal
+        isOpen={confirmDeleteTag.show}
+        title="Excluir tag"
+        message={confirmDeleteTag.tag ? `Tem certeza que deseja excluir a tag "${confirmDeleteTag.tag.nome}"? Ela será removida de todos os alunos que a possuem.` : ''}
+        confirmText="Excluir"
+        type="danger"
+        onConfirm={handleDeletarTag}
+        onClose={() => setConfirmDeleteTag({ show: false, tag: null })}
       />
       </>}
     </div>
