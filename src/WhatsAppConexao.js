@@ -1962,20 +1962,56 @@ export default function WhatsAppConexao() {
         return
       }
 
-      // 3. Se não existe, criar
+      // Validar número antes — necessário se for modo pareamento
+      let numeroCompleto = null
+      if (modoConexao === 'pairing') {
+        const telefoneLimpo = telefoneParear.replace(/\D/g, '')
+        if (telefoneLimpo.length < 10) {
+          throw new Error('Digite seu número de telefone com DDD (ex: 11999999999)')
+        }
+        numeroCompleto = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`
+        console.log('📱 Número para pareamento:', numeroCompleto)
+      }
+
+      // No modo pareamento, deletar instância existente garante socket Baileys
+      // limpo e configurado para pairing — logout sozinho não é suficiente em
+      // várias versões da Evolution API porque a config inicial (qrcode: true)
+      // permanece no socket.
+      if (modoConexao === 'pairing' && instanciaExiste) {
+        console.log('🗑️ Deletando instância existente para recriar em modo pareamento...')
+        try {
+          // Logout primeiro pra encerrar sessão WhatsApp se houver
+          await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
+            method: 'DELETE',
+            headers: { 'apikey': config.apiKey }
+          }).catch(() => {})
+          // Depois apaga a instância
+          await fetch(`${config.apiUrl}/instance/delete/${config.instanceName}`, {
+            method: 'DELETE',
+            headers: { 'apikey': config.apiKey }
+          })
+          await new Promise(r => setTimeout(r, 2000))
+          instanciaExiste = false
+        } catch (e) {
+          console.log('⚠️ Falha ao deletar instância:', e.message)
+        }
+      }
+
+      // 3. Se não existe, criar — em modo pareamento já passa o número aqui
+      let pairingCodeFromCreate = null
       if (!instanciaExiste) {
         console.log('🔄 Criando instância...')
+        const createBody = modoConexao === 'pairing'
+          ? { instanceName: config.instanceName, number: numeroCompleto, integration: 'WHATSAPP-BAILEYS' }
+          : { instanceName: config.instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' }
+
         const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': config.apiKey
           },
-          body: JSON.stringify({
-            instanceName: config.instanceName,
-            qrcode: true,
-            integration: 'WHATSAPP-BAILEYS'
-          })
+          body: JSON.stringify(createBody)
         })
 
         // 403/409 = já existe, não é erro
@@ -1984,55 +2020,43 @@ export default function WhatsAppConexao() {
           throw new Error(errorData.message || `Erro ao criar instância: HTTP ${createResponse.status}`)
         }
 
+        // Em modo pareamento, a Evolution API pode retornar o pairingCode direto na criação
+        if (modoConexao === 'pairing' && createResponse.ok) {
+          const createData = await createResponse.json().catch(() => ({}))
+          console.log('📦 Resposta da criação:', createData)
+          pairingCodeFromCreate = createData.pairingCode || createData.hash?.pairingCode || createData.qrcode?.pairingCode
+        }
+
         console.log('✅ Instância criada/já existe')
       }
 
-      // 3. Gerar QR Code ou Código de Pareamento
+      // 4. Gerar QR Code ou Código de Pareamento
       if (modoConexao === 'pairing') {
-        // Modo código de pareamento (para celular)
-        const telefoneLimpo = telefoneParear.replace(/\D/g, '')
-        if (telefoneLimpo.length < 10) {
-          throw new Error('Digite seu número de telefone com DDD (ex: 11999999999)')
-        }
+        let rawCode = pairingCodeFromCreate
 
-        const numeroCompleto = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`
-        console.log('📱 Gerando código de pareamento para:', numeroCompleto)
+        // Se o create não retornou, chama connect (com pequena espera para socket inicializar)
+        if (!rawCode) {
+          await new Promise(r => setTimeout(r, 1500))
+          console.log('📡 Solicitando pairing code via /instance/connect...')
+          const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
+            headers: { 'apikey': config.apiKey }
+          })
 
-        // Se a instância já existe (não está 'open' — já tratamos esse caso acima),
-        // o socket pode estar preso em modo QR de uma tentativa anterior.
-        // Logout força recriação do socket e libera o pareamento por número.
-        if (instanciaExiste) {
-          console.log('🔄 Resetando socket da instância antes do pareamento...')
-          try {
-            await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
-              method: 'DELETE',
-              headers: { 'apikey': config.apiKey }
-            })
-            // Pequena espera para a Evolution API reiniciar o socket
-            await new Promise(r => setTimeout(r, 1500))
-          } catch (e) {
-            console.log('⚠️ Logout falhou (pode ser que já estivesse desconectado):', e.message)
+          if (!connectResponse.ok) {
+            const errorData = await connectResponse.json().catch(() => ({}))
+            throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
           }
+
+          const data = await connectResponse.json()
+          console.log('📦 Resposta completa da API:', data)
+
+          // IMPORTANTE: data.code é o QR Code (link wa.me), NÃO o código de pareamento.
+          rawCode = data.pairingCode || data.pairing_code
         }
 
-        const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
-          headers: { 'apikey': config.apiKey }
-        })
-
-        if (!connectResponse.ok) {
-          const errorData = await connectResponse.json().catch(() => ({}))
-          throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
-        }
-
-        const data = await connectResponse.json()
-        console.log('📦 Resposta completa da API:', data)
-
-        // IMPORTANTE: data.code é o QR Code (link wa.me), NÃO o código de pareamento.
-        // Só aceitar campos específicos de pairing code.
-        const rawCode = data.pairingCode || data.pairing_code
         const code = rawCode ? String(rawCode).replace(/[^A-Z0-9]/gi, '').toUpperCase() : null
         if (!code || code.length !== 8) {
-          console.error('❌ Código de pareamento inválido. Resposta:', JSON.stringify(data))
+          console.error('❌ Código de pareamento inválido. Recebido:', rawCode)
           throw new Error('A API não gerou um código de pareamento válido. Tente novamente em alguns segundos ou use o QR Code.')
         }
 
