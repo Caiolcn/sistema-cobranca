@@ -1977,23 +1977,26 @@ export default function WhatsAppConexao() {
       // limpo e configurado para pairing. fetchInstances não enxerga instâncias
       // órfãs (a Evolution API retorna 403 no create porque "existe" mesmo
       // depois de fetchInstances dizer que não), então deletamos INCONDICIONAL.
-      // Logout + Delete cobre ambos os casos sem efeito colateral se a
-      // instância de fato não existir (a Evolution responde 404, ignorado).
+      // Logamos cada status pra saber se a limpeza realmente rodou.
       if (modoConexao === 'pairing') {
         console.log('🗑️ Garantindo instância limpa antes do pareamento...')
-        try {
-          await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
-            method: 'DELETE',
-            headers: { 'apikey': config.apiKey }
-          }).catch(() => {})
-          await fetch(`${config.apiUrl}/instance/delete/${config.instanceName}`, {
-            method: 'DELETE',
-            headers: { 'apikey': config.apiKey }
-          }).catch(() => {})
-          await new Promise(r => setTimeout(r, 2500))
-        } catch (e) {
-          console.log('⚠️ Limpeza retornou erro (ok se instância não existia):', e.message)
+        const tryCleanup = async (path, method) => {
+          try {
+            const r = await fetch(`${config.apiUrl}${path}`, {
+              method,
+              headers: { 'apikey': config.apiKey }
+            })
+            const text = await r.text().catch(() => '')
+            console.log(`🧹 ${method} ${path} → ${r.status} ${text.slice(0, 120)}`)
+          } catch (e) {
+            console.log(`🧹 ${path} falhou:`, e.message)
+          }
         }
+        await tryCleanup(`/instance/logout/${config.instanceName}`, 'DELETE')
+        await tryCleanup(`/instance/delete/${config.instanceName}`, 'DELETE')
+        // Algumas versões da Evolution API só liberam o socket após restart
+        await tryCleanup(`/instance/restart/${config.instanceName}`, 'POST')
+        await new Promise(r => setTimeout(r, 3000))
         instanciaExiste = false
       }
 
@@ -2034,9 +2037,11 @@ export default function WhatsAppConexao() {
       if (modoConexao === 'pairing') {
         let rawCode = pairingCodeFromCreate
 
-        // Se o create não retornou, chama connect (com pequena espera para socket inicializar)
+        // Se o create não retornou, chama connect — espera mais tempo pra Baileys
+        // completar o handshake com servidores do WhatsApp. Sem essa espera, o
+        // pairingCode retorna mas não está registrado, e o WhatsApp rejeita.
         if (!rawCode) {
-          await new Promise(r => setTimeout(r, 1500))
+          await new Promise(r => setTimeout(r, 4000))
           console.log('📡 Solicitando pairing code via /instance/connect...')
           const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}?number=${numeroCompleto}`, {
             headers: { 'apikey': config.apiKey }
