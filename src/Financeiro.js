@@ -436,6 +436,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       // Buscar ciclo do plano do devedor
       let mesesParaAdicionar = 1 // padrão mensal
       if (devedor.plano?.ciclo_cobranca === 'trimestral') mesesParaAdicionar = 3
+      else if (devedor.plano?.ciclo_cobranca === 'semestral') mesesParaAdicionar = 6
       else if (devedor.plano?.ciclo_cobranca === 'anual') mesesParaAdicionar = 12
 
       proximoVencimento.setMonth(proximoVencimento.getMonth() + mesesParaAdicionar)

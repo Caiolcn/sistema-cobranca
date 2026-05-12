@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { resolverDestinatario } from '../utils/destinatario'
 
 /**
  * Serviço para integração com Evolution API
@@ -159,6 +160,8 @@ class WhatsAppService {
     // Substituições disponíveis
     const substituicoes = {
       '{{nomeCliente}}': dados.nomeCliente || '',
+      '{{nomeAluno}}': dados.nomeAluno || dados.nomeCliente || '',
+      '{{nomeResponsavel}}': dados.nomeResponsavel || '',
       '{{telefone}}': dados.telefone || '',
       '{{valorMensalidade}}': dados.valorMensalidade || '',
       '{{valorParcela}}': dados.valorMensalidade || '', // Alias para valorMensalidade
@@ -724,7 +727,7 @@ class WhatsAppService {
       // Buscar dados da mensalidade
       const { data: mensalidade, error } = await supabase
         .from('mensalidades')
-        .select(`*, devedor:devedores(nome, telefone, portal_token)`)
+        .select(`*, devedor:devedores(nome, telefone, portal_token, responsavel_nome, responsavel_telefone)`)
         .eq('id', mensalidadeId)
         .single()
 
@@ -774,10 +777,18 @@ class WhatsAppService {
       const vencimento = new Date(mensalidade.data_vencimento)
       const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
 
-      // Preparar dados
+      // Resolver destinatário (responsável > aluno) e preparar dados
+      const destinatario = resolverDestinatario(mensalidade.devedor)
+      // Para aniversário, manter sempre o nome do aluno em {{nomeCliente}}
+      const nomeClienteFinal = tipoMensagem === 'birthday'
+        ? (destinatario.primeiroNomeAluno || 'Cliente')
+        : (destinatario.primeiroNome || destinatario.primeiroNomeAluno || 'Cliente')
+
       const dadosSubstituicao = {
-        nomeCliente: mensalidade.devedor?.nome || 'Cliente',
-        telefone: mensalidade.devedor?.telefone || '',
+        nomeCliente: nomeClienteFinal,
+        nomeAluno: destinatario.primeiroNomeAluno || 'Cliente',
+        nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
+        telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         diasAtraso: diasAtraso.toString(),
@@ -878,7 +889,7 @@ class WhatsAppService {
         .from('mensalidades')
         .select(`
           *,
-          devedor:devedores(nome, telefone, portal_token)
+          devedor:devedores(nome, telefone, portal_token, responsavel_nome, responsavel_telefone)
         `)
         .eq('id', mensalidadeId)
         .single()
@@ -972,10 +983,19 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const portalToken = mensalidade.devedor?.portal_token
       const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
 
+      // Resolver destinatário (responsável > aluno)
+      const destinatario = resolverDestinatario(mensalidade.devedor)
+      // Para aniversário, manter sempre o nome do aluno em {{nomeCliente}}
+      const nomeClienteFinal = tipoMensagem === 'birthday'
+        ? (destinatario.primeiroNomeAluno || 'Cliente')
+        : (destinatario.primeiroNome || destinatario.primeiroNomeAluno || 'Cliente')
+
       // Preparar dados para substituição
       const dadosSubstituicao = {
-        nomeCliente: mensalidade.devedor?.nome || 'Cliente',
-        telefone: mensalidade.devedor?.telefone || '',
+        nomeCliente: nomeClienteFinal,
+        nomeAluno: destinatario.primeiroNomeAluno || 'Cliente',
+        nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
+        telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         diasAtraso: diasAtraso.toString(),
@@ -1044,7 +1064,8 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
 
       // Enviar via Evolution API (usando instância do dono da mensalidade)
       const ownerInstanceName = this.getInstanceNameForUser(ownerId)
-      const resultado = await this.enviarMensagem(mensalidade.devedor.telefone, mensagemFinal, ownerInstanceName)
+      const telefoneEnvio = destinatario.telefone
+      const resultado = await this.enviarMensagem(telefoneEnvio, mensagemFinal, ownerInstanceName)
 
       // Registrar log no banco
       console.log('💾 Salvando log no Supabase...')
@@ -1052,7 +1073,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         user_id: ownerId,
         devedor_id: mensalidade.devedor_id,
         mensalidade_id: mensalidade.id,
-        telefone: mensalidade.devedor.telefone,
+        telefone: telefoneEnvio,
         status: resultado.sucesso ? 'enviado' : 'erro'
       })
 
@@ -1062,7 +1083,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           user_id: ownerId,
           devedor_id: mensalidade.devedor_id,
           mensalidade_id: mensalidade.id,
-          telefone: mensalidade.devedor.telefone,
+          telefone: telefoneEnvio,
           mensagem: mensagemFinal,
           valor_mensalidade: mensalidade.valor,
           status: resultado.sucesso ? 'enviado' : 'erro',
@@ -1183,11 +1204,12 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // Buscar dados da mensalidade + devedor
       const { data: mensalidade } = await supabase
         .from('mensalidades')
-        .select('*, devedores(id, nome, telefone)')
+        .select('*, devedores(id, nome, telefone, responsavel_nome, responsavel_telefone)')
         .eq('id', mensalidadeId)
         .single()
 
-      if (!mensalidade?.devedores?.telefone) {
+      const destinatario = resolverDestinatario(mensalidade?.devedores)
+      if (!destinatario.telefone) {
         console.log('⏩ Confirmação WhatsApp: cliente sem telefone')
         return { sucesso: false, erro: 'Cliente sem telefone' }
       }
@@ -1233,13 +1255,17 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         : ''
 
       const empresa = usuario?.nome_empresa || ''
-      const nomeCliente = mensalidade.devedores.nome
+      const nomeCliente = destinatario.primeiroNome || destinatario.primeiroNomeAluno || 'Cliente'
+      const nomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
 
       // Usar template personalizado ou mensagem padrão
       let mensagemTexto
       if (template?.mensagem) {
         mensagemTexto = template.mensagem
           .replace(/\{\{nomeCliente\}\}/g, nomeCliente)
+          .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
+          .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
           .replace(/\{\{valorMensalidade\}\}/g, valorFormatado)
           .replace(/\{\{dataVencimento\}\}/g, vencimentoFormatado)
           .replace(/\{\{nomeEmpresa\}\}/g, empresa)
@@ -1250,7 +1276,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // Usar instância do dono da mensalidade (não do admin logado)
       const ownerId = mensalidade.user_id
       const ownerInstanceName = this.getInstanceNameForUser(ownerId)
-      const resultado = await this.enviarMensagem(mensalidade.devedores.telefone, mensagemTexto, ownerInstanceName)
+      const resultado = await this.enviarMensagem(destinatario.telefone, mensagemTexto, ownerInstanceName)
 
       // Logar envio (sempre com user_id do dono da mensalidade)
       await supabase.from('logs_mensagens').insert({
@@ -1260,7 +1286,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         tipo: 'payment_confirmed',
         mensagem: mensagemTexto,
         status: resultado.sucesso ? 'enviado' : 'falha',
-        telefone: mensalidade.devedores.telefone
+        telefone: destinatario.telefone
       })
 
       return resultado

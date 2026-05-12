@@ -62,17 +62,30 @@ export const formatarMoedaExport = (valor) => {
  * Exporta lista de clientes
  */
 export const exportarClientes = (clientes) => {
-  const dados = clientes.map(cliente => ({
-    'Nome': cliente.nome || '',
-    'Telefone': cliente.telefone || '',
-    'CPF': cliente.cpf || '',
-    'Plano': cliente.plano_nome || 'Sem plano',
-    'Tags': Array.isArray(cliente.tags) ? cliente.tags.join(', ') : '',
-    'Status': cliente.status || '',
-    'Assinatura Ativa': cliente.assinatura_ativa ? 'Sim' : 'Não',
-    'Próxima Mensalidade': cliente.proxima_mensalidade ? formatarDataExport(cliente.proxima_mensalidade) : '',
-    'Data Cadastro': formatarDataExport(cliente.created_at)
-  }));
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const dados = clientes.map(cliente => {
+    let diasAtraso = '';
+    if (cliente.proxima_mensalidade) {
+      const venc = new Date(cliente.proxima_mensalidade + 'T00:00:00');
+      const diffDias = Math.floor((hoje - venc) / (1000 * 60 * 60 * 24));
+      diasAtraso = diffDias > 0 ? diffDias : 0;
+    }
+
+    return {
+      'Nome': cliente.nome || '',
+      'Telefone': cliente.telefone || '',
+      'CPF': cliente.cpf || '',
+      'Plano': cliente.plano_nome || 'Sem plano',
+      'Tags': Array.isArray(cliente.tags) ? cliente.tags.join(', ') : '',
+      'Status': cliente.status || '',
+      'Assinatura Ativa': cliente.assinatura_ativa ? 'Sim' : 'Não',
+      'Próximo Vencimento': cliente.proxima_mensalidade ? formatarDataExport(cliente.proxima_mensalidade) : '',
+      'Dias em Atraso': diasAtraso,
+      'Data Cadastro': formatarDataExport(cliente.created_at)
+    };
+  });
 
   exportToCSV(dados, 'clientes');
 };
@@ -113,11 +126,13 @@ export const exportarClientesPDF = async (clientes, { titulo = 'Lista de Alunos'
   doc.setTextColor(80);
   doc.setFont('helvetica', 'bold');
   const colNome = marginX;
-  const colTel = marginX + 220;
-  const colPlano = marginX + 360;
+  const colTel = marginX + 180;
+  const colPlano = marginX + 300;
+  const colVenc = marginX + 430;
   doc.text('Aluno', colNome, y);
   doc.text('Telefone', colTel, y);
   doc.text('Plano', colPlano, y);
+  doc.text('Próx. Venc.', colVenc, y);
   y += 8;
   doc.setDrawColor(230);
   doc.line(marginX, y, pageWidth - marginX, y);
@@ -126,17 +141,30 @@ export const exportarClientesPDF = async (clientes, { titulo = 'Lista de Alunos'
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(40);
 
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
   clientes.forEach((cliente) => {
     if (y > pageHeight - 60) {
       doc.addPage();
       y = 50;
     }
-    const nome = (cliente.nome || '').substring(0, 38);
-    const tel = (cliente.telefone || '').substring(0, 18);
-    const plano = (cliente.plano_nome || 'Sem plano').substring(0, 22);
+    const nome = (cliente.nome || '').substring(0, 30);
+    const tel = (cliente.telefone || '').substring(0, 16);
+    const plano = (cliente.plano_nome || 'Sem plano').substring(0, 20);
+    let vencTxt = '-';
+    let atrasado = false;
+    if (cliente.proxima_mensalidade) {
+      const venc = new Date(cliente.proxima_mensalidade + 'T00:00:00');
+      vencTxt = venc.toLocaleDateString('pt-BR');
+      atrasado = venc < hoje;
+    }
     doc.text(nome, colNome, y);
     doc.text(tel, colTel, y);
     doc.text(plano, colPlano, y);
+    if (atrasado) doc.setTextColor(200, 50, 50);
+    doc.text(vencTxt, colVenc, y);
+    if (atrasado) doc.setTextColor(40);
 
     if (Array.isArray(cliente.tags) && cliente.tags.length > 0) {
       y += 12;

@@ -8,6 +8,7 @@ import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import whatsappService from './services/whatsappService'
+import { resolverDestinatario } from './utils/destinatario'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 
@@ -61,7 +62,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
   const buscarDestinatarios = async () => {
     setCarregandoDest(true)
     let query = supabase.from('devedores')
-      .select('id, nome, telefone, responsavel_telefone, assinatura_ativa, plano_id, bloquear_mensagens')
+      .select('id, nome, telefone, responsavel_nome, responsavel_telefone, assinatura_ativa, plano_id, bloquear_mensagens')
       .eq('user_id', contextUserId)
       .or('lixo.is.null,lixo.eq.false')
       .or('bloquear_mensagens.is.null,bloquear_mensagens.eq.false')
@@ -138,9 +139,15 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
     for (const dest of destFinal) {
       if (cancelarRef.current) break
 
-      const telefone = dest.responsavel_telefone || dest.telefone
+      const destInfo = resolverDestinatario(dest)
+      const telefone = destInfo.telefone
+      const primeiroNomeCliente = destInfo.primeiroNome || destInfo.primeiroNomeAluno || 'Aluno'
+      const primeiroNomeAlunoDest = destInfo.primeiroNomeAluno || 'Aluno'
+      const primeiroNomeRespDest = destInfo.ehResponsavel ? destInfo.primeiroNome : ''
       const msgFinal = mensagem
-        .replace(/\{\{nomeCliente\}\}/g, (dest.nome || 'Aluno').split(' ')[0])
+        .replace(/\{\{nomeCliente\}\}/g, primeiroNomeCliente)
+        .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAlunoDest)
+        .replace(/\{\{nomeResponsavel\}\}/g, primeiroNomeRespDest)
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
 
       try {
@@ -299,12 +306,16 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               placeholder="Escreva sua mensagem aqui..."
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-              {['{{nomeCliente}}', '{{nomeEmpresa}}'].map(v => (
+              {['{{nomeCliente}}', '{{nomeAluno}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}'].map(v => (
                 <button key={v} onClick={() => setMensagem(prev => prev + v)} style={{
                   padding: '3px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#eef2ff',
                   color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: 4, cursor: 'pointer'
                 }}>{v}</button>
               ))}
+            </div>
+            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
+              <strong>{`{{nomeCliente}}`}</strong> usa o nome do responsável quando o aluno tem um cadastrado.
+              Use <strong>{`{{nomeAluno}}`}</strong> para referenciar o aluno explicitamente.
             </div>
           </div>
 
@@ -3461,6 +3472,11 @@ export default function WhatsAppConexao() {
                 <h5 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '600', color: '#344848' }}>
                   Variáveis Disponíveis (clique para copiar):
                 </h5>
+                {tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'class_reminder' && (
+                  <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
+                    <strong>{`{{nomeCliente}}`}</strong> usa o nome do responsável quando o aluno tem um cadastrado (a mensagem vai pro WhatsApp do responsável). Use <strong>{`{{nomeAluno}}`}</strong> para referenciar o aluno explicitamente.
+                  </p>
+                )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {tipoTemplateSelecionado === 'birthday' ? (
                     <>
@@ -3537,6 +3553,42 @@ export default function WhatsAppConexao() {
                         }}
                       >
                         {`{{nomeCliente}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{nomeAluno}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeAluno}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{nomeAluno}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{nomeResponsavel}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeResponsavel}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{nomeResponsavel}}`}
                       </code>
                       <code
                         onClick={() => {

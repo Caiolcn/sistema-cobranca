@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { resolverDestinatario } from '../utils/destinatario';
 
 /**
  * Serviço de Automação de Mensagens
@@ -146,6 +147,8 @@ export const buscarMensalidadesParaLembrete = async (userId, diasAntecipacao) =>
           id,
           nome,
           telefone,
+          responsavel_nome,
+          responsavel_telefone,
           whatsapp_config
         )
       `)
@@ -183,6 +186,8 @@ export const buscarMensalidadesVencimentoHoje = async (userId) => {
           id,
           nome,
           telefone,
+          responsavel_nome,
+          responsavel_telefone,
           whatsapp_config
         )
       `)
@@ -239,9 +244,10 @@ export const processarLembretes = async (userId) => {
 
     for (const mensalidade of mensalidades) {
       const devedor = mensalidade.devedores;
+      const dest = resolverDestinatario(devedor);
 
-      // Verificar se tem telefone
-      if (!devedor.telefone) {
+      // Verificar se tem telefone (do responsável ou do aluno)
+      if (!dest.telefone) {
         console.warn(`Cliente ${devedor.nome} não tem telefone cadastrado`);
         continue;
       }
@@ -251,8 +257,8 @@ export const processarLembretes = async (userId) => {
         console.warn(`Cliente ${devedor.nome} não tem WhatsApp conectado`);
         resultados.push({
           mensalidade_id: mensalidade.id,
-          cliente: devedor.nome,
-          telefone: devedor.telefone,
+          cliente: dest.nome,
+          telefone: dest.telefone,
           sucesso: false,
           erro: 'WhatsApp não conectado'
         });
@@ -264,8 +270,8 @@ export const processarLembretes = async (userId) => {
         console.warn(`Cliente ${devedor.nome} não tem instância WhatsApp configurada`);
         resultados.push({
           mensalidade_id: mensalidade.id,
-          cliente: devedor.nome,
-          telefone: devedor.telefone,
+          cliente: dest.nome,
+          telefone: dest.telefone,
           sucesso: false,
           erro: 'Instância WhatsApp não configurada'
         });
@@ -277,8 +283,11 @@ export const processarLembretes = async (userId) => {
 
       // Preparar payload com API Key GLOBAL e instância INDIVIDUAL
       const payload = {
-        nome: devedor.nome,
-        telefone: devedor.telefone,
+        nome: dest.nome,
+        telefone: dest.telefone,
+        nome_aluno: devedor.nome,
+        nome_responsavel: devedor.responsavel_nome || '',
+        eh_responsavel: dest.ehResponsavel,
         valor: mensalidade.valor,
         data_vencimento: mensalidade.data_vencimento,
         dias_restantes: diasRestantes,
@@ -293,8 +302,8 @@ export const processarLembretes = async (userId) => {
 
       resultados.push({
         mensalidade_id: mensalidade.id,
-        cliente: devedor.nome,
-        telefone: devedor.telefone,
+        cliente: dest.nome,
+        telefone: dest.telefone,
         sucesso: resultado.success,
         erro: resultado.error || null
       });
@@ -362,9 +371,10 @@ export const processarVencimentosHoje = async (userId) => {
 
     for (const mensalidade of mensalidades) {
       const devedor = mensalidade.devedores;
+      const dest = resolverDestinatario(devedor);
 
-      // Verificar se tem telefone
-      if (!devedor.telefone) {
+      // Verificar se tem telefone (do responsável ou do aluno)
+      if (!dest.telefone) {
         console.warn(`Cliente ${devedor.nome} não tem telefone cadastrado`);
         continue;
       }
@@ -374,8 +384,8 @@ export const processarVencimentosHoje = async (userId) => {
         console.warn(`Cliente ${devedor.nome} não tem WhatsApp conectado`);
         resultados.push({
           mensalidade_id: mensalidade.id,
-          cliente: devedor.nome,
-          telefone: devedor.telefone,
+          cliente: dest.nome,
+          telefone: dest.telefone,
           sucesso: false,
           erro: 'WhatsApp não conectado'
         });
@@ -387,8 +397,8 @@ export const processarVencimentosHoje = async (userId) => {
         console.warn(`Cliente ${devedor.nome} não tem instância WhatsApp configurada`);
         resultados.push({
           mensalidade_id: mensalidade.id,
-          cliente: devedor.nome,
-          telefone: devedor.telefone,
+          cliente: dest.nome,
+          telefone: dest.telefone,
           sucesso: false,
           erro: 'Instância WhatsApp não configurada'
         });
@@ -397,8 +407,11 @@ export const processarVencimentosHoje = async (userId) => {
 
       // Preparar payload com API Key GLOBAL e instância INDIVIDUAL
       const payload = {
-        nome: devedor.nome,
-        telefone: devedor.telefone,
+        nome: dest.nome,
+        telefone: dest.telefone,
+        nome_aluno: devedor.nome,
+        nome_responsavel: devedor.responsavel_nome || '',
+        eh_responsavel: dest.ehResponsavel,
         valor: mensalidade.valor,
         data_vencimento: mensalidade.data_vencimento,
         template: template,
@@ -412,8 +425,8 @@ export const processarVencimentosHoje = async (userId) => {
 
       resultados.push({
         mensalidade_id: mensalidade.id,
-        cliente: devedor.nome,
-        telefone: devedor.telefone,
+        cliente: dest.nome,
+        telefone: dest.telefone,
         sucesso: resultado.success,
         erro: resultado.error || null
       });

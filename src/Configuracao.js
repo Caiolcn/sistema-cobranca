@@ -1883,6 +1883,7 @@ function Configuracao() {
                   >
                     <option value="mensal">Mensal</option>
                     <option value="trimestral">Trimestral</option>
+                    <option value="semestral">Semestral</option>
                     <option value="anual">Anual</option>
                   </select>
                 </div>
