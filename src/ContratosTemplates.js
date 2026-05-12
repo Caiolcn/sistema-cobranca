@@ -8,7 +8,7 @@ import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
 
 const VARIAVEIS_DISPONIVEIS = [
-  { chave: 'dadosCliente', desc: 'Texto corrido com os dados da ficha do aluno (nome, CPF, nascimento, telefone, e-mail e responsável), separados por vírgula. Pula campos vazios.', bloco: true },
+  { chave: 'dadosCliente', desc: 'Texto corrido com os dados da ficha do aluno (nome, CPF, nascimento, telefone, e-mail, endereço e responsável), separados por vírgula. Pula campos vazios.', bloco: true },
   { chave: 'dadosEmpresa', desc: 'Texto corrido com os dados da sua empresa (nome, CNPJ, endereço, telefone, e-mail e site), separados por vírgula. Pula campos vazios.', bloco: true },
   { chave: 'nomeCliente', desc: 'Nome completo do aluno' },
   { chave: 'cpfCliente', desc: 'CPF do aluno' },
@@ -17,6 +17,14 @@ const VARIAVEIS_DISPONIVEIS = [
   { chave: 'dataNascimento', desc: 'Data de nascimento' },
   { chave: 'nomeResponsavel', desc: 'Nome do responsável legal' },
   { chave: 'telefoneResponsavel', desc: 'Telefone do responsável' },
+  { chave: 'enderecoCompletoCliente', desc: 'Endereço completo formatado (rua, número, complemento, bairro, cidade/UF, CEP)' },
+  { chave: 'enderecoCliente', desc: 'Rua/logradouro do aluno' },
+  { chave: 'numeroCliente', desc: 'Número do endereço' },
+  { chave: 'complementoCliente', desc: 'Complemento do endereço (apto, bloco, etc.)' },
+  { chave: 'bairroCliente', desc: 'Bairro do aluno' },
+  { chave: 'cidadeCliente', desc: 'Cidade do aluno' },
+  { chave: 'estadoCliente', desc: 'UF do aluno' },
+  { chave: 'cepCliente', desc: 'CEP do aluno' },
   { chave: 'nomePlano', desc: 'Nome do plano contratado' },
   { chave: 'valorPlano', desc: 'Valor do plano' },
   { chave: 'nomeEmpresa', desc: 'Nome da sua empresa' },

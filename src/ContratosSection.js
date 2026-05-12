@@ -18,6 +18,22 @@ function formatarData(iso) {
   return `${dia}/${mes}/${ano}`
 }
 
+function formatarEnderecoCliente(devedor) {
+  if (!devedor) return ''
+  const partes = []
+  if (devedor.endereco) {
+    let rua = devedor.endereco
+    if (devedor.numero) rua += `, ${devedor.numero}`
+    if (devedor.complemento) rua += ` - ${devedor.complemento}`
+    partes.push(rua)
+  }
+  if (devedor.bairro) partes.push(devedor.bairro)
+  if (devedor.cidade && devedor.estado) partes.push(`${devedor.cidade}/${devedor.estado}`)
+  else if (devedor.cidade) partes.push(devedor.cidade)
+  if (devedor.cep) partes.push(`CEP ${devedor.cep}`)
+  return partes.join(', ')
+}
+
 function formatarBlocoDadosCliente(devedor) {
   const partes = []
   if (devedor?.nome) partes.push(devedor.nome)
@@ -25,6 +41,8 @@ function formatarBlocoDadosCliente(devedor) {
   if (devedor?.data_nascimento) partes.push(formatarData(devedor.data_nascimento))
   if (devedor?.telefone) partes.push(devedor.telefone)
   if (devedor?.email) partes.push(devedor.email)
+  const endereco = formatarEnderecoCliente(devedor)
+  if (endereco) partes.push(endereco)
   let texto = partes.join(', ')
 
   const respPartes = []
@@ -78,6 +96,14 @@ function substituirVariaveis(conteudo, devedor, empresa) {
     .replaceAll('{{dataNascimento}}', formatarData(devedor?.data_nascimento))
     .replaceAll('{{nomeResponsavel}}', devedor?.responsavel_nome || '')
     .replaceAll('{{telefoneResponsavel}}', devedor?.responsavel_telefone || '')
+    .replaceAll('{{enderecoCompletoCliente}}', formatarEnderecoCliente(devedor))
+    .replaceAll('{{enderecoCliente}}', devedor?.endereco || '')
+    .replaceAll('{{numeroCliente}}', devedor?.numero || '')
+    .replaceAll('{{complementoCliente}}', devedor?.complemento || '')
+    .replaceAll('{{bairroCliente}}', devedor?.bairro || '')
+    .replaceAll('{{cidadeCliente}}', devedor?.cidade || '')
+    .replaceAll('{{estadoCliente}}', devedor?.estado || '')
+    .replaceAll('{{cepCliente}}', devedor?.cep || '')
     .replaceAll('{{nomePlano}}', devedor?.planos?.nome || devedor?.plano_nome || '')
     .replaceAll('{{valorPlano}}', formatarValor(devedor?.planos?.valor || devedor?.plano_valor))
     .replaceAll('{{nomeEmpresa}}', nomeEmpresa)

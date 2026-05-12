@@ -41,6 +41,14 @@ export default function Clientes() {
   const [emailEdit, setEmailEdit] = useState('')
   const [responsavelNomeEdit, setResponsavelNomeEdit] = useState('')
   const [responsavelTelefoneEdit, setResponsavelTelefoneEdit] = useState('')
+  const [cepEdit, setCepEdit] = useState('')
+  const [enderecoEdit, setEnderecoEdit] = useState('')
+  const [numeroEnderecoEdit, setNumeroEnderecoEdit] = useState('')
+  const [complementoEdit, setComplementoEdit] = useState('')
+  const [bairroEdit, setBairroEdit] = useState('')
+  const [cidadeEdit, setCidadeEdit] = useState('')
+  const [estadoEdit, setEstadoEdit] = useState('')
+  const [buscandoCepEdit, setBuscandoCepEdit] = useState(false)
   const [busca, setBusca] = useState(searchParams.get('busca') || '')
 
   // Filtros
@@ -69,6 +77,14 @@ export default function Clientes() {
   const [tagsDisponiveis, setTagsDisponiveis] = useState([])
   const [tagFormModal, setTagFormModal] = useState({ show: false, tag: null, contexto: null })
   const [confirmDeleteTag, setConfirmDeleteTag] = useState({ show: false, tag: null })
+  const [novoClienteCep, setNovoClienteCep] = useState('')
+  const [novoClienteEndereco, setNovoClienteEndereco] = useState('')
+  const [novoClienteNumero, setNovoClienteNumero] = useState('')
+  const [novoClienteComplemento, setNovoClienteComplemento] = useState('')
+  const [novoClienteBairro, setNovoClienteBairro] = useState('')
+  const [novoClienteCidade, setNovoClienteCidade] = useState('')
+  const [novoClienteEstado, setNovoClienteEstado] = useState('')
+  const [buscandoCepNovo, setBuscandoCepNovo] = useState(false)
   const [temResponsavel, setTemResponsavel] = useState(false)
   const [stepCadastro, setStepCadastro] = useState(1)
   const [criarAssinatura, setCriarAssinatura] = useState(false)
@@ -608,6 +624,13 @@ export default function Clientes() {
       setResponsavelNomeEdit(cliente.responsavel_nome || '')
       setResponsavelTelefoneEdit(cliente.responsavel_telefone || '')
       setTagsEdit(Array.isArray(cliente.tags) ? cliente.tags : [])
+      setCepEdit(cliente.cep || '')
+      setEnderecoEdit(cliente.endereco || '')
+      setNumeroEnderecoEdit(cliente.numero || '')
+      setComplementoEdit(cliente.complemento || '')
+      setBairroEdit(cliente.bairro || '')
+      setCidadeEdit(cliente.cidade || '')
+      setEstadoEdit(cliente.estado || '')
       const pendente = mensalidades.find(m => m.status === 'pendente')
       const refMens = pendente || mensalidades[mensalidades.length - 1]
       setDiaVencimentoEdit(refMens ? String(new Date(refMens.data_vencimento + 'T00:00:00').getDate()) : '')
@@ -675,7 +698,14 @@ export default function Clientes() {
           email: emailEdit.trim() || null,
           responsavel_nome: responsavelNomeEdit.trim() || null,
           responsavel_telefone: responsavelTelefoneEdit.trim() || null,
-          tags: tagsEdit.length > 0 ? tagsEdit : null
+          tags: tagsEdit.length > 0 ? tagsEdit : null,
+          cep: cepEdit.trim() || null,
+          endereco: enderecoEdit.trim() || null,
+          numero: numeroEnderecoEdit.trim() || null,
+          complemento: complementoEdit.trim() || null,
+          bairro: bairroEdit.trim() || null,
+          cidade: cidadeEdit.trim() || null,
+          estado: estadoEdit.trim() || null
         })
         .eq('id', clienteSelecionado.id)
 
@@ -1095,6 +1125,43 @@ export default function Clientes() {
     }
   }
 
+  const formatarCep = (value) => {
+    const numeros = value.replace(/\D/g, '').slice(0, 8)
+    if (numeros.length <= 5) return numeros
+    return numeros.replace(/(\d{5})(\d+)/, '$1-$2')
+  }
+
+  const buscarCep = async (cep, contexto) => {
+    const apenasNumeros = cep.replace(/\D/g, '')
+    if (apenasNumeros.length !== 8) return
+
+    const setBuscando = contexto === 'edit' ? setBuscandoCepEdit : setBuscandoCepNovo
+    setBuscando(true)
+    try {
+      const resp = await fetch(`https://viacep.com.br/ws/${apenasNumeros}/json/`)
+      const data = await resp.json()
+      if (data.erro) {
+        showToast('CEP não encontrado', 'warning')
+        return
+      }
+      if (contexto === 'edit') {
+        setEnderecoEdit(data.logradouro || '')
+        setBairroEdit(data.bairro || '')
+        setCidadeEdit(data.localidade || '')
+        setEstadoEdit(data.uf || '')
+      } else {
+        setNovoClienteEndereco(data.logradouro || '')
+        setNovoClienteBairro(data.bairro || '')
+        setNovoClienteCidade(data.localidade || '')
+        setNovoClienteEstado(data.uf || '')
+      }
+    } catch {
+      showToast('Erro ao buscar CEP', 'error')
+    } finally {
+      setBuscando(false)
+    }
+  }
+
   const handleMensalidadeClick = async (cliente, event) => {
     event.stopPropagation()
 
@@ -1295,6 +1362,13 @@ export default function Clientes() {
           email: novoClienteEmail.trim() || null,
           responsavel_nome: novoClienteResponsavelNome.trim() || null,
           responsavel_telefone: novoClienteResponsavelTelefone.trim() || null,
+          cep: novoClienteCep.trim() || null,
+          endereco: novoClienteEndereco.trim() || null,
+          numero: novoClienteNumero.trim() || null,
+          complemento: novoClienteComplemento.trim() || null,
+          bairro: novoClienteBairro.trim() || null,
+          cidade: novoClienteCidade.trim() || null,
+          estado: novoClienteEstado.trim() || null,
           valor_devido: 0,
           data_vencimento: new Date().toISOString().split('T')[0],
           status: 'pendente',
@@ -1435,6 +1509,13 @@ Equipe ${nomeEmpresa}`
       setNovoClienteResponsavelNome('')
       setNovoClienteResponsavelTelefone('')
       setNovoClienteTags([])
+      setNovoClienteCep('')
+      setNovoClienteEndereco('')
+      setNovoClienteNumero('')
+      setNovoClienteComplemento('')
+      setNovoClienteBairro('')
+      setNovoClienteCidade('')
+      setNovoClienteEstado('')
       setTemResponsavel(false)
       setStepCadastro(1)
       setCriarAssinatura(true)
@@ -1868,6 +1949,8 @@ Equipe ${nomeEmpresa}`
                 setNovoClienteDataNascimento(''); setNovoClienteEmail('')
                 setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('')
                 setNovoClienteTags([])
+                setNovoClienteCep(''); setNovoClienteEndereco(''); setNovoClienteNumero('')
+                setNovoClienteComplemento(''); setNovoClienteBairro(''); setNovoClienteCidade(''); setNovoClienteEstado('')
                 setTemResponsavel(false); setStepCadastro(1)
                 setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
                 setPlanoSelecionado(''); setEnviarBoasVindas(true)
@@ -3002,6 +3085,62 @@ Equipe ${nomeEmpresa}`
                       />
                     </div>
                   </div>
+
+                  {/* Endereço */}
+                  <details style={{ marginBottom: '14px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                    <summary style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#444' }}>
+                      <Icon icon="mdi:map-marker-outline" width="16" style={{ color: '#666' }} />
+                      Endereço
+                      {(cepEdit || enderecoEdit || cidadeEdit) && (
+                        <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '500', marginLeft: '4px' }}>preenchido</span>
+                      )}
+                    </summary>
+                    <div style={{ padding: '0 12px 12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '160px 1fr 100px', gap: '10px', marginBottom: '10px' }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>CEP</label>
+                          <input type="text" value={cepEdit}
+                            onChange={(e) => setCepEdit(formatarCep(e.target.value))}
+                            onBlur={(e) => buscarCep(e.target.value, 'edit')}
+                            maxLength="9" placeholder="00000-000"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cepEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                          {buscandoCepEdit && <span style={{ fontSize: '11px', color: '#666' }}>Buscando...</span>}
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Rua / Logradouro</label>
+                          <input type="text" value={enderecoEdit} onChange={(e) => setEnderecoEdit(e.target.value)} placeholder="Av. Brasil"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: enderecoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Número</label>
+                          <input type="text" value={numeroEnderecoEdit} onChange={(e) => setNumeroEnderecoEdit(e.target.value)} placeholder="123"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: numeroEnderecoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr 1fr 80px', gap: '10px' }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Complemento</label>
+                          <input type="text" value={complementoEdit} onChange={(e) => setComplementoEdit(e.target.value)} placeholder="Apto, bloco..."
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: complementoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Bairro</label>
+                          <input type="text" value={bairroEdit} onChange={(e) => setBairroEdit(e.target.value)} placeholder="Centro"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: bairroEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Cidade</label>
+                          <input type="text" value={cidadeEdit} onChange={(e) => setCidadeEdit(e.target.value)} placeholder="São Paulo"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cidadeEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>UF</label>
+                          <input type="text" value={estadoEdit} onChange={(e) => setEstadoEdit(e.target.value.toUpperCase().slice(0, 2))} maxLength="2" placeholder="SP"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: estadoEdit ? '#333' : '#999', boxSizing: 'border-box', textTransform: 'uppercase' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </details>
 
                       {/* Assinatura inline */}
                       {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
@@ -4207,6 +4346,66 @@ Equipe ${nomeEmpresa}`
                   </div>
                 </div>
 
+                {/* Endereço (opcional) */}
+                <details style={{ marginBottom: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                  <summary style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
+                    <Icon icon="mdi:map-marker-outline" width="18" style={{ color: '#666' }} />
+                    Endereço <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
+                  </summary>
+                  <div style={{ padding: '0 14px 14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '160px 1fr 100px', gap: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>CEP</label>
+                        <input type="text" value={novoClienteCep}
+                          onChange={(e) => setNovoClienteCep(formatarCep(e.target.value))}
+                          onBlur={(e) => buscarCep(e.target.value, 'novo')}
+                          maxLength="9" placeholder="00000-000"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} />
+                        {buscandoCepNovo && <span style={{ fontSize: '11px', color: '#666' }}>Buscando...</span>}
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Rua / Logradouro</label>
+                        <input type="text" value={novoClienteEndereco} onChange={(e) => setNovoClienteEndereco(e.target.value)} placeholder="Av. Brasil"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Número</label>
+                        <input type="text" value={novoClienteNumero} onChange={(e) => setNovoClienteNumero(e.target.value)} placeholder="123"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr 1fr 80px', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Complemento</label>
+                        <input type="text" value={novoClienteComplemento} onChange={(e) => setNovoClienteComplemento(e.target.value)} placeholder="Apto, bloco..."
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Bairro</label>
+                        <input type="text" value={novoClienteBairro} onChange={(e) => setNovoClienteBairro(e.target.value)} placeholder="Centro"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Cidade</label>
+                        <input type="text" value={novoClienteCidade} onChange={(e) => setNovoClienteCidade(e.target.value)} placeholder="São Paulo"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>UF</label>
+                        <input type="text" value={novoClienteEstado} onChange={(e) => setNovoClienteEstado(e.target.value.toUpperCase().slice(0, 2))} maxLength="2" placeholder="SP"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white', textTransform: 'uppercase' }}
+                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
                 {/* Toggle Responsável */}
                 <div style={{ marginBottom: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
                   <div onClick={() => {
@@ -4447,6 +4646,8 @@ Equipe ${nomeEmpresa}`
                     setMostrarModalNovoCliente(false); setStepCadastro(1); setErroModalNovoCliente('')
                     setNovoClienteNome(''); setNovoClienteTelefone(''); setNovoClienteCpf(''); setNovoClienteDataNascimento('')
                     setNovoClienteEmail(''); setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('')
+                    setNovoClienteCep(''); setNovoClienteEndereco(''); setNovoClienteNumero('')
+                    setNovoClienteComplemento(''); setNovoClienteBairro(''); setNovoClienteCidade(''); setNovoClienteEstado('')
                     setTemResponsavel(false); setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura(''); setPlanoSelecionado('')
                     setEnviarBoasVindas(true); setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
                   } else {
