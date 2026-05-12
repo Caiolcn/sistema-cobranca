@@ -12,6 +12,13 @@ import { resolverDestinatario } from './utils/destinatario'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 
+// Tradução visual da tag {{nomeCliente}} ↔ {{nomeAluno}}.
+// Banco/automações (n8n) seguem usando {{nomeCliente}}; UI sempre mostra
+// {{nomeAluno}} pra ser coerente com os chips. paraExibir é aplicada
+// ao carregar; paraSalvar ao persistir.
+const paraExibir = (msg) => (msg || '').replace(/\{\{nomeCliente\}\}/g, '{{nomeAluno}}')
+const paraSalvar = (msg) => (msg || '').replace(/\{\{nomeAluno\}\}/g, '{{nomeCliente}}')
+
 // ==========================================
 // COMPONENTE: CAMPANHAS
 // ==========================================
@@ -683,7 +690,7 @@ export default function WhatsAppConexao() {
     welcome: null
   })
   const [tituloTemplate, setTituloTemplate] = useState('Lembrete - Vencimento Hoje')
-  const [mensagemTemplate, setMensagemTemplate] = useState(TEMPLATES_PADRAO.due_day)
+  const [mensagemTemplate, setMensagemTemplate] = useState(paraExibir(TEMPLATES_PADRAO.due_day))
 
   // Starter só pode editar template "No Dia" (due_day)
   // Pro/Premium podem editar todos os templates
@@ -705,10 +712,10 @@ export default function WhatsAppConexao() {
   const [automacaoNpsAtiva, setAutomacaoNpsAtiva] = useState(false)
   const [categoriaAutomacao, setCategoriaAutomacao] = useState('cobrancas')
   const [botAtivo, setBotAtivo] = useState(false)
-  const [botSaudacao, setBotSaudacao] = useState('Olá {{nomeCliente}}! 👋 Sou o assistente virtual da {{nomeEmpresa}}.')
+  const [botSaudacao, setBotSaudacao] = useState('Olá {{nomeAluno}}! 👋 Sou o assistente virtual da {{nomeEmpresa}}.')
   const [botOpcoesAtivas, setBotOpcoesAtivas] = useState({ mensalidade: true, horarios: true, pix: true, agendar: true })
   const [botLeadOpcoesAtivas, setBotLeadOpcoesAtivas] = useState({ conhecer: true, valores: true, experimental: true })
-  const [botLeadSaudacao, setBotLeadSaudacao] = useState('Olá {{nomeCliente}}! 👋 Bem-vindo(a) à {{nomeEmpresa}}!')
+  const [botLeadSaudacao, setBotLeadSaudacao] = useState('Olá {{nomeAluno}}! 👋 Bem-vindo(a) à {{nomeEmpresa}}!')
   const [botTextoConhecer, setBotTextoConhecer] = useState('')
   const [salvandoBot, setSalvandoBot] = useState(false)
 
@@ -873,10 +880,10 @@ export default function WhatsAppConexao() {
         const templateAtual = agrupados[tipoTemplateSelecionado] || agrupados['due_day']
         if (templateAtual) {
           setTituloTemplate(templateAtual.titulo)
-          setMensagemTemplate(templateAtual.mensagem)
+          setMensagemTemplate(paraExibir(templateAtual.mensagem))
         } else {
           setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
-          setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
+          setMensagemTemplate(paraExibir(getMensagemDefault(tipoTemplateSelecionado)))
         }
 
         // 5. Processar Automações (da tabela configuracoes_cobranca)
@@ -907,7 +914,7 @@ export default function WhatsAppConexao() {
         setAutomacaoRecuperacaoAtiva(configCobranca?.recuperacao_inativos_ativa === true)
         setAutomacaoNpsAtiva(configCobranca?.nps_experimental_ativo === true)
         setBotAtivo(configCobranca?.bot_ativo === true)
-        if (configCobranca?.bot_saudacao) setBotSaudacao(configCobranca.bot_saudacao)
+        if (configCobranca?.bot_saudacao) setBotSaudacao(paraExibir(configCobranca.bot_saudacao))
         if (configCobranca?.bot_opcoes_ativas && typeof configCobranca.bot_opcoes_ativas === 'object') {
           setBotOpcoesAtivas({
             mensalidade: configCobranca.bot_opcoes_ativas.mensalidade !== false,
@@ -923,7 +930,7 @@ export default function WhatsAppConexao() {
             experimental: configCobranca.bot_lead_opcoes_ativas.experimental !== false,
           })
         }
-        if (configCobranca?.bot_lead_saudacao) setBotLeadSaudacao(configCobranca.bot_lead_saudacao)
+        if (configCobranca?.bot_lead_saudacao) setBotLeadSaudacao(paraExibir(configCobranca.bot_lead_saudacao))
         if (configCobranca?.bot_texto_conhecer != null) setBotTextoConhecer(configCobranca.bot_texto_conhecer || '')
 
         // 5.1 Processar método de pagamento
@@ -1294,7 +1301,7 @@ export default function WhatsAppConexao() {
           // Atualizar template atualmente selecionado no editor
           const templateSelecionado = agrupados[tipoTemplateSelecionado]
           if (templateSelecionado) {
-            setMensagemTemplate(templateSelecionado.mensagem)
+            setMensagemTemplate(paraExibir(templateSelecionado.mensagem))
           }
         }
       }
@@ -1353,7 +1360,7 @@ export default function WhatsAppConexao() {
             .replace(/🔑 Chave Pix:/g, '🔗 Link de pagamento:')
             .replace(/💳 Pix para pagamento:/g, '🔗 Link de pagamento:')
         }
-        setMensagemTemplate(msg)
+        setMensagemTemplate(paraExibir(msg))
       }
 
       setFeedbackModal({
@@ -1842,7 +1849,7 @@ export default function WhatsAppConexao() {
     try {
       const { error } = await supabase
         .from('configuracoes_cobranca')
-        .update({ bot_lead_saudacao: botLeadSaudacao, updated_at: new Date().toISOString() })
+        .update({ bot_lead_saudacao: paraSalvar(botLeadSaudacao), updated_at: new Date().toISOString() })
         .eq('user_id', contextUserId)
       if (error) throw error
       setFeedbackModal({
@@ -1894,7 +1901,7 @@ export default function WhatsAppConexao() {
     try {
       const { error } = await supabase
         .from('configuracoes_cobranca')
-        .update({ bot_saudacao: botSaudacao, updated_at: new Date().toISOString() })
+        .update({ bot_saudacao: paraSalvar(botSaudacao), updated_at: new Date().toISOString() })
         .eq('user_id', contextUserId)
 
       if (error) throw error
@@ -2286,7 +2293,7 @@ export default function WhatsAppConexao() {
     const novaMensagem = getMensagemDefault(tipoTemplateSelecionado)
 
     setTituloTemplate(novoTitulo)
-    setMensagemTemplate(novaMensagem)
+    setMensagemTemplate(paraExibir(novaMensagem))
 
     // Salvar no banco automaticamente
     try {
@@ -2364,10 +2371,10 @@ export default function WhatsAppConexao() {
       const templateAtual = agrupados[tipoTemplateSelecionado]
       if (templateAtual) {
         setTituloTemplate(templateAtual.titulo)
-        setMensagemTemplate(templateAtual.mensagem)
+        setMensagemTemplate(paraExibir(templateAtual.mensagem))
       } else {
         setTituloTemplate(getTituloDefault(tipoTemplateSelecionado))
-        setMensagemTemplate(getMensagemDefault(tipoTemplateSelecionado))
+        setMensagemTemplate(paraExibir(getMensagemDefault(tipoTemplateSelecionado)))
       }
     } catch (error) {
       console.error('Erro ao carregar templates:', error)
@@ -2407,13 +2414,15 @@ export default function WhatsAppConexao() {
     try {
       const templateExistente = templatesAgrupados[tipoTemplateSelecionado]
 
+      const mensagemParaPersistir = paraSalvar(mensagemTemplate)
+
       if (templateExistente) {
         // Update existing - marcar como customizado (não padrão)
         const { error, data } = await supabase
           .from('templates')
           .update({
             titulo: tituloTemplate,
-            mensagem: mensagemTemplate,
+            mensagem: mensagemParaPersistir,
             is_padrao: false,
             updated_at: new Date().toISOString()
           })
@@ -2422,10 +2431,10 @@ export default function WhatsAppConexao() {
 
         if (error) throw error
 
-        // Atualizar estado local imediatamente
+        // Atualizar estado local imediatamente (cache reflete o banco)
         setTemplatesAgrupados(prev => ({
           ...prev,
-          [tipoTemplateSelecionado]: { ...templateExistente, titulo: tituloTemplate, mensagem: mensagemTemplate, is_padrao: false }
+          [tipoTemplateSelecionado]: { ...templateExistente, titulo: tituloTemplate, mensagem: mensagemParaPersistir, is_padrao: false }
         }))
       } else {
         // Create new
@@ -2434,7 +2443,7 @@ export default function WhatsAppConexao() {
           .insert({
             user_id: contextUserId,
             titulo: tituloTemplate,
-            mensagem: mensagemTemplate,
+            mensagem: mensagemParaPersistir,
             tipo: tipoTemplateSelecionado,
             ativo: true,
             is_padrao: false
@@ -3202,8 +3211,8 @@ export default function WhatsAppConexao() {
                       if (!item.ativo) return
                       setTipoTemplateSelecionado(item.tipo)
                       const template = templatesAgrupados[item.tipo]
-                      if (template) { setTituloTemplate(template.titulo); setMensagemTemplate(template.mensagem) }
-                      else { setTituloTemplate(getTituloDefault(item.tipo)); setMensagemTemplate(getMensagemDefault(item.tipo)) }
+                      if (template) { setTituloTemplate(template.titulo); setMensagemTemplate(paraExibir(template.mensagem)) }
+                      else { setTituloTemplate(getTituloDefault(item.tipo)); setMensagemTemplate(paraExibir(getMensagemDefault(item.tipo))) }
                     }}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
