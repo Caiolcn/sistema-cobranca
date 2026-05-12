@@ -148,11 +148,12 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
 
       const destInfo = resolverDestinatario(dest)
       const telefone = destInfo.telefone
-      const primeiroNomeCliente = destInfo.primeiroNome || destInfo.primeiroNomeAluno || 'Aluno'
+      // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
+      // {{nomeResponsavel}} explícito quando usuário usa a tag.
       const primeiroNomeAlunoDest = destInfo.primeiroNomeAluno || 'Aluno'
       const primeiroNomeRespDest = destInfo.ehResponsavel ? destInfo.primeiroNome : ''
       const msgFinal = mensagem
-        .replace(/\{\{nomeCliente\}\}/g, primeiroNomeCliente)
+        .replace(/\{\{nomeCliente\}\}/g, primeiroNomeAlunoDest)
         .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAlunoDest)
         .replace(/\{\{nomeResponsavel\}\}/g, primeiroNomeRespDest)
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
@@ -321,7 +322,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               ))}
             </div>
             <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-              Use <strong>{`{{nomeResponsavel}}`}</strong> quando o aluno tem responsável cadastrado (a mensagem vai pro WhatsApp dele).
+              <strong>{`{{nomeAluno}}`}</strong> usa sempre o nome do aluno. A mensagem vai pro WhatsApp do responsável (quando cadastrado); pra falar com o responsável use <strong>{`{{nomeResponsavel}}`}</strong>.
             </div>
           </div>
 
@@ -3486,7 +3487,7 @@ export default function WhatsAppConexao() {
                 </h5>
                 {tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'class_reminder' && (
                   <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
-                    Use <strong>{`{{nomeResponsavel}}`}</strong> quando o aluno tem responsável cadastrado — a mensagem vai pro WhatsApp dele.
+                    <strong>{`{{nomeAluno}}`}</strong> usa sempre o nome do aluno. A mensagem é enviada pro WhatsApp do responsável (quando cadastrado); pra falar com ele use <strong>{`{{nomeResponsavel}}`}</strong>.
                   </p>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>

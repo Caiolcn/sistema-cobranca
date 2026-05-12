@@ -777,16 +777,15 @@ class WhatsAppService {
       const vencimento = new Date(mensalidade.data_vencimento)
       const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
 
-      // Resolver destinatário (responsável > aluno) e preparar dados
+      // Resolver destinatário (telefone segue auto: responsável > aluno).
+      // Nomes: {{nomeCliente}} e {{nomeAluno}} = sempre nome do aluno.
+      // Pra mandar nome do responsável, usuário usa {{nomeResponsavel}} explícito.
       const destinatario = resolverDestinatario(mensalidade.devedor)
-      // Para aniversário, manter sempre o nome do aluno em {{nomeCliente}}
-      const nomeClienteFinal = tipoMensagem === 'birthday'
-        ? (destinatario.primeiroNomeAluno || 'Cliente')
-        : (destinatario.primeiroNome || destinatario.primeiroNomeAluno || 'Cliente')
+      const primeiroNomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
 
       const dadosSubstituicao = {
-        nomeCliente: nomeClienteFinal,
-        nomeAluno: destinatario.primeiroNomeAluno || 'Cliente',
+        nomeCliente: primeiroNomeAluno,
+        nomeAluno: primeiroNomeAluno,
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -985,15 +984,16 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
 
       // Resolver destinatário (responsável > aluno)
       const destinatario = resolverDestinatario(mensalidade.devedor)
-      // Para aniversário, manter sempre o nome do aluno em {{nomeCliente}}
-      const nomeClienteFinal = tipoMensagem === 'birthday'
-        ? (destinatario.primeiroNomeAluno || 'Cliente')
-        : (destinatario.primeiroNome || destinatario.primeiroNomeAluno || 'Cliente')
+      // Telefone segue auto (responsável > aluno). Nomes:
+      // {{nomeCliente}} e {{nomeAluno}} = sempre nome do aluno (deixa claro
+      // de qual filho é a mensalidade quando responsável tem mais de um).
+      // Pra falar com responsável, usuário usa {{nomeResponsavel}}.
+      const primeiroNomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
 
       // Preparar dados para substituição
       const dadosSubstituicao = {
-        nomeCliente: nomeClienteFinal,
-        nomeAluno: destinatario.primeiroNomeAluno || 'Cliente',
+        nomeCliente: primeiroNomeAluno,
+        nomeAluno: primeiroNomeAluno,
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -1255,8 +1255,10 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         : ''
 
       const empresa = usuario?.nome_empresa || ''
-      const nomeCliente = destinatario.primeiroNome || destinatario.primeiroNomeAluno || 'Cliente'
+      // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
+      // {{nomeResponsavel}} explícito quando usuário usa a tag.
       const nomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      const nomeCliente = nomeAluno
       const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
 
       // Usar template personalizado ou mensagem padrão

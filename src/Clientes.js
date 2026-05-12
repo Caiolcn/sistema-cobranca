@@ -1434,8 +1434,10 @@ export default function Clientes() {
             const nomeEmpresa = usuarioData?.nome_empresa || 'nossa empresa'
             const primeiroNomeAluno = novoClienteNome.trim().split(' ')[0]
             const primeiroNomeResp = (novoClienteResponsavelNome || '').trim().split(' ')[0]
-            // Se aluno tem responsável, a mensagem vai pro zap do responsável e usa o nome dele
-            const primeiroNome = temResponsavel && primeiroNomeResp ? primeiroNomeResp : primeiroNomeAluno
+            // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
+            // Mensagem vai pro telefone do responsável quando tem, mas o nome
+            // no texto identifica o aluno (deixa claro quem é o destinatário-final).
+            const primeiroNome = primeiroNomeAluno
 
             // Buscar template de boas-vindas salvo
             const { data: templateWelcome } = await supabase
@@ -4637,7 +4639,7 @@ Equipe ${nomeEmpresa}`
                         )}
                       </div>
                       <textarea
-                        value={mensagemBoasVindasCustom || `Olá, ${(temResponsavel && novoClienteResponsavelNome.trim() ? novoClienteResponsavelNome.trim().split(' ')[0] : novoClienteNome.trim().split(' ')[0]) || '[Nome]'}! 👋\n\nSeja muito bem-vindo(a)!\n\nEste é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:\n\n✅ Lembretes de vencimento\n✅ Confirmações de pagamento\n✅ Comunicados importantes\n\n*Salve nosso número* para não perder nenhuma mensagem!\n\nQualquer dúvida, estamos à disposição.`}
+                        value={mensagemBoasVindasCustom || `Olá, ${novoClienteNome.trim().split(' ')[0] || '[Nome]'}! 👋\n\nSeja muito bem-vindo(a)!\n\nEste é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:\n\n✅ Lembretes de vencimento\n✅ Confirmações de pagamento\n✅ Comunicados importantes\n\n*Salve nosso número* para não perder nenhuma mensagem!\n\nQualquer dúvida, estamos à disposição.`}
                         onChange={(e) => setMensagemBoasVindasCustom(e.target.value)}
                         style={{ width: '100%', minHeight: '120px', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', backgroundColor: 'white', boxSizing: 'border-box', lineHeight: '1.5' }} />
                     </div>

@@ -282,8 +282,10 @@ export const processarLembretes = async (userId) => {
       const diasRestantes = calcularDiasRestantes(mensalidade.data_vencimento);
 
       // Preparar payload com API Key GLOBAL e instância INDIVIDUAL
+      // nome = sempre nome do aluno (mesmo quando manda pro telefone do responsável).
+      // Deixa claro de qual aluno é a mensalidade quando responsável tem mais de um.
       const payload = {
-        nome: dest.nome,
+        nome: devedor.nome,
         telefone: dest.telefone,
         nome_aluno: devedor.nome,
         nome_responsavel: devedor.responsavel_nome || '',
@@ -406,8 +408,10 @@ export const processarVencimentosHoje = async (userId) => {
       }
 
       // Preparar payload com API Key GLOBAL e instância INDIVIDUAL
+      // nome = sempre nome do aluno (mesmo quando manda pro telefone do responsável).
+      // Deixa claro de qual aluno é a mensalidade quando responsável tem mais de um.
       const payload = {
-        nome: dest.nome,
+        nome: devedor.nome,
         telefone: dest.telefone,
         nome_aluno: devedor.nome,
         nome_responsavel: devedor.responsavel_nome || '',
