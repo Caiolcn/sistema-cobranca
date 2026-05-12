@@ -686,7 +686,8 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>CRM</span>}
           </div>
 
-          {/* Gerador de Posts IA */}
+          {/* Gerador de Posts IA — WIP, oculto */}
+          {false && (
           <div
             className={!isMobile ? 'sidebar-tooltip' : ''}
             data-tooltip="Gerador IA"
@@ -716,6 +717,7 @@ export default function Dashboard() {
             <Icon icon="mdi:auto-fix" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Gerador IA</span>}
           </div>
+          )}
 
           {/* Configuração (só no mobile — no desktop fica no ícone de engrenagem da top bar) */}
           {isMobile && (
