@@ -776,6 +776,7 @@ export default function Clientes() {
 
       let mesesParaAdicionar = 1
       if (devedor.plano?.ciclo_cobranca === 'trimestral') mesesParaAdicionar = 3
+      else if (devedor.plano?.ciclo_cobranca === 'semestral') mesesParaAdicionar = 6
       else if (devedor.plano?.ciclo_cobranca === 'anual') mesesParaAdicionar = 12
 
       proximoVencimento.setMonth(proximoVencimento.getMonth() + mesesParaAdicionar)
@@ -1431,7 +1432,10 @@ export default function Clientes() {
               .maybeSingle()
 
             const nomeEmpresa = usuarioData?.nome_empresa || 'nossa empresa'
-            const primeiroNome = novoClienteNome.trim().split(' ')[0]
+            const primeiroNomeAluno = novoClienteNome.trim().split(' ')[0]
+            const primeiroNomeResp = (novoClienteResponsavelNome || '').trim().split(' ')[0]
+            // Se aluno tem responsável, a mensagem vai pro zap do responsável e usa o nome dele
+            const primeiroNome = temResponsavel && primeiroNomeResp ? primeiroNomeResp : primeiroNomeAluno
 
             // Buscar template de boas-vindas salvo
             const { data: templateWelcome } = await supabase
@@ -1450,10 +1454,14 @@ export default function Clientes() {
               mensagemFinal = mensagemBoasVindasCustom
                 .replace(/\[Nome\]/g, primeiroNome)
                 .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
+                .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAluno)
+                .replace(/\{\{nomeResponsavel\}\}/g, temResponsavel ? primeiroNomeResp : '')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
             } else if (templateWelcome?.mensagem) {
               mensagemFinal = templateWelcome.mensagem
                 .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
+                .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAluno)
+                .replace(/\{\{nomeResponsavel\}\}/g, temResponsavel ? primeiroNomeResp : '')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
             } else {
               mensagemFinal = `Olá, ${primeiroNome}! 👋
@@ -4629,7 +4637,7 @@ Equipe ${nomeEmpresa}`
                         )}
                       </div>
                       <textarea
-                        value={mensagemBoasVindasCustom || `Olá, ${novoClienteNome.trim().split(' ')[0] || '[Nome]'}! 👋\n\nSeja muito bem-vindo(a)!\n\nEste é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:\n\n✅ Lembretes de vencimento\n✅ Confirmações de pagamento\n✅ Comunicados importantes\n\n*Salve nosso número* para não perder nenhuma mensagem!\n\nQualquer dúvida, estamos à disposição.`}
+                        value={mensagemBoasVindasCustom || `Olá, ${(temResponsavel && novoClienteResponsavelNome.trim() ? novoClienteResponsavelNome.trim().split(' ')[0] : novoClienteNome.trim().split(' ')[0]) || '[Nome]'}! 👋\n\nSeja muito bem-vindo(a)!\n\nEste é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:\n\n✅ Lembretes de vencimento\n✅ Confirmações de pagamento\n✅ Comunicados importantes\n\n*Salve nosso número* para não perder nenhuma mensagem!\n\nQualquer dúvida, estamos à disposição.`}
                         onChange={(e) => setMensagemBoasVindasCustom(e.target.value)}
                         style={{ width: '100%', minHeight: '120px', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', backgroundColor: 'white', boxSizing: 'border-box', lineHeight: '1.5' }} />
                     </div>
