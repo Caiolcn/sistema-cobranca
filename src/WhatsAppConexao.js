@@ -306,7 +306,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               placeholder="Escreva sua mensagem aqui..."
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-              {['{{nomeCliente}}', '{{nomeAluno}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}'].map(v => (
+              {['{{nomeAluno}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}'].map(v => (
                 <button key={v} onClick={() => setMensagem(prev => prev + v)} style={{
                   padding: '3px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#eef2ff',
                   color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: 4, cursor: 'pointer'
@@ -314,8 +314,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               ))}
             </div>
             <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-              <strong>{`{{nomeCliente}}`}</strong> usa o nome do responsável quando o aluno tem um cadastrado.
-              Use <strong>{`{{nomeAluno}}`}</strong> para referenciar o aluno explicitamente.
+              Use <strong>{`{{nomeResponsavel}}`}</strong> quando o aluno tem responsável cadastrado (a mensagem vai pro WhatsApp dele).
             </div>
           </div>
 
@@ -323,7 +322,11 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
           {mensagem && (
             <div style={{ padding: '12px 14px', backgroundColor: '#f0fdf4', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', border: '1px solid #bbf7d0' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', marginBottom: 6 }}>Preview:</div>
-              {mensagem.replace(/\{\{nomeCliente\}\}/g, 'João').replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa || 'Sua Empresa')}
+              {mensagem
+                .replace(/\{\{nomeCliente\}\}/g, 'João')
+                .replace(/\{\{nomeAluno\}\}/g, 'João')
+                .replace(/\{\{nomeResponsavel\}\}/g, 'Maria')
+                .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa || 'Sua Empresa')}
             </div>
           )}
 
@@ -3474,14 +3477,14 @@ export default function WhatsAppConexao() {
                 </h5>
                 {tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'class_reminder' && (
                   <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
-                    <strong>{`{{nomeCliente}}`}</strong> usa o nome do responsável quando o aluno tem um cadastrado (a mensagem vai pro WhatsApp do responsável). Use <strong>{`{{nomeAluno}}`}</strong> para referenciar o aluno explicitamente.
+                    Use <strong>{`{{nomeResponsavel}}`}</strong> quando o aluno tem responsável cadastrado — a mensagem vai pro WhatsApp dele.
                   </p>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {tipoTemplateSelecionado === 'birthday' ? (
                     <>
                       {[
-                        { var: '{{nomeCliente}}', bg: '#fce4ec', border: '#f48fb1', color: '#c2185b' },
+                        { var: '{{nomeAluno}}', bg: '#fce4ec', border: '#f48fb1', color: '#c2185b' },
                         { var: '{{nomeEmpresa}}', bg: '#fce4ec', border: '#f48fb1', color: '#c2185b' }
                       ].map(v => (
                         <code
@@ -3508,7 +3511,7 @@ export default function WhatsAppConexao() {
                   ) : tipoTemplateSelecionado === 'class_reminder' ? (
                     <>
                       {[
-                        { var: '{{nomeCliente}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' },
+                        { var: '{{nomeAluno}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' },
                         { var: '{{descricaoAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
                         { var: '{{horarioAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
                         { var: '{{nomeEmpresa}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' }
@@ -3536,24 +3539,6 @@ export default function WhatsAppConexao() {
                     </>
                   ) : (
                     <>
-                      <code
-                        onClick={() => {
-                          navigator.clipboard.writeText('{{nomeCliente}}')
-                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeCliente}} copiado para a área de transferência' })
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#e3f2fd',
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          color: '#8867A1',
-                          cursor: 'pointer',
-                          fontWeight: '600'
-                        }}
-                      >
-                        {`{{nomeCliente}}`}
-                      </code>
                       <code
                         onClick={() => {
                           navigator.clipboard.writeText('{{nomeAluno}}')
