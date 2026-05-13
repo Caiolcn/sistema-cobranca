@@ -179,7 +179,12 @@ export default function PortalCliente() {
         nomeEmpresa: dados.empresa.nome, nomeCliente: dados.devedor.nome,
         valor: mensalidade.valor, dataVencimento: mensalidade.data_vencimento,
         dataPagamento: mensalidade.updated_at, formaPagamento: mensalidade.forma_pagamento || 'PIX',
-        chavePix: dados.empresa.chave_pix
+        chavePix: dados.empresa.chave_pix,
+        cpfCnpj: dados.empresa.cnpj || dados.empresa.cpf_cnpj || '',
+        emailEmpresa: dados.empresa.email_empresa || dados.empresa.email || '',
+        telefoneEmpresa: dados.empresa.telefone || '',
+        logoUrl: dados.empresa.logo_url || '',
+        descricao: 'Mensalidade'
       })
     } catch (error) { console.error('Erro ao gerar recibo:', error); mostrarPortalToast('Erro ao gerar recibo', 'error') }
   }

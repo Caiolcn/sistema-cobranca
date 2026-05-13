@@ -29,7 +29,7 @@ export function UserProvider({ children }) {
       // Buscar dados adicionais do usuário (incluindo trial_fim para evitar query duplicada)
       let { data: usuarioData, error } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
+        .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim, onboarding_completed, onboarding_step, role')
         .eq('id', authUser.id)
         .maybeSingle()
 
@@ -37,7 +37,7 @@ export function UserProvider({ children }) {
       if (error && !usuarioData) {
         const { data: fallback } = await supabase
           .from('usuarios')
-          .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
+          .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim, role')
           .eq('id', authUser.id)
           .maybeSingle()
         usuarioData = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -73,7 +73,7 @@ export function UserProvider({ children }) {
 
     let { data, error } = await supabase
       .from('usuarios')
-      .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, onboarding_completed, onboarding_step, role')
+      .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim, onboarding_completed, onboarding_step, role')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -81,7 +81,7 @@ export function UserProvider({ children }) {
     if (error && !data) {
       const { data: fallback } = await supabase
         .from('usuarios')
-        .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim, role')
+        .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim, role')
         .eq('id', user.id)
         .maybeSingle()
       data = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
@@ -105,7 +105,7 @@ export function UserProvider({ children }) {
 
     const { data } = await supabase
       .from('usuarios')
-      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, trial_fim')
+      .select('id, email, plano, plano_pago, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim')
       .eq('id', clientUserId)
       .maybeSingle()
 
@@ -171,6 +171,10 @@ export function UserProvider({ children }) {
     nomeEmpresa: effectiveData?.nome_empresa || '',
     nomeCompleto: effectiveData?.nome_completo || '',
     chavePix: effectiveData?.chave_pix || '',
+    cpfCnpj: effectiveData?.cpf_cnpj || '',
+    emailEmpresa: effectiveData?.email_empresa || effectiveData?.email || '',
+    telefoneEmpresa: effectiveData?.telefone || '',
+    logoUrl: effectiveData?.logo_url || '',
     // Trial status (calculado uma vez, evita query duplicada)
     trialStatus,
     // Admin

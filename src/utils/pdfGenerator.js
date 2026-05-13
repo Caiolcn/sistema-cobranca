@@ -5,11 +5,38 @@
 import { jsPDF } from 'jspdf'
 
 /**
+ * Carrega imagem como data URL (para uso com jsPDF addImage).
+ * Retorna null se a imagem não puder ser carregada (CORS, 404, etc).
+ */
+function loadImageAsDataURL(url) {
+  return new Promise((resolve) => {
+    if (!url) { resolve(null); return }
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        resolve({ dataUrl: canvas.toDataURL('image/png'), width: img.naturalWidth, height: img.naturalHeight })
+      } catch (e) {
+        resolve(null)
+      }
+    }
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
+}
+
+/**
  * Gera um recibo de pagamento em PDF
  * @param {Object} dados - Dados do recibo
+ * @param {Object|null} logo - { dataUrl, width, height } pré-carregado
  * @returns {jsPDF} - Documento PDF
  */
-function criarReciboPDF(dados) {
+function criarReciboPDF(dados, logo = null) {
   const {
     nomeCliente,
     telefoneCliente,
@@ -19,8 +46,23 @@ function criarReciboPDF(dados) {
     formaPagamento,
     nomeEmpresa,
     chavePix,
+    cpfCnpj,
+    emailEmpresa,
+    telefoneEmpresa,
     descricao
   } = dados
+
+  // Período de referência: se descrição for "Mensalidade" e houver vencimento,
+  // anexa "- Mês/Ano" (ex: "Mensalidade - Maio/2026")
+  const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  let descricaoFinal = descricao || ''
+  if (descricao && descricao.toLowerCase().startsWith('mensalidade') && dataVencimento && !descricao.includes('/')) {
+    const dv = new Date(dataVencimento + 'T00:00:00')
+    if (!isNaN(dv)) {
+      descricaoFinal = `${descricao} - ${MESES_PT[dv.getMonth()]}/${dv.getFullYear()}`
+    }
+  }
 
   // Criar PDF (A5 landscape para recibo compacto)
   const doc = new jsPDF({
@@ -57,17 +99,40 @@ function criarReciboPDF(dados) {
   doc.setFillColor(76, 175, 80) // #4CAF50
   doc.rect(0, 25, pageWidth, 2, 'F')
 
-  // ============ DADOS DA EMPRESA ============
+  // ============ LOGO + NOME DA EMPRESA (centralizados como grupo) ============
   doc.setTextColor(52, 72, 72)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text(nomeEmpresa || 'Empresa', pageWidth / 2, 35, { align: 'center' })
 
-  if (chavePix) {
+  const empresaTexto = nomeEmpresa || 'Empresa'
+  const nomeWidth = doc.getTextWidth(empresaTexto)
+
+  if (logo?.dataUrl) {
+    const logoSize = 9 // mm (compacto pra ficar junto do texto)
+    const aspect = logo.width / logo.height
+    const logoW = aspect >= 1 ? logoSize : logoSize * aspect
+    const logoH = aspect >= 1 ? logoSize / aspect : logoSize
+    const gap = 3
+    const groupWidth = logoW + gap + nomeWidth
+    const startX = (pageWidth - groupWidth) / 2
+    const logoY = 35 - logoH / 2 - 1 // centraliza vertical com o texto
+
+    doc.addImage(logo.dataUrl, 'PNG', startX, logoY, logoW, logoH, undefined, 'FAST')
+    doc.text(empresaTexto, startX + logoW + gap, 35)
+  } else {
+    doc.text(empresaTexto, pageWidth / 2, 35, { align: 'center' })
+  }
+
+  // Linha de dados do emissor (CNPJ/CPF + chave PIX)
+  const dadosEmissor = []
+  if (cpfCnpj) dadosEmissor.push(`CNPJ/CPF: ${cpfCnpj}`)
+  if (chavePix) dadosEmissor.push(`Chave PIX: ${chavePix}`)
+
+  if (dadosEmissor.length > 0) {
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(100, 100, 100)
-    doc.text(`Chave PIX: ${chavePix}`, pageWidth / 2, 40, { align: 'center' })
+    doc.text(dadosEmissor.join('  •  '), pageWidth / 2, 40, { align: 'center' })
   }
 
   // Linha separadora
@@ -78,9 +143,9 @@ function criarReciboPDF(dados) {
   // ============ CORPO DO RECIBO ============
   let yPos = 55
 
-  // Layout em duas colunas
-  const col1X = margin
-  const col2X = pageWidth / 2 + 10
+  // Layout em duas colunas alinhado com padding interno do valor box
+  const col1X = margin + 5
+  const col2X = pageWidth - margin - 50
 
   // === COLUNA 1: Dados do Cliente ===
   doc.setTextColor(100, 100, 100)
@@ -116,7 +181,7 @@ function criarReciboPDF(dados) {
   doc.setTextColor(100, 100, 100)
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text('PAGAMENTO', col2X, yPos + 16)
+  doc.text('PAGAMENTO', col2X, yPos + 12)
 
   const pagFormatado = dataPagamento
     ? new Date(dataPagamento).toLocaleDateString('pt-BR')
@@ -124,10 +189,10 @@ function criarReciboPDF(dados) {
   doc.setTextColor(51, 51, 51)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text(pagFormatado, col2X, yPos + 22)
+  doc.text(pagFormatado, col2X, yPos + 18)
 
   // ============ VALOR EM DESTAQUE ============
-  yPos = 90
+  yPos = 88
 
   // Box do valor
   doc.setFillColor(232, 245, 233) // Verde claro
@@ -135,7 +200,7 @@ function criarReciboPDF(dados) {
 
   doc.setTextColor(100, 100, 100)
   doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('helvetica', 'bold')
   doc.text('VALOR PAGO', margin + 5, yPos)
 
   const valorFormatado = `R$ ${parseFloat(valor || 0).toLocaleString('pt-BR', {
@@ -160,8 +225,8 @@ function criarReciboPDF(dados) {
   doc.text(formaPagamento || 'Não informado', pageWidth - margin - 50, yPos + 8)
 
   // ============ DESCRIÇÃO ============
-  if (descricao) {
-    yPos = 120
+  if (descricaoFinal) {
+    yPos = 115
     doc.setTextColor(100, 100, 100)
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
@@ -170,29 +235,43 @@ function criarReciboPDF(dados) {
     doc.setTextColor(51, 51, 51)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.text(descricao, margin, yPos + 6)
+    doc.text(descricaoFinal, margin, yPos + 6)
   }
 
-  // ============ MARCA D'ÁGUA "PAGO" ============
-  doc.setTextColor(76, 175, 80, 30) // Verde com transparência
-  doc.setFontSize(50)
+  // ============ SELO "PAGO" (canto superior direito) ============
+  const seloW = 30
+  const seloH = 11
+  const seloX = pageWidth - margin - seloW
+  const seloY = 31
+
+  // Fundo verde claro com borda verde
+  doc.setFillColor(232, 245, 233)
+  doc.setDrawColor(76, 175, 80)
+  doc.setLineWidth(0.8)
+  doc.roundedRect(seloX, seloY, seloW, seloH, 2, 2, 'FD')
+
+  // Texto "PAGO"
+  doc.setTextColor(46, 125, 50)
+  doc.setFontSize(13)
   doc.setFont('helvetica', 'bold')
-
-  // Rotacionar e posicionar
-  const centerX = pageWidth / 2
-  const centerY = pageHeight / 2
-
-  doc.saveGraphicsState()
-  doc.text('PAGO', centerX + 30, centerY + 10, {
-    align: 'center',
-    angle: -25
-  })
-  doc.restoreGraphicsState()
+  doc.text('PAGO', seloX + seloW / 2, seloY + seloH / 2 + 1.5, { align: 'center' })
 
   // ============ FOOTER ============
   // Fundo do footer
   doc.setFillColor(245, 245, 245)
-  doc.rect(0, pageHeight - 18, pageWidth, 18, 'F')
+  doc.rect(0, pageHeight - 22, pageWidth, 22, 'F')
+
+  // Linha de contato do emissor
+  const contato = []
+  if (emailEmpresa) contato.push(emailEmpresa)
+  if (telefoneEmpresa) contato.push(telefoneEmpresa)
+
+  doc.setTextColor(80, 80, 80)
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  if (contato.length > 0) {
+    doc.text(contato.join('  •  '), pageWidth / 2, pageHeight - 15, { align: 'center' })
+  }
 
   // Texto do footer
   doc.setTextColor(100, 100, 100)
@@ -221,7 +300,8 @@ function criarReciboPDF(dados) {
  * @param {Object} dados - Dados do recibo
  */
 export async function baixarRecibo(dados) {
-  const doc = criarReciboPDF(dados)
+  const logo = await loadImageAsDataURL(dados.logoUrl)
+  const doc = criarReciboPDF(dados, logo)
   const nomeArquivo = `recibo_${dados.nomeCliente?.replace(/\s+/g, '_') || 'cliente'}_${new Date().toISOString().split('T')[0]}.pdf`
   doc.save(nomeArquivo)
 }
@@ -231,7 +311,8 @@ export async function baixarRecibo(dados) {
  * @param {Object} dados - Dados do recibo
  */
 export async function imprimirRecibo(dados) {
-  const doc = criarReciboPDF(dados)
+  const logo = await loadImageAsDataURL(dados.logoUrl)
+  const doc = criarReciboPDF(dados, logo)
 
   // Abrir PDF em nova aba
   const pdfBlob = doc.output('blob')
@@ -250,10 +331,11 @@ export async function imprimirRecibo(dados) {
 /**
  * Retorna o PDF como Blob (para enviar por WhatsApp ou email)
  * @param {Object} dados - Dados do recibo
- * @returns {Blob} - PDF como Blob
+ * @returns {Promise<Blob>} - PDF como Blob
  */
-export function gerarReciboBlob(dados) {
-  const doc = criarReciboPDF(dados)
+export async function gerarReciboBlob(dados) {
+  const logo = await loadImageAsDataURL(dados.logoUrl)
+  const doc = criarReciboPDF(dados, logo)
   return doc.output('blob')
 }
 
@@ -262,8 +344,9 @@ export function gerarReciboBlob(dados) {
  * @param {Object} dados - Dados do recibo
  * @returns {string} - Data URL do PDF
  */
-export function gerarReciboDataURL(dados) {
-  const doc = criarReciboPDF(dados)
+export async function gerarReciboDataURL(dados) {
+  const logo = await loadImageAsDataURL(dados.logoUrl)
+  const doc = criarReciboPDF(dados, logo)
   return doc.output('dataurlstring')
 }
 
