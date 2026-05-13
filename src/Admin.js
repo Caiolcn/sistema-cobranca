@@ -23,6 +23,12 @@ export default function Admin() {
   const [ordenacao, setOrdenacao] = useState('nome')
   const [filtroMes, setFiltroMes] = useState('todos')
 
+  // Edição rápida de cliente (modal admin)
+  const [clienteEditando, setClienteEditando] = useState(null)
+  const [editForm, setEditForm] = useState({ plano_pago: false, plano: 'starter', plano_vencimento: '', trial_fim: '' })
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false)
+  const [resultadoEdicao, setResultadoEdicao] = useState(null)
+
   // Recuperar Trial / Reativar Ex-pagante (modal + disparo n8n)
   const [recuperarModal, setRecuperarModal] = useState(false)
   const [grupoOrigem, setGrupoOrigem] = useState('trial') // 'trial' | 'churn'
@@ -481,6 +487,57 @@ export default function Admin() {
       setResultadoRecuperacao({ sucesso: false, erro: err.message })
     } finally {
       setEnviandoRecuperacao(false)
+    }
+  }
+
+  const isoParaInputDate = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const ano = d.getFullYear()
+    const mes = String(d.getMonth() + 1).padStart(2, '0')
+    const dia = String(d.getDate()).padStart(2, '0')
+    return `${ano}-${mes}-${dia}`
+  }
+
+  const abrirEdicao = (cliente) => {
+    setClienteEditando(cliente)
+    setEditForm({
+      plano_pago: !!cliente.plano_pago,
+      plano: cliente.plano || 'starter',
+      plano_vencimento: isoParaInputDate(cliente.plano_vencimento),
+      trial_fim: isoParaInputDate(cliente.trial_fim)
+    })
+    setResultadoEdicao(null)
+  }
+
+  const salvarEdicao = async () => {
+    if (!clienteEditando) return
+    setSalvandoEdicao(true)
+    setResultadoEdicao(null)
+    try {
+      const updates = {
+        plano_pago: editForm.plano_pago,
+        plano: editForm.plano,
+        plano_vencimento: editForm.plano_vencimento || null,
+        trial_fim: editForm.trial_fim || null
+      }
+      const { error } = await supabase
+        .from('usuarios')
+        .update(updates)
+        .eq('id', clienteEditando.id)
+      if (error) throw error
+
+      setClientes(prev => prev.map(c => c.id === clienteEditando.id ? { ...c, ...updates } : c))
+      setResultadoEdicao({ sucesso: true })
+      setTimeout(() => {
+        setClienteEditando(null)
+        setResultadoEdicao(null)
+      }, 900)
+    } catch (err) {
+      setResultadoEdicao({ sucesso: false, erro: err.message })
+    } finally {
+      setSalvandoEdicao(false)
     }
   }
 
@@ -1014,7 +1071,7 @@ export default function Admin() {
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'Criação da Conta', 'WhatsApp', 'Mensagens', 'Última Conexão'].map(col => (
+                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'Criação da Conta', 'WhatsApp', 'Mensagens', 'Última Conexão', 'Ações'].map(col => (
                     <th key={col} style={{
                       padding: '10px 8px', textAlign: 'left', fontSize: '11px',
                       fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap'
@@ -1176,6 +1233,24 @@ export default function Admin() {
                       {/* Última Conexão */}
                       <td style={{ padding: '8px 6px', fontSize: '11px', color: '#666', whiteSpace: 'nowrap' }}>
                         {formatarData(cliente.mz?.ultima_conexao || cliente.wc?.last_connected_at)}
+                      </td>
+
+                      {/* Ações */}
+                      <td style={{ padding: '8px 6px' }}>
+                        <button
+                          onClick={() => abrirEdicao(cliente)}
+                          title="Editar plano, vencimento e trial"
+                          style={{
+                            padding: '6px 10px', borderRadius: '6px',
+                            border: '1px solid #d1d5db', backgroundColor: 'white',
+                            color: '#667eea', cursor: 'pointer',
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            fontSize: '12px', fontWeight: '500'
+                          }}
+                        >
+                          <Icon icon="mdi:pencil" width="14" />
+                          Editar
+                        </button>
                       </td>
                     </tr>
                   )
@@ -1472,6 +1547,183 @@ export default function Admin() {
                   )}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Cliente (admin) */}
+      {clienteEditando && (
+        <div
+          onClick={() => !salvandoEdicao && setClienteEditando(null)}
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10001, padding: '16px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white', borderRadius: '14px', width: '100%',
+              maxWidth: '460px', boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
+              display: 'flex', flexDirection: 'column'
+            }}
+          >
+            <div style={{ padding: '18px 22px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon icon="mdi:account-edit" width="22" style={{ color: '#667eea' }} />
+                  Editar cliente
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#666' }}>
+                  {clienteEditando.nome_empresa || clienteEditando.nome_completo || clienteEditando.email}
+                </p>
+              </div>
+              <button
+                onClick={() => !salvandoEdicao && setClienteEditando(null)}
+                disabled={salvandoEdicao}
+                style={{ background: 'none', border: 'none', cursor: salvandoEdicao ? 'not-allowed' : 'pointer', padding: '4px', opacity: salvandoEdicao ? 0.4 : 1 }}
+              >
+                <Icon icon="mdi:close" width="22" style={{ color: '#666' }} />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Pago */}
+              <label style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 14px', borderRadius: '8px',
+                backgroundColor: editForm.plano_pago ? '#e8f5e9' : '#f8f9fa',
+                border: `1px solid ${editForm.plano_pago ? '#4CAF50' : '#e5e7eb'}`,
+                cursor: 'pointer'
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+                    Marcar como pago
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                    Libera o sistema completo (sem trial)
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={editForm.plano_pago}
+                  onChange={(e) => setEditForm(s => ({ ...s, plano_pago: e.target.checked }))}
+                  style={{ width: '20px', height: '20px', accentColor: '#4CAF50', cursor: 'pointer' }}
+                />
+              </label>
+
+              {/* Plano */}
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#344848', marginBottom: '6px' }}>
+                  Plano
+                </label>
+                <select
+                  value={editForm.plano}
+                  onChange={(e) => setEditForm(s => ({ ...s, plano: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+                    borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="starter">Starter — R$ 49,90</option>
+                  <option value="pro">Pro — R$ 99,90</option>
+                  <option value="premium">Premium — R$ 149,90</option>
+                </select>
+              </div>
+
+              {/* Vencimento do plano */}
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#344848', marginBottom: '6px' }}>
+                  Vencimento do plano
+                </label>
+                <input
+                  type="date"
+                  value={editForm.plano_vencimento}
+                  onChange={(e) => setEditForm(s => ({ ...s, plano_vencimento: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+                    borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box'
+                  }}
+                />
+                <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                  Quando o plano ativo expira (aplicável a clientes pagos)
+                </div>
+              </div>
+
+              {/* Fim do trial */}
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#344848', marginBottom: '6px' }}>
+                  Fim do trial
+                </label>
+                <input
+                  type="date"
+                  value={editForm.trial_fim}
+                  onChange={(e) => setEditForm(s => ({ ...s, trial_fim: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+                    borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', boxSizing: 'border-box'
+                  }}
+                />
+                <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                  Estende o período gratuito sem precisar marcar como pago
+                </div>
+              </div>
+
+              {resultadoEdicao?.sucesso && (
+                <div style={{
+                  padding: '10px 12px', borderRadius: '8px',
+                  backgroundColor: '#e8f5e9', border: '1px solid #4CAF50',
+                  color: '#2e7d32', fontSize: '13px',
+                  display: 'flex', alignItems: 'center', gap: '6px'
+                }}>
+                  <Icon icon="mdi:check-circle" width="18" /> Salvo com sucesso
+                </div>
+              )}
+
+              {resultadoEdicao && !resultadoEdicao.sucesso && (
+                <div style={{
+                  padding: '10px 12px', borderRadius: '8px',
+                  backgroundColor: '#ffebee', border: '1px solid #f44336',
+                  color: '#c62828', fontSize: '13px'
+                }}>
+                  Erro ao salvar: {resultadoEdicao.erro}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '14px 22px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setClienteEditando(null)}
+                disabled={salvandoEdicao}
+                style={{
+                  padding: '10px 18px', backgroundColor: 'white', color: '#666',
+                  border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px',
+                  fontWeight: '500', cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
+                  opacity: salvandoEdicao ? 0.5 : 1
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={salvarEdicao}
+                disabled={salvandoEdicao || resultadoEdicao?.sucesso}
+                style={{
+                  padding: '10px 22px', backgroundColor: '#667eea',
+                  color: 'white', border: 'none', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: '600',
+                  cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
+                  opacity: salvandoEdicao ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                {salvandoEdicao ? (
+                  <><Icon icon="mdi:loading" width="16" style={{ animation: 'spin 1s linear infinite' }} /> Salvando...</>
+                ) : (
+                  <><Icon icon="mdi:content-save" width="16" /> Salvar</>
+                )}
+              </button>
             </div>
           </div>
         </div>
