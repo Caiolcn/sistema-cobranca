@@ -330,41 +330,28 @@ function Relatorios() {
         }
       });
 
-      // Saldo em conta
-      // - Sem ajuste configurado: soma TODO o histórico (receitas + vendas pagas − despesas pagas)
-      // - Com ajuste: usa o valor ajustado como ponto de partida + só conta movimentações ≥ data do ajuste
-      const saldoInicial = Number(dadosUsuario?.saldo_inicial) || 0;
+      // Saldo em conta = (total entradas pagas − total saídas pagas) + ajuste manual.
+      // O ajuste é só um delta de correção pra bater com o saldo real do banco.
+      // Qualquer receita/despesa paga (passada ou futura) sempre influencia o saldo.
+      const saldoAjuste = Number(dadosUsuario?.saldo_inicial) || 0;
       const saldoInicialData = dadosUsuario?.saldo_inicial_data || null;
 
-      let entradasDesdeAjuste = 0;
-      let saidasDesdeAjuste = 0;
+      let entradasTotal = 0;
+      let saidasTotal = 0;
 
       todasMensalidades?.forEach(p => {
-        if (p.status !== 'pago') return;
-        const dataPgto = p.updated_at?.substring(0, 10);
-        if (!dataPgto) return;
-        if (!saldoInicialData || dataPgto >= saldoInicialData) {
-          entradasDesdeAjuste += Number(p.valor) || 0;
-        }
+        if (p.status === 'pago') entradasTotal += Number(p.valor) || 0;
       });
 
       (todasVendas || []).forEach(v => {
-        if (v.status !== 'pago') return;
-        if (!v.data_pagamento) return;
-        if (!saldoInicialData || v.data_pagamento >= saldoInicialData) {
-          entradasDesdeAjuste += Number(v.valor) || 0;
-        }
+        if (v.status === 'pago') entradasTotal += Number(v.valor) || 0;
       });
 
       (todasDespesas || []).forEach(d => {
-        if (d.status !== 'pago') return;
-        if (!d.data_pagamento) return;
-        if (!saldoInicialData || d.data_pagamento >= saldoInicialData) {
-          saidasDesdeAjuste += Number(d.valor) || 0;
-        }
+        if (d.status === 'pago') saidasTotal += Number(d.valor) || 0;
       });
 
-      const saldoAtual = saldoInicial + entradasDesdeAjuste - saidasDesdeAjuste;
+      const saldoAtual = entradasTotal - saidasTotal + saldoAjuste;
 
       setDados({
         mrr: mrrCalculado,
@@ -390,10 +377,10 @@ function Relatorios() {
         despesasPendenteMes: despPendenteMes,
         despesasTotalMes: despTotalMes,
         saldoAtual,
-        saldoInicial,
+        saldoInicial: saldoAjuste,
         saldoInicialData,
-        saldoEntradas: entradasDesdeAjuste,
-        saldoSaidas: saidasDesdeAjuste
+        saldoEntradas: entradasTotal,
+        saldoSaidas: saidasTotal
       });
 
     } catch (error) {
@@ -429,7 +416,7 @@ function Relatorios() {
     statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus,
     pagamentosHoje, valorPagamentosHoje,
     despesasPagoMes, despesasPendenteMes,
-    saldoAtual, saldoInicialData, saldoEntradas, saldoSaidas
+    saldoAtual, saldoInicial, saldoInicialData, saldoEntradas, saldoSaidas
   } = dados;
 
   const proLocked = isLocked('pro');
@@ -445,17 +432,20 @@ function Relatorios() {
   };
 
   const salvarSaldo = async () => {
-    const valor = parseFloat(formSaldoValor);
-    if (isNaN(valor)) {
+    const valorReal = parseFloat(formSaldoValor);
+    if (isNaN(valorReal)) {
       showToast('Informe um valor válido', 'erro');
       return;
     }
     setSalvandoSaldo(true);
     try {
+      // Delta = saldo real informado − saldo que o sistema calcula só pelas movimentações.
+      // Assim, o ajuste corrige a defasagem e qualquer movimento futuro/passado continua somando.
+      const delta = valorReal - (saldoEntradas - saldoSaidas);
       const hoje = new Date().toISOString().split('T')[0];
       const { error } = await supabase
         .from('usuarios')
-        .update({ saldo_inicial: valor, saldo_inicial_data: hoje })
+        .update({ saldo_inicial: delta, saldo_inicial_data: hoje })
         .eq('id', userId);
       if (error) throw error;
       showToast('Saldo atualizado', 'sucesso');
@@ -521,14 +511,13 @@ function Relatorios() {
                   {formatarMoeda(saldoAtual)}
                 </div>
                 <div style={{ fontSize: '12px', opacity: 0.75, marginTop: '6px' }}>
-                  {saldoInicialData
-                    ? <>
-                        Desde {formatarDataExtensa(saldoInicialData)}
-                        {(saldoEntradas > 0 || saldoSaidas > 0)
-                          ? <> · +{formatarMoeda(saldoEntradas)} entradas · −{formatarMoeda(saldoSaidas)} despesas</>
-                          : <> · sem movimentações</>}
-                      </>
-                    : <>+{formatarMoeda(saldoEntradas)} recebido · −{formatarMoeda(saldoSaidas)} despesas pagas · clique em "Ajustar" para definir o saldo real</>}
+                  +{formatarMoeda(saldoEntradas)} recebido · −{formatarMoeda(saldoSaidas)} despesas pagas
+                  {saldoInicial !== 0 && (
+                    <> · {saldoInicial > 0 ? '+' : '−'}{formatarMoeda(Math.abs(saldoInicial))} ajuste</>
+                  )}
+                  {saldoInicialData && (
+                    <> · ajustado em {formatarDataExtensa(saldoInicialData)}</>
+                  )}
                 </div>
               </div>
             </div>
