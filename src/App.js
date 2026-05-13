@@ -33,6 +33,7 @@ const Admin = lazy(() => import('./Admin'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
 // const GeradorPosts = lazy(() => import('./GeradorPosts')) // WIP — oculto
 
 // Componente de loading para Suspense
@@ -86,6 +87,7 @@ function App() {
               <Route path="/portal/:token" element={<PortalCliente />} />
               <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />
+              <Route path="/preview-recibo" element={<PreviewRecibo />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (

@@ -9,7 +9,8 @@ import { exportarMensalidades } from './utils/exportUtils'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
-import { baixarRecibo, imprimirRecibo } from './utils/pdfGenerator'
+import { baixarRecibo, imprimirRecibo, gerarReciboBlob } from './utils/pdfGenerator'
+import { resolverDestinatario } from './utils/destinatario'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
@@ -20,7 +21,7 @@ import DateInput from './components/DateInput'
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
-  const { userId, nomeEmpresa, chavePix, loading: loadingUser } = useUser()
+  const { userId, nomeEmpresa, chavePix, cpfCnpj, emailEmpresa, telefoneEmpresa, logoUrl, loading: loadingUser } = useUser()
   const [searchParams] = useSearchParams()
   const [mensalidades, setMensalidades] = useState([])
   const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
@@ -668,6 +669,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       formaPagamento: mensalidadePaga.forma_pagamento,
       nomeEmpresa: nomeEmpresa || 'Empresa',
       chavePix: chavePix || '',
+      cpfCnpj: cpfCnpj || '',
+      emailEmpresa: emailEmpresa || '',
+      telefoneEmpresa: telefoneEmpresa || '',
+      logoUrl: logoUrl || '',
       descricao: mensalidadePaga.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidadePaga.numero_mensalidade || 1}`
     }
 
@@ -680,6 +685,80 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }
     } catch (error) {
       showToast('Erro ao gerar recibo: ' + error.message, 'error')
+    }
+  }
+
+  const [enviandoReciboWhatsApp, setEnviandoReciboWhatsApp] = useState(false)
+
+  const handleEnviarReciboWhatsApp = async () => {
+    if (!mensalidadePaga) return
+
+    const devedor = mensalidadePaga.devedor || mensalidadePaga.devedores
+    const destinatario = resolverDestinatario(devedor)
+
+    if (!destinatario.telefone) {
+      showToast('Telefone do aluno não encontrado', 'error')
+      return
+    }
+
+    const status = await whatsappService.verificarStatus()
+    if (!status.conectado) {
+      showToast('WhatsApp não conectado. Conecte na aba WhatsApp primeiro.', 'error')
+      return
+    }
+
+    setEnviandoReciboWhatsApp(true)
+
+    try {
+      const nomeAluno = destinatario.primeiroNomeAluno || 'Aluno'
+
+      const dadosRecibo = {
+        nomeCliente: devedor?.nome || 'Aluno',
+        telefoneCliente: devedor?.telefone || '',
+        valor: mensalidadePaga.valor,
+        dataVencimento: mensalidadePaga.data_vencimento,
+        dataPagamento: mensalidadePaga.data_pagamento,
+        formaPagamento: mensalidadePaga.forma_pagamento,
+        nomeEmpresa: nomeEmpresa || 'Empresa',
+        chavePix: chavePix || '',
+        cpfCnpj: cpfCnpj || '',
+        emailEmpresa: emailEmpresa || '',
+        telefoneEmpresa: telefoneEmpresa || '',
+        descricao: mensalidadePaga.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidadePaga.numero_mensalidade || 1}`
+      }
+
+      const pdfBlob = await gerarReciboBlob(dadosRecibo)
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(pdfBlob)
+      })
+
+      const dataArquivo = new Date().toISOString().split('T')[0]
+      const fileName = `recibo_${(devedor?.nome || 'aluno').replace(/\s+/g, '_')}_${dataArquivo}.pdf`
+      const caption = `Olá, ${nomeAluno}! Segue seu recibo de pagamento. - ${nomeEmpresa || 'Empresa'}`
+
+      const resultado = await whatsappService.enviarDocumento(
+        destinatario.telefone,
+        base64,
+        caption,
+        fileName,
+        'document'
+      )
+
+      if (resultado.sucesso) {
+        showToast('Recibo enviado via WhatsApp!', 'success')
+        setMostrarModalRecibo(false)
+        setMensalidadePaga(null)
+      } else {
+        showToast('Erro ao enviar: ' + resultado.erro, 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao enviar recibo via WhatsApp:', error)
+      showToast('Erro ao enviar: ' + error.message, 'error')
+    } finally {
+      setEnviandoReciboWhatsApp(false)
     }
   }
 
@@ -2500,6 +2579,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           zIndex: 1000,
           padding: '20px'
         }}>
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '12px',
@@ -2540,20 +2620,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               Deseja gerar o recibo de pagamento?
             </p>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
                 onClick={() => handleGerarRecibo('baixar')}
                 style={{
+                  width: '100%',
                   padding: '10px 20px',
                   backgroundColor: '#344848',
                   color: 'white',
-                  border: 'none',
+                  border: '1px solid #344848',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: '500',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '8px'
                 }}
               >
@@ -2562,23 +2644,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </button>
 
               <button
-                onClick={() => handleGerarRecibo('imprimir')}
+                onClick={handleEnviarReciboWhatsApp}
+                disabled={enviandoReciboWhatsApp}
                 style={{
+                  width: '100%',
                   padding: '10px 20px',
                   backgroundColor: 'white',
                   color: '#344848',
                   border: '1px solid #344848',
                   borderRadius: '6px',
-                  cursor: 'pointer',
+                  cursor: enviandoReciboWhatsApp ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   fontWeight: '500',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: enviandoReciboWhatsApp ? 0.6 : 1
                 }}
               >
-                <Icon icon="mdi:printer" width="18" />
-                Imprimir
+                <Icon icon={enviandoReciboWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'} width="18" style={enviandoReciboWhatsApp ? { animation: 'spin 1s linear infinite' } : {}} />
+                {enviandoReciboWhatsApp ? 'Enviando...' : 'Enviar WhatsApp'}
               </button>
             </div>
 
