@@ -9,6 +9,7 @@ import { useUser } from './contexts/UserContext';
 import FeatureLocked from './FeatureLocked';
 import NpsRelatorio from './components/NpsRelatorio';
 import { SkeletonDashboard } from './components/Skeleton';
+import { showToast } from './Toast';
 import './Home.css';
 import './Relatorios.css';
 
@@ -41,8 +42,18 @@ function Relatorios() {
     valorPagamentosHoje: 0,
     despesasPagoMes: 0,
     despesasPendenteMes: 0,
-    despesasTotalMes: 0
+    despesasTotalMes: 0,
+    saldoAtual: 0,
+    saldoInicial: 0,
+    saldoInicialData: null,
+    saldoEntradas: 0,
+    saldoSaidas: 0
   });
+
+  // Modal de ajuste de saldo
+  const [mostrarModalSaldo, setMostrarModalSaldo] = useState(false);
+  const [formSaldoValor, setFormSaldoValor] = useState('');
+  const [salvandoSaldo, setSalvandoSaldo] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -101,7 +112,8 @@ function Relatorios() {
         { data: todosClientes },
         { count: countMensagensEnviadas },
         { data: todasDespesas, error: erroDespesas },
-        { data: todasVendas }
+        { data: todasVendas },
+        { data: dadosUsuario }
       ] = await Promise.all([
         supabase
           .from('mensalidades')
@@ -130,7 +142,13 @@ function Relatorios() {
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
-          .or('lixo.is.null,lixo.eq.false')
+          .or('lixo.is.null,lixo.eq.false'),
+
+        supabase
+          .from('usuarios')
+          .select('saldo_inicial, saldo_inicial_data')
+          .eq('id', userId)
+          .maybeSingle()
       ]);
 
       // ========== PROCESSAMENTO ==========
@@ -312,6 +330,42 @@ function Relatorios() {
         }
       });
 
+      // Saldo em conta
+      // - Sem ajuste configurado: soma TODO o histórico (receitas + vendas pagas − despesas pagas)
+      // - Com ajuste: usa o valor ajustado como ponto de partida + só conta movimentações ≥ data do ajuste
+      const saldoInicial = Number(dadosUsuario?.saldo_inicial) || 0;
+      const saldoInicialData = dadosUsuario?.saldo_inicial_data || null;
+
+      let entradasDesdeAjuste = 0;
+      let saidasDesdeAjuste = 0;
+
+      todasMensalidades?.forEach(p => {
+        if (p.status !== 'pago') return;
+        const dataPgto = p.updated_at?.substring(0, 10);
+        if (!dataPgto) return;
+        if (!saldoInicialData || dataPgto >= saldoInicialData) {
+          entradasDesdeAjuste += Number(p.valor) || 0;
+        }
+      });
+
+      (todasVendas || []).forEach(v => {
+        if (v.status !== 'pago') return;
+        if (!v.data_pagamento) return;
+        if (!saldoInicialData || v.data_pagamento >= saldoInicialData) {
+          entradasDesdeAjuste += Number(v.valor) || 0;
+        }
+      });
+
+      (todasDespesas || []).forEach(d => {
+        if (d.status !== 'pago') return;
+        if (!d.data_pagamento) return;
+        if (!saldoInicialData || d.data_pagamento >= saldoInicialData) {
+          saidasDesdeAjuste += Number(d.valor) || 0;
+        }
+      });
+
+      const saldoAtual = saldoInicial + entradasDesdeAjuste - saidasDesdeAjuste;
+
       setDados({
         mrr: mrrCalculado,
         assinaturasAtivas: ativas,
@@ -334,7 +388,12 @@ function Relatorios() {
         valorPagamentosHoje: valorPagamentosHojeTotal,
         despesasPagoMes: despPagoMes,
         despesasPendenteMes: despPendenteMes,
-        despesasTotalMes: despTotalMes
+        despesasTotalMes: despTotalMes,
+        saldoAtual,
+        saldoInicial,
+        saldoInicialData,
+        saldoEntradas: entradasDesdeAjuste,
+        saldoSaidas: saidasDesdeAjuste
       });
 
     } catch (error) {
@@ -369,10 +428,52 @@ function Relatorios() {
     receitaProjetadaMes, taxaCancelamento, mensalidadesVencer7Dias, mensagensEnviadasAuto,
     statusAcesso, graficoRecebimentoVsVencimento, distribuicaoStatus,
     pagamentosHoje, valorPagamentosHoje,
-    despesasPagoMes, despesasPendenteMes
+    despesasPagoMes, despesasPendenteMes,
+    saldoAtual, saldoInicialData, saldoEntradas, saldoSaidas
   } = dados;
 
   const proLocked = isLocked('pro');
+
+  const abrirModalSaldo = () => {
+    setFormSaldoValor(saldoAtual ? String(saldoAtual.toFixed(2)) : '');
+    setMostrarModalSaldo(true);
+  };
+
+  const fecharModalSaldo = () => {
+    setMostrarModalSaldo(false);
+    setFormSaldoValor('');
+  };
+
+  const salvarSaldo = async () => {
+    const valor = parseFloat(formSaldoValor);
+    if (isNaN(valor)) {
+      showToast('Informe um valor válido', 'erro');
+      return;
+    }
+    setSalvandoSaldo(true);
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ saldo_inicial: valor, saldo_inicial_data: hoje })
+        .eq('id', userId);
+      if (error) throw error;
+      showToast('Saldo atualizado', 'sucesso');
+      fecharModalSaldo();
+      await carregarDados();
+    } catch (err) {
+      console.error('Erro ao salvar saldo:', err);
+      showToast('Erro ao salvar saldo', 'erro');
+    } finally {
+      setSalvandoSaldo(false);
+    }
+  };
+
+  const formatarDataExtensa = (iso) => {
+    if (!iso) return null;
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
 
   return (
     <div className="relatorios-container">
@@ -384,6 +485,76 @@ function Relatorios() {
         </div>
         <DateRangePicker value={periodo} onChange={setPeriodo} />
       </div>
+
+      {/* Saldo em conta */}
+      <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Saldo em conta">
+        <div className="home-section" style={{ marginBottom: '24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #344848 0%, #4a6363 100%)',
+            borderRadius: '12px',
+            color: 'white',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Icon icon="mdi:wallet-outline" width="26" height="26" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '13px', opacity: 0.85, marginBottom: '4px' }}>
+                  Saldo em conta
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: '700', lineHeight: 1.1 }}>
+                  {formatarMoeda(saldoAtual)}
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.75, marginTop: '6px' }}>
+                  {saldoInicialData
+                    ? <>
+                        Desde {formatarDataExtensa(saldoInicialData)}
+                        {(saldoEntradas > 0 || saldoSaidas > 0)
+                          ? <> · +{formatarMoeda(saldoEntradas)} entradas · −{formatarMoeda(saldoSaidas)} despesas</>
+                          : <> · sem movimentações</>}
+                      </>
+                    : <>+{formatarMoeda(saldoEntradas)} recebido · −{formatarMoeda(saldoSaidas)} despesas pagas · clique em "Ajustar" para definir o saldo real</>}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={abrirModalSaldo}
+              style={{
+                background: 'white',
+                color: '#344848',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Icon icon="mdi:pencil-outline" width="18" height="18" />
+              {saldoInicialData ? 'Ajustar saldo' : 'Configurar saldo'}
+            </button>
+          </div>
+        </div>
+      </FeatureLocked>
 
       {/* Resultado Financeiro */}
       <FeatureLocked locked={proLocked} requiredPlan="Pro" featureName="Resultado Financeiro">
@@ -750,6 +921,86 @@ function Relatorios() {
 
       {/* NPS - Satisfação dos alunos (Premium) */}
       <NpsRelatorio userId={userId} isLocked={isLocked} />
+
+      {/* Modal Ajustar Saldo */}
+      {mostrarModalSaldo && (
+        <div
+          onClick={fecharModalSaldo}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white', borderRadius: '12px',
+              padding: '28px',
+              maxWidth: '440px', width: '90%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>
+                Ajustar saldo em conta
+              </h3>
+              <button onClick={fecharModalSaldo} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                <Icon icon="mdi:close" width="24" height="24" color="#666" />
+              </button>
+            </div>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#666' }}>
+              Informe o saldo real da sua conta hoje. As receitas e despesas pagas a partir de agora serão somadas/subtraídas automaticamente.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>
+                Saldo atual (R$) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formSaldoValor}
+                onChange={(e) => setFormSaldoValor(e.target.value)}
+                placeholder="0,00"
+                autoFocus
+                style={{
+                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={fecharModalSaldo}
+                disabled={salvandoSaldo}
+                style={{
+                  padding: '10px 16px', background: 'white', border: '1px solid #ddd',
+                  borderRadius: '6px', cursor: 'pointer', fontSize: '14px', color: '#666'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={salvarSaldo}
+                disabled={salvandoSaldo}
+                style={{
+                  padding: '10px 16px', background: '#344848', border: 'none',
+                  borderRadius: '6px', cursor: salvandoSaldo ? 'not-allowed' : 'pointer',
+                  fontSize: '14px', color: 'white', fontWeight: '600',
+                  opacity: salvandoSaldo ? 0.6 : 1
+                }}
+              >
+                {salvandoSaldo ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
