@@ -657,23 +657,23 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
   }
 
-  const handleGerarRecibo = async (tipo) => {
-    if (!mensalidadePaga) return
+  const handleGerarRecibo = async (tipo, mensalidade = mensalidadePaga) => {
+    if (!mensalidade) return
 
     const dadosRecibo = {
-      nomeCliente: mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Aluno',
-      telefoneCliente: mensalidadePaga.devedor?.telefone || mensalidadePaga.devedores?.telefone || '',
-      valor: mensalidadePaga.valor,
-      dataVencimento: mensalidadePaga.data_vencimento,
-      dataPagamento: mensalidadePaga.data_pagamento,
-      formaPagamento: mensalidadePaga.forma_pagamento,
+      nomeCliente: mensalidade.devedor?.nome || mensalidade.devedores?.nome || 'Aluno',
+      telefoneCliente: mensalidade.devedor?.telefone || mensalidade.devedores?.telefone || '',
+      valor: mensalidade.valor,
+      dataVencimento: mensalidade.data_vencimento,
+      dataPagamento: mensalidade.data_pagamento,
+      formaPagamento: mensalidade.forma_pagamento,
       nomeEmpresa: nomeEmpresa || 'Empresa',
       chavePix: chavePix || '',
       cpfCnpj: cpfCnpj || '',
       emailEmpresa: emailEmpresa || '',
       telefoneEmpresa: telefoneEmpresa || '',
       logoUrl: logoUrl || '',
-      descricao: mensalidadePaga.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidadePaga.numero_mensalidade || 1}`
+      descricao: mensalidade.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidade.numero_mensalidade || 1}`
     }
 
     try {
@@ -690,10 +690,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   const [enviandoReciboWhatsApp, setEnviandoReciboWhatsApp] = useState(false)
 
-  const handleEnviarReciboWhatsApp = async () => {
-    if (!mensalidadePaga) return
+  const handleEnviarReciboWhatsApp = async (mensalidade = mensalidadePaga) => {
+    if (!mensalidade) return
 
-    const devedor = mensalidadePaga.devedor || mensalidadePaga.devedores
+    const devedor = mensalidade.devedor || mensalidade.devedores
     const destinatario = resolverDestinatario(devedor)
 
     if (!destinatario.telefone) {
@@ -715,16 +715,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       const dadosRecibo = {
         nomeCliente: devedor?.nome || 'Aluno',
         telefoneCliente: devedor?.telefone || '',
-        valor: mensalidadePaga.valor,
-        dataVencimento: mensalidadePaga.data_vencimento,
-        dataPagamento: mensalidadePaga.data_pagamento,
-        formaPagamento: mensalidadePaga.forma_pagamento,
+        valor: mensalidade.valor,
+        dataVencimento: mensalidade.data_vencimento,
+        dataPagamento: mensalidade.data_pagamento,
+        formaPagamento: mensalidade.forma_pagamento,
         nomeEmpresa: nomeEmpresa || 'Empresa',
         chavePix: chavePix || '',
         cpfCnpj: cpfCnpj || '',
         emailEmpresa: emailEmpresa || '',
         telefoneEmpresa: telefoneEmpresa || '',
-        descricao: mensalidadePaga.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidadePaga.numero_mensalidade || 1}`
+        logoUrl: logoUrl || '',
+        descricao: mensalidade.is_mensalidade ? 'Mensalidade' : `Parcela ${mensalidade.numero_mensalidade || 1}`
       }
 
       const pdfBlob = await gerarReciboBlob(dadosRecibo)
@@ -2163,6 +2164,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           justifyContent: 'center',
           zIndex: 1000
         }}>
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           <div style={{
             backgroundColor: 'white',
             borderRadius: isSmallScreen ? 0 : '12px',
@@ -2368,6 +2370,33 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     )
                   )}
                 </div>
+              )}
+
+              {/* Botão de envio do recibo - só aparece se está pago */}
+              {mensalidadeDetalhes.status === 'pago' && (
+                <button
+                  onClick={() => handleEnviarReciboWhatsApp(mensalidadeDetalhes)}
+                  disabled={enviandoReciboWhatsApp}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    backgroundColor: 'white',
+                    color: '#344848',
+                    border: '1px solid #344848',
+                    borderRadius: '8px',
+                    cursor: enviandoReciboWhatsApp ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: enviandoReciboWhatsApp ? 0.6 : 1
+                  }}
+                >
+                  <Icon icon={enviandoReciboWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'} width="18" style={enviandoReciboWhatsApp ? { animation: 'spin 1s linear infinite' } : {}} />
+                  {enviandoReciboWhatsApp ? 'Enviando...' : 'Enviar Recibo via WhatsApp'}
+                </button>
               )}
 
               {/* Botão principal de ação: Marcar como Pago / Desfazer */}
