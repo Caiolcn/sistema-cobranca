@@ -332,6 +332,16 @@ export default function Admin() {
       if (ordenacao === 'criacao') {
         return new Date(b.created_at || 0) - new Date(a.created_at || 0)
       }
+      if (ordenacao === 'vencimento_desc' || ordenacao === 'vencimento_asc') {
+        const dataVenc = (c) => c.plano_pago ? c.plano_vencimento : c.trial_fim
+        const aVenc = dataVenc(a)
+        const bVenc = dataVenc(b)
+        if (!aVenc && !bVenc) return 0
+        if (!aVenc) return 1
+        if (!bVenc) return -1
+        const dir = ordenacao === 'vencimento_desc' ? -1 : 1
+        return (new Date(aVenc) - new Date(bVenc)) * dir
+      }
       return 0
     })
 
@@ -511,16 +521,17 @@ export default function Admin() {
     setResultadoEdicao(null)
   }
 
-  const salvarEdicao = async () => {
+  const salvarEdicao = async (overrides) => {
     if (!clienteEditando) return
     setSalvandoEdicao(true)
     setResultadoEdicao(null)
     try {
+      const fonte = overrides ? { ...editForm, ...overrides } : editForm
       const updates = {
-        plano_pago: editForm.plano_pago,
-        plano: editForm.plano,
-        plano_vencimento: editForm.plano_vencimento || null,
-        trial_fim: editForm.trial_fim || null
+        plano_pago: fonte.plano_pago,
+        plano: fonte.plano,
+        plano_vencimento: fonte.plano_vencimento || null,
+        trial_fim: fonte.trial_fim || null
       }
       const { error } = await supabase
         .from('usuarios')
@@ -539,6 +550,13 @@ export default function Admin() {
     } finally {
       setSalvandoEdicao(false)
     }
+  }
+
+  const marcarComoExpirado = () => {
+    const d = new Date()
+    const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    setEditForm(s => ({ ...s, plano_pago: false, trial_fim: hoje }))
+    salvarEdicao({ plano_pago: false, trial_fim: hoje })
   }
 
   if (userLoading) return null
@@ -1071,14 +1089,33 @@ export default function Admin() {
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
-                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'Criação da Conta', 'WhatsApp', 'Mensagens', 'Última Conexão', 'Ações'].map(col => (
-                    <th key={col} style={{
-                      padding: '10px 8px', textAlign: 'left', fontSize: '11px',
-                      fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap'
-                    }}>
-                      {col}
-                    </th>
-                  ))}
+                  {['Empresa/Nome', 'Telefone', 'Email', 'User ID', 'Plano', 'Pagamento', 'Vencimento Plano', 'Criação da Conta', 'WhatsApp', 'Mensagens', 'Última Conexão', 'Ações'].map(col => {
+                    const isVenc = col === 'Vencimento Plano'
+                    const vencAtivo = isVenc && (ordenacao === 'vencimento_desc' || ordenacao === 'vencimento_asc')
+                    return (
+                      <th
+                        key={col}
+                        onClick={isVenc ? () => setOrdenacao(o => o === 'vencimento_desc' ? 'vencimento_asc' : 'vencimento_desc') : undefined}
+                        title={isVenc ? 'Clique para ordenar por vencimento' : undefined}
+                        style={{
+                          padding: '10px 8px', textAlign: 'left', fontSize: '11px',
+                          fontWeight: '600', color: vencAtivo ? '#667eea' : '#666',
+                          textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap',
+                          cursor: isVenc ? 'pointer' : 'default',
+                          userSelect: isVenc ? 'none' : 'auto'
+                        }}
+                      >
+                        {col}
+                        {isVenc && (
+                          <Icon
+                            icon={ordenacao === 'vencimento_asc' ? 'mdi:arrow-up' : ordenacao === 'vencimento_desc' ? 'mdi:arrow-down' : 'mdi:unfold-more-horizontal'}
+                            width="12"
+                            style={{ marginLeft: '4px', verticalAlign: 'middle', color: vencAtivo ? '#667eea' : '#bbb' }}
+                          />
+                        )}
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -1693,37 +1730,54 @@ export default function Admin() {
               )}
             </div>
 
-            <div style={{ padding: '14px 22px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div style={{ padding: '14px 22px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <button
-                onClick={() => setClienteEditando(null)}
-                disabled={salvandoEdicao}
-                style={{
-                  padding: '10px 18px', backgroundColor: 'white', color: '#666',
-                  border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px',
-                  fontWeight: '500', cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
-                  opacity: salvandoEdicao ? 0.5 : 1
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={salvarEdicao}
+                onClick={marcarComoExpirado}
                 disabled={salvandoEdicao || resultadoEdicao?.sucesso}
+                title="Desliga 'pago' e define trial_fim = hoje (status vira Expirado)"
                 style={{
-                  padding: '10px 22px', backgroundColor: '#667eea',
-                  color: 'white', border: 'none', borderRadius: '8px',
-                  fontSize: '14px', fontWeight: '600',
-                  cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
-                  opacity: salvandoEdicao ? 0.6 : 1,
+                  padding: '10px 14px', backgroundColor: 'white', color: '#dc2626',
+                  border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px',
+                  fontWeight: '600', cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
+                  opacity: salvandoEdicao ? 0.5 : 1,
                   display: 'flex', alignItems: 'center', gap: '6px'
                 }}
               >
-                {salvandoEdicao ? (
-                  <><Icon icon="mdi:loading" width="16" style={{ animation: 'spin 1s linear infinite' }} /> Salvando...</>
-                ) : (
-                  <><Icon icon="mdi:content-save" width="16" /> Salvar</>
-                )}
+                <Icon icon="mdi:account-cancel" width="16" />
+                Não pagou — marcar como expirado
               </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setClienteEditando(null)}
+                  disabled={salvandoEdicao}
+                  style={{
+                    padding: '10px 18px', backgroundColor: 'white', color: '#666',
+                    border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px',
+                    fontWeight: '500', cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
+                    opacity: salvandoEdicao ? 0.5 : 1
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => salvarEdicao()}
+                  disabled={salvandoEdicao || resultadoEdicao?.sucesso}
+                  style={{
+                    padding: '10px 22px', backgroundColor: '#667eea',
+                    color: 'white', border: 'none', borderRadius: '8px',
+                    fontSize: '14px', fontWeight: '600',
+                    cursor: salvandoEdicao ? 'not-allowed' : 'pointer',
+                    opacity: salvandoEdicao ? 0.6 : 1,
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  {salvandoEdicao ? (
+                    <><Icon icon="mdi:loading" width="16" style={{ animation: 'spin 1s linear infinite' }} /> Salvando...</>
+                  ) : (
+                    <><Icon icon="mdi:content-save" width="16" /> Salvar</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
