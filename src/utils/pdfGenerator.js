@@ -31,6 +31,22 @@ function loadImageAsDataURL(url) {
 }
 
 /**
+ * Converte uma data para Date no fuso local, evitando o shift de timezone.
+ * Strings no formato YYYY-MM-DD são interpretadas como UTC pelo construtor
+ * Date, o que faz a data "voltar um dia" em fusos negativos (ex: Brasil).
+ * Fixamos meia-noite local nesse caso; timestamps completos passam direto.
+ * @param {string|Date} valor - Data a converter
+ * @returns {Date} - Date no fuso local
+ */
+function parseDataLocal(valor) {
+  if (valor instanceof Date) return valor
+  if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    return new Date(valor + 'T00:00:00')
+  }
+  return new Date(valor)
+}
+
+/**
  * Gera um recibo de pagamento em PDF
  * @param {Object} dados - Dados do recibo
  * @param {Object|null} logo - { dataUrl, width, height } pré-carregado
@@ -184,7 +200,7 @@ function criarReciboPDF(dados, logo = null) {
   doc.text('PAGAMENTO', col2X, yPos + 12)
 
   const pagFormatado = dataPagamento
-    ? new Date(dataPagamento).toLocaleDateString('pt-BR')
+    ? parseDataLocal(dataPagamento).toLocaleDateString('pt-BR')
     : new Date().toLocaleDateString('pt-BR')
   doc.setTextColor(51, 51, 51)
   doc.setFontSize(10)
