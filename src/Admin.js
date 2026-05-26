@@ -592,20 +592,34 @@ export default function Admin() {
             Visão geral de clientes e métricas do sistema
           </p>
         </div>
-        <button
-          onClick={carregarDados}
-          disabled={loading}
-          style={{
-            padding: '10px 20px', borderRadius: '8px', border: 'none',
-            backgroundColor: '#667eea', color: 'white', fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px',
-            display: 'flex', alignItems: 'center', gap: '8px',
-            opacity: loading ? 0.6 : 1
-          }}
-        >
-          <Icon icon="mdi:refresh" width="18" />
-          {loading ? 'Atualizando...' : 'Atualizar'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigate('/app/admin/erros-mensagens')}
+            style={{
+              padding: '10px 16px', borderRadius: '8px', border: '1px solid #f44336',
+              backgroundColor: '#ffebee', color: '#c62828', fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <Icon icon="mdi:alert-circle" width="16" />
+            Erros de envio
+          </button>
+          <button
+            onClick={carregarDados}
+            disabled={loading}
+            style={{
+              padding: '10px 20px', borderRadius: '8px', border: 'none',
+              backgroundColor: '#667eea', color: 'white', fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              opacity: loading ? 0.6 : 1
+            }}
+          >
+            <Icon icon="mdi:refresh" width="18" />
+            {loading ? 'Atualizando...' : 'Atualizar'}
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
