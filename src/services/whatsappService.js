@@ -385,14 +385,17 @@ class WhatsAppService {
         // Não é JSON válido
       }
 
+      const responseApi = Object.keys(errorData).length ? errorData : { raw: errorText }
+      const httpStatus = response.status
+
       // Verificar se é erro de conexão fechada (WhatsApp desconectado)
       if (errorData.response?.message === 'Connection Closed' || errorText.includes('Connection Closed')) {
-        return { sucesso: false, erro: 'Connection Closed', connectionClosed: true }
+        return { sucesso: false, erro: 'WhatsApp desconectado (Connection Closed)', erroCodigo: 'connection_closed', connectionClosed: true, httpStatus, responseApi }
       }
 
       // Erro 500 = geralmente WhatsApp desconectado ou instância com problema
       if (response.status === 500) {
-        return { sucesso: false, erro: 'Connection Closed', connectionClosed: true }
+        return { sucesso: false, erro: 'Instância retornou 500 (provável desconexão)', erroCodigo: 'instance_500', connectionClosed: true, httpStatus, responseApi }
       }
 
       // Verificar se é erro de número não existe
@@ -400,21 +403,33 @@ class WhatsAppService {
         const numeroNaoExiste = errorData.response.message.some(msg => msg.exists === false)
         if (numeroNaoExiste) {
           const numeroProblema = errorData.response.message[0].number.replace('@s.whatsapp.net', '')
-          throw new Error(`O número ${numeroProblema} não existe no WhatsApp ou não está ativo. Verifique se:\n• O número está correto\n• A pessoa tem WhatsApp instalado\n• O número está ativo`)
+          return { sucesso: false, erro: `Número ${numeroProblema} não existe no WhatsApp`, erroCodigo: 'numero_inexistente', httpStatus, responseApi }
         }
       }
 
       // Erro 404 = instância não encontrada
       if (response.status === 404) {
-        throw new Error('Instância do WhatsApp não encontrada. Vá em WhatsApp → Conexão e reconecte.')
+        return { sucesso: false, erro: 'Instância não encontrada na Evolution API', erroCodigo: 'instance_not_found', httpStatus, responseApi }
       }
 
       // Erro 401/403 = chave de API inválida
       if (response.status === 401 || response.status === 403) {
-        throw new Error('Falha na autenticação com a API do WhatsApp. Verifique suas credenciais em Configurações.')
+        return { sucesso: false, erro: 'Credencial Evolution API inválida', erroCodigo: 'auth_failed', httpStatus, responseApi }
       }
 
-      throw new Error(errorData.message || errorText || `Erro ao enviar mensagem (código ${response.status}). Tente novamente.`)
+      // Erro 400 = payload inválido (telefone errado, etc)
+      if (response.status === 400) {
+        const msg = errorData?.response?.message || errorData?.message || errorText
+        return { sucesso: false, erro: `Requisição inválida (400): ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`, erroCodigo: 'bad_request', httpStatus, responseApi }
+      }
+
+      return {
+        sucesso: false,
+        erro: errorData.message || errorText || `Erro HTTP ${response.status}`,
+        erroCodigo: `http_${response.status}`,
+        httpStatus,
+        responseApi
+      }
     }
 
     const result = await response.json()
@@ -423,7 +438,9 @@ class WhatsAppService {
     return {
       sucesso: true,
       messageId: result.key?.id || null,
-      dados: result
+      dados: result,
+      httpStatus: response.status,
+      responseApi: result
     }
   }
 
@@ -483,13 +500,28 @@ class WhatsAppService {
       if (error.name === 'AbortError') {
         return {
           sucesso: false,
-          erro: 'Tempo limite excedido. A API do WhatsApp não respondeu em 30 segundos.'
+          erro: 'Tempo limite excedido — Evolution API não respondeu em 30s',
+          erroCodigo: 'timeout',
+          responseApi: { name: error.name, message: error.message }
+        }
+      }
+
+      // Erros de rede (DNS, conexão recusada, etc)
+      const errCode = error.cause?.code || error.code
+      if (errCode) {
+        return {
+          sucesso: false,
+          erro: `Falha de rede ao chamar Evolution API: ${error.message}`,
+          erroCodigo: `network_${errCode.toLowerCase()}`,
+          responseApi: { name: error.name, message: error.message, code: errCode, stack: error.stack }
         }
       }
 
       return {
         sucesso: false,
-        erro: error.message
+        erro: error.message || 'Erro desconhecido',
+        erroCodigo: 'exception',
+        responseApi: { name: error.name, message: error.message, stack: error.stack }
       }
     }
   }
@@ -1068,13 +1100,15 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const resultado = await this.enviarMensagem(telefoneEnvio, mensagemFinal, ownerInstanceName)
 
       // Registrar log no banco
+      const statusLog = resultado.sucesso ? 'enviado' : 'falha'
       console.log('💾 Salvando log no Supabase...')
       console.log('📝 Dados do log:', {
         user_id: ownerId,
         devedor_id: mensalidade.devedor_id,
         mensalidade_id: mensalidade.id,
         telefone: telefoneEnvio,
-        status: resultado.sucesso ? 'enviado' : 'erro'
+        status: statusLog,
+        erro_codigo: resultado.erroCodigo
       })
 
       const { data: logData, error: logError } = await supabase
@@ -1086,8 +1120,12 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           telefone: telefoneEnvio,
           mensagem: mensagemFinal,
           valor_mensalidade: mensalidade.valor,
-          status: resultado.sucesso ? 'enviado' : 'erro',
-          erro: resultado.erro || null
+          tipo: tipoMensagem,
+          status: statusLog,
+          erro: resultado.erro || null,
+          erro_codigo: resultado.erroCodigo || (resultado.sucesso ? null : 'unknown'),
+          http_status: resultado.httpStatus || null,
+          response_api: resultado.responseApi || null
         })
         .select()
 
@@ -1288,7 +1326,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         tipo: 'payment_confirmed',
         mensagem: mensagemTexto,
         status: resultado.sucesso ? 'enviado' : 'falha',
-        telefone: destinatario.telefone
+        telefone: destinatario.telefone,
+        erro: resultado.erro || null,
+        erro_codigo: resultado.erroCodigo || (resultado.sucesso ? null : 'unknown'),
+        http_status: resultado.httpStatus || null,
+        response_api: resultado.responseApi || null
       })
 
       return resultado
