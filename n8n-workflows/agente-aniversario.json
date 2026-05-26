@@ -55,38 +55,13 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $json.evolution_url }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $json.evolution_api_key }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
-        "options": {}
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  if (i > 0) await new Promise(r => setTimeout(r, 1000));\n\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'POST',\n      url: data.evolution_url,\n      headers: { 'Content-Type': 'application/json', 'apikey': data.evolution_api_key },\n      body: { number: data.telefone, text: data.mensagem },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n      json: true\n    });\n\n    const body = resp.body;\n    const statusCode = resp.statusCode;\n\n    if (statusCode >= 200 && statusCode < 300 && body?.key?.id) {\n      results.push({ json: { ...data, envio_sucesso: true, response_id: body.key.id, http_status: statusCode, response_api: body } });\n    } else {\n      let erroCodigo = `http_${statusCode}`;\n      let erroMsg = body?.response?.message || body?.message || `HTTP ${statusCode}`;\n      if (statusCode === 500) { erroCodigo = 'instance_500'; erroMsg = 'Instância retornou 500 (provável desconexão)'; }\n      else if (statusCode === 404) { erroCodigo = 'instance_not_found'; erroMsg = 'Instância não encontrada na Evolution'; }\n      else if (statusCode === 401 || statusCode === 403) { erroCodigo = 'auth_failed'; erroMsg = 'Credencial Evolution inválida'; }\n      else if (statusCode === 400) { erroCodigo = 'bad_request'; }\n      results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: typeof erroMsg === 'string' ? erroMsg : JSON.stringify(erroMsg), erro_codigo: erroCodigo, http_status: statusCode, response_api: body } });\n    }\n  } catch (err) {\n    results.push({ json: { ...data, envio_sucesso: false, erro_mensagem: err.message || 'Erro de conexão', erro_codigo: err.code ? `network_${String(err.code).toLowerCase()}` : 'exception', http_status: null, response_api: { name: err.name, message: err.message, code: err.code } } });\n  }\n}\n\nreturn results;"
       },
-      "id": "enviar-whatsapp",
-      "name": "Enviar WhatsApp",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1000, 300],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Verificar resultado do envio\n// Regra simples: se n8n adicionou 'error' (continueOnFail), falhou. Senao, sucesso.\nconst items = $input.all();\nconst originalItems = $('Criar Mensagem').all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const response = items[i].json;\n  const original = originalItems[i] ? originalItems[i].json : {};\n\n  // continueOnFail: n8n adiciona error como objeto com .message quando HTTP falha\n  const hasError = !!(response.error && typeof response.error === 'object' && 'message' in response.error);\n\n  if (hasError) {\n    const msg = String(response.error.message || 'Erro desconhecido');\n    results.push({\n      json: {\n        ...original,\n        envio_sucesso: false,\n        erro_mensagem: msg\n      }\n    });\n  } else {\n    results.push({\n      json: {\n        ...original,\n        envio_sucesso: true\n      }\n    });\n  }\n}\n\nreturn results;"
-      },
-      "id": "check-resultado",
-      "name": "Check Resultado",
+      "id": "enviar-aniversario",
+      "name": "Enviar Aniversário",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 300]
+      "position": [1000, 300]
     },
     {
       "parameters": {
@@ -204,7 +179,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK?').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('Envio OK?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK?').item.json.mensagem) }},\n  \"status\": \"enviado\"\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK?').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('Envio OK?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK?').item.json.mensagem) }},\n  \"tipo\": \"birthday\",\n  \"status\": \"enviado\",\n  \"http_status\": {{ JSON.stringify($('Envio OK?').item.json.http_status ?? null) }},\n  \"response_api\": {{ JSON.stringify($('Envio OK?').item.json.response_api ?? null) }}\n}",
         "options": {}
       },
       "id": "log-aniversario",
@@ -240,7 +215,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK?').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('Envio OK?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK?').item.json.mensagem) }},\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($('Envio OK?').item.json.erro_mensagem || 'Erro desconhecido') }}\n}",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Envio OK?').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('Envio OK?').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('Envio OK?').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('Envio OK?').item.json.mensagem) }},\n  \"tipo\": \"birthday\",\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($('Envio OK?').item.json.erro_mensagem || 'Erro desconhecido') }},\n  \"erro_codigo\": {{ JSON.stringify($('Envio OK?').item.json.erro_codigo || null) }},\n  \"http_status\": {{ JSON.stringify($('Envio OK?').item.json.http_status ?? null) }},\n  \"response_api\": {{ JSON.stringify($('Envio OK?').item.json.response_api ?? null) }}\n}",
         "options": {}
       },
       "id": "log-falha",
@@ -277,25 +252,14 @@
       "main": [
         [
           {
-            "node": "Enviar WhatsApp",
+            "node": "Enviar Aniversário",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enviar WhatsApp": {
-      "main": [
-        [
-          {
-            "node": "Check Resultado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Resultado": {
+    "Enviar Aniversário": {
       "main": [
         [
           {

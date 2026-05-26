@@ -660,7 +660,7 @@ export default function PortalCliente() {
               </div>
 
               {/* Próxima Aula */}
-              <div onClick={() => setActiveTab('aulas')} style={{
+              <div onClick={() => handleTabChange('aulas')} style={{
                 background: '#fff', borderRadius: 16, padding: '16px 14px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
                 border: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer'

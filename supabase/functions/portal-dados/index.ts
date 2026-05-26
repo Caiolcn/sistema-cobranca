@@ -48,12 +48,18 @@ serve(async (req) => {
       )
     }
 
-    // Buscar dados da empresa
+    // Buscar dados da empresa (inclui plano + flags de agendamento para gating do portal)
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('nome_empresa, chave_pix, asaas_api_key, modo_integracao, asaas_ambiente, cpf_cnpj, endereco, numero, bairro, cidade, estado, telefone, logo_url')
+      .select('nome_empresa, chave_pix, asaas_api_key, modo_integracao, asaas_ambiente, cpf_cnpj, endereco, numero, bairro, cidade, estado, telefone, logo_url, plano, agendamento_ativo, agendamento_slug')
       .eq('id', devedor.user_id)
       .single()
+
+    // Plano efetivo do professor (controla quais recursos o portal libera).
+    // Mapeia nomes legados, igual ao hook useUserPlan do app.
+    let planoAdmin = usuario?.plano || 'starter'
+    if (planoAdmin === 'basico') planoAdmin = 'starter'
+    if (planoAdmin === 'enterprise' || planoAdmin === 'business') planoAdmin = 'premium'
 
     // Buscar método de pagamento configurado
     const { data: configMetodo } = await supabase
@@ -119,7 +125,7 @@ serve(async (req) => {
       }
     }
 
-    // Buscar grade de horários do aluno (aulas ativas) - protegido
+    // Buscar grade de horários do aluno (modelo legado grade_horarios) - protegido
     let gradeHorarios = null
     try {
       const { data } = await supabase
@@ -131,6 +137,17 @@ serve(async (req) => {
         .order('dia_semana', { ascending: true })
         .order('horario', { ascending: true })
       gradeHorarios = data
+    } catch (e) { /* tabela pode não existir */ }
+
+    // Buscar aulas fixas do aluno (modelo novo aulas + aulas_fixos) - protegido
+    let aulasFixas = null
+    try {
+      const { data } = await supabase
+        .from('aulas_fixos')
+        .select('aula_id, ativo, aulas(id, dia_semana, horario, descricao, ativo)')
+        .eq('devedor_id', devedor.id)
+        .eq('user_id', devedor.user_id)
+      aulasFixas = data
     } catch (e) { /* tabela pode não existir */ }
 
     // Buscar presenças dos últimos 60 dias - protegido
@@ -177,6 +194,12 @@ serve(async (req) => {
     // Retornar dados públicos (NUNCA expor user_id, api keys)
     return new Response(
       JSON.stringify({
+        // Campos de nível raiz usados pela aba de agendamento do portal
+        devedor_id: devedor.id,
+        devedor_telefone: devedor.telefone || null,
+        plano_admin: planoAdmin,
+        agendamento_ativo: usuario?.agendamento_ativo ?? false,
+        agendamento_slug: usuario?.agendamento_slug ?? null,
         devedor: {
           nome: devedor.nome || '',
           telefone: devedor.telefone || null,
@@ -204,12 +227,28 @@ serve(async (req) => {
         metodo_pagamento: metodoPagamento,
         asaas_configurado: !!(usuario?.asaas_api_key && usuario?.modo_integracao === 'asaas'),
         mensalidades: mensalidadesFormatadas,
-        grade_horarios: (gradeHorarios || []).map(g => ({
-          id: g.id,
-          dia_semana: g.dia_semana,
-          horario: g.horario,
-          descricao: g.descricao
-        })),
+        grade_horarios: (() => {
+          // Une grade legada + aulas fixas do modelo novo, sem duplicar
+          const lista = [
+            ...(gradeHorarios || []).map(g => ({
+              id: g.id, dia_semana: g.dia_semana, horario: g.horario, descricao: g.descricao
+            })),
+            ...(aulasFixas || [])
+              .filter(f => f.ativo !== false && f.aulas && f.aulas.ativo !== false)
+              .map(f => ({
+                id: `fixo:${f.aulas.id}`,
+                dia_semana: f.aulas.dia_semana,
+                horario: f.aulas.horario,
+                descricao: f.aulas.descricao
+              }))
+          ]
+          const visto = new Set()
+          return lista.filter(item => {
+            const k = `${item.dia_semana}|${item.horario}|${item.descricao || ''}`
+            if (visto.has(k)) return false
+            visto.add(k); return true
+          })
+        })(),
         presencas: (presencas || []).map(p => ({
           id: p.id,
           data: p.data,
