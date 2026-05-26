@@ -13,6 +13,8 @@ import AgendaAulaModal from './AgendaAulaModal'
 import AgendaFixoModal from './AgendaFixoModal'
 import AgendaDatePicker from './AgendaDatePicker'
 import AgendaExportarModal from './AgendaExportarModal'
+import AgendaGradeLegada from './AgendaGradeLegada'
+import AgendaPersonal from './AgendaPersonal'
 
 // ==========================================
 // Agenda — container das views (Dia | Semana)
@@ -24,7 +26,9 @@ import AgendaExportarModal from './AgendaExportarModal'
 
 const MODOS = [
   { v: 'dia', label: 'Dia', icon: 'mdi:calendar-text' },
-  { v: 'semana', label: 'Semana', icon: 'mdi:calendar-week' }
+  { v: 'semana', label: 'Semana', icon: 'mdi:calendar-week' },
+  { v: 'individual', label: 'Individual', icon: 'mdi:account-clock-outline' }
+  // { v: 'legado', label: 'Legado', icon: 'mdi:archive-outline' } — oculto temporariamente
 ]
 
 const modoInicial = () => (typeof window !== 'undefined' && window.innerWidth <= 768) ? 'dia' : 'semana'
@@ -297,6 +301,16 @@ export default function AgendaCalendario() {
 
       {modo === 'dia' && <AgendaDia {...subProps} />}
       {modo === 'semana' && <AgendaSemana {...subProps} />}
+      {modo === 'individual' && (
+        <AgendaPersonal
+          enviarNotifPresenca={enviarNotifPresenca}
+          dataSel={dataSel}
+          setDataSel={setDataSel}
+          creditos={creditos}
+          onCredito={aplicarCredito}
+        />
+      )}
+      {modo === 'legado' && <AgendaGradeLegada />}
 
       {/* ===== Modais ===== */}
       {aulaModal && (

@@ -169,7 +169,10 @@ export default function AgendaSemana({
     ? `${a0.getDate()} – ${a6.getDate()} de ${MESES[a6.getMonth()]}`
     : `${a0.getDate()} de ${MESES[a0.getMonth()].slice(0, 3)} – ${a6.getDate()} de ${MESES[a6.getMonth()].slice(0, 3)}`
 
-  const colW = isMobile ? '104px' : 'minmax(120px, 1fr)'
+  // Mobile mostra só o dia selecionado; desktop mantém grade 7 dias
+  const colunas = isMobile ? [dataSel] : semana
+  const colW = isMobile ? '1fr' : 'minmax(120px, 1fr)'
+  const gridCols = isMobile ? `52px 1fr` : `52px repeat(7, ${colW})`
 
   return (
     <div>
@@ -203,15 +206,40 @@ export default function AgendaSemana({
         </button>
       </div>
 
+      {/* Mobile: faixa de 7 dias clicáveis (substitui o cabeçalho horizontal da grade) */}
+      {isMobile && (
+        <div style={{ display: 'flex', gap: '3px', marginBottom: '12px' }}>
+          {semana.map(d => {
+            const dObj = parseISO(d)
+            const sel = d === dataSel
+            const ehHoje = d === hojeRef
+            return (
+              <button key={d} onClick={() => setDataSel(d)}
+                style={{
+                  flex: 1, padding: '6px 2px', borderRadius: '9px', cursor: 'pointer',
+                  border: ehHoje && !sel ? `1px solid ${COR}` : '1px solid transparent',
+                  backgroundColor: sel ? COR : '#f3f4f6', color: sel ? '#fff' : '#444',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', transition: 'all 0.15s'
+                }}>
+                <span style={{ fontSize: '10px', fontWeight: '600', opacity: 0.85 }}>{DIAS_CURTO[dObj.getDay()]}</span>
+                <span style={{ fontSize: '14px', fontWeight: '700' }}>{dObj.getDate()}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Grade */}
       {loadingSemana ? (
         <SkeletonList count={4} />
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '12px' }}>
-          <div style={{ minWidth: isMobile ? '780px' : 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: `52px repeat(7, ${colW})`, borderBottom: '1px solid #eee' }}>
+        <div style={{ border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden' }}>
+          <div>
+            {/* Cabeçalho de dias só no desktop (mobile usa a faixa em pills acima) */}
+            {!isMobile && (
+            <div style={{ display: 'grid', gridTemplateColumns: gridCols, borderBottom: '1px solid #eee' }}>
               <div style={{ backgroundColor: '#fafafa' }} />
-              {semana.map(d => {
+              {colunas.map(d => {
                 const dObj = parseISO(d)
                 const ehHoje = d === hojeRef
                 const sel = d === dataSel
@@ -236,14 +264,15 @@ export default function AgendaSemana({
                 )
               })}
             </div>
+            )}
 
             {horas.map(h => (
-              <div key={h} style={{ display: 'grid', gridTemplateColumns: `52px repeat(7, ${colW})`, borderBottom: '1px solid #f3f4f6' }}>
+              <div key={h} style={{ display: 'grid', gridTemplateColumns: gridCols, borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{
                   fontSize: '11px', color: '#aaa', textAlign: 'right', padding: '6px 8px 0 0',
                   backgroundColor: '#fafafa'
                 }}>{String(h).padStart(2, '0')}h</div>
-                {semana.map(d => {
+                {colunas.map(d => {
                   const dObj = parseISO(d)
                   const blocos = gridMap[`${dObj.getDay()}_${h}`] || []
                   const sel = d === dataSel
