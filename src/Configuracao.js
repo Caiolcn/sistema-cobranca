@@ -18,6 +18,7 @@ import { useUserPlan } from './hooks/useUserPlan'
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
+const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
 
 function mascararNomePreview(nome) {
   if (!nome) return 'Aluno(a)'
@@ -270,7 +271,7 @@ function Configuracao() {
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'planos', 'uso', 'upgrade', 'integracoes', 'agendamento', 'landing', 'anamnese'].includes(abaUrl)) {
+    if (abaUrl && ['empresa', 'planos', 'colaboradores', 'uso', 'upgrade', 'integracoes', 'agendamento', 'landing', 'anamnese', 'contratos'].includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
   }, [searchParams])
@@ -5008,6 +5009,7 @@ function Configuracao() {
     { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
     { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
+    { id: 'colaboradores', label: 'Colaboradores', icon: 'mdi:account-tie-outline' },
     // { id: 'landing', label: 'Site', icon: 'mdi:web' },
     { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
     { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
@@ -5107,6 +5109,11 @@ function Configuracao() {
               {abaAtiva === 'agendamento' && renderAgendamento()}
               {abaAtiva === 'landing' && renderLanding()}
               {abaAtiva === 'anamnese' && renderAnamnese()}
+              {abaAtiva === 'colaboradores' && (
+                <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
+                  <ColaboradoresConfig />
+                </Suspense>
+              )}
               {abaAtiva === 'contratos' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
                   <ContratosTemplates />

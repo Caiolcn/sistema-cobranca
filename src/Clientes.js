@@ -20,6 +20,17 @@ import { useUser } from './contexts/UserContext'
 import DateInput from './components/DateInput'
 import RadarEvasao from './components/RadarEvasao'
 
+function calcularIdade(dataNascimento) {
+  if (!dataNascimento) return null
+  const nasc = new Date(dataNascimento + 'T00:00:00')
+  if (isNaN(nasc)) return null
+  const hoje = new Date()
+  let idade = hoje.getFullYear() - nasc.getFullYear()
+  const m = hoje.getMonth() - nasc.getMonth()
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--
+  return idade >= 0 && idade < 130 ? idade : null
+}
+
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { limiteClientes, plano, isLocked } = useUserPlan()
@@ -597,7 +608,7 @@ export default function Clientes() {
       // Carregar presenças do aluno
       const { data: presencasData, error: presencasError } = await supabase
         .from('presencas')
-        .select('*, grade_horarios(horario, descricao, dia_semana)')
+        .select('*, grade_horarios(horario, descricao, dia_semana), aulas(horario, descricao, dia_semana)')
         .eq('devedor_id', cliente.id)
         .order('data', { ascending: false })
         .limit(50)
@@ -901,6 +912,11 @@ export default function Clientes() {
         .eq('id', cliente.id)
 
       if (clienteError) throw clienteError
+
+      // Remover o aluno das turmas fixas (limpa o roster da Agenda).
+      // Presenças históricas continuam (com devedor_id apontando pro aluno em lixo),
+      // mas o aluno não aparece mais como fixo em nenhuma turma.
+      await supabase.from('aulas_fixos').delete().eq('devedor_id', cliente.id)
 
       const mensagem = excluirMensalidades
         ? 'Aluno e mensalidades excluídos com sucesso!'
@@ -2403,8 +2419,16 @@ Equipe ${nomeEmpresa}`
                       )}
                     </div>
                     <div>
-                      <p style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 2px 0' }}>
-                        {cliente.nome}
+                      <p style={{ fontSize: '15px', fontWeight: '600', color: '#333', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span>{cliente.nome}</span>
+                        {(() => {
+                          const idade = calcularIdade(cliente.data_nascimento)
+                          return idade !== null && (
+                            <span style={{ fontSize: '11px', fontWeight: '500', color: '#666', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '8px' }}>
+                              {idade} {idade === 1 ? 'ano' : 'anos'}
+                            </span>
+                          )
+                        })()}
                       </p>
                       <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
                         {cliente.telefone}
@@ -2524,7 +2548,17 @@ Equipe ${nomeEmpresa}`
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                          <span>{cliente.nome}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span>{cliente.nome}</span>
+                            {(() => {
+                              const idade = calcularIdade(cliente.data_nascimento)
+                              return idade !== null && (
+                                <span style={{ fontSize: '11px', fontWeight: '500', color: '#666', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '8px' }}>
+                                  {idade} {idade === 1 ? 'ano' : 'anos'}
+                                </span>
+                              )
+                            })()}
+                          </span>
                           {Array.isArray(cliente.tags) && cliente.tags.length > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
                               {cliente.tags.slice(0, 3).map(nome => {
@@ -3733,7 +3767,7 @@ Equipe ${nomeEmpresa}`
                                 {new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                               </span>
                               <span style={{ fontSize: '12px', color: '#888' }}>
-                                {p.grade_horarios?.horario?.substring(0, 5)} {p.grade_horarios?.descricao ? `— ${p.grade_horarios.descricao}` : ''}
+                                {(p.aulas?.horario || p.grade_horarios?.horario)?.substring(0, 5)} {(p.aulas?.descricao || p.grade_horarios?.descricao) ? `— ${p.aulas?.descricao || p.grade_horarios?.descricao}` : ''}
                               </span>
                             </div>
                             {p.observacao && (

@@ -111,7 +111,7 @@ export default function PerfilUsuario({ onClose }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000
+        zIndex: 10000
       }}>
         <div style={{ color: 'white', fontSize: '18px' }}>Carregando...</div>
       </div>
@@ -129,7 +129,7 @@ export default function PerfilUsuario({ onClose }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000,
+      zIndex: 10000,
       padding: '20px'
     }}>
       <div style={{
