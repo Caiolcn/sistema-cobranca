@@ -178,7 +178,7 @@ export default function Dashboard() {
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 9998
+            zIndex: 998
           }}
         />
       )}
@@ -447,7 +447,7 @@ export default function Dashboard() {
         position: 'fixed',
         left: isMobile ? (menuAberto ? '0' : '-260px') : '0',
         top: 0,
-        zIndex: 9999,
+        zIndex: 999,
         transition: 'left 0.3s ease',
         boxShadow: isMobile && menuAberto ? '4px 0 20px rgba(0,0,0,0.15)' : 'none'
       }}>
