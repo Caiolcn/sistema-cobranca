@@ -1,4 +1,4 @@
-# Agenda Nova — contexto da sessão (2026-05-26)
+# Agenda Nova — contexto da sessão (2026-05-26, atualizado)
 
 Doc de handoff para retomada amanhã. Escrito pra Claude (e pra mim) entender
 em 2 min o que foi construído hoje, por que, e onde continuar.
@@ -68,30 +68,52 @@ retrocompatível.
 
 Botão no header chama "Nova" (era "Nova turma").
 
-### Visual dos cards de aluno individual (atual)
-Repaginado para um look "premium 2025":
+### Visual dos cards (atual)
+Look "premium 2025" — branco + faixa lateral colorida + hover com elevação,
+aplicado a **alunos individuais E turmas** (mesma linguagem visual no desktop).
 
-**Desktop** — `BlocoAluno` em [src/AgendaNovaSemana.js:516-590](../src/AgendaNovaSemana.js#L516):
-- Card branco, radius 8px, borda fina, faixa lateral 3px colorida (status)
+**Desktop — `BlocoAluno`** em AgendaNovaSemana.js:
+- Card branco, radius 8px, borda fina, faixa lateral 3px no acento do status
 - Avatar 20px (foto OU inicial em círculo `#eef2ff`/`#4338ca`)
 - Nome bold + dot colorido no canto direito (status)
 - Horário · tag na linha de baixo
-- Hover: shadow + translate-Y -1px
 
-**Mobile** — `CardAluno` em [src/AgendaNovaDia.js:308-414](../src/AgendaNovaDia.js#L308):
+**Desktop — `BlocoTurma`** em AgendaNovaSemana.js (repaginado):
+- Mesma estética (branco + faixa lateral 3px, agora na cor da modalidade
+  `corDaAula(descricao)` — preserva agrupamento visual por tipo de aula)
+- Header: horário + pill pequena com iniciais do professor (#344848)
+- Descrição em `cor.text` + fontWeight 600 (sutil, mas mantém o "grupo visual")
+- **Footer linha 1**: `👥 X/Y` (contagem ocupadas/capacidade) + ícone status
+- **Footer linha 2**: pilha de avatares dos alunos (`AvatarStack`) — esconde
+  quando 0 alunos pra não deixar espaço vazio
+- Hover: shadow + translate-Y -1px (igual ao card de aluno)
+
+**Helpers compartilhados no AgendaNovaSemana.js** (final do arquivo):
+- `AvatarStack({ roster, max=3, capacidade })` — pilha de até 3 avatares
+  18px sobrepostos com `marginLeft: -5px`, "+N" pill quando exceder. Tooltip
+  do container mostra "X/Y alunos", tooltip de cada avatar mostra o nome.
+- `corDoAluno(nome)` — hash determinístico → paleta `PALETA_ALUNO` (8 cores
+  suaves: violet/blue/green/amber/pink/indigo/orange/cyan). Mesmo aluno =
+  mesma cor sempre, em qualquer card.
+
+**Mobile — `CardAluno`** em [src/AgendaNovaDia.js](../src/AgendaNovaDia.js):
 - Card branco radius 14px, faixa lateral 4px
 - Avatar 48px (foto OU inicial em círculo com gradient da cor de status)
-- Nome 15px bold
-- Linha com ícone relógio + horário · tag
+- Nome 15px bold + linha com ícone relógio + horário · tag
 - **Status pill** à direita (Presente / Falta / Pendente / Em breve) com ícone
 
-**Status colors** (acento):
+**Mobile — card de turma**: ainda usa o cabeçalho original do AgendaDia
+(roster expandido logo abaixo). NÃO foi repaginado ainda — pendente decisão
+do usuário se quer aplicar a mesma linguagem do desktop ou manter assim.
+
+**Status colors** (acento, alunos individuais):
 - Presente `#16a34a` | Falta `#ef4444` | Pendente `#f59e0b` | Em breve `#8b5cf6`
 
-**Sem botões inline** (decisão do usuário). Click no card = abre
-`AgendaPresencaModal`, que agora aceita prop opcional `onRemoverSlot`
-e renderiza um botão discreto "Remover horário do aluno" (só pra aluno
+**Sem botões inline** (decisão do usuário). Click no card de aluno =
+abre `AgendaPresencaModal`, que aceita prop opcional `onRemoverSlot` e
+renderiza um botão discreto "Remover horário do aluno" (só pra aluno
 individual — turmas no menu Horários não veem esse botão).
+Click no card de turma = abre o modal de detalhe (roster + fila + ações).
 
 ---
 
@@ -162,9 +184,15 @@ AgendaPartes, agendaActions, agendaUtils, AgendaDatePicker, AgendaExportarModal.
 - **Modos de visualização** (toggle): usuário quer construir mais tarde.
   Hoje só viewport-driven.
 
-- **Refinamento visual**: usuário está procurando referência. O card atual
-  já é melhor que o anterior mas pode evoluir (gradientes mais ricos,
-  micro-animações, etc.).
+- **Refinamento visual**: usuário gostou bastante do visual atual. Pode
+  evoluir com micro-animações, refinos tipográficos, etc.
+
+- **Card de turma no mobile (Dia)**: ainda usa o cabeçalho original do
+  AgendaDia (`mdi:clock-outline` em quadrado azul, texto "Prof. X · 5/10
+  vagas"). Não foi repaginado pra seguir a linguagem do desktop. Se o
+  usuário quiser, aplicar avatares + cor.border igual no BlocoTurma do
+  desktop. Caller fica em [src/AgendaNovaDia.js](../src/AgendaNovaDia.js)
+  na section `aulasTurmaDia.map`.
 
 - **Limpeza**: dropar `AgendaPersonal` e `AgendaGradeLegada` quando o
   usuário confirmar que o modo "Individual" antigo pode morrer. Por enquanto
@@ -187,17 +215,8 @@ AgendaPartes, agendaActions, agendaUtils, AgendaDatePicker, AgendaExportarModal.
 
 ## Estado do git (fim da sessão)
 
-Branch: `dev`. Trabalho ainda **não commitado** — usuário não pediu commit.
-Arquivos modificados/novos:
-- `sql-adicionar-devedor-aulas.sql` (novo)
-- `src/AgendaNova.js` (novo)
-- `src/AgendaNovaContainer.js` (novo)
-- `src/AgendaNovaSemana.js` (novo)
-- `src/AgendaNovaDia.js` (novo)
-- `src/AgendaNovaCriarModal.js` (novo)
-- `src/App.js` (editado)
-- `src/Dashboard.js` (editado)
-- `src/AgendaCalendario.js` (editado)
-- `src/AgendaPersonal.js` (editado)
-- `src/AgendaPresencaModal.js` (editado)
-- `docs/agenda-nova-contexto.md` (este doc)
+Branch: `dev`, sincronizada com `origin/dev`. Dois commits hoje:
+1. `e2159f4` — feat: Agenda Nova — menu isolado com card de aluno individual
+   (estrutura toda + visual inicial)
+2. próximo commit — refinamento visual do card de turma (avatares + estética
+   alinhada ao card de aluno) + atualização deste doc

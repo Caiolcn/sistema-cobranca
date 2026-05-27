@@ -335,43 +335,13 @@ export default function AgendaNovaSemana({
                         const cor = corDaAula(aula.descricao)
                         const st = statusAula(aula, d)
                         return (
-                          <div key={aula.id} onClick={() => setDetalhe({ aula, data: d })}
-                            style={{
-                              backgroundColor: cor.bg, borderLeft: `3px solid ${cor.border}`,
-                              borderRadius: '5px', padding: '3px 6px', cursor: 'pointer',
-                              opacity: aula.ativo ? 1 : 0.55
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-                              <div style={{ fontSize: '11px', fontWeight: '700', color: cor.text }}>
-                                {aula.horario?.substring(0, 5)}
-                              </div>
-                              {aula.colaboradores?.nome && (
-                                <div title={`Prof. ${aula.colaboradores.nome}`}
-                                  style={{
-                                    height: '18px', padding: '0 6px',
-                                    borderRadius: '9px', backgroundColor: '#344848', color: '#fff',
-                                    fontSize: '10px', fontWeight: '700',
-                                    lineHeight: '18px', textAlign: 'center',
-                                    display: 'inline-block', flexShrink: 0
-                                  }}>
-                                  {iniciaisDe(aula.colaboradores.nome)}
-                                </div>
-                              )}
-                            </div>
-                            {aula.descricao && (
-                              <div style={{ fontSize: '10px', color: cor.text, opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {aula.descricao}
-                              </div>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: cor.text, opacity: 0.75 }}>
-                              <span>{st.ocupadas}/{aula.capacidade}</span>
-                              {st.pendente
-                                ? <Icon icon="mdi:alert-circle" width="12" style={{ color: '#f59e0b' }} />
-                                : st.ocupadas > 0 && st.marcadas === st.ocupadas
-                                  ? <Icon icon="mdi:check-circle" width="12" style={{ color: '#16a34a' }} />
-                                  : null}
-                            </div>
-                          </div>
+                          <BlocoTurma
+                            key={aula.id}
+                            aula={aula}
+                            cor={cor}
+                            st={st}
+                            onClick={() => setDetalhe({ aula, data: d })}
+                          />
                         )
                       })}
 
@@ -535,6 +505,169 @@ export default function AgendaNovaSemana({
       />
     </div>
   )
+}
+
+// ===== Bloco de TURMA (desktop) =====
+// Segue a mesma estética clean do BlocoAluno:
+//   • Card branco, borda fina, faixa lateral 3px colorida (cor da aula)
+//   • Hover com leve elevação por shadow
+//   • Footer: pilha de avatares dos alunos + ícone de status
+// A cor da aula (corDaAula) deixa de pintar o card inteiro e vira só acento.
+function BlocoTurma({ aula, cor, st, onClick }) {
+  return (
+    <div onClick={onClick}
+      style={{
+        backgroundColor: '#fff',
+        border: '1px solid #eef0f3',
+        borderLeft: `3px solid ${cor.border}`,
+        borderRadius: '8px',
+        padding: '5px 7px 5px 6px',
+        cursor: 'pointer',
+        opacity: aula.ativo ? 1 : 0.55,
+        transition: 'box-shadow 0.15s ease, transform 0.15s ease'
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = '0 4px 10px rgba(15,23,42,0.08)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}>
+      {/* Header: hora + professor */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+        <div style={{ fontSize: '11px', fontWeight: '700', color: '#0f172a' }}>
+          {aula.horario?.substring(0, 5)}
+        </div>
+        {aula.colaboradores?.nome && (
+          <div title={`Prof. ${aula.colaboradores.nome}`}
+            style={{
+              height: '16px', padding: '0 6px',
+              borderRadius: '8px', backgroundColor: '#344848', color: '#fff',
+              fontSize: '9px', fontWeight: '700',
+              lineHeight: '16px', textAlign: 'center',
+              display: 'inline-block', flexShrink: 0
+            }}>
+            {iniciaisDe(aula.colaboradores.nome)}
+          </div>
+        )}
+      </div>
+      {/* Descrição (em cor sutil da aula, pra dar agrupamento visual) */}
+      {aula.descricao && (
+        <div style={{
+          fontSize: '10px', color: cor.text, fontWeight: '600',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          marginTop: '1px'
+        }}>
+          {aula.descricao}
+        </div>
+      )}
+      {/* Footer linha 1: ocupação X/Y + ícone de status */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: '4px', marginTop: '3px'
+      }}>
+        <span style={{
+          fontSize: '10px', fontWeight: '700', color: cor.text,
+          display: 'inline-flex', alignItems: 'center', gap: '3px'
+        }}>
+          <Icon icon="mdi:account-multiple-outline" width="11" style={{ opacity: 0.7 }} />
+          {st.ocupadas}/{aula.capacidade}
+        </span>
+        {st.pendente
+          ? <Icon icon="mdi:alert-circle" width="12" style={{ color: '#f59e0b', flexShrink: 0 }} />
+          : st.ocupadas > 0 && st.marcadas === st.ocupadas
+            ? <Icon icon="mdi:check-circle" width="12" style={{ color: '#16a34a', flexShrink: 0 }} />
+            : null}
+      </div>
+      {/* Footer linha 2: pilha de avatares (só se houver aluno) */}
+      {st.roster.length > 0 && (
+        <div style={{ marginTop: '3px' }}>
+          <AvatarStack roster={st.roster} max={3} capacidade={aula.capacidade} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===== Avatar stack — pilha de iniciais/fotos dos alunos =====
+// Mostra até `max` alunos; se exceder, mostra "+N" no final.
+// Vazio: mostra "0/cap" como hint discreto.
+function AvatarStack({ roster, max = 3, capacidade }) {
+  if (!roster || roster.length === 0) {
+    return (
+      <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '500' }}>
+        0/{capacidade}
+      </span>
+    )
+  }
+  const shown = roster.slice(0, max)
+  const extra = roster.length - shown.length
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}
+      title={`${roster.length}/${capacidade} alunos`}>
+      {shown.map((r, i) => {
+        const nome = r.devedores?.nome || '?'
+        const inicial = nome.charAt(0).toUpperCase()
+        const c = corDoAluno(nome)
+        const foto = r.devedores?.foto_url
+        return (
+          <div key={(r.devedorId || '') + i}
+            title={nome}
+            style={{
+              width: '18px', height: '18px', borderRadius: '50%',
+              backgroundColor: c.bg, color: c.text,
+              border: '1.5px solid #fff',
+              marginLeft: i === 0 ? 0 : '-5px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '9px', fontWeight: '700',
+              overflow: 'hidden',
+              flexShrink: 0,
+              zIndex: max - i
+            }}>
+            {foto
+              ? <img src={foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = inicial }} />
+              : inicial}
+          </div>
+        )
+      })}
+      {extra > 0 && (
+        <div style={{
+          height: '18px', padding: '0 5px',
+          borderRadius: '9px',
+          backgroundColor: '#f1f5f9',
+          border: '1.5px solid #fff',
+          marginLeft: '-5px',
+          display: 'flex', alignItems: 'center',
+          fontSize: '9px', fontWeight: '700',
+          color: '#475569',
+          flexShrink: 0,
+          zIndex: 0
+        }}>
+          +{extra}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Paleta determinística por nome (mesmo aluno = mesma cor sempre).
+const PALETA_ALUNO = [
+  { bg: '#ede9fe', text: '#5b21b6' }, // violet
+  { bg: '#dbeafe', text: '#1e40af' }, // blue
+  { bg: '#dcfce7', text: '#166534' }, // green
+  { bg: '#fef3c7', text: '#854d0e' }, // amber
+  { bg: '#fce7f3', text: '#9f1239' }, // pink
+  { bg: '#e0e7ff', text: '#3730a3' }, // indigo
+  { bg: '#fed7aa', text: '#9a3412' }, // orange
+  { bg: '#cffafe', text: '#155e75' }  // cyan
+]
+const corDoAluno = (nome) => {
+  if (!nome) return PALETA_ALUNO[0]
+  let hash = 0
+  for (let i = 0; i < nome.length; i++) hash = (hash * 31 + nome.charCodeAt(i)) | 0
+  return PALETA_ALUNO[Math.abs(hash) % PALETA_ALUNO.length]
 }
 
 // ===== Bloco de aluno individual (desktop) =====
