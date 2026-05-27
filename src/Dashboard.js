@@ -515,6 +515,37 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Horários</span>}
           </div>
 
+          {/* Agenda Nova (experimental) */}
+          <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Agenda Nova"
+            onClick={() => { navigate('/app/agenda-nova'); if (isMobile) setMenuAberto(false) }}
+            style={{
+              width: isMobile ? '100%' : '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'agenda-nova' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'agenda-nova' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'agenda-nova') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'agenda-nova') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="fluent:calendar-sparkle-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Agenda Nova</span>}
+          </div>
+
           {/* Clientes */}
           <div
             className={!isMobile ? 'sidebar-tooltip' : ''}

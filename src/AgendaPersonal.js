@@ -55,7 +55,10 @@ export default function AgendaPersonal({
     const [aulasRes, fixosRes, presRes, clientesRes] = await Promise.all([
       supabase.from('aulas')
         .select('*')
+        // Isola Agenda Nova: aulas com devedor_id setado pertencem ao novo modelo
+        // de "aluno individual" e não devem aparecer no modo Individual antigo.
         .eq('user_id', userId).eq('capacidade', 1).eq('ativo', true)
+        .is('devedor_id', null)
         .order('horario'),
       supabase.from('aulas_fixos')
         .select('*, devedores(nome, telefone, foto_url, lixo)')

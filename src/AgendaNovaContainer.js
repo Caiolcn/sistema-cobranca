@@ -7,40 +7,30 @@ import { SkeletonList } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { isoDate } from './agendaUtils'
-import AgendaDia from './AgendaDia'
-import AgendaSemana from './AgendaSemana'
+import AgendaNovaDia from './AgendaNovaDia'
+import AgendaNovaSemana from './AgendaNovaSemana'
 import AgendaAulaModal from './AgendaAulaModal'
 import AgendaFixoModal from './AgendaFixoModal'
 import AgendaDatePicker from './AgendaDatePicker'
 import AgendaExportarModal from './AgendaExportarModal'
-import AgendaGradeLegada from './AgendaGradeLegada'
-import AgendaPersonal from './AgendaPersonal'
+import AgendaNovaCriarModal from './AgendaNovaCriarModal'
 
 // ==========================================
-// Agenda — container das views (Dia | Semana)
-// Carrega a base (aulas / alunos fixos / clientes / créditos),
-// gerencia CRUD de aulas e fixos, e mantém a sincronização realtime
-// dos agendamentos online (fila pelo link público).
-// Default por viewport: Semana no desktop, Dia no mobile.
+// Agenda NOVA — container experimental (rota /app/agenda-nova).
+// Visão única responsiva:
+//   - Desktop → AgendaSemana (grade 7d × hora, igual modo "Semana" atual)
+//   - Mobile  → AgendaDia    (uma data por vez, igual modo "Dia" atual)
+// Toggle de modos foi removido — voltará quando definirmos os layouts futuros.
+// Botão "Nova" abre o AgendaNovaCriarModal (radio: Aluno individual | Turma).
 // ==========================================
 
-const MODOS = [
-  { v: 'dia', label: 'Dia', icon: 'mdi:calendar-text' },
-  { v: 'semana', label: 'Semana', icon: 'mdi:calendar-week' },
-  { v: 'individual', label: 'Individual', icon: 'mdi:account-clock-outline' }
-  // { v: 'legado', label: 'Legado', icon: 'mdi:archive-outline' } — oculto temporariamente
-]
-
-const modoInicial = () => (typeof window !== 'undefined' && window.innerWidth <= 768) ? 'dia' : 'semana'
-
-export default function AgendaCalendario() {
+export default function AgendaNovaContainer() {
   const { userId } = useUser()
   const { isMobile } = useWindowSize()
 
-  const [modo, setModo] = useState(modoInicial)
   const [dataSel, setDataSel] = useState(() => isoDate(new Date()))
 
-  // Notificação de presença via WhatsApp (toggle global no header da Agenda)
+  // Notificação WhatsApp (toggle global)
   const [enviarNotifPresenca, setEnviarNotifPresenca] = useState(false)
   useEffect(() => {
     if (!userId) return
@@ -62,30 +52,29 @@ export default function AgendaCalendario() {
   const [fixos, setFixos] = useState([])
   const [clientes, setClientes] = useState([])
   const [colaboradores, setColaboradores] = useState([])
-  const [creditos, setCreditos] = useState({}) // { devedor_id: { aulas_restantes, aulas_total, nome } }
+  const [creditos, setCreditos] = useState({})
   const [loadingBase, setLoadingBase] = useState(true)
-
-  // Disparado por realtime (agendamentos novos/cancelados pelo link público)
-  // e por mudanças locais que invalidam os dados de range das views.
   const [versao, setVersao] = useState(0)
 
   // Modais
-  const [aulaModal, setAulaModal] = useState(null) // null | { aula: aulaParaEditar | null }
-  const [fixoModal, setFixoModal] = useState(null) // null | { aula }
+  const [criarAberto, setCriarAberto] = useState(false)
+  const [aulaModal, setAulaModal] = useState(null) // { aula } — para editar turma existente
+  const [fixoModal, setFixoModal] = useState(null) // { aula, data }
   const [exportarAberto, setExportarAberto] = useState(false)
-  const [confirmExcluirAula, setConfirmExcluirAula] = useState(null) // null | aula
-  const [confirmRemoverFixo, setConfirmRemoverFixo] = useState(null) // null | fixo
+  const [confirmExcluirAula, setConfirmExcluirAula] = useState(null)
+  const [confirmRemoverFixo, setConfirmRemoverFixo] = useState(null)
 
   // --- carregar base ---
   const carregarBase = useCallback(async () => {
     if (!userId) return
     setLoadingBase(true)
     const [aulasRes, fixosRes, clientesRes, colabRes] = await Promise.all([
+      // Agenda Nova vê AMBOS: turmas (devedor_id NULL) e alunos individuais
+      // (devedor_id setado). O join `devedores` traz o aluno quando é individual;
+      // pra turmas o campo vem null e os alunos seguem via `aulas_fixos`.
       supabase.from('aulas')
-        .select('*, colaboradores(id, nome)')
-        // Filtro isola os "alunos individuais" da Agenda Nova (devedor_id setado).
-        // O menu Horários só vê turmas e cap=1 do modelo antigo (sem devedor_id).
-        .eq('user_id', userId).eq('ativo', true).is('devedor_id', null).order('horario'),
+        .select('*, colaboradores(id, nome), devedores(id, nome, telefone, foto_url)')
+        .eq('user_id', userId).eq('ativo', true).order('horario'),
       supabase.from('aulas_fixos').select('*, devedores(nome, telefone, foto_url)').eq('user_id', userId),
       supabase.from('devedores')
         .select('id, nome, telefone, foto_url, aulas_restantes, aulas_total')
@@ -115,11 +104,11 @@ export default function AgendaCalendario() {
 
   useEffect(() => { carregarBase() }, [carregarBase])
 
-  // --- realtime: agendamentos online (link público) ---
+  // realtime: agendamentos online (link público)
   useEffect(() => {
     if (!userId) return
     const channel = supabase
-      .channel(`agenda-rt-${userId}`)
+      .channel(`agenda-nova-rt-${userId}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'agendamentos', filter: `user_id=eq.${userId}` },
         () => setVersao(v => v + 1))
@@ -127,24 +116,22 @@ export default function AgendaCalendario() {
     return () => { supabase.removeChannel(channel) }
   }, [userId])
 
-  // Atualização local de crédito (chamada pela presença / cancelamento)
   const aplicarCredito = useCallback((devedorId, novoRestante) => {
     setCreditos(prev => prev[devedorId]
       ? { ...prev, [devedorId]: { ...prev[devedorId], aulas_restantes: novoRestante } }
       : prev)
   }, [])
 
-  // --- CRUD AULAS ---
-  const abrirNovaAula = () => setAulaModal({ aula: null })
+  // --- CRUD AULAS (edição/exclusão de turma existente) ---
   const abrirEditarAula = (aula) => setAulaModal({ aula })
 
+  const attachProf = useCallback((aula) => {
+    if (!aula.professor_id) return { ...aula, colaboradores: null }
+    const prof = colaboradores.find(c => c.id === aula.professor_id)
+    return { ...aula, colaboradores: prof ? { id: prof.id, nome: prof.nome } : null }
+  }, [colaboradores])
+
   const onAulaSalva = ({ inserted, updated }) => {
-    // Anexa o nome do professor (o select do modal não traz o join)
-    const attachProf = (aula) => {
-      if (!aula.professor_id) return { ...aula, colaboradores: null }
-      const prof = colaboradores.find(c => c.id === aula.professor_id)
-      return { ...aula, colaboradores: prof ? { id: prof.id, nome: prof.nome } : null }
-    }
     if (inserted) setAulas(prev => [...prev, ...inserted.map(attachProf)].sort((a, b) => (a.horario || '').localeCompare(b.horario || '')))
     if (updated) setAulas(prev => prev.map(a => a.id === updated.id ? attachProf({ ...a, ...updated }) : a))
     setVersao(v => v + 1)
@@ -169,12 +156,12 @@ export default function AgendaCalendario() {
     setConfirmExcluirAula(null)
   }
 
-  // --- FIXOS / AVULSOS ---
+  // --- FIXOS / AVULSOS (adicionar aluno a turma existente) ---
   const abrirAddFixo = (aula, data) => setFixoModal({ aula, data })
   const onAlunoAdicionado = (res) => {
     if (!res) return
     if (res.tipo === 'fixo' && res.fixo) setFixos(prev => [...prev, res.fixo])
-    if (res.tipo === 'avulso') setVersao(v => v + 1) // recarrega agendamentos da view
+    if (res.tipo === 'avulso') setVersao(v => v + 1)
   }
 
   const removerFixo = async (fixo) => {
@@ -186,7 +173,30 @@ export default function AgendaCalendario() {
     setConfirmRemoverFixo(null)
   }
 
-  // --- créditos baixos (global) ---
+  // --- handlers do modal "Nova" ---
+  // Aluno individual: aula vem com `devedores` já joined (foi inserido com
+  // devedor_id setado). Não cria entrada em aulas_fixos.
+  const onAlunoIndividualCriado = ({ aula }) => {
+    if (!aula) return
+    const aulaCompleta = { ...aula, colaboradores: null }
+    setAulas(prev => [...prev, aulaCompleta]
+      .sort((a, b) => (a.horario || '').localeCompare(b.horario || '')))
+    setVersao(v => v + 1)
+  }
+
+  // Remoção do horário de um aluno individual (delete na linha de aulas).
+  // CASCADE não dispara aqui (deletamos a aula, não o devedor), então não
+  // afeta dados do aluno em si — apenas o slot na agenda.
+  const removerAlunoIndividual = async (aula) => {
+    const { error } = await supabase.from('aulas').delete().eq('id', aula.id)
+    if (error) { showToast('Erro ao remover: ' + error.message, 'error'); return }
+    const primeiroNome = aula?.devedores?.nome?.split(' ')[0] || 'Aluno'
+    showToast(`Horário de ${primeiroNome} removido`, 'success')
+    setAulas(prev => prev.filter(a => a.id !== aula.id))
+    setVersao(v => v + 1)
+  }
+
+  // --- créditos baixos ---
   const lowCredit = useMemo(() => {
     const lista = []
     Object.entries(creditos).forEach(([id, c]) => {
@@ -211,78 +221,61 @@ export default function AgendaCalendario() {
     onToggleAtivoAula: toggleAtivoAula,
     onExcluirAula: (aula) => setConfirmExcluirAula(aula),
     onAddFixo: abrirAddFixo,
-    onRemoverFixo: (fixo) => setConfirmRemoverFixo(fixo)
+    onRemoverFixo: (fixo) => setConfirmRemoverFixo(fixo),
+    onRemoverAluno: removerAlunoIndividual
   }
 
   return (
     <div>
-      {/* Header: toggle Dia/Semana + Notificação WhatsApp + Nova turma */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-        <div style={{
-          display: 'inline-flex', gap: '4px', backgroundColor: '#f3f4f6',
-          borderRadius: '10px', padding: '4px'
+      {/* Header: ações alinhadas à direita (toggle de modos virá depois) */}
+      <div style={{
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+        gap: '10px', marginBottom: '14px', flexWrap: 'wrap'
+      }}>
+        {/* Toggle notificação WhatsApp */}
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+          fontSize: '12px', color: enviarNotifPresenca ? '#16a34a' : '#999', fontWeight: '500'
         }}>
-          {MODOS.map(o => (
-            <button key={o.v} onClick={() => setModo(o.v)}
-              style={{
-                padding: '7px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                fontSize: '13px', fontWeight: modo === o.v ? '600' : '400',
-                backgroundColor: modo === o.v ? '#fff' : 'transparent',
-                color: modo === o.v ? '#1a1a1a' : '#666',
-                boxShadow: modo === o.v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                display: 'flex', alignItems: 'center', gap: '6px'
-              }}>
-              <Icon icon={o.icon} width={15} /> {o.label}
-            </button>
-          ))}
-        </div>
+          <div onClick={() => toggleNotif(!enviarNotifPresenca)}
+            style={{
+              width: '36px', height: '20px', borderRadius: '10px',
+              backgroundColor: enviarNotifPresenca ? '#16a34a' : '#d1d5db',
+              position: 'relative', transition: 'background-color 0.2s', cursor: 'pointer', flexShrink: 0
+            }}>
+            <div style={{
+              width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white',
+              position: 'absolute', top: '2px',
+              left: enviarNotifPresenca ? '18px' : '2px',
+              transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+            }} />
+          </div>
+          <Icon icon="mdi:whatsapp" width={16} style={{ color: enviarNotifPresenca ? '#25D366' : '#999' }} />
+          {!isMobile && (enviarNotifPresenca ? 'Notificar aluno' : 'Notificação off')}
+        </label>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Toggle notificação WhatsApp */}
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
-            fontSize: '12px', color: enviarNotifPresenca ? '#16a34a' : '#999', fontWeight: '500'
+        <AgendaDatePicker value={dataSel} onChange={setDataSel} />
+
+        <button onClick={() => setExportarAberto(true)} title="Exportar presenças"
+          style={{
+            padding: isMobile ? '8px 12px' : '9px 14px',
+            backgroundColor: '#fff', color: '#344848',
+            border: '1px solid #d1d5db', borderRadius: '8px',
+            fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '6px'
           }}>
-            <div onClick={() => toggleNotif(!enviarNotifPresenca)}
-              style={{
-                width: '36px', height: '20px', borderRadius: '10px',
-                backgroundColor: enviarNotifPresenca ? '#16a34a' : '#d1d5db',
-                position: 'relative', transition: 'background-color 0.2s', cursor: 'pointer', flexShrink: 0
-              }}>
-              <div style={{
-                width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white',
-                position: 'absolute', top: '2px',
-                left: enviarNotifPresenca ? '18px' : '2px',
-                transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-              }} />
-            </div>
-            <Icon icon="mdi:whatsapp" width={16} style={{ color: enviarNotifPresenca ? '#25D366' : '#999' }} />
-            {!isMobile && (enviarNotifPresenca ? 'Notificar aluno' : 'Notificação off')}
-          </label>
+          <Icon icon="mdi:download" width="15" /> {!isMobile && 'Exportar'}
+        </button>
 
-          <AgendaDatePicker value={dataSel} onChange={setDataSel} />
-
-          <button onClick={() => setExportarAberto(true)} title="Exportar presenças"
-            style={{
-              padding: isMobile ? '8px 12px' : '9px 14px',
-              backgroundColor: '#fff', color: '#344848',
-              border: '1px solid #d1d5db', borderRadius: '8px',
-              fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '6px'
-            }}>
-            <Icon icon="mdi:download" width="15" /> {!isMobile && 'Exportar'}
-          </button>
-
-          <button onClick={abrirNovaAula}
-            style={{
-              padding: isMobile ? '8px 14px' : '9px 18px',
-              backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '8px',
-              fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '6px'
-            }}>
-            <Icon icon="mdi:plus" width="16" /> Nova turma
-          </button>
-        </div>
+        <button onClick={() => setCriarAberto(true)}
+          style={{
+            padding: isMobile ? '8px 14px' : '9px 18px',
+            backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '8px',
+            fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '6px'
+          }}>
+          <Icon icon="mdi:plus" width="16" /> Nova
+        </button>
       </div>
 
       {/* Alerta créditos baixos */}
@@ -301,20 +294,21 @@ export default function AgendaCalendario() {
         </div>
       )}
 
-      {modo === 'dia' && <AgendaDia {...subProps} />}
-      {modo === 'semana' && <AgendaSemana {...subProps} />}
-      {modo === 'individual' && (
-        <AgendaPersonal
-          enviarNotifPresenca={enviarNotifPresenca}
-          dataSel={dataSel}
-          setDataSel={setDataSel}
-          creditos={creditos}
-          onCredito={aplicarCredito}
-        />
-      )}
-      {modo === 'legado' && <AgendaGradeLegada />}
+      {/* Visão única responsiva: mobile=Dia, desktop=Semana */}
+      {isMobile ? <AgendaNovaDia {...subProps} /> : <AgendaNovaSemana {...subProps} />}
 
       {/* ===== Modais ===== */}
+      {criarAberto && (
+        <AgendaNovaCriarModal
+          userId={userId}
+          clientes={clientes}
+          colaboradores={colaboradores}
+          onSavedAluno={onAlunoIndividualCriado}
+          onSavedTurma={onAulaSalva}
+          onClose={() => setCriarAberto(false)}
+        />
+      )}
+
       {aulaModal && (
         <AgendaAulaModal
           userId={userId}

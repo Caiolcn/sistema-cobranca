@@ -14,7 +14,11 @@ import { parseISO, MESES } from './agendaUtils'
 export default function AgendaPresencaModal({
   userId, aula, devedorId, devedores, data,
   presencaExistente, credito, enviarNotifPresenca,
-  onClose, onChange
+  onClose, onChange,
+  // Opcional: callback p/ remover o "slot" inteiro (aula individual da Agenda
+  // Nova). Quando passado, renderiza um botão discreto "Remover horário".
+  // Não confundir com "remover presença" (que apaga só o registro de presenca).
+  onRemoverSlot
 }) {
   const [presente, setPresente] = useState(presencaExistente ? presencaExistente.presente : true)
   const [obs, setObs] = useState(presencaExistente ? (presencaExistente.observacao || '') : '')
@@ -190,6 +194,27 @@ export default function AgendaPresencaModal({
             {salvando ? 'Salvando...' : 'Registrar'}
           </button>
         </div>
+
+        {/* Ação secundária: remover o horário inteiro (só aluno individual) */}
+        {onRemoverSlot && (
+          <div style={{
+            marginTop: '14px', paddingTop: '14px',
+            borderTop: '1px solid #f0f0f0', textAlign: 'center'
+          }}>
+            <button onClick={onRemoverSlot} disabled={salvando}
+              style={{
+                background: 'none', border: 'none', cursor: salvando ? 'not-allowed' : 'pointer',
+                color: '#dc2626', fontSize: '13px', fontWeight: '500',
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '4px 8px', borderRadius: '6px'
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef2f2'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <Icon icon="mdi:trash-can-outline" width="15" />
+              Remover horário do aluno
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
