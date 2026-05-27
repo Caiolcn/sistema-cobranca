@@ -2,9 +2,9 @@ import useWindowSize from './hooks/useWindowSize'
 import AgendaNovaContainer from './AgendaNovaContainer'
 
 // ==========================================
-// Página da Agenda Nova (/app/agenda-nova)
-// Shell experimental — espelha GradeHorarios mas monta o container
-// novo (AgendaNovaContainer), pra evoluir sem mexer no menu Horários.
+// Página da Agenda (/app/horarios)
+// Shell que monta o AgendaNovaContainer — view única responsiva
+// (Semana no desktop, Dia no mobile).
 // ==========================================
 
 export default function AgendaNova() {
@@ -17,10 +17,10 @@ export default function AgendaNova() {
     }}>
       <div style={{ marginBottom: isMobile ? '16px' : '20px' }}>
         <h2 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-          Agenda Nova
+          Agenda
         </h2>
         <p style={{ margin: '5px 0 0 0', fontSize: isMobile ? '13px' : '14px', color: '#666' }}>
-          Versão em construção — a Agenda atual continua disponível em "Horários".
+          Aulas, presenças e agendamentos online em uma só tela.
         </p>
       </div>
 

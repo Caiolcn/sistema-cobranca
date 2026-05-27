@@ -25,7 +25,6 @@ const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
 const PortalCliente = lazy(() => import('./pages/PortalCliente'))
 const PaginaContrato = lazy(() => import('./pages/PaginaContrato'))
 const Onboarding = lazy(() => import('./Onboarding'))
-const GradeHorarios = lazy(() => import('./GradeHorarios'))
 const AgendaNova = lazy(() => import('./AgendaNova'))
 const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
@@ -101,8 +100,7 @@ function App() {
                     <Route path="home" element={<Home />} />
                     <Route path="financeiro" element={<Financeiro />} />
                     <Route path="clientes" element={<Clientes />} />
-                    <Route path="horarios" element={<GradeHorarios />} />
-                    <Route path="agenda-nova" element={<AgendaNova />} />
+                    <Route path="horarios" element={<AgendaNova />} />
                     <Route path="relatorios" element={<Relatorios />} />
                     <Route path="whatsapp" element={<WhatsAppConexao />} />
                     <Route path="configuracao" element={<Configuracao />} />
