@@ -8,10 +8,12 @@ import { useUser } from './contexts/UserContext'
 import AgendaPresencaModal from './AgendaPresencaModal'
 import {
   DIAS_CURTO, DIAS_LONGO, MESES,
-  isoDate, parseISO, addDias, inicioSemana, presKey, montarRoster
+  isoDate, parseISO, addDias, inicioSemana, presKey, montarRoster,
+  corDaAula, iniciaisDe
 } from './agendaUtils'
 import { cancelarAgendamento, marcarPresencaRapida } from './agendaActions'
 import { StatCard, AcoesAula, LinhaAluno, FilaEspera, badge } from './AgendaPartes'
+import { AvatarStack } from './AgendaNovaPartes'
 
 // ==========================================
 // AgendaNovaDia — fork de AgendaDia para a Agenda Nova.
@@ -254,29 +256,101 @@ export default function AgendaNovaDia({
           {aulasTurmaDia.map(({ aula, roster }) => {
             const marcadas = roster.filter(r => presencas[presKey(aula.id, r.devedorId)]).length
             const fila = listaEspera.filter(f => f.aula_id === aula.id)
+            const cor = corDaAula(aula.descricao)
+            // Status da turma define o acento da pill à direita
+            const cfgTurma = isFuturo
+              ? { label: 'Em breve', bg: '#ede9fe', txt: '#6b21a8', icon: 'mdi:calendar-clock-outline' }
+              : roster.length === 0
+                ? { label: 'Sem alunos', bg: '#f1f5f9', txt: '#64748b', icon: 'mdi:account-off-outline' }
+                : marcadas === roster.length
+                  ? { label: 'Tudo marcado', bg: '#dcfce7', txt: '#15803d', icon: 'mdi:check-circle' }
+                  : { label: `${marcadas}/${roster.length}`, bg: '#fef3c7', txt: '#92400e', icon: 'mdi:clock-outline' }
             return (
-              <div key={aula.id} style={{ border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden' }}>
+              <div key={aula.id} style={{
+                backgroundColor: '#fff',
+                border: '1px solid #eef0f3',
+                borderLeft: `4px solid ${cor.border}`,
+                borderRadius: '14px',
+                overflow: 'hidden',
+                opacity: aula.ativo ? 1 : 0.55,
+                transition: 'box-shadow 0.18s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 16px rgba(15,23,42,0.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}>
+                {/* Header */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '10px 14px', backgroundColor: '#fafafa', borderBottom: '1px solid #f0f0f0'
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '12px 14px'
                 }}>
+                  {/* Avatar/ícone da turma */}
                   <div style={{
-                    width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
-                    backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0,
+                    background: `linear-gradient(135deg, ${cor.bg}, ${cor.border}33)`,
+                    color: cor.text,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.04)'
                   }}>
-                    <Icon icon="mdi:clock-outline" width="20" style={{ color: '#4338ca' }} />
+                    <Icon icon="mdi:account-multiple" width="22" />
                   </div>
+
+                  {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a' }}>
+                    <div style={{
+                      fontSize: '15px', fontWeight: '700', color: '#0f172a',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>
                       {aula.horario?.substring(0, 5)}{aula.descricao ? ` · ${aula.descricao}` : ''}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>
-                      {aula.colaboradores?.nome && <span style={{ color: '#4338ca', fontWeight: '600' }}>Prof. {aula.colaboradores.nome} · </span>}
-                      {roster.length}/{aula.capacidade} vagas
-                      {marcadas > 0 && <span style={{ color: '#16a34a', fontWeight: '600' }}> · {marcadas} marcada(s)</span>}
-                      {fila.length > 0 && <span style={{ color: '#f59e0b', fontWeight: '600' }}> · {fila.length} na fila</span>}
+                    <div style={{
+                      fontSize: '12px', color: '#64748b', marginTop: '2px',
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>
+                      {aula.colaboradores?.nome && (
+                        <>
+                          <span style={{
+                            height: '17px', padding: '0 6px',
+                            borderRadius: '8px', backgroundColor: '#344848', color: '#fff',
+                            fontSize: '9px', fontWeight: '700',
+                            lineHeight: '17px',
+                            display: 'inline-block', flexShrink: 0
+                          }}>{iniciaisDe(aula.colaboradores.nome)}</span>
+                          <span style={{ color: '#475569', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Prof. {aula.colaboradores.nome.split(' ')[0]}
+                          </span>
+                          <span style={{ color: '#cbd5e1' }}>·</span>
+                        </>
+                      )}
+                      <Icon icon="mdi:account-multiple-outline" width="13" style={{ flexShrink: 0 }} />
+                      <span style={{ fontWeight: '600' }}>{roster.length}/{aula.capacidade}</span>
+                      {fila.length > 0 && (
+                        <>
+                          <span style={{ color: '#cbd5e1' }}>·</span>
+                          <span style={{ color: '#b45309', fontWeight: '600' }}>{fila.length} na fila</span>
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  {/* Status pill */}
+                  <div style={{
+                    flexShrink: 0,
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    padding: '5px 10px', borderRadius: '999px',
+                    backgroundColor: cfgTurma.bg, color: cfgTurma.txt,
+                    fontSize: '11px', fontWeight: '700'
+                  }}>
+                    <Icon icon={cfgTurma.icon} width="13" />
+                    {cfgTurma.label}
+                  </div>
+                </div>
+
+                {/* Avatares + ações (estilo footer secundário) */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0 14px 10px 14px', gap: '8px'
+                }}>
+                  <AvatarStack roster={roster} max={6} capacidade={aula.capacidade} size={22} />
                   <AcoesAula aula={aula}
                     onAdd={() => onAddFixo(aula, dataSel)}
                     onToggle={() => onToggleAtivoAula(aula)}
@@ -284,9 +358,13 @@ export default function AgendaNovaDia({
                     onDelete={() => onExcluirAula(aula)} />
                 </div>
 
+                {/* Roster expandido (lista de alunos) */}
                 {roster.length === 0 ? (
-                  <div style={{ padding: '14px 16px', fontSize: '13px', color: '#aaa' }}>Nenhum aluno nesta turma.</div>
-                ) : roster.map(r => {
+                  <div style={{
+                    padding: '12px 16px', fontSize: '12px', color: '#94a3b8',
+                    borderTop: '1px solid #f1f5f9'
+                  }}>Nenhum aluno nesta turma.</div>
+                ) : <div style={{ borderTop: '1px solid #f1f5f9' }}>{roster.map(r => {
                   const pres = presencas[presKey(aula.id, r.devedorId)]
                   const fixoObj = r.tipo === 'fixo' ? fixos.find(f => f.aula_id === aula.id && f.devedor_id === r.devedorId) : null
                   const agObj = r.tipo === 'agendado' ? agendamentos.find(a => a.aula_id === aula.id && a.devedor_id === r.devedorId) : null
@@ -302,7 +380,7 @@ export default function AgendaNovaDia({
                       }
                     />
                   )
-                })}
+                })}</div>}
 
                 <FilaEspera fila={fila} />
               </div>

@@ -12,6 +12,7 @@ import {
 } from './agendaUtils'
 import { cancelarAgendamento, marcarPresencaRapida } from './agendaActions'
 import { StatCard, LinhaAluno, FilaEspera, BotaoAdicionarAluno, MenuTurma } from './AgendaPartes'
+import { AvatarStack } from './AgendaNovaPartes'
 
 // ==========================================
 // AgendaNovaSemana — fork de AgendaSemana para a Agenda Nova.
@@ -588,86 +589,6 @@ function BlocoTurma({ aula, cor, st, onClick }) {
       )}
     </div>
   )
-}
-
-// ===== Avatar stack — pilha de iniciais/fotos dos alunos =====
-// Mostra até `max` alunos; se exceder, mostra "+N" no final.
-// Vazio: mostra "0/cap" como hint discreto.
-function AvatarStack({ roster, max = 3, capacidade }) {
-  if (!roster || roster.length === 0) {
-    return (
-      <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '500' }}>
-        0/{capacidade}
-      </span>
-    )
-  }
-  const shown = roster.slice(0, max)
-  const extra = roster.length - shown.length
-  return (
-    <div style={{ display: 'flex', alignItems: 'center' }}
-      title={`${roster.length}/${capacidade} alunos`}>
-      {shown.map((r, i) => {
-        const nome = r.devedores?.nome || '?'
-        const inicial = nome.charAt(0).toUpperCase()
-        const c = corDoAluno(nome)
-        const foto = r.devedores?.foto_url
-        return (
-          <div key={(r.devedorId || '') + i}
-            title={nome}
-            style={{
-              width: '18px', height: '18px', borderRadius: '50%',
-              backgroundColor: c.bg, color: c.text,
-              border: '1.5px solid #fff',
-              marginLeft: i === 0 ? 0 : '-5px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '9px', fontWeight: '700',
-              overflow: 'hidden',
-              flexShrink: 0,
-              zIndex: max - i
-            }}>
-            {foto
-              ? <img src={foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={e => { e.target.style.display = 'none'; e.target.parentElement.textContent = inicial }} />
-              : inicial}
-          </div>
-        )
-      })}
-      {extra > 0 && (
-        <div style={{
-          height: '18px', padding: '0 5px',
-          borderRadius: '9px',
-          backgroundColor: '#f1f5f9',
-          border: '1.5px solid #fff',
-          marginLeft: '-5px',
-          display: 'flex', alignItems: 'center',
-          fontSize: '9px', fontWeight: '700',
-          color: '#475569',
-          flexShrink: 0,
-          zIndex: 0
-        }}>
-          +{extra}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Paleta determinística por nome (mesmo aluno = mesma cor sempre).
-const PALETA_ALUNO = [
-  { bg: '#ede9fe', text: '#5b21b6' }, // violet
-  { bg: '#dbeafe', text: '#1e40af' }, // blue
-  { bg: '#dcfce7', text: '#166534' }, // green
-  { bg: '#fef3c7', text: '#854d0e' }, // amber
-  { bg: '#fce7f3', text: '#9f1239' }, // pink
-  { bg: '#e0e7ff', text: '#3730a3' }, // indigo
-  { bg: '#fed7aa', text: '#9a3412' }, // orange
-  { bg: '#cffafe', text: '#155e75' }  // cyan
-]
-const corDoAluno = (nome) => {
-  if (!nome) return PALETA_ALUNO[0]
-  let hash = 0
-  for (let i = 0; i < nome.length; i++) hash = (hash * 31 + nome.charCodeAt(i)) | 0
-  return PALETA_ALUNO[Math.abs(hash) % PALETA_ALUNO.length]
 }
 
 // ===== Bloco de aluno individual (desktop) =====
