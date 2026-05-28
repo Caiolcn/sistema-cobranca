@@ -1,0 +1,181 @@
+/* ============================================================
+   Table — DS Mensalli
+   Tabela declarativa com columns + data.
+   Suporta selectable + bulk actions + loading + empty + sticky header.
+   ============================================================ */
+
+.ds-table-container {
+  position: relative;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  font-family: var(--font-sans);
+}
+
+.ds-table-scroll {
+  overflow-x: auto;
+}
+
+.ds-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+/* HEAD */
+.ds-table thead th {
+  background-color: var(--neutral-50);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  white-space: nowrap;
+}
+
+.ds-table--sticky thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* CELLS */
+.ds-table tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: middle;
+}
+
+.ds-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Sizes — altura proporcional */
+.ds-table--sm thead th,
+.ds-table--sm tbody td { padding: var(--space-2) var(--space-3); font-size: 12px; }
+
+.ds-table--md thead th,
+.ds-table--md tbody td { padding: var(--space-3) var(--space-4); }
+
+/* Align */
+.ds-table .ds-table__align-right  { text-align: right; }
+.ds-table .ds-table__align-center { text-align: center; }
+
+/* Striped (zebra) */
+.ds-table--striped tbody tr:nth-child(even) td {
+  background-color: var(--neutral-50);
+}
+
+/* Hoverable — linha inteira muda bg */
+.ds-table--hoverable tbody tr:hover td {
+  background-color: var(--neutral-50);
+}
+
+.ds-table--hoverable.ds-table--striped tbody tr:hover td {
+  background-color: var(--neutral-100);
+}
+
+/* Clickable rows */
+.ds-table--clickable tbody tr {
+  cursor: pointer;
+}
+
+.ds-table--clickable tbody tr:focus-visible {
+  outline: 2px solid var(--mensalli-green-500);
+  outline-offset: -2px;
+}
+
+/* Selected row */
+.ds-table tbody tr.ds-table__row--selected td {
+  background-color: var(--mensalli-green-50);
+}
+
+/* Checkbox column (selectable) */
+.ds-table__checkbox-cell {
+  width: 40px;
+  padding-right: 0 !important;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.ds-table-empty {
+  padding: var(--space-10) var(--space-5);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.ds-table-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background-color: var(--neutral-100);
+  color: var(--neutral-500);
+  margin-bottom: var(--space-3);
+}
+
+.ds-table-empty__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.ds-table-empty__description {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+}
+
+/* ============================================================
+   LOADING (SKELETON)
+   ============================================================ */
+
+.ds-table__skeleton-cell {
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--neutral-100) 0%, var(--neutral-200) 50%, var(--neutral-100) 100%);
+  background-size: 200% 100%;
+  animation: ds-shimmer 1.8s linear infinite;
+}
+
+/* ============================================================
+   BULK ACTIONS BAR — aparece em cima quando tem seleção
+   ============================================================ */
+
+.ds-bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--mensalli-green-50);
+  border-bottom: 1px solid var(--mensalli-green-200);
+  animation: ds-slide-in-top var(--duration-200) var(--ease-out);
+}
+
+.ds-bulk-actions__count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mensalli-green-800);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ds-bulk-actions__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

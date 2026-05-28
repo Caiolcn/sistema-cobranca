@@ -18,6 +18,12 @@ export const showToast = (message, type = 'success') => {
   }, 4000)
 }
 
+// Helpers nomeados (DS pattern — mais ergonômico que showToast(msg, 'success'))
+export const showSuccess = (message) => showToast(message, 'success')
+export const showError   = (message) => showToast(message, 'error')
+export const showWarning = (message) => showToast(message, 'warning')
+export const showInfo    = (message) => showToast(message, 'info')
+
 export const hideToast = (id) => {
   toastQueue = toastQueue.filter(t => t.id !== id)
   toastListeners.forEach(listener => listener([...toastQueue]))

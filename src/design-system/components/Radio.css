@@ -1,0 +1,166 @@
+/* ============================================================
+   Radio — DS Mensalli
+   Mesma estrutura do Checkbox, mas:
+   - Visual circular (border-radius full)
+   - Checked = ponto centralizado, não check
+   ============================================================ */
+
+.ds-radio {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+.ds-radio--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ds-radio__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Círculo visual */
+.ds-radio__control {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 1.5px solid var(--neutral-400);
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+}
+
+/* Ponto interno (escondido quando não checked) */
+.ds-radio__control::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--mensalli-green-500);
+  transform: scale(0);
+  transition: transform var(--duration-150) var(--ease-out);
+}
+
+.ds-radio:hover:not(.ds-radio--disabled) .ds-radio__control {
+  border-color: var(--mensalli-green-500);
+}
+
+.ds-radio__input:focus-visible + .ds-radio__control {
+  box-shadow: 0 0 0 3px var(--mensalli-green-100);
+  border-color: var(--mensalli-green-500);
+}
+
+.ds-radio__input:checked + .ds-radio__control {
+  border-color: var(--mensalli-green-500);
+}
+
+.ds-radio__input:checked + .ds-radio__control::after {
+  transform: scale(1);
+}
+
+/* Error */
+.ds-radio--error .ds-radio__control {
+  border-color: var(--danger-500);
+}
+.ds-radio--error .ds-radio__control::after {
+  background-color: var(--danger-500);
+}
+.ds-radio--error .ds-radio__input:focus-visible + .ds-radio__control {
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15);
+}
+
+/* Texto */
+.ds-radio__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ds-radio__label {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.ds-radio__description {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.ds-radio--error .ds-radio__label {
+  color: var(--danger-700);
+}
+
+/* ============================================================
+   RadioGroup — wrapper que organiza N Radios
+   Layout vertical por default; horizontal opt-in.
+   ============================================================ */
+
+.ds-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--font-sans);
+}
+
+.ds-radio-group--horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ds-radio-group__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ds-radio-group__required {
+  color: var(--danger-500);
+  font-weight: 700;
+}
+
+.ds-radio-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ds-radio-group--horizontal .ds-radio-group__items {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ds-radio-group__message {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.ds-radio-group__message--error {
+  color: var(--danger-700);
+}

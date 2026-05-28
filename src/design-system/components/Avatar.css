@@ -1,0 +1,145 @@
+/* ============================================================
+   Avatar — DS Mensalli
+   Iniciais com cor derivada do nome (hash → paleta finita).
+   Status dot opcional, ring colorido opcional, imagem com fallback.
+   ============================================================ */
+
+.ds-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: var(--mensalli-dark-800);
+  background-color: var(--neutral-200);
+  text-transform: uppercase;
+  user-select: none;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  /* Não usa overflow: hidden — o status dot precisa "sair" do círculo.
+     A imagem continua cortada em círculo via border-radius: inherit no img. */
+}
+
+/* SIZES — escala canônica */
+.ds-avatar--xs { width: 24px; height: 24px; font-size: 10px; }
+.ds-avatar--sm { width: 32px; height: 32px; font-size: 12px; }
+.ds-avatar--md { width: 40px; height: 40px; font-size: 14px; }
+.ds-avatar--lg { width: 48px; height: 48px; font-size: 16px; }
+.ds-avatar--xl { width: 64px; height: 64px; font-size: 22px; }
+.ds-avatar--2xl { width: 96px; height: 96px; font-size: 32px; }
+
+/* ============================================================
+   PALETA — 8 cores derivadas via hash do nome.
+   Cada uma combina bg pastel + texto da escala escura correspondente,
+   garantindo contraste WCAG AA em todos os tons.
+   ============================================================ */
+
+.ds-avatar--palette-0 { background-color: var(--mensalli-green-200); color: var(--mensalli-green-900); }
+.ds-avatar--palette-1 { background-color: var(--info-50); color: var(--info-700); }
+.ds-avatar--palette-2 { background-color: var(--warning-50); color: var(--warning-700); }
+.ds-avatar--palette-3 { background-color: var(--danger-50); color: var(--danger-700); }
+.ds-avatar--palette-4 { background-color: var(--mensalli-dark-100); color: var(--mensalli-dark-800); }
+.ds-avatar--palette-5 { background-color: #F3E8FF; color: #6B21A8; } /* roxo */
+.ds-avatar--palette-6 { background-color: #FFE4E6; color: #BE123C; } /* rosa */
+.ds-avatar--palette-7 { background-color: #CFFAFE; color: #155E75; } /* ciano */
+
+/* ============================================================
+   IMAGEM — quando tem src válida, ocupa todo o avatar
+   ============================================================ */
+
+.ds-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* ============================================================
+   STATUS DOT — canto inferior direito
+   ============================================================ */
+
+.ds-avatar__status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg-surface);
+  background-color: var(--neutral-400);
+}
+
+.ds-avatar__status--online  { background-color: var(--success-500); }
+.ds-avatar__status--away    { background-color: var(--warning-500); }
+.ds-avatar__status--busy    { background-color: var(--danger-500); }
+.ds-avatar__status--offline { background-color: var(--neutral-400); }
+
+/* Tamanhos do dot por size do avatar */
+.ds-avatar--xs .ds-avatar__status { width: 7px; height: 7px; border-width: 1.5px; }
+.ds-avatar--sm .ds-avatar__status { width: 8px; height: 8px; border-width: 1.5px; }
+.ds-avatar--md .ds-avatar__status { width: 10px; height: 10px; }
+.ds-avatar--lg .ds-avatar__status { width: 12px; height: 12px; }
+.ds-avatar--xl .ds-avatar__status { width: 16px; height: 16px; }
+.ds-avatar--2xl .ds-avatar__status { width: 22px; height: 22px; border-width: 3px; }
+
+/* ============================================================
+   RING — anel colorido externo (status comercial)
+   Lead/Prospect/Cliente/Bloqueado — Krooa pattern.
+   ============================================================ */
+
+.ds-avatar--ringed {
+  box-shadow: 0 0 0 2px var(--color-bg-surface), 0 0 0 4px var(--ds-avatar-ring-color, var(--neutral-300));
+}
+
+.ds-avatar--ring-success  { --ds-avatar-ring-color: var(--success-500); }
+.ds-avatar--ring-warning  { --ds-avatar-ring-color: var(--warning-500); }
+.ds-avatar--ring-danger   { --ds-avatar-ring-color: var(--danger-500); }
+.ds-avatar--ring-info     { --ds-avatar-ring-color: var(--info-500); }
+.ds-avatar--ring-primary  { --ds-avatar-ring-color: var(--mensalli-green-500); }
+.ds-avatar--ring-neutral  { --ds-avatar-ring-color: var(--neutral-400); }
+
+/* ============================================================
+   BLOCKED — visualmente esmaecido, comunica "indisponível"
+   ============================================================ */
+
+.ds-avatar--blocked {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+/* ============================================================
+   AVATAR GROUP — sobreposto com ring branco entre cada
+   ============================================================ */
+
+.ds-avatar-group {
+  display: inline-flex;
+  align-items: center;
+  /* sem gap — o overlap é via margin negativa no item */
+}
+
+.ds-avatar-group .ds-avatar {
+  border: 2px solid var(--color-bg-surface);
+  margin-left: -8px;
+}
+.ds-avatar-group .ds-avatar:first-child {
+  margin-left: 0;
+}
+
+/* Tamanhos de overlap por size */
+.ds-avatar-group--xs .ds-avatar { margin-left: -6px; border-width: 1.5px; }
+.ds-avatar-group--sm .ds-avatar { margin-left: -8px; }
+.ds-avatar-group--md .ds-avatar { margin-left: -10px; }
+.ds-avatar-group--lg .ds-avatar { margin-left: -12px; }
+
+.ds-avatar-group--xs .ds-avatar:first-child,
+.ds-avatar-group--sm .ds-avatar:first-child,
+.ds-avatar-group--md .ds-avatar:first-child,
+.ds-avatar-group--lg .ds-avatar:first-child {
+  margin-left: 0;
+}
+
+/* Overflow counter (+N) — neutral cinza, não compete visualmente */
+.ds-avatar-group__overflow {
+  background-color: var(--neutral-100);
+  color: var(--neutral-700);
+}

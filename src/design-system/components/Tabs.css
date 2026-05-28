@@ -1,0 +1,170 @@
+/* ============================================================
+   Tabs — DS Mensalli
+   3 variants:
+     - underline  → seções de página (Dados / Histórico / Arquivos)
+     - pills      → filtros de lista (Todos 42 / Ativos 28 / Arquivados 0)
+     - segmented  → view switcher iOS-style (Dia / Semana / Mês)
+   ============================================================ */
+
+.ds-tabs {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+.ds-tabs--full {
+  width: 100%;
+}
+
+/* ============================================================
+   UNDERLINE — variant default
+   Linha embaixo + transição
+   ============================================================ */
+
+.ds-tabs--underline {
+  border-bottom: 1px solid var(--color-border-subtle);
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.ds-tabs--underline .ds-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* sobrepõe a border-bottom do container */
+  transition: color var(--duration-150) var(--ease-out),
+              border-color var(--duration-150) var(--ease-out);
+  white-space: nowrap;
+}
+
+.ds-tabs--underline .ds-tabs__item:hover:not(:disabled):not(.ds-tabs__item--active) {
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.ds-tabs--underline .ds-tabs__item--active {
+  color: var(--mensalli-green-700);
+  border-bottom-color: var(--mensalli-green-500);
+}
+
+/* ============================================================
+   PILLS — verde marca, com contador
+   ============================================================ */
+
+.ds-tabs--pills {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ds-tabs--pills .ds-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color var(--duration-150) var(--ease-out),
+              color var(--duration-150) var(--ease-out);
+  white-space: nowrap;
+}
+
+.ds-tabs--pills .ds-tabs__item:hover:not(:disabled):not(.ds-tabs__item--active) {
+  background-color: var(--neutral-100);
+  color: var(--color-text-primary);
+}
+
+.ds-tabs--pills .ds-tabs__item--active {
+  background-color: var(--mensalli-green-500);
+  color: var(--color-text-on-brand);
+}
+
+.ds-tabs--pills .ds-tabs__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 0 6px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  background-color: var(--neutral-200);
+  color: var(--color-text-secondary);
+}
+
+.ds-tabs--pills .ds-tabs__item--active .ds-tabs__count {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-on-brand);
+}
+
+/* ============================================================
+   SEGMENTED — iOS/macOS style. Container cinza + ativo branco com sombra leve
+   ============================================================ */
+
+.ds-tabs--segmented {
+  background-color: var(--neutral-100);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  gap: 0;
+}
+
+.ds-tabs--segmented .ds-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-150) var(--ease-out),
+              color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+  white-space: nowrap;
+}
+
+.ds-tabs--segmented .ds-tabs__item:hover:not(:disabled):not(.ds-tabs__item--active) {
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.ds-tabs--segmented .ds-tabs__item--active {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* SIZES */
+.ds-tabs--sm .ds-tabs__item { padding: 6px 10px; font-size: 12px; }
+.ds-tabs--md .ds-tabs__item { /* default */ }
+.ds-tabs--lg .ds-tabs__item { padding: 12px 18px; font-size: 14px; }
+
+/* Disabled */
+.ds-tabs__item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Focus ring (keyboard) */
+.ds-tabs__item:focus-visible {
+  outline: 2px solid var(--mensalli-green-500);
+  outline-offset: 2px;
+}

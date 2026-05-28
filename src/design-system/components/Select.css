@@ -1,0 +1,370 @@
+/* ============================================================
+   Select — DS Mensalli
+   Trigger visual = igual ao Input (consistência) + chevron
+   Dropdown panel absolute com search + options + create footer.
+   Multi = chips no trigger.
+   ============================================================ */
+
+.ds-select-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  font-family: var(--font-sans);
+}
+
+/* Wrapper relative que ancora o dropdown ao TRIGGER (não ao field inteiro).
+   Assim o dropdown abre colado embaixo do trigger e cobre o helper/error visualmente. */
+.ds-select-control {
+  position: relative;
+  width: 100%;
+}
+
+.ds-select-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ds-select-label__required {
+  color: var(--danger-500);
+  font-weight: 700;
+}
+
+/* ============================================================
+   TRIGGER — botão que parece input (mesma altura, border, radius)
+   ============================================================ */
+
+.ds-select-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  padding: 0;
+  transition: border-color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+}
+
+/* Override global button:hover do App.css — bg sempre branco em QUALQUER estado.
+   Regra separada do border pra evitar que :not(--error) tire o bg também. */
+.ds-select-trigger:hover:not(:disabled),
+.ds-select-trigger--open,
+.ds-select-trigger:focus-visible {
+  background-color: var(--color-bg-surface);
+}
+
+/* Hover border: só muda quando NÃO está em erro */
+.ds-select-trigger:hover:not(:disabled):not(.ds-select-trigger--error) {
+  border-color: var(--neutral-400);
+}
+
+/* Open/focus: anel verde quando NÃO está em erro */
+.ds-select-trigger--open:not(.ds-select-trigger--error),
+.ds-select-trigger:focus-visible:not(.ds-select-trigger--error) {
+  outline: none;
+  border-color: var(--mensalli-green-500);
+  box-shadow: 0 0 0 3px var(--mensalli-green-100);
+}
+
+/* Error: bg branco, border vermelha */
+.ds-select-trigger--error {
+  background-color: var(--color-bg-surface);
+  border-color: var(--danger-500);
+}
+.ds-select-trigger--error.ds-select-trigger--open,
+.ds-select-trigger--error:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15);
+}
+
+.ds-select-trigger:disabled {
+  background-color: var(--neutral-50);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* SIZES — mesma altura do Input */
+.ds-select-trigger--sm { min-height: 32px; }
+.ds-select-trigger--md { min-height: 40px; }
+.ds-select-trigger--lg { min-height: 48px; }
+
+/* Conteúdo do trigger — label do valor selecionado / placeholder / chips */
+.ds-select-content {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+.ds-select-trigger--sm .ds-select-content { font-size: 13px; padding: 0 10px; }
+.ds-select-trigger--lg .ds-select-content { font-size: 16px; padding: 0 16px; }
+
+/* Quando tem icon esquerda, ajusta padding */
+.ds-select-trigger--has-icon .ds-select-content {
+  padding-left: 38px;
+}
+.ds-select-trigger--sm.ds-select-trigger--has-icon .ds-select-content { padding-left: 34px; }
+.ds-select-trigger--lg.ds-select-trigger--has-icon .ds-select-content { padding-left: 44px; }
+
+.ds-select-icon-left {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ds-select-placeholder {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-select-value-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Chips em multi-select */
+.ds-select-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0;
+}
+.ds-select-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--mensalli-green-100);
+  color: var(--mensalli-green-800);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.ds-select-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--mensalli-green-700);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
+  transition: background-color var(--duration-150) var(--ease-out);
+}
+.ds-select-chip-remove:hover {
+  background-color: var(--mensalli-green-200);
+}
+
+/* Chevron à direita */
+.ds-select-chevron {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--color-text-muted);
+  transition: transform var(--duration-200) var(--ease-out);
+  flex-shrink: 0;
+}
+.ds-select-trigger--open .ds-select-chevron {
+  transform: rotate(180deg);
+}
+
+/* Botão clear (X) quando tem valor */
+.ds-select-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  margin-right: 4px;
+  transition: color var(--duration-150) var(--ease-out),
+              background-color var(--duration-150) var(--ease-out);
+}
+.ds-select-clear:hover {
+  color: var(--color-text-primary);
+  background-color: var(--neutral-100);
+}
+
+/* ============================================================
+   DROPDOWN PANEL — absolute abaixo do trigger
+   ============================================================ */
+
+.ds-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  animation: ds-fade-in var(--duration-150) var(--ease-out);
+}
+
+/* Search dentro do dropdown */
+.ds-select-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.ds-select-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  padding: 4px 0;
+}
+.ds-select-search-input::placeholder {
+  color: var(--color-text-muted);
+}
+.ds-select-search-icon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Lista de options */
+.ds-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ds-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  transition: background-color var(--duration-100) var(--ease-out);
+  user-select: none;
+}
+
+.ds-select-option:hover:not(.ds-select-option--disabled) {
+  background-color: var(--neutral-50);
+}
+
+/* Highlighted = cursor de teclado (↑/↓). NÃO triggera no mouse hover. */
+.ds-select-option--highlighted {
+  background-color: var(--neutral-100);
+}
+
+.ds-select-option--selected {
+  font-weight: 600;
+  color: var(--mensalli-green-700);
+}
+
+.ds-select-option--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-select-option-icon {
+  display: inline-flex;
+  align-items: center;
+  color: currentColor;
+  flex-shrink: 0;
+}
+
+.ds-select-option-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-select-option-check {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mensalli-green-600);
+  flex-shrink: 0;
+}
+
+/* Estado vazio */
+.ds-select-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* Footer "+ Adicionar novo" */
+.ds-select-create {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  background: transparent;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mensalli-green-700);
+  text-align: left;
+  transition: background-color var(--duration-150) var(--ease-out);
+}
+.ds-select-create:hover {
+  background-color: var(--mensalli-green-50);
+}
+.ds-select-create-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ============================================================
+   MENSAGEM ABAIXO — helper / error
+   ============================================================ */
+.ds-select-message {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.ds-select-message--error {
+  color: var(--danger-700);
+}

@@ -1,0 +1,377 @@
+/* ============================================================
+   Mensalli Design System — Tokens v1
+   ============================================================
+   Sistema vivo: tokens canônicos que migrarão componentes
+   gradualmente. Nenhum componente existente é forçado a
+   adotar agora — o código atual continua funcionando.
+
+   Inspirado na filosofia "museu vivo" do Krooa DS.
+   ============================================================ */
+
+:root {
+  /* ----------------------------------------------------------
+     MENSALLI GREEN — Cor de marca, escala 50→950
+     Ancorada em #4CAF50 (Material Design Green 500),
+     que tem 147 ocorrências no código atual.
+     ---------------------------------------------------------- */
+  --mensalli-green-50:  #E8F5E9;
+  --mensalli-green-100: #C8E6C9;
+  --mensalli-green-200: #A5D6A7;
+  --mensalli-green-300: #81C784;
+  --mensalli-green-400: #66BB6A;
+  --mensalli-green-500: #4CAF50;  /* MARCA */
+  --mensalli-green-600: #43A047;
+  --mensalli-green-700: #388E3C;
+  --mensalli-green-800: #2E7D32;
+  --mensalli-green-900: #1B5E20;
+  --mensalli-green-950: #0B3D14;
+
+  /* ----------------------------------------------------------
+     BRAND DARK — Cor complementar de marca (#344848)
+     Avatares, sidebar/header escuros, accents.
+     280 ocorrências no código atual.
+     ---------------------------------------------------------- */
+  --mensalli-dark-50:  #F0F4F4;
+  --mensalli-dark-100: #DAE2E2;
+  --mensalli-dark-200: #B5C5C5;
+  --mensalli-dark-300: #8FA8A8;
+  --mensalli-dark-400: #6A8B8B;
+  --mensalli-dark-500: #4A6A6A;
+  --mensalli-dark-600: #344848;  /* MARCA-DARK */
+  --mensalli-dark-700: #2A3A3A;
+  --mensalli-dark-800: #1F2D2D;
+  --mensalli-dark-900: #141F1F;
+  --mensalli-dark-950: #0A1212;
+
+  /* ----------------------------------------------------------
+     NEUTRAL (Slate) — Cinzas com leve azulado,
+     substituem #e5e7eb, #e0e0e0, #f3f4f6, #d1d5db, #9ca3af, etc.
+     ---------------------------------------------------------- */
+  --neutral-0:   #FFFFFF;
+  --neutral-50:  #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+  --neutral-400: #94A3B8;
+  --neutral-500: #64748B;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1E293B;
+  --neutral-900: #0F172A;
+  --neutral-950: #020617;
+
+  /* ----------------------------------------------------------
+     SEMÂNTICAS — Manter Material Design,
+     já em uso e harmônico com #4CAF50.
+     ---------------------------------------------------------- */
+  --success-50:  #E8F5E9;
+  --success-500: #4CAF50;  /* = mensalli-green-500 */
+  --success-700: #388E3C;
+
+  --warning-50:  #FFF3E0;
+  --warning-500: #FF9800;
+  --warning-700: #E65100;
+
+  --danger-50:   #FFEBEE;
+  --danger-500:  #F44336;
+  --danger-700:  #C62828;
+
+  --info-50:     #E3F2FD;
+  --info-500:    #2196F3;
+  --info-700:    #1565C0;
+
+  /* WhatsApp — CTA específico, fora da paleta */
+  --whatsapp-500: #25D366;
+  --whatsapp-600: #1DA851;
+
+  /* ----------------------------------------------------------
+     Aliases semânticos — uso de alto nível
+     (mudam só se a marca mudar; componentes consomem estes)
+     ---------------------------------------------------------- */
+  --color-brand:           var(--mensalli-green-500);
+  --color-brand-hover:     var(--mensalli-green-600);
+  --color-brand-active:    var(--mensalli-green-700);
+  --color-brand-dark:      var(--mensalli-dark-600);
+
+  --color-bg-page:         var(--neutral-50);
+  --color-bg-surface:      var(--neutral-0);
+  --color-bg-muted:        var(--neutral-100);
+
+  --color-border-subtle:   var(--neutral-200);
+  --color-border-default:  var(--neutral-300);
+
+  --color-text-primary:    var(--neutral-800);
+  --color-text-secondary:  var(--neutral-600);
+  --color-text-muted:      var(--neutral-500);
+  --color-text-on-brand:   var(--neutral-0);
+
+  /* ----------------------------------------------------------
+     TIPOGRAFIA — Inter como fonte oficial. Já carregada no
+     index.html com preconnect + non-blocking preload.
+     Hierarquia ancorada nos tamanhos REAIS encontrados no código:
+     14px (508 usos), 13px (464), 12px (351), 11px (186), 20px (39),
+     18px (66), 24px (12), 32px (11), 42px (6).
+     ---------------------------------------------------------- */
+  --font-sans: 'Inter', 'Inter-fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Consolas, Menlo, 'Courier New', monospace;
+}
+
+/* ----- Classes utilitárias da hierarquia tipográfica -----
+   Use estas em vez de cravar size/weight/lh um a um.
+   Cada classe = uma combinação canônica testada. */
+
+.ds-text-display {
+  font-family: var(--font-sans);
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.ds-text-h1 {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.ds-text-h2 {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.ds-text-h3 {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.ds-text-h4 {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ds-text-body-lg {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.ds-text-body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.ds-text-body-sm {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.ds-text-caption {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.ds-text-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ds-text-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ============================================================
+   ESPAÇO — Grid 4pt como dominante, meio-tons 2pt aceitos.
+   Ancorado nos valores REAIS: 8px (DOMINA gap/radius),
+   10px (353 usos padding), 12px (219), 16px (119), 4px (111).
+   ============================================================ */
+:root {
+  --space-0:    0;
+  --space-0-5: 2px;   /* meio-tom — micro-ajuste */
+  --space-1:   4px;   /* gap entre chips/ícone inline */
+  --space-1-5: 6px;   /* padding badges */
+  --space-2:   8px;   /* DOMINANTE — gap padrão, radius default */
+  --space-2-5: 10px;  /* meio-tom — padding controles (353 usos) */
+  --space-3:  12px;   /* padding cards pequenos, gap forms */
+  --space-3-5: 14px;  /* meio-tom — desencorajado */
+  --space-4:  16px;   /* padding cards default */
+  --space-5:  20px;   /* padding cards médios */
+  --space-6:  24px;   /* padding cards grandes, gap entre seções */
+  --space-8:  32px;   /* padding modais */
+  --space-10: 40px;   /* container, empty states */
+  --space-15: 60px;   /* seções de página */
+
+  /* ============================================================
+     RADIUS — Escala canônica. 8px é o DEFAULT (388 usos).
+     ============================================================ */
+  --radius-sm:   4px;   /* divider visual, badge pequeno (125 usos) */
+  --radius-md:   6px;   /* fallback ocasional (271 usos — vai migrar) */
+  --radius-lg:   8px;   /* DEFAULT — cards, inputs, buttons (388 usos) */
+  --radius-xl:  12px;   /* cards grandes, modais médios (156 usos) */
+  --radius-2xl: 16px;   /* modais grandes, hero (45 usos) */
+  --radius-full: 9999px; /* chips, avatares, badges (23 usos) */
+
+  /* ============================================================
+     SHADOW — 5 níveis com tinta neutral-900 (matiz frio que
+     combina com os neutros Slate). Cada nível tem propósito.
+     ============================================================ */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.10);
+  --shadow-xl: 0 16px 40px rgba(15, 23, 42, 0.14);
+  --shadow-2xl: 0 24px 56px rgba(15, 23, 42, 0.18);
+
+  /* ============================================================
+     MOTION — Durations e easings com propósito.
+     6 durations cobrem 100% dos casos (150ms+200ms fazem 80%).
+     ============================================================ */
+  --duration-100: 100ms;   /* ripple, toggle checkbox — feedback instantâneo */
+  --duration-150: 150ms;   /* hover, focus ring — DEFAULT */
+  --duration-200: 200ms;   /* transições cor/borda/sombra (211 usos hoje) */
+  --duration-300: 300ms;   /* tooltip, dropdown, popover */
+  --duration-500: 500ms;   /* modal, aside entrando/saindo */
+  --duration-700: 700ms;   /* raríssimo — hero, ilustração */
+
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);     /* DEFAULT — desacelera no fim */
+  --ease-in:     cubic-bezier(0.64, 0, 0.78, 0);     /* saídas — algo desaparecendo */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);     /* idas-e-voltas (tab, toggle) */
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);  /* raro — delight (checkmark) */
+}
+
+/* ============================================================
+   KEYFRAMES CANÔNICOS — Substituem as 15 cópias de @keyframes spin,
+   9 de fadeIn, 5 de slideUp espalhadas pelo código.
+   ============================================================ */
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ds-slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes ds-slide-in-bottom {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes ds-slide-in-top {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes ds-scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ds-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes ds-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes ds-ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes ds-loading-dots {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   UTILITY CLASSES — Use estas em vez de transition: all.
+   ============================================================ */
+.ds-transition-colors {
+  transition: color var(--duration-150) var(--ease-out),
+              background-color var(--duration-150) var(--ease-out),
+              border-color var(--duration-150) var(--ease-out);
+}
+
+.ds-transition-transform {
+  transition: transform var(--duration-200) var(--ease-out);
+}
+
+.ds-transition-opacity {
+  transition: opacity var(--duration-150) var(--ease-out);
+}
+
+/* LoadingDots — 3 dots pulsando em sequência ("pensando") */
+.ds-loading-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.ds-loading-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ds-loading-dots 1.4s infinite ease-in-out both;
+}
+.ds-loading-dots > span:nth-child(1) { animation-delay: -0.32s; }
+.ds-loading-dots > span:nth-child(2) { animation-delay: -0.16s; }
+
+/* LivePing — indicador "ao vivo" com halo pulsante */
+.ds-live-ping {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--mensalli-green-500);
+}
+.ds-live-ping::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-color: var(--mensalli-green-500);
+  animation: ds-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Respeita preferência do usuário por menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .ds-loading-dots > span,
+  .ds-live-ping::after {
+    animation: none;
+  }
+  .ds-transition-colors,
+  .ds-transition-transform,
+  .ds-transition-opacity {
+    transition-duration: 0.01ms;
+  }
+}

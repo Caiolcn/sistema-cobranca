@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'
 import { UserProvider } from './contexts/UserContext'
 import Toast from './Toast'
 import './App.css'
+import './design-system/tokens.css'
 
 // Componentes carregados imediatamente (rotas públicas)
 import LandingPage from './LandingPage'
@@ -35,6 +36,32 @@ const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
+
+// Design System (rota interna /app/design-system/*)
+const DSLayout = lazy(() => import('./design-system/DSLayout'))
+const PaginaCores = lazy(() => import('./design-system/PaginaCores'))
+const PaginaTipografia = lazy(() => import('./design-system/PaginaTipografia'))
+const PaginaEspacoSombra = lazy(() => import('./design-system/PaginaEspacoSombra'))
+const PaginaMotion = lazy(() => import('./design-system/PaginaMotion'))
+const PaginaButton = lazy(() => import('./design-system/PaginaButton'))
+const PaginaInput = lazy(() => import('./design-system/PaginaInput'))
+const PaginaSelect = lazy(() => import('./design-system/PaginaSelect'))
+const PaginaCheckboxRadio = lazy(() => import('./design-system/PaginaCheckboxRadio'))
+const PaginaSwitch = lazy(() => import('./design-system/PaginaSwitch'))
+const PaginaBadge = lazy(() => import('./design-system/PaginaBadge'))
+const PaginaAvatar = lazy(() => import('./design-system/PaginaAvatar'))
+const PaginaCard = lazy(() => import('./design-system/PaginaCard'))
+const PaginaModal = lazy(() => import('./design-system/PaginaModal'))
+const PaginaToast = lazy(() => import('./design-system/PaginaToast'))
+const PaginaTable = lazy(() => import('./design-system/PaginaTable'))
+const PaginaTabs = lazy(() => import('./design-system/PaginaTabs'))
+const PaginaDropdown = lazy(() => import('./design-system/PaginaDropdown'))
+const PaginaEmptyState = lazy(() => import('./design-system/PaginaEmptyState'))
+const PaginaClienteIdentity = lazy(() => import('./design-system/PaginaClienteIdentity'))
+const PaginaCobrancaStatus = lazy(() => import('./design-system/PaginaCobrancaStatus'))
+const PaginaPlanoCard = lazy(() => import('./design-system/PaginaPlanoCard'))
+const PaginaWizardStepper = lazy(() => import('./design-system/PaginaWizardStepper'))
+const PaginaPlaceholder = lazy(() => import('./design-system/PaginaPlaceholder'))
 
 // Componente de loading para Suspense
 const LoadingFallback = () => (
@@ -95,6 +122,32 @@ function App() {
                   <Route path="/app/onboarding" element={<Onboarding />} />
                   <Route path="/app/upgrade" element={<UpgradePage />} />
                   <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
+                  <Route path="/app/design-system" element={<DSLayout />}>
+                    <Route index element={<Navigate to="cores" replace />} />
+                    <Route path="cores" element={<PaginaCores />} />
+                    <Route path="tipografia" element={<PaginaTipografia />} />
+                    <Route path="espaco-sombra" element={<PaginaEspacoSombra />} />
+                    <Route path="motion" element={<PaginaMotion />} />
+                    <Route path="button" element={<PaginaButton />} />
+                    <Route path="input" element={<PaginaInput />} />
+                    <Route path="select" element={<PaginaSelect />} />
+                    <Route path="checkbox-radio" element={<PaginaCheckboxRadio />} />
+                    <Route path="switch" element={<PaginaSwitch />} />
+                    <Route path="badge" element={<PaginaBadge />} />
+                    <Route path="avatar" element={<PaginaAvatar />} />
+                    <Route path="card" element={<PaginaCard />} />
+                    <Route path="modal" element={<PaginaModal />} />
+                    <Route path="toast" element={<PaginaToast />} />
+                    <Route path="table" element={<PaginaTable />} />
+                    <Route path="tabs" element={<PaginaTabs />} />
+                    <Route path="dropdown" element={<PaginaDropdown />} />
+                    <Route path="empty-state" element={<PaginaEmptyState />} />
+                    <Route path="cliente-identity" element={<PaginaClienteIdentity />} />
+                    <Route path="cobranca-status" element={<PaginaCobrancaStatus />} />
+                    <Route path="plano-card" element={<PaginaPlanoCard />} />
+                    <Route path="wizard-stepper" element={<PaginaWizardStepper />} />
+                    <Route path=":slug" element={<PaginaPlaceholder />} />
+                  </Route>
                   <Route path="/app" element={<Dashboard />}>
                     <Route index element={<Navigate to="/app/home" replace />} />
                     <Route path="home" element={<Home />} />

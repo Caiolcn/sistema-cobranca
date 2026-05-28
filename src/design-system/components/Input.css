@@ -1,0 +1,257 @@
+/* ============================================================
+   Input — DS Mensalli
+   Container: label + row + helper/error
+   Row layout:
+     [prefix flex] · input native (com padding ajustado p/ icons) · [suffix flex]
+     Icons (decorative + trailing) ficam ABSOLUTOS dentro do row,
+     visualmente "dentro" do input — sem caixas separadas.
+   ============================================================ */
+
+.ds-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  font-family: var(--font-sans);
+}
+
+.ds-input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ds-input-label__required {
+  color: var(--danger-500);
+  font-weight: 700;
+}
+
+/* Row — wrapper visual do input. Position relative pra suportar icons absolute. */
+.ds-input-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+}
+
+.ds-input-row:hover:not(.ds-input-row--disabled):not(.ds-input-row--error) {
+  border-color: var(--neutral-400);
+}
+
+.ds-input-row--focused:not(.ds-input-row--error) {
+  border-color: var(--mensalli-green-500);
+  box-shadow: 0 0 0 3px var(--mensalli-green-100);
+}
+
+.ds-input-row--error {
+  border-color: var(--danger-500);
+}
+.ds-input-row--error.ds-input-row--focused {
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15);
+}
+
+.ds-input-row--disabled {
+  background-color: var(--neutral-50);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ds-input-row--readonly {
+  background-color: var(--neutral-50);
+}
+
+/* SIZES */
+.ds-input-row--sm { min-height: 32px; }
+.ds-input-row--md { min-height: 40px; }
+.ds-input-row--lg { min-height: 48px; }
+
+/* Native input — toma toda a linha; padding ajustado por classes adicionais */
+.ds-input-native {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  border-radius: inherit;
+}
+.ds-input-row--sm .ds-input-native { font-size: 13px; padding: 0 10px; }
+.ds-input-row--lg .ds-input-native { font-size: 16px; padding: 0 16px; }
+
+.ds-input-native::placeholder {
+  color: var(--color-text-muted);
+}
+
+.ds-input-native:disabled {
+  cursor: not-allowed;
+}
+
+/* Esconde clear button nativo do search (chrome) e webkit eyes nativos */
+.ds-input-native[type='search']::-webkit-search-cancel-button,
+.ds-input-native[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Override do autofill amarelo/azul do Chrome em inputs type=email/password/etc.
+   Sem isso, o navegador aplica fundo claro próprio que ignora nossa paleta.
+   A trick: box-shadow inset com a cor do nosso surface tampa o autofill bg.
+   transition longa impede que volte ao amarelo no blur. */
+.ds-input-native:-webkit-autofill,
+.ds-input-native:-webkit-autofill:hover,
+.ds-input-native:-webkit-autofill:focus,
+.ds-input-native:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-surface) inset !important;
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  caret-color: var(--color-text-primary);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ============================================================
+   PREFIX / SUFFIX — Tags coladas com fundo cinza
+   Permanecem flex children porque têm separador visual.
+   ============================================================ */
+.ds-input-affix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background-color: var(--neutral-50);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.ds-input-affix--prefix {
+  border-right: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.ds-input-affix--suffix {
+  border-left: 1px solid var(--neutral-200);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.ds-input-row--sm .ds-input-affix { font-size: 13px; padding: 0 10px; }
+.ds-input-row--lg .ds-input-affix { font-size: 16px; padding: 0 16px; }
+
+/* ============================================================
+   ICONS — Decorative (esquerda) e Trailing (direita).
+   ABSOLUTE positioning — visualmente dentro do input, sem caixa separada.
+   ============================================================ */
+
+.ds-input-icon {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  z-index: 1;
+}
+
+.ds-input-icon--left {
+  left: 12px;
+  pointer-events: none; /* decorativo, não bloqueia click no input */
+}
+
+.ds-input-trailing {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 1;
+}
+
+.ds-input-row--sm .ds-input-icon--left { left: 10px; }
+.ds-input-row--lg .ds-input-icon--left { left: 14px; }
+
+/* Padding do input cresce pra dar espaço aos icons absolute.
+   Default left 12 / right 12 → 36 / 36 quando tem icon do lado. */
+.ds-input-row--has-icon-left .ds-input-native {
+  padding-left: 38px;
+}
+.ds-input-row--sm.ds-input-row--has-icon-left .ds-input-native { padding-left: 34px; }
+.ds-input-row--lg.ds-input-row--has-icon-left .ds-input-native { padding-left: 44px; }
+
+.ds-input-row--has-trailing .ds-input-native {
+  padding-right: 36px;
+}
+.ds-input-row--sm.ds-input-row--has-trailing .ds-input-native { padding-right: 32px; }
+.ds-input-row--lg.ds-input-row--has-trailing .ds-input-native { padding-right: 42px; }
+
+/* Botão clear (X) e iconRight interativo */
+.ds-input-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-150) var(--ease-out),
+              background-color var(--duration-150) var(--ease-out);
+}
+.ds-input-clear:hover {
+  color: var(--color-text-primary);
+  background-color: var(--neutral-100);
+}
+.ds-input-clear:focus-visible {
+  outline: 2px solid var(--mensalli-green-500);
+  outline-offset: 1px;
+}
+
+.ds-input-trailing-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  padding: 4px;
+}
+
+.ds-input-loading {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  padding: 4px 6px;
+}
+
+/* ============================================================
+   MENSAGEM ABAIXO — helper / error / counter
+   ============================================================ */
+.ds-input-message {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+.ds-input-message--error {
+  color: var(--danger-700);
+}
+
+.ds-input-counter {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.ds-input-message-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}

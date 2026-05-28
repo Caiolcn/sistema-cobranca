@@ -1,0 +1,167 @@
+/* ============================================================
+   WizardStepper — DS Mensalli
+   Indicador de progresso de wizard.
+   ============================================================ */
+
+.ds-stepper {
+  font-family: var(--font-sans);
+  display: flex;
+}
+
+/* HORIZONTAL */
+.ds-stepper--horizontal {
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.ds-stepper--horizontal .ds-stepper__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ds-stepper--horizontal .ds-stepper__line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--neutral-300);
+  margin: 0 12px;
+  min-width: 24px;
+  transition: background-color var(--duration-200) var(--ease-out);
+}
+
+.ds-stepper--horizontal .ds-stepper__line--done {
+  background-color: var(--mensalli-green-500);
+}
+
+/* VERTICAL */
+.ds-stepper--vertical {
+  flex-direction: column;
+  gap: 0;
+}
+
+.ds-stepper--vertical .ds-stepper__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+}
+
+.ds-stepper--vertical .ds-stepper__line {
+  position: absolute;
+  left: 11px;
+  top: 28px;
+  bottom: -8px;
+  width: 2px;
+  background-color: var(--neutral-300);
+  transition: background-color var(--duration-200) var(--ease-out);
+}
+
+.ds-stepper--vertical .ds-stepper__line--done {
+  background-color: var(--mensalli-green-500);
+}
+
+.ds-stepper--vertical .ds-stepper__item {
+  padding-bottom: 16px;
+}
+
+/* COMPACT — só pontos pequenos + label do current */
+.ds-stepper--compact {
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.ds-stepper--compact .ds-stepper__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--neutral-300);
+}
+
+.ds-stepper--compact .ds-stepper__dot--active {
+  background-color: var(--mensalli-green-500);
+  width: 8px;
+  height: 8px;
+}
+
+.ds-stepper--compact .ds-stepper__dot--done {
+  background-color: var(--mensalli-green-500);
+}
+
+/* ============================================================
+   STEP BUBBLE — número/check/icon dentro do círculo
+   ============================================================ */
+
+.ds-stepper__bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--neutral-200);
+  color: var(--neutral-600);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid var(--neutral-200);
+  transition: all var(--duration-200) var(--ease-out);
+}
+
+.ds-stepper__bubble--active {
+  background-color: var(--color-bg-surface);
+  color: var(--mensalli-green-700);
+  border-color: var(--mensalli-green-500);
+  box-shadow: 0 0 0 3px var(--mensalli-green-100);
+}
+
+.ds-stepper__bubble--done {
+  background-color: var(--mensalli-green-500);
+  color: var(--neutral-0);
+  border-color: var(--mensalli-green-500);
+}
+
+.ds-stepper__bubble--error {
+  background-color: var(--danger-500);
+  color: var(--neutral-0);
+  border-color: var(--danger-500);
+}
+
+.ds-stepper__bubble--processing {
+  background-color: var(--info-50);
+  color: var(--info-700);
+  border-color: var(--info-500);
+}
+
+/* ============================================================
+   STEP LABEL
+   ============================================================ */
+
+.ds-stepper__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ds-stepper__label--active {
+  color: var(--color-text-primary);
+}
+
+.ds-stepper__label--done {
+  color: var(--color-text-primary);
+}
+
+.ds-stepper--vertical .ds-stepper__label {
+  font-size: 14px;
+}
+
+.ds-stepper--vertical .ds-stepper__description {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  line-height: 1.45;
+  white-space: normal;
+}

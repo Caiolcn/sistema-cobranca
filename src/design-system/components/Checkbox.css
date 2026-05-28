@@ -1,0 +1,116 @@
+/* ============================================================
+   Checkbox — DS Mensalli
+   Input nativo escondido (a11y preservada) + visual custom.
+   Visual = quadrado verde quando checked, traço quando indeterminate.
+   ============================================================ */
+
+.ds-checkbox {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+.ds-checkbox--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Native input escondido visualmente, mas keyboard-focusable */
+.ds-checkbox__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Quadrado visual */
+.ds-checkbox__control {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 1.5px solid var(--neutral-400);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-150) var(--ease-out),
+              border-color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+}
+
+/* Hover (no label inteiro) */
+.ds-checkbox:hover:not(.ds-checkbox--disabled) .ds-checkbox__control {
+  border-color: var(--mensalli-green-500);
+}
+
+/* Focus ring quando keyboard nav */
+.ds-checkbox__input:focus-visible + .ds-checkbox__control {
+  box-shadow: 0 0 0 3px var(--mensalli-green-100);
+  border-color: var(--mensalli-green-500);
+}
+
+/* Checked — quadrado preenchido verde + check branco */
+.ds-checkbox__input:checked + .ds-checkbox__control {
+  background-color: var(--mensalli-green-500);
+  border-color: var(--mensalli-green-500);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M5 12l4 4L19 7' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+}
+
+/* Indeterminate — quadrado verde + traço branco */
+.ds-checkbox__input:indeterminate + .ds-checkbox__control {
+  background-color: var(--mensalli-green-500);
+  border-color: var(--mensalli-green-500);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6 12h12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/></svg>");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+}
+
+/* Error — border vermelha */
+.ds-checkbox--error .ds-checkbox__control {
+  border-color: var(--danger-500);
+}
+.ds-checkbox--error .ds-checkbox__input:focus-visible + .ds-checkbox__control {
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15);
+}
+.ds-checkbox--error .ds-checkbox__input:checked + .ds-checkbox__control {
+  background-color: var(--danger-500);
+  border-color: var(--danger-500);
+}
+
+/* Label + descrição */
+.ds-checkbox__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ds-checkbox__label {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.ds-checkbox__description {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.ds-checkbox--error .ds-checkbox__label {
+  color: var(--danger-700);
+}

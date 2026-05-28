@@ -1,0 +1,233 @@
+/* ============================================================
+   Button — DS Mensalli
+   9 variants × 4 sizes × shape × selected × elevated
+   Hover/focus/disabled via CSS — sem JS pra estado visual.
+   ============================================================ */
+
+.ds-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+  transition: background-color var(--duration-150) var(--ease-out),
+              border-color var(--duration-150) var(--ease-out),
+              color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+  outline: none;
+}
+
+.ds-btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--mensalli-green-200);
+}
+
+.ds-btn:disabled,
+.ds-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-btn--full {
+  width: 100%;
+}
+
+/* ----- SIZES ----- */
+.ds-btn--xs {
+  padding: var(--space-1) var(--space-2);
+  font-size: 12px;
+  border-radius: var(--radius-md);
+  min-height: 24px;
+}
+.ds-btn--sm {
+  padding: var(--space-1-5) var(--space-3);
+  font-size: 13px;
+  min-height: 32px;
+}
+.ds-btn--md {
+  padding: var(--space-2) var(--space-4);
+  font-size: 14px;
+  min-height: 40px;
+}
+.ds-btn--lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: 16px;
+  min-height: 48px;
+}
+
+/* Icon-only ajusta padding pra ficar quadrado */
+.ds-btn--icon-only.ds-btn--xs { padding: var(--space-1); min-width: 24px; }
+.ds-btn--icon-only.ds-btn--sm { padding: var(--space-1-5); min-width: 32px; }
+.ds-btn--icon-only.ds-btn--md { padding: var(--space-2); min-width: 40px; }
+.ds-btn--icon-only.ds-btn--lg { padding: var(--space-3); min-width: 48px; }
+
+/* ----- SHAPES ----- */
+.ds-btn--shape-pill { border-radius: var(--radius-full); }
+.ds-btn--shape-circle { border-radius: var(--radius-full); }
+
+/* ----- ELEVATED (sombra — pra FAB e botões flutuantes) ----- */
+.ds-btn--elevated {
+  box-shadow: var(--shadow-md);
+}
+.ds-btn--elevated:hover:not(:disabled) {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ============================================================
+   VARIANTS
+   ============================================================ */
+
+/* primary — CTA principal */
+.ds-btn--primary {
+  background-color: var(--mensalli-green-500);
+  color: var(--color-text-on-brand);
+}
+.ds-btn--primary:hover:not(:disabled) { background-color: var(--mensalli-green-600); }
+.ds-btn--primary:active:not(:disabled) { background-color: var(--mensalli-green-700); }
+
+/* secondary — CTA alternativa, brand-dark */
+.ds-btn--secondary {
+  background-color: var(--mensalli-dark-600);
+  color: var(--color-text-on-brand);
+}
+.ds-btn--secondary:hover:not(:disabled) { background-color: var(--mensalli-dark-700); }
+.ds-btn--secondary:active:not(:disabled) { background-color: var(--mensalli-dark-800); }
+
+/* outline — Cancelar, Voltar */
+.ds-btn--outline {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border-color: var(--neutral-300);
+}
+.ds-btn--outline:hover:not(:disabled) {
+  background-color: var(--neutral-50);
+  border-color: var(--neutral-400);
+}
+.ds-btn--outline:active:not(:disabled) { background-color: var(--neutral-100); }
+
+/* ghost — ícones, ações terciárias */
+.ds-btn--ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+.ds-btn--ghost:hover:not(:disabled) {
+  background-color: var(--neutral-100);
+  color: var(--color-text-primary);
+}
+.ds-btn--ghost:active:not(:disabled) { background-color: var(--neutral-200); }
+
+/* gray — chip/filtro neutro */
+.ds-btn--gray {
+  background-color: var(--neutral-100);
+  color: var(--color-text-primary);
+  border-color: var(--neutral-200);
+}
+.ds-btn--gray:hover:not(:disabled) { background-color: var(--neutral-200); }
+
+/* danger — destrutivo DEFINITIVO */
+.ds-btn--danger {
+  background-color: var(--danger-500);
+  color: var(--color-text-on-brand);
+}
+.ds-btn--danger:hover:not(:disabled) { background-color: var(--danger-700); }
+.ds-btn--danger:focus-visible { box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.25); }
+
+/* danger-outline — delete leve em listas (NOVO)
+   fundo branco, border vermelho claro, texto vermelho */
+.ds-btn--danger-outline {
+  background-color: var(--color-bg-surface);
+  color: var(--danger-700);
+  border-color: #FCA5A5;
+}
+.ds-btn--danger-outline:hover:not(:disabled) {
+  background-color: var(--danger-50);
+  border-color: var(--danger-500);
+}
+.ds-btn--danger-outline:focus-visible { box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15); }
+
+/* danger-soft — Remover tag, Desativar */
+.ds-btn--danger-soft {
+  background-color: var(--danger-50);
+  color: var(--danger-700);
+}
+.ds-btn--danger-soft:hover:not(:disabled) { background-color: #FCD0CD; }
+.ds-btn--danger-soft:focus-visible { box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15); }
+
+/* whatsapp — CTA específico */
+.ds-btn--whatsapp {
+  background-color: var(--whatsapp-500);
+  color: var(--color-text-on-brand);
+}
+.ds-btn--whatsapp:hover:not(:disabled) { background-color: var(--whatsapp-600); }
+.ds-btn--whatsapp:focus-visible { box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.25); }
+
+/* ============================================================
+   SELECTED STATE — pra Choice pair (Presente/Falta), filtros toggle
+   Use com variant="outline" + selected={true} + selectedTone=...
+   ============================================================ */
+
+.ds-btn--selected.ds-btn--outline {
+  border-width: 2px;
+  font-weight: 700;
+}
+
+.ds-btn--selected.ds-btn--tone-success {
+  background-color: var(--mensalli-green-50);
+  color: var(--mensalli-green-700);
+  border-color: var(--mensalli-green-500);
+}
+.ds-btn--selected.ds-btn--tone-success:hover:not(:disabled) {
+  background-color: var(--mensalli-green-100);
+}
+
+.ds-btn--selected.ds-btn--tone-danger {
+  background-color: var(--danger-50);
+  color: var(--danger-700);
+  border-color: var(--danger-500);
+}
+.ds-btn--selected.ds-btn--tone-danger:hover:not(:disabled) {
+  background-color: #FEE2E2;
+}
+
+.ds-btn--selected.ds-btn--tone-warning {
+  background-color: var(--warning-50);
+  color: var(--warning-700);
+  border-color: var(--warning-500);
+}
+.ds-btn--selected.ds-btn--tone-warning:hover:not(:disabled) {
+  background-color: #FFE0B2;
+}
+
+.ds-btn--selected.ds-btn--tone-info {
+  background-color: var(--info-50);
+  color: var(--info-700);
+  border-color: var(--info-500);
+}
+.ds-btn--selected.ds-btn--tone-info:hover:not(:disabled) {
+  background-color: #BBDEFB;
+}
+
+/* ============================================================
+   LOADING — preserva dimensão, esconde label, mostra dots
+   ============================================================ */
+.ds-btn--loading {
+  cursor: progress;
+  pointer-events: none;
+}
+.ds-btn--loading .ds-btn__label {
+  visibility: hidden;
+}
+.ds-btn__loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
