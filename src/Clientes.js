@@ -400,6 +400,13 @@ export default function Clientes() {
             aulas_total,
             foto_url,
             tags,
+            cep,
+            endereco,
+            numero,
+            complemento,
+            bairro,
+            cidade,
+            estado,
             planos:plano_id (nome, tipo, numero_aulas, valor, ciclo_cobranca)
           `)
           .eq('user_id', userId)
