@@ -25,11 +25,6 @@ function Home() {
     alunosEmRisco: 0
   });
 
-  // Estado para mensagens não enviadas (falhas de automação)
-  const [mensagensNaoEnviadas, setMensagensNaoEnviadas] = useState([]);
-  const [alertaExpandido, setAlertaExpandido] = useState(false);
-  const [confirmDescarte, setConfirmDescarte] = useState({ isOpen: false, item: null });
-
   // Estados para modais de confirmação da Fila de WhatsApp
   const [confirmModalWhatsapp, setConfirmModalWhatsapp] = useState({ isOpen: false, item: null });
   const [confirmModalCancelar, setConfirmModalCancelar] = useState({ isOpen: false, mensalidadeId: null });
@@ -76,7 +71,6 @@ function Home() {
         { data: todosClientes },
         { data: fila },
         { data: mensagens },
-        { data: falhasEnvio },
         { data: whatsappConectado },
         { data: vendasData },
         { count: radarRiscoCount }
@@ -122,15 +116,7 @@ function Home() {
           .order('enviado_em', { ascending: false })
           .limit(8),
 
-        // 5. Mensagens não enviadas (falhas de automação)
-        supabase
-          .from('vw_mensagens_nao_enviadas')
-          .select('mensalidade_id, nome_cliente, telefone, valor, data_vencimento, tipo_mensagem_pendente, descricao_pendencia, dias_desde_falha')
-          .eq('user_id', userId)
-          .order('data_vencimento', { ascending: false })
-          .limit(50),
-
-        // 6. Status WhatsApp conectado (para onboarding checklist)
+        // 5. Status WhatsApp conectado (para onboarding checklist)
         supabase
           .from('mensallizap')
           .select('conectado')
@@ -138,14 +124,14 @@ function Home() {
           .eq('conectado', true)
           .maybeSingle(),
 
-        // 7. Vendas (cobranças avulsas) - para incluir nos KPIs financeiros
+        // 6. Vendas (cobranças avulsas) - para incluir nos KPIs financeiros
         supabase
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
-        // 8. Radar de evasão - contagem de alunos em risco alto+critico (score >= 50)
+        // 7. Radar de evasão - contagem de alunos em risco alto+critico (score >= 50)
         supabase
           .from('vw_radar_evasao')
           .select('devedor_id', { count: 'exact', head: true })
@@ -193,11 +179,6 @@ function Home() {
       const assinaturasAtivasList = todosClientes?.filter(c => c.assinatura_ativa && c.plano?.valor) || [];
       const ativas = assinaturasAtivasList.length;
       const mrrCalculado = assinaturasAtivasList.reduce((sum, assin) => sum + (parseFloat(assin.plano?.valor) || 0), 0);
-
-      // Mensagens não enviadas
-      setMensagensNaoEnviadas(
-        (falhasEnvio || []).filter(f => f.tipo_mensagem_pendente !== null)
-      );
 
       // Onboarding checklist
       const steps = {
@@ -287,47 +268,6 @@ function Home() {
   };
 
   const [subtitulo] = useState(getSubtitulo);
-
-  // Reenviar mensagem que falhou
-  const handleReenviarFalha = (item) => {
-    handleEnviarWhatsApp({
-      id: item.mensalidade_id,
-      valor: item.valor,
-      devedores: { nome: item.nome_cliente, telefone: item.telefone }
-    });
-  };
-
-  // Descartar falha
-  const confirmarDescarteFalha = async () => {
-    const item = confirmDescarte.item;
-    if (!item) return;
-    setConfirmDescarte({ isOpen: false, item: null });
-
-    try {
-      const { error } = await supabase
-        .from('mensalidades')
-        .update({
-          enviado_3dias: true,
-          enviado_no_dia: true,
-          enviado_vencimento: true
-        })
-        .eq('id', item.mensalidade_id);
-
-      if (error) throw error;
-
-      setMensagensNaoEnviadas(prev =>
-        prev.filter(f => f.mensalidade_id !== item.mensalidade_id)
-      );
-    } catch (error) {
-      console.error('Erro ao descartar falha:', error);
-      setFeedbackModal({
-        isOpen: true,
-        type: 'danger',
-        title: 'Erro',
-        message: 'Erro ao descartar. Tente novamente.'
-      });
-    }
-  };
 
   // Abre modal de confirmação para envio de WhatsApp
   const handleEnviarWhatsApp = async (item) => {
@@ -565,156 +505,6 @@ function Home() {
           </button>
         </div>
       </div>
-
-      {/* Alerta: Mensagens Não Enviadas */}
-      {mensagensNaoEnviadas.length > 0 && (
-        <div style={{
-          marginBottom: '24px',
-          border: '1px solid #fbbf24',
-          borderRadius: '12px',
-          backgroundColor: '#fffbeb',
-          overflow: 'hidden'
-        }}>
-          {/* Header do alerta */}
-          <div
-            onClick={() => setAlertaExpandido(!alertaExpandido)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 20px',
-              cursor: 'pointer',
-              userSelect: 'none'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                backgroundColor: '#fef3c7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="material-symbols:warning-outline-rounded" width="22" style={{ color: '#d97706' }} />
-              </div>
-              <div>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>
-                  {mensagensNaoEnviadas.length} {mensagensNaoEnviadas.length !== 1 ? 'mensagens não enviadas' : 'mensagem não enviada'}
-                </span>
-                <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '2px' }}>
-                  Clique para ver detalhes
-                </span>
-              </div>
-            </div>
-            <Icon
-              icon={alertaExpandido ? 'material-symbols:expand-less' : 'material-symbols:expand-more'}
-              width="24"
-              style={{ color: '#d97706' }}
-            />
-          </div>
-
-          {/* Lista expandida */}
-          {alertaExpandido && (
-            <div style={{
-              borderTop: '1px solid #fde68a',
-              padding: '0',
-              maxHeight: '320px',
-              overflowY: 'auto'
-            }}>
-              {mensagensNaoEnviadas.map((item, index) => (
-                <div
-                  key={`${item.mensalidade_id}-${item.tipo_mensagem_pendente}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 20px',
-                    borderBottom: index < mensagensNaoEnviadas.length - 1 ? '1px solid #fef3c7' : 'none',
-                    gap: '12px'
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>
-                        {item.nome_cliente}
-                      </span>
-                      <span style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        backgroundColor: item.tipo_mensagem_pendente === 'overdue' ? '#fee2e2' :
-                                        item.tipo_mensagem_pendente === 'due_day' ? '#fff7ed' : '#eff6ff',
-                        color: item.tipo_mensagem_pendente === 'overdue' ? '#dc2626' :
-                              item.tipo_mensagem_pendente === 'due_day' ? '#ea580c' : '#2563eb',
-                        fontWeight: '500'
-                      }}>
-                        {item.descricao_pendencia}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Icon icon="mdi:phone-outline" width="13" />
-                        {item.telefone}
-                      </span>
-                      <span>Venc. {new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                      <span style={{ color: '#d97706' }}>há {item.dias_desde_falha} dia{item.dias_desde_falha !== 1 ? 's' : ''}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937', whiteSpace: 'nowrap' }}>
-                      {formatarMoeda(item.valor)}
-                    </span>
-                    <button
-                      onClick={() => handleReenviarFalha(item)}
-                      title="Reenviar via WhatsApp"
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        backgroundColor: '#dcfce7',
-                        color: '#16a34a',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseOver={e => e.currentTarget.style.backgroundColor = '#bbf7d0'}
-                      onMouseOut={e => e.currentTarget.style.backgroundColor = '#dcfce7'}
-                    >
-                      <Icon icon="mdi:whatsapp" width="18" />
-                    </button>
-                    <button
-                      onClick={() => setConfirmDescarte({ isOpen: true, item })}
-                      title="Descartar (não enviar)"
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        backgroundColor: '#fee2e2',
-                        color: '#dc2626',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseOver={e => e.currentTarget.style.backgroundColor = '#fecaca'}
-                      onMouseOut={e => e.currentTarget.style.backgroundColor = '#fee2e2'}
-                    >
-                      <Icon icon="material-symbols:close" width="18" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Layout em 2 Colunas: Fila de WhatsApp + Mensagens Recentes */}
       <div className="home-two-columns">
@@ -1082,18 +872,6 @@ function Home() {
           </div>
         </div>
       )}
-
-      {/* Modal de Confirmação - Descartar Falha de Envio */}
-      <ConfirmModal
-        isOpen={confirmDescarte.isOpen}
-        onClose={() => setConfirmDescarte({ isOpen: false, item: null })}
-        onConfirm={confirmarDescarteFalha}
-        title="Descartar Pendência"
-        message={confirmDescarte.item ? `Descartar "${confirmDescarte.item.descricao_pendencia}" de ${confirmDescarte.item.nome_cliente}? A mensagem não será mais exibida como pendente.` : ''}
-        confirmText="Sim, Descartar"
-        cancelText="Cancelar"
-        type="warning"
-      />
 
       {/* Modal de Confirmação - Cancelar Envio */}
       <ConfirmModal
