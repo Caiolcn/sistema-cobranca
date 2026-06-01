@@ -30,6 +30,10 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
   // Form nova campanha
   const [titulo, setTitulo] = useState('')
   const [mensagem, setMensagem] = useState('')
+  const [imagemUrl, setImagemUrl] = useState('') // imagem opcional (enviada como mídia com legenda)
+  const [uploadingImagem, setUploadingImagem] = useState(false)
+  const [imagemErro, setImagemErro] = useState('') // erro de upload mostrado inline no campo
+  const imagemInputRef = useRef(null)
   const [segmento, setSegmento] = useState('todos')
   const [planos, setPlanos] = useState([])
   const [filtroPlanoId, setFiltroPlanoId] = useState('')
@@ -115,6 +119,52 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
   // Destinatários selecionados (sem os desmarcados)
   const destinatariosSelecionados = destinatarios.filter(d => !destDesmarcados.has(d.id))
 
+  // Upload da imagem da campanha para o Storage (bucket 'logos', público)
+  const handleUploadImagem = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImagemErro('')
+
+    if (!file.type.startsWith('image/')) {
+      const msg = 'Selecione um arquivo de imagem (JPG ou PNG)'
+      setImagemErro(msg); showToast(msg, 'warning')
+      if (imagemInputRef.current) imagemInputRef.current.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      const tamanhoMb = (file.size / 1024 / 1024).toFixed(1)
+      const msg = `Imagem muito pesada (${tamanhoMb} MB). O limite é 5 MB.`
+      setImagemErro(msg); showToast(msg, 'warning')
+      if (imagemInputRef.current) imagemInputRef.current.value = ''
+      return
+    }
+
+    setUploadingImagem(true)
+    try {
+      const ext = file.name.split('.').pop()
+      // Política do bucket exige UUID do usuário como 1ª pasta: `${userId}/...`
+      const fileName = `${contextUserId}/campanhas/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('logos').upload(fileName, file, { upsert: false })
+      if (upErr) throw upErr
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName)
+      setImagemUrl(urlData.publicUrl)
+      showToast('Imagem anexada!', 'success')
+    } catch (err) {
+      console.error('Erro ao subir imagem da campanha:', err)
+      const msg = `Erro ao anexar imagem: ${err.message || 'tente novamente'}`
+      setImagemErro(msg); showToast(msg, 'error')
+    } finally {
+      setUploadingImagem(false)
+      if (imagemInputRef.current) imagemInputRef.current.value = ''
+    }
+  }
+
+  const removerImagem = () => {
+    setImagemUrl('')
+    setImagemErro('')
+    if (imagemInputRef.current) imagemInputRef.current.value = ''
+  }
+
   const enviarCampanha = async () => {
     if (!titulo.trim() || !mensagem.trim()) { showToast('Preencha o título e a mensagem', 'warning'); return }
     if (destinatariosSelecionados.length === 0) { showToast('Nenhum destinatário selecionado', 'warning'); return }
@@ -127,6 +177,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
     // Criar campanha no banco
     const { data: campanha, error } = await supabase.from('campanhas').insert({
       user_id: contextUserId, titulo: titulo.trim(), mensagem: mensagem.trim(),
+      imagem_url: imagemUrl || null,
       segmento, filtro_plano_id: filtroPlanoId || null,
       total_destinatarios: destFinal.length, status: 'enviando', iniciada_em: new Date().toISOString()
     }).select().single()
@@ -159,7 +210,9 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
 
       try {
-        const resultado = await whatsappService.enviarMensagem(telefone, msgFinal)
+        const resultado = imagemUrl
+          ? await whatsappService.enviarDocumento(telefone, imagemUrl, msgFinal, 'campanha.png', 'image')
+          : await whatsappService.enviarMensagem(telefone, msgFinal)
         if (resultado.sucesso) {
           enviados++
           await supabase.from('campanha_envios').update({ status: 'enviado', enviado_em: new Date().toISOString() })
@@ -197,7 +250,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
     setEnviando(false)
     setCampanhaAtiva(null)
     showToast(cancelarRef.current ? 'Campanha cancelada' : `Campanha concluída! ${enviados} enviados, ${falhas} falhas`, cancelarRef.current ? 'warning' : 'success')
-    setTitulo(''); setMensagem(''); carregarCampanhas(); setTab('historico')
+    setTitulo(''); setMensagem(''); setImagemUrl(''); carregarCampanhas(); setTab('historico')
   }
 
   return (
@@ -326,10 +379,51 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
             </div>
           </div>
 
+          {/* Imagem (opcional) */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Imagem <span style={{ fontWeight: 400, color: '#999' }}>(opcional)</span></label>
+            <input ref={imagemInputRef} type="file" accept="image/*" onChange={handleUploadImagem} style={{ display: 'none' }} />
+            {imagemUrl ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fafafa' }}>
+                <img src={imagemUrl} alt="Imagem da campanha" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
+                <span style={{ flex: 1, fontSize: 12, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon icon="mdi:check-circle" width={16} /> Imagem anexada
+                </span>
+                <button onClick={removerImagem} style={{
+                  padding: '6px 12px', fontSize: 12, fontWeight: 600, backgroundColor: '#fef2f2', color: '#ef4444',
+                  border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}><Icon icon="mdi:trash-can-outline" width={14} /> Remover</button>
+              </div>
+            ) : (
+              <button onClick={() => imagemInputRef.current?.click()} disabled={uploadingImagem} style={{
+                width: '100%', padding: '10px 12px', borderRadius: 8,
+                border: imagemErro ? '1px dashed #fca5a5' : '1px dashed #cbd5e1',
+                backgroundColor: imagemErro ? '#fef2f2' : '#f8fafc',
+                color: imagemErro ? '#ef4444' : '#555', fontSize: 13, fontWeight: 600, cursor: uploadingImagem ? 'wait' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+              }}>
+                <Icon icon={uploadingImagem ? 'mdi:loading' : 'mdi:image-plus'} width={18} style={uploadingImagem ? { animation: 'ds-spin 1s linear infinite' } : undefined} />
+                {uploadingImagem ? 'Enviando...' : 'Anexar imagem'}
+              </button>
+            )}
+            {imagemErro ? (
+              <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Icon icon="mdi:alert-circle" width={14} /> {imagemErro}
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
+                A imagem é enviada com a mensagem como legenda. Formatos: JPG, PNG. Máx. 5 MB.
+              </div>
+            )}
+          </div>
+
           {/* Preview mensagem */}
           {mensagem && (
             <div style={{ padding: '12px 14px', backgroundColor: '#f0fdf4', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', border: '1px solid #bbf7d0' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', marginBottom: 6 }}>Preview:</div>
+              {imagemUrl && (
+                <img src={imagemUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 6, marginBottom: 8, display: 'block' }} />
+              )}
               {mensagem
                 .replace(/\{\{nomeCliente\}\}/g, 'João')
                 .replace(/\{\{nomeAluno\}\}/g, 'João')
@@ -351,7 +445,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
             {regrasExpandidas && (
               <div style={{ padding: '0 14px 14px' }}>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#92400e', lineHeight: 1.8 }}>
-                  <li>Evite enviar mais de <strong>100 mensagens por dia</strong> — risco de bloqueio</li>
+                  <li>Evite enviar mais de <strong>20 mensagens por hora</strong> — risco de bloqueio</li>
                   <li>Envie apenas para alunos que <strong>já têm seu número salvo</strong> — reduz risco de denúncia</li>
                   <li>Não envie conteúdo promocional em excesso — pode ser marcado como spam</li>
                   <li>O WhatsApp pode <strong>bloquear temporariamente</strong> números que enviam muitas mensagens em pouco tempo</li>
