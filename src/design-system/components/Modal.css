@@ -25,6 +25,14 @@
   padding: 0;
 }
 
+/* Centered — alinha o painel verticalmente no meio do viewport (em vez do topo) */
+.ds-modal-backdrop--centered {
+  align-items: center;
+}
+.ds-modal--centered {
+  margin-top: 0;
+}
+
 /* Modal panel */
 .ds-modal {
   position: relative;

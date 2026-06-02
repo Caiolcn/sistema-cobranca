@@ -60,6 +60,7 @@ export default function Modal({
   subtitle,
   size = 'md',
   position = 'center',
+  centered = false,
   closeOnBackdrop = true,
   closeOnEsc = true,
   showClose = true,
@@ -154,12 +155,14 @@ export default function Modal({
     'ds-modal',
     `ds-modal--${size}`,
     position === 'aside' && 'ds-modal--aside',
+    centered && position !== 'aside' && 'ds-modal--centered',
     className,
   ].filter(Boolean).join(' ')
 
   const backdropClasses = [
     'ds-modal-backdrop',
     position === 'aside' && 'ds-modal-backdrop--aside',
+    centered && position !== 'aside' && 'ds-modal-backdrop--centered',
   ].filter(Boolean).join(' ')
 
   // Auto-header se title estiver passado

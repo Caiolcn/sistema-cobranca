@@ -151,18 +151,61 @@ export default function Clientes() {
   }, [userId])
 
   // Auto-abrir ficha quando vier da busca global (?abrir=<id>)
+  // Estratégia:
+  //   1) Tenta achar em `clientes` (cache local — caso comum)
+  //   2) Se `clientes` já carregou MAS o aluno não está lá (lixo/experimental),
+  //      busca direto no banco e abre mesmo assim
   useEffect(() => {
     const abrirId = searchParams.get('abrir')
-    if (!abrirId || clientes.length === 0) return
-    const alvo = clientes.find(c => c.id === abrirId)
-    if (alvo) {
-      handleClienteClick(alvo)
+    if (!abrirId || !userId) return
+
+    let cancelado = false
+
+    const tentarAbrir = async () => {
+      const alvo = clientes.find(c => c.id === abrirId)
+      if (alvo) {
+        if (cancelado) return
+        setAbaAtiva('alunos')
+        handleClienteClick(alvo)
+        const next = new URLSearchParams(searchParams)
+        next.delete('abrir')
+        setSearchParams(next, { replace: true })
+        return
+      }
+      // Se clientes ainda não carregou, espera a próxima rodada
+      if (clientes.length === 0) return
+
+      // clientes carregou MAS não achou — busca direto (cobre lixo/experimental)
+      const { data } = await supabase
+        .from('devedores')
+        .select(`
+          id, nome, telefone, cpf, assinatura_ativa, plano_id, created_at,
+          email, responsavel_nome, responsavel_telefone, bloquear_mensagens,
+          data_nascimento, portal_token, aulas_restantes, aulas_total,
+          foto_url, tags, cep, endereco, numero, complemento, bairro,
+          cidade, estado, lixo, experimental,
+          planos:plano_id (nome, tipo, numero_aulas, valor, ciclo_cobranca)
+        `)
+        .eq('id', abrirId)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (cancelado) return
+      if (data) {
+        setAbaAtiva('alunos')
+        handleClienteClick(data)
+      } else {
+        showToast('Aluno não encontrado', 'warning')
+      }
       const next = new URLSearchParams(searchParams)
       next.delete('abrir')
       setSearchParams(next, { replace: true })
     }
+
+    tentarAbrir()
+    return () => { cancelado = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientes, searchParams])
+  }, [clientes, searchParams, userId])
 
   // Fechar popover ao clicar fora
   useEffect(() => {

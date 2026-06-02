@@ -18,7 +18,10 @@ export default function AgendaPresencaModal({
   // Opcional: callback p/ remover o "slot" inteiro (aula individual da Agenda
   // Nova). Quando passado, renderiza um botão discreto "Remover horário".
   // Não confundir com "remover presença" (que apaga só o registro de presenca).
-  onRemoverSlot
+  onRemoverSlot,
+  // Opcional: callback p/ abrir o modal de mudança de horário a partir daqui.
+  // Quando passado, renderiza um botão "Alterar horário" acima do "Remover".
+  onAlterarHorario
 }) {
   const [presente, setPresente] = useState(presencaExistente ? presencaExistente.presente : true)
   const [obs, setObs] = useState(presencaExistente ? (presencaExistente.observacao || '') : '')
@@ -195,24 +198,41 @@ export default function AgendaPresencaModal({
           </button>
         </div>
 
-        {/* Ação secundária: remover o horário inteiro (só aluno individual) */}
-        {onRemoverSlot && (
+        {/* Ações secundárias: alterar horário + remover slot */}
+        {(onAlterarHorario || onRemoverSlot) && (
           <div style={{
             marginTop: '14px', paddingTop: '14px',
-            borderTop: '1px solid #f0f0f0', textAlign: 'center'
+            borderTop: '1px solid #f0f0f0', textAlign: 'center',
+            display: 'flex', flexDirection: 'column', gap: '4px'
           }}>
-            <button onClick={onRemoverSlot} disabled={salvando}
-              style={{
-                background: 'none', border: 'none', cursor: salvando ? 'not-allowed' : 'pointer',
-                color: '#dc2626', fontSize: '13px', fontWeight: '500',
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '4px 8px', borderRadius: '6px'
-              }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef2f2'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-              <Icon icon="mdi:trash-can-outline" width="15" />
-              Remover horário do aluno
-            </button>
+            {onAlterarHorario && (
+              <button onClick={onAlterarHorario} disabled={salvando}
+                style={{
+                  background: 'none', border: 'none', cursor: salvando ? 'not-allowed' : 'pointer',
+                  color: '#475569', fontSize: '13px', fontWeight: '500',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 8px', borderRadius: '6px', alignSelf: 'center'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <Icon icon="mdi:swap-horizontal" width="15" />
+                Alterar horário do aluno
+              </button>
+            )}
+            {onRemoverSlot && (
+              <button onClick={onRemoverSlot} disabled={salvando}
+                style={{
+                  background: 'none', border: 'none', cursor: salvando ? 'not-allowed' : 'pointer',
+                  color: '#dc2626', fontSize: '13px', fontWeight: '500',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 8px', borderRadius: '6px', alignSelf: 'center'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <Icon icon="mdi:trash-can-outline" width="15" />
+                Remover horário do aluno
+              </button>
+            )}
           </div>
         )}
       </div>

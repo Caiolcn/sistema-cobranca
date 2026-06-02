@@ -222,7 +222,9 @@ export default function AgendaNovaContainer() {
     onExcluirAula: (aula) => setConfirmExcluirAula(aula),
     onAddFixo: abrirAddFixo,
     onRemoverFixo: (fixo) => setConfirmRemoverFixo(fixo),
-    onRemoverAluno: removerAlunoIndividual
+    onRemoverAluno: removerAlunoIndividual,
+    // Recarrega base após mudança de horário no AgendaAlunoModal
+    onRecarregarBase: carregarBase
   }
 
   return (

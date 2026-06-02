@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { SkeletonList } from './components/Skeleton'
@@ -6,6 +7,7 @@ import ConfirmModal from './ConfirmModal'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import AgendaPresencaModal from './AgendaPresencaModal'
+import AgendaMudarHorarioModal from './AgendaMudarHorarioModal'
 import {
   DIAS_CURTO, DIAS_LONGO, MESES,
   isoDate, parseISO, addDias, inicioSemana, montarRoster, horaDe, corDaAula, iniciaisDe
@@ -33,10 +35,11 @@ export default function AgendaNovaSemana({
   enviarNotifPresenca, dataSel, setDataSel,
   aulas, fixos, creditos, onCredito, versao,
   onEditarAula, onToggleAtivoAula, onExcluirAula, onAddFixo, onRemoverFixo,
-  onRemoverAluno
+  onRemoverAluno, onRecarregarBase
 }) {
   const { isMobile } = useWindowSize()
   const { userId } = useUser()
+  const navigate = useNavigate()
 
   const hojeRef = useMemo(() => isoDate(new Date()), [])
   const semana = useMemo(() => {
@@ -53,6 +56,7 @@ export default function AgendaNovaSemana({
   const [loadingSemana, setLoadingSemana] = useState(false)
   const [detalhe, setDetalhe] = useState(null)        // { aula, data } — só turmas
   const [modalCtx, setModalCtx] = useState(null)      // { aula, devedorId, devedores, data }
+  const [mudarHorarioCtx, setMudarHorarioCtx] = useState(null) // ctx pra AgendaMudarHorarioModal
   const [confirmCancelAg, setConfirmCancelAg] = useState(null)
   const [confirmRemAluno, setConfirmRemAluno] = useState(null) // aula (individual) a remover
 
@@ -157,25 +161,54 @@ export default function AgendaNovaSemana({
   const detalheRoster = detalhe ? statusAula(detalhe.aula, detalhe.data).roster : []
   const detalheIsFuturo = detalhe ? (detalhe.data > hojeRef) : false
 
-  const abrirPresencaModal = (aula, r, data) => {
-    if (data > hojeRef) return
-    setModalCtx({ aula, devedorId: r.devedorId, devedores: r.devedores, data })
+  // Detecta tipo de aluno e abre AgendaAlunoModal com o contexto certo.
+  // Fecha o modal de detalhe da turma (se aberto) pra evitar empilhamento.
+  const abrirEdicaoAluno = (aula, devedorId, devedores, data) => {
+    let tipoAluno = 'individual'
+    let fixoEntry, agendamentoAvulso
+    if (!aula.devedor_id) {
+      fixoEntry = fixos.find(f => f.aula_id === aula.id && f.devedor_id === devedorId)
+      if (fixoEntry) tipoAluno = 'fixo'
+      else {
+        agendamentoAvulso = agendamentos.find(a => a.aula_id === aula.id && a.devedor_id === devedorId && a.data === data)
+        if (agendamentoAvulso) tipoAluno = 'avulso'
+      }
+    }
+    setDetalhe(null)
+    setModalCtx({ aula, devedorId, devedores, data, tipoAluno, fixoEntry, agendamentoAvulso })
   }
 
-  // Click no bloco do aluno individual → abre presença/ações
-  // Não restringe futuro: o modal traz "Remover horário" como ação acessível
-  // mesmo pra slots futuros (caso o usuário queira limpar um agendamento).
-  const abrirPresencaAluno = (aula, data) => {
-    setModalCtx({ aula, devedorId: aula.devedor_id, devedores: aula.devedores, data })
+  const abrirPresencaModal = (aula, r, data) => abrirEdicaoAluno(aula, r.devedorId, r.devedores, data)
+  const abrirPresencaAluno = (aula, data) => abrirEdicaoAluno(aula, aula.devedor_id, aula.devedores, data)
+
+  // Abre modal dedicado de mudança de horário (separado do modal de presença)
+  const abrirMudarHorario = (aula, devedorId, devedores, data) => {
+    let tipoAluno = 'individual'
+    let fixoEntry, agendamentoAvulso
+    if (!aula.devedor_id) {
+      fixoEntry = fixos.find(f => f.aula_id === aula.id && f.devedor_id === devedorId)
+      if (fixoEntry) tipoAluno = 'fixo'
+      else {
+        agendamentoAvulso = agendamentos.find(a => a.aula_id === aula.id && a.devedor_id === devedorId && a.data === data)
+        if (agendamentoAvulso) tipoAluno = 'avulso'
+      }
+    }
+    setDetalhe(null)
+    setMudarHorarioCtx({ aula, devedorId, devedores, data, tipoAluno, fixoEntry, agendamentoAvulso })
   }
 
-  // Acionado pelo botão "Remover horário do aluno" dentro do modal de presença.
-  // Fecha o modal e abre o ConfirmModal de remoção.
+  // Acionado pelo botão "Remover horário do aluno" dentro do modal.
   const handleRemoverSlot = () => {
     if (!modalCtx?.aula) return
     const aulaToRemove = modalCtx.aula
     setModalCtx(null)
     setConfirmRemAluno(aulaToRemove)
+  }
+
+  // Após mudar horário: recarrega base do container e fecha modal.
+  const handleMudancaConcluida = () => {
+    setModalCtx(null)
+    onRecarregarBase?.()
   }
 
   const handleMarcarDetalhe = async (aula, r, data, presente) => {
@@ -445,6 +478,8 @@ export default function AgendaNovaSemana({
                       r={r} pres={pres} isFuturo={detalheIsFuturo}
                       onMarcar={(presente) => handleMarcarDetalhe(aula, r, data, presente)}
                       onAbrirEdicao={() => abrirPresencaModal(aula, r, data)}
+                      onMudarHorario={() => abrirMudarHorario(aula, r.devedorId, r.devedores, data)}
+                      onAbrirFicha={() => { setDetalhe(null); navigate(`/app/clientes?abrir=${r.devedorId}`) }}
                       onRemove={
                         fixoObj ? (e) => { e.stopPropagation(); onRemoverFixo(fixoObj); setDetalhe(null) }
                         : agObj ? (e) => { e.stopPropagation(); setConfirmCancelAg(agObj) }
@@ -465,7 +500,7 @@ export default function AgendaNovaSemana({
         )
       })()}
 
-      {/* Modal de presença (turma ou aluno individual) */}
+      {/* Modal de presença/falta */}
       {modalCtx && (
         <AgendaPresencaModal
           userId={userId}
@@ -478,8 +513,32 @@ export default function AgendaNovaSemana({
           enviarNotifPresenca={enviarNotifPresenca}
           onChange={handlePresencaChange}
           onClose={() => setModalCtx(null)}
+          // Alterar horário: fecha esse modal e abre o de mudança
+          onAlterarHorario={() => {
+            const ctx = modalCtx
+            setModalCtx(null)
+            abrirMudarHorario(ctx.aula, ctx.devedorId, ctx.devedores, ctx.data)
+          }}
           // Aluno individual ganha botão "Remover horário" dentro do modal
-          onRemoverSlot={modalCtx.aula?.devedor_id ? handleRemoverSlot : undefined}
+          onRemoverSlot={modalCtx.tipoAluno === 'individual' ? handleRemoverSlot : undefined}
+        />
+      )}
+
+      {/* Modal dedicado de mudança de horário */}
+      {mudarHorarioCtx && (
+        <AgendaMudarHorarioModal
+          userId={userId}
+          aula={mudarHorarioCtx.aula}
+          devedorId={mudarHorarioCtx.devedorId}
+          devedores={mudarHorarioCtx.devedores}
+          data={mudarHorarioCtx.data}
+          tipoAluno={mudarHorarioCtx.tipoAluno}
+          fixoEntry={mudarHorarioCtx.fixoEntry}
+          agendamentoAvulso={mudarHorarioCtx.agendamentoAvulso}
+          aulasDisponiveis={aulas}
+          fixos={fixos}
+          onMudancaConcluida={() => { setMudarHorarioCtx(null); onRecarregarBase?.() }}
+          onClose={() => setMudarHorarioCtx(null)}
         />
       )}
 

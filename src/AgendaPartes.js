@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '@iconify/react'
 
 // ==========================================
@@ -124,15 +125,15 @@ export function MenuTurma({ aula, onToggle, onEdit, onDelete }) {
   )
 }
 
-export function LinhaAluno({ r, pres, isFuturo, onMarcar, onAbrirEdicao, onRemove }) {
+export function LinhaAluno({ r, pres, isFuturo, onMarcar, onAbrirEdicao, onRemove, onMudarHorario, onAbrirFicha }) {
   const nome = r.devedores?.nome || 'Aluno'
-  const rowClickable = !!pres && !isFuturo
+  // Linha NÃO clicável (área do nome/avatar é informativa). Ações disparam
+  // somente pelos botões: 👍 👎 (presença), kebab ⋮ (mudar horário / remover).
   return (
-    <div onClick={rowClickable ? onAbrirEdicao : undefined}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px',
-        borderTop: '1px solid #f5f5f5', cursor: rowClickable ? 'pointer' : 'default'
-      }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px',
+      borderTop: '1px solid #f5f5f5'
+    }}>
       <div style={{
         width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
         backgroundColor: '#344848', color: '#fff', display: 'flex',
@@ -163,13 +164,100 @@ export function LinhaAluno({ r, pres, isFuturo, onMarcar, onAbrirEdicao, onRemov
         />
       ))}
 
-      {onRemove && (
-        <button onClick={onRemove} title="Remover deste horário"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444', display: 'flex' }}>
-          <Icon icon="mdi:close" width="16" />
-        </button>
-      )}
+      {/* Menu kebab: ficha do aluno + mudar horário + remover */}
+      <MenuAluno
+        onAbrirFicha={onAbrirFicha ? (e) => { e.stopPropagation(); onAbrirFicha() } : null}
+        onMudarHorario={onMudarHorario ? (e) => { e.stopPropagation(); onMudarHorario() } : null}
+        onRemover={onRemove ? (e) => { e.stopPropagation(); onRemove(e) } : null}
+      />
     </div>
+  )
+}
+
+// Menu kebab pra ações secundárias do aluno na turma.
+// Renderiza o panel via createPortal no document.body pra escapar do overflow
+// do Modal.Body que o estaria cortando.
+function MenuAluno({ onAbrirFicha, onMudarHorario, onRemover }) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const triggerRef = useRef(null)
+  const panelRef = useRef(null)
+
+  const reposicionar = () => {
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const panelWidth = 190
+    setPos({
+      top: rect.bottom + 4,
+      left: Math.max(8, rect.right - panelWidth)
+    })
+  }
+
+  useEffect(() => {
+    if (!open) return
+    reposicionar()
+    const onClickOut = (e) => {
+      if (triggerRef.current?.contains(e.target)) return
+      if (panelRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
+    const onEsc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    const onScrollOrResize = () => reposicionar()
+    document.addEventListener('mousedown', onClickOut)
+    document.addEventListener('keydown', onEsc)
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      document.removeEventListener('mousedown', onClickOut)
+      document.removeEventListener('keydown', onEsc)
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [open])
+
+  const item = (icon, label, action, color = '#444') => (
+    <button onClick={(e) => { setOpen(false); action(e) }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        width: '100%', padding: '9px 14px',
+        background: 'none', border: 'none', cursor: 'pointer',
+        fontSize: '13px', fontWeight: '500', color, textAlign: 'left'
+      }}
+      onMouseEnter={e => e.currentTarget.style.backgroundColor = color === '#dc2626' ? '#fef2f2' : '#f3f4f6'}
+      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+      <Icon icon={icon} width="16" /> {label}
+    </button>
+  )
+
+  return (
+    <>
+      <button ref={triggerRef} onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }} title="Opções do aluno"
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          padding: '4px', borderRadius: '6px', display: 'flex',
+          alignItems: 'center', justifyContent: 'center'
+        }}>
+        <Icon icon="mdi:dots-vertical" width="18" style={{ color: '#666' }} />
+      </button>
+      {open && createPortal(
+        <div ref={panelRef}
+          style={{
+            position: 'fixed', top: pos.top, left: pos.left,
+            minWidth: '190px', backgroundColor: '#fff',
+            borderRadius: '10px', border: '1px solid #e5e7eb',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+            zIndex: 10005, overflow: 'hidden', padding: '4px 0'
+          }}>
+          {onAbrirFicha && item('mdi:account-circle-outline', 'Ver ficha do aluno', onAbrirFicha)}
+          {onMudarHorario && item('mdi:swap-horizontal', 'Mudar horário', onMudarHorario)}
+          {onRemover && <>
+            {(onAbrirFicha || onMudarHorario) && <div style={{ height: '1px', backgroundColor: '#f0f0f0', margin: '4px 0' }} />}
+            {item('mdi:delete-outline', 'Remover da turma', onRemover, '#dc2626')}
+          </>}
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
 
