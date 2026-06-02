@@ -38,6 +38,36 @@ export default function AgendaFixoModal({ userId, aula, data, clientes, fixosDaA
     setSalvando(true)
 
     if (tipo === 'fixo') {
+      // Pode ter um registro existente em aulas_fixos com (aula_id, devedor_id)
+      // mesmo que ele não tenha vindo na lista local (state stale, outra sessão,
+      // ou fixo pausado com ativo=false). Lidamos com isso antes do INSERT
+      // pra evitar erro feio de unique constraint.
+      const { data: existente } = await supabase.from('aulas_fixos')
+        .select('id, ativo')
+        .eq('aula_id', aula.id)
+        .eq('devedor_id', devedorId)
+        .maybeSingle()
+
+      if (existente?.ativo === true) {
+        setSalvando(false)
+        showToast('Esse aluno já está nesta turma', 'warning')
+        return
+      }
+
+      if (existente?.ativo === false) {
+        // Reativa o fixo pausado
+        const { data: reativado, error } = await supabase.from('aulas_fixos')
+          .update({ ativo: true })
+          .eq('id', existente.id)
+          .select('*, devedores(nome, telefone, foto_url)')
+        setSalvando(false)
+        if (error) { showToast('Erro ao reativar aluno: ' + error.message, 'error'); return }
+        showToast('Aluno reativado na turma!', 'success')
+        onSaved?.({ tipo: 'fixo', fixo: reativado?.[0] })
+        onClose()
+        return
+      }
+
       const { data: inserted, error } = await supabase.from('aulas_fixos')
         .insert({ aula_id: aula.id, devedor_id: devedorId, user_id: userId })
         .select('*, devedores(nome, telefone, foto_url)')
