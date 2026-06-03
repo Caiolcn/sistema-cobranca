@@ -984,7 +984,7 @@ export default function Dashboard() {
                     onFocus={() => setBuscaAberta(true)}
                     style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: isMobile ? '16px' : '13px', color: '#333' }}
                   />
-                  {buscaTexto ? (
+                  {buscaTexto && (
                     <Icon
                       icon="mdi:close-circle"
                       width="16"
@@ -993,10 +993,6 @@ export default function Dashboard() {
                       style={{ cursor: 'pointer' }}
                       onClick={(e) => { e.stopPropagation(); setBuscaTexto('') }}
                     />
-                  ) : (
-                    <span style={{ fontSize: '11px', color: '#999', backgroundColor: 'white', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-                      Ctrl K
-                    </span>
                   )}
                 </div>
                 {buscaAberta && (

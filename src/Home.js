@@ -2,12 +2,33 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
-import whatsappService from './services/whatsappService';
 import { useUser } from './contexts/UserContext';
-import ConfirmModal from './ConfirmModal';
 import { SkeletonDashboard } from './components/Skeleton';
 import OnboardingChecklist from './OnboardingChecklist';
 import './Home.css';
+
+// 📢 Novas Atualizações exibidas no topo da Home.
+// Para divulgar uma novidade, basta adicionar um item NO TOPO desta lista.
+// Campos: data (livre), tag (opcional, ex: "Novo"), titulo e texto.
+const NOVIDADES = [
+  {
+    data: '01/06',
+    tag: 'Novo',
+    titulo: 'Dashboard repaginada',
+    texto: 'Reorganizamos a tela inicial pra deixar tudo mais direto. Fique de olho aqui — é por este espaço que vamos avisar as próximas novidades!'
+  },
+  {
+    data: '28/05',
+    tag: 'Melhoria',
+    titulo: 'Busca de alunos mais rápida',
+    texto: 'Agora você encontra qualquer aluno por nome ou telefone direto na barra de busca do topo.'
+  },
+  {
+    data: '20/05',
+    titulo: 'Agenda Nova no ar',
+    texto: 'A grade de horários ganhou visões por Dia e Semana, mais leve e prática no celular.'
+  },
+];
 
 function Home() {
   const navigate = useNavigate();
@@ -20,24 +41,15 @@ function Home() {
     assinaturasAtivas: 0,
     recebimentosMes: 0,
     valorEmAtraso: 0,
-    filaWhatsapp: [],
-    mensagensRecentes: [],
     alunosEmRisco: 0
   });
-
-  // Estados para modais de confirmação da Fila de WhatsApp
-  const [confirmModalWhatsapp, setConfirmModalWhatsapp] = useState({ isOpen: false, item: null });
-  const [confirmModalCancelar, setConfirmModalCancelar] = useState({ isOpen: false, mensalidadeId: null });
-  const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' });
-  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
-
-  // Estado para mensagem editável no modal de envio
-  const [mensagemEditavel, setMensagemEditavel] = useState('');
-  const [carregandoPreview, setCarregandoPreview] = useState(false);
 
   // Onboarding checklist
   const [mostrarChecklist, setMostrarChecklist] = useState(false);
   const [onboardingSteps, setOnboardingSteps] = useState({ empresa: false, pix: false, whatsapp: false, cliente: false });
+
+  // Carrossel de Novas Atualizações
+  const [novidadeAtual, setNovidadeAtual] = useState(0);
 
   // Carregar dados quando userId mudar
   useEffect(() => {
@@ -46,6 +58,15 @@ function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Auto-avanço do carrossel de novidades (a cada 12s)
+  useEffect(() => {
+    if (NOVIDADES.length <= 1) return;
+    const timer = setInterval(() => {
+      setNovidadeAtual((i) => (i + 1) % NOVIDADES.length);
+    }, 12000);
+    return () => clearInterval(timer);
+  }, []);
 
   const carregarDados = useCallback(async () => {
     if (!userId) return;
@@ -60,17 +81,10 @@ function Home() {
       const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
       const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
 
-      // Data de 3 dias à frente para fila de WhatsApp (alinhado com automação)
-      const tresDiasFrente = new Date();
-      tresDiasFrente.setDate(tresDiasFrente.getDate() + 3);
-      const tresDiasFrenteStr = tresDiasFrente.toISOString().split('T')[0];
-
-      // 7 queries essenciais
+      // 5 queries essenciais
       const [
         { data: todasMensalidades },
         { data: todosClientes },
-        { data: fila },
-        { data: mensagens },
         { data: whatsappConectado },
         { data: vendasData },
         { count: radarRiscoCount }
@@ -89,34 +103,7 @@ function Home() {
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
-        // 3. Fila de WhatsApp
-        supabase
-          .from('mensalidades')
-          .select(`
-            id, valor, data_vencimento, numero_mensalidade, enviado_hoje,
-            devedores (nome, telefone)
-          `)
-          .eq('user_id', userId)
-          .eq('status', 'pendente')
-          .or('enviado_no_dia.is.null,enviado_no_dia.eq.false')
-          .neq('cancelado_envio', true)
-          .or('lixo.is.null,lixo.eq.false')
-          .lte('data_vencimento', tresDiasFrenteStr)
-          .order('data_vencimento', { ascending: true })
-          .limit(20),
-
-        // 4. Mensagens recentes
-        supabase
-          .from('logs_mensagens')
-          .select(`
-            id, telefone, valor_mensalidade, status, enviado_em,
-            devedores (nome)
-          `)
-          .eq('user_id', userId)
-          .order('enviado_em', { ascending: false })
-          .limit(8),
-
-        // 5. Status WhatsApp conectado (para onboarding checklist)
+        // 3. Status WhatsApp conectado (para onboarding checklist)
         supabase
           .from('mensallizap')
           .select('conectado')
@@ -124,14 +111,14 @@ function Home() {
           .eq('conectado', true)
           .maybeSingle(),
 
-        // 6. Vendas (cobranças avulsas) - para incluir nos KPIs financeiros
+        // 4. Vendas (cobranças avulsas) - para incluir nos KPIs financeiros
         supabase
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
-        // 7. Radar de evasão - contagem de alunos em risco alto+critico (score >= 50)
+        // 5. Radar de evasão - contagem de alunos em risco alto+critico (score >= 50)
         supabase
           .from('vw_radar_evasao')
           .select('devedor_id', { count: 'exact', head: true })
@@ -213,8 +200,6 @@ function Home() {
         assinaturasAtivas: ativas,
         recebimentosMes: recebidoMes,
         valorEmAtraso: valorAtraso,
-        filaWhatsapp: fila || [],
-        mensagensRecentes: mensagens || [],
         alunosEmRisco: radarRiscoCount || 0
       });
 
@@ -269,108 +254,6 @@ function Home() {
 
   const [subtitulo] = useState(getSubtitulo);
 
-  // Abre modal de confirmação para envio de WhatsApp
-  const handleEnviarWhatsApp = async (item) => {
-    setConfirmModalWhatsapp({ isOpen: true, item });
-    setCarregandoPreview(true);
-    setMensagemEditavel('');
-
-    try {
-      const { mensagem } = await whatsappService.gerarPreviewMensagem(item.id);
-      setMensagemEditavel(mensagem);
-    } catch (error) {
-      console.error('Erro ao gerar preview:', error);
-    } finally {
-      setCarregandoPreview(false);
-    }
-  };
-
-  // Confirma e executa o envio de WhatsApp
-  const confirmarEnvioWhatsApp = async () => {
-    const item = confirmModalWhatsapp.item;
-    if (!item) return;
-
-    const mensagemParaEnviar = mensagemEditavel.trim();
-    setConfirmModalWhatsapp({ isOpen: false, item: null });
-    setMensagemEditavel('');
-    setEnviandoWhatsapp(true);
-
-    try {
-      const resultado = await whatsappService.enviarCobranca(item.id, mensagemParaEnviar);
-
-      setEnviandoWhatsapp(false);
-
-      if (resultado.sucesso) {
-        setFeedbackModal({
-          isOpen: true,
-          type: 'success',
-          title: 'Mensagem Enviada',
-          message: `Mensagem enviada com sucesso para ${item.devedores?.nome}!`
-        });
-        await carregarDados();
-      } else {
-        const isBloqueio = resultado.bloqueado === true;
-        setFeedbackModal({
-          isOpen: true,
-          type: isBloqueio ? 'warning' : 'danger',
-          title: isBloqueio ? 'Envio Bloqueado' : 'Erro ao Enviar',
-          message: resultado.erro || 'Erro desconhecido ao enviar mensagem.'
-        });
-      }
-    } catch (error) {
-      setEnviandoWhatsapp(false);
-      console.error('Erro ao enviar WhatsApp:', error);
-      setFeedbackModal({
-        isOpen: true,
-        type: 'danger',
-        title: 'Erro ao Enviar',
-        message: error.message || 'Erro desconhecido ao enviar WhatsApp.'
-      });
-    }
-  };
-
-  // Abre modal de confirmação para cancelar envio
-  const handleCancelarEnvio = (mensalidadeId) => {
-    setConfirmModalCancelar({ isOpen: true, mensalidadeId });
-  };
-
-  // Confirma e executa o cancelamento do envio
-  const confirmarCancelarEnvio = async () => {
-    const mensalidadeId = confirmModalCancelar.mensalidadeId;
-    if (!mensalidadeId) return;
-
-    setConfirmModalCancelar({ isOpen: false, mensalidadeId: null });
-
-    try {
-      const { error } = await supabase
-        .from('mensalidades')
-        .update({ cancelado_envio: true })
-        .eq('id', mensalidadeId);
-
-      if (error) throw error;
-
-      setDashboardData(prev => ({
-        ...prev,
-        filaWhatsapp: prev.filaWhatsapp.filter(item => item.id !== mensalidadeId)
-      }));
-
-      setFeedbackModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Envio Cancelado',
-        message: 'Esta cobrança não será mais enviada automaticamente.'
-      });
-    } catch (error) {
-      console.error('Erro ao cancelar envio:', error);
-      setFeedbackModal({
-        isOpen: true,
-        type: 'danger',
-        title: 'Erro',
-        message: 'Erro ao cancelar envio. Tente novamente.'
-      });
-    }
-  };
-
   if (loading || loadingUser) {
     return (
       <div className="home-container" style={{ padding: '24px' }}>
@@ -379,17 +262,77 @@ function Home() {
     );
   }
 
-  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, filaWhatsapp, mensagensRecentes, alunosEmRisco } = dashboardData;
+  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, alunosEmRisco } = dashboardData;
 
   const nomeEmpresa = nomeEmpresaContext || 'Empresa';
 
   return (
     <div className="home-container">
-      {/* Header de Boas-vindas */}
-      <div className="home-header">
-        <div className="home-welcome">
-          <h1>{getHoraSaudacao()}! 👋</h1>
-          <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
+      {/* Linha do título: Boas-vindas + Novas Atualizações */}
+      <div className="home-top-row">
+        {/* Header de Boas-vindas */}
+        <div className="home-header">
+          <div className="home-welcome">
+            <h1>{getHoraSaudacao()}! 👋</h1>
+            <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
+          </div>
+        </div>
+
+        {/* Novas Atualizações */}
+        <div className="home-novidades">
+          <div className="novidades-header">
+            <Icon icon="material-symbols:campaign-outline-rounded" width="20" />
+            <h3>Novas Atualizações</h3>
+          </div>
+          {NOVIDADES.length === 0 ? (
+            <div className="novidades-empty">
+              <p>Nenhuma novidade por enquanto.</p>
+            </div>
+          ) : (
+            <div className="novidades-carrossel">
+              {(() => {
+                const nov = NOVIDADES[novidadeAtual] || NOVIDADES[0];
+                return (
+                  <div key={novidadeAtual} className="novidade-item">
+                    <div className="novidade-meta">
+                      {nov.tag && <span className="novidade-tag">{nov.tag}</span>}
+                      {nov.data && <span className="novidade-data">{nov.data}</span>}
+                    </div>
+                    <p className="novidade-titulo">{nov.titulo}</p>
+                    <p className="novidade-texto">{nov.texto}</p>
+                  </div>
+                );
+              })()}
+              {NOVIDADES.length > 1 && (
+                <div className="novidades-nav">
+                  <button
+                    className="novidades-seta"
+                    onClick={() => setNovidadeAtual((i) => (i - 1 + NOVIDADES.length) % NOVIDADES.length)}
+                    aria-label="Novidade anterior"
+                  >
+                    <Icon icon="mdi:chevron-left" width="18" />
+                  </button>
+                  <div className="novidades-dots">
+                    {NOVIDADES.map((_, idx) => (
+                      <button
+                        key={idx}
+                        className={`novidades-dot ${idx === novidadeAtual ? 'ativo' : ''}`}
+                        onClick={() => setNovidadeAtual(idx)}
+                        aria-label={`Ir para novidade ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    className="novidades-seta"
+                    onClick={() => setNovidadeAtual((i) => (i + 1) % NOVIDADES.length)}
+                    aria-label="Próxima novidade"
+                  >
+                    <Icon icon="mdi:chevron-right" width="18" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -505,424 +448,6 @@ function Home() {
           </button>
         </div>
       </div>
-
-      {/* Layout em 2 Colunas: Fila de WhatsApp + Mensagens Recentes */}
-      <div className="home-two-columns">
-        {/* Fila de WhatsApp */}
-        <div className="home-section">
-          <div className="section-header">
-            <Icon icon="logos:whatsapp-icon" width="24" />
-            <h2>Fila de WhatsApp</h2>
-            <span className="badge-count">{filaWhatsapp.length}</span>
-          </div>
-          <div className="home-fila-whatsapp">
-            {filaWhatsapp.length === 0 ? (
-              <div className="empty-state">
-                <Icon icon="material-symbols:check-circle-outline" width="48" />
-                <p>Nenhuma mensagem pendente!</p>
-              </div>
-            ) : (
-              <div className="fila-lista">
-                {filaWhatsapp.map((item) => {
-                  const hoje = new Date();
-                  hoje.setHours(0, 0, 0, 0);
-                  const vencimento = new Date(item.data_vencimento + 'T00:00:00');
-                  const diffMs = vencimento - hoje;
-                  const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-                  let statusVencimento = null;
-                  let statusClass = '';
-                  if (diffDias < 0) {
-                    const diasAtraso = Math.abs(diffDias);
-                    statusVencimento = `${diasAtraso} dia${diasAtraso > 1 ? 's' : ''} atraso`;
-                    statusClass = 'fila-atraso';
-                  } else if (diffDias === 0) {
-                    statusVencimento = 'Hoje';
-                    statusClass = 'fila-hoje';
-                  } else if (diffDias === 1) {
-                    statusVencimento = 'Amanhã';
-                    statusClass = 'fila-amanha';
-                  } else if (diffDias <= 3) {
-                    statusVencimento = `Em ${diffDias} dias`;
-                    statusClass = 'fila-futuro';
-                  }
-
-                  return (
-                    <div key={item.id} className="fila-item">
-                      <div className="fila-icon">
-                        <Icon icon="material-symbols:schedule-send-outline" width="20" />
-                      </div>
-                      <div className="fila-info">
-                        <span className="fila-nome">{item.devedores?.nome}</span>
-                        <span className="fila-telefone">{item.devedores?.telefone}</span>
-                      </div>
-                      <div className="fila-detalhes">
-                        <span className="fila-valor">{formatarMoeda(item.valor)}</span>
-                        {statusVencimento && (
-                          <span className={statusClass}>{statusVencimento}</span>
-                        )}
-                      </div>
-                      <div className="fila-acoes">
-                        <button
-                          className="fila-btn fila-btn-enviar"
-                          onClick={() => handleEnviarWhatsApp(item)}
-                          title="Enviar WhatsApp agora"
-                        >
-                          <Icon icon="mdi:whatsapp" width="16" />
-                        </button>
-                        <button
-                          className="fila-btn fila-btn-cancelar"
-                          onClick={() => handleCancelarEnvio(item.id)}
-                          title="Cancelar envio"
-                        >
-                          <Icon icon="material-symbols:close" width="16" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Mensagens Recentes */}
-        <div className="home-section">
-          <div className="section-header">
-            <Icon icon="material-symbols:history" width="24" />
-            <h2>Mensagens Recentes</h2>
-          </div>
-          <div className="home-mensagens-recentes">
-            {mensagensRecentes.length === 0 ? (
-              <div className="empty-state">
-                <Icon icon="material-symbols:inbox-outline" width="48" />
-                <p>Nenhuma mensagem enviada ainda</p>
-              </div>
-            ) : (
-              <div className="mensagens-lista">
-                {mensagensRecentes.map((msg) => (
-                  <div key={msg.id} className="mensagem-item">
-                    <div className={`mensagem-status ${msg.status}`}>
-                      <Icon
-                        icon={msg.status === 'enviado'
-                          ? 'material-symbols:check-circle'
-                          : 'material-symbols:error-outline'}
-                        width="16"
-                      />
-                    </div>
-                    <div className="mensagem-info">
-                      <span className="mensagem-nome">{msg.devedores?.nome}</span>
-                      <span className="mensagem-telefone">{msg.telefone}</span>
-                    </div>
-                    <div className="mensagem-detalhes">
-                      <span className="mensagem-valor">{formatarMoeda(msg.valor_mensalidade)}</span>
-                      <span className="mensagem-data">
-                        {new Date(msg.enviado_em).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Modal de Envio WhatsApp com Editor de Mensagem */}
-      {confirmModalWhatsapp.isOpen && (
-        <div className="modal-overlay" onClick={() => { setConfirmModalWhatsapp({ isOpen: false, item: null }); setMensagemEditavel(''); }}>
-          <div
-            className="modal-content"
-            onClick={e => e.stopPropagation()}
-            style={{
-              maxWidth: '480px',
-              width: '95%',
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingBottom: '16px',
-              borderBottom: '1px solid #e5e7eb',
-              marginBottom: '16px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Icon icon="mdi:whatsapp" width="22" style={{ color: 'white' }} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
-                    Enviar Cobrança
-                  </h3>
-                  <span style={{ fontSize: '12px', color: '#6b7280' }}>Via WhatsApp</span>
-                </div>
-              </div>
-              <button
-                onClick={() => { setConfirmModalWhatsapp({ isOpen: false, item: null }); setMensagemEditavel(''); }}
-                style={{
-                  background: '#f3f4f6',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.2s'
-                }}
-                onMouseOver={e => e.currentTarget.style.background = '#e5e7eb'}
-                onMouseOut={e => e.currentTarget.style.background = '#f3f4f6'}
-              >
-                <Icon icon="mdi:close" width="20" style={{ color: '#6b7280' }} />
-              </button>
-            </div>
-
-            {confirmModalWhatsapp.item && (
-              <>
-                {/* Info do Cliente */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '14px 16px',
-                  backgroundColor: '#f8fafc',
-                  borderRadius: '10px',
-                  marginBottom: '16px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '50%',
-                      background: '#e2e8f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: '#64748b'
-                    }}>
-                      {confirmModalWhatsapp.item.devedores?.nome?.charAt(0)?.toUpperCase() || 'C'}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: '600', fontSize: '15px', color: '#1e293b' }}>
-                        {confirmModalWhatsapp.item.devedores?.nome}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <Icon icon="mdi:phone-outline" width="14" />
-                        {confirmModalWhatsapp.item.devedores?.telefone}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#16a34a' }}>
-                      {formatarMoeda(confirmModalWhatsapp.item.valor)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Área da Mensagem */}
-                <div style={{ flex: 1, minHeight: 0, marginBottom: '16px' }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    marginBottom: '10px',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    <Icon icon="mdi:message-text-outline" width="16" />
-                    Mensagem
-                    <span style={{
-                      fontSize: '11px',
-                      color: '#9ca3af',
-                      fontWeight: 'normal',
-                      marginLeft: '4px',
-                      padding: '2px 6px',
-                      background: '#f3f4f6',
-                      borderRadius: '4px'
-                    }}>
-                      editável
-                    </span>
-                  </label>
-                  {carregandoPreview ? (
-                    <div style={{
-                      padding: '60px 20px',
-                      textAlign: 'center',
-                      color: '#9ca3af',
-                      background: '#f9fafb',
-                      borderRadius: '10px',
-                      border: '1px solid #e5e7eb'
-                    }}>
-                      <Icon icon="mdi:loading" width="28" style={{ animation: 'spin 1s linear infinite' }} />
-                      <p style={{ margin: '12px 0 0', fontSize: '14px' }}>Carregando mensagem...</p>
-                    </div>
-                  ) : (
-                    <textarea
-                      value={mensagemEditavel}
-                      onChange={(e) => setMensagemEditavel(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '220px',
-                        padding: '14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        lineHeight: '1.6',
-                        resize: 'none',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s'
-                      }}
-                      onFocus={e => {
-                        e.target.style.borderColor = '#25D366'
-                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 211, 102, 0.1)'
-                      }}
-                      onBlur={e => {
-                        e.target.style.borderColor = '#d1d5db'
-                        e.target.style.boxShadow = 'none'
-                      }}
-                      placeholder="Digite sua mensagem..."
-                    />
-                  )}
-                </div>
-
-                {/* Botões */}
-                <div style={{
-                  display: 'flex',
-                  gap: '12px',
-                  justifyContent: 'flex-end',
-                  paddingTop: '16px',
-                  borderTop: '1px solid #e5e7eb'
-                }}>
-                  <button
-                    onClick={() => { setConfirmModalWhatsapp({ isOpen: false, item: null }); setMensagemEditavel(''); }}
-                    style={{
-                      padding: '11px 24px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      backgroundColor: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.background = '#f9fafb'
-                      e.currentTarget.style.borderColor = '#9ca3af'
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.background = '#fff'
-                      e.currentTarget.style.borderColor = '#d1d5db'
-                    }}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={confirmarEnvioWhatsApp}
-                    disabled={carregandoPreview || !mensagemEditavel.trim()}
-                    style={{
-                      padding: '11px 28px',
-                      border: 'none',
-                      borderRadius: '8px',
-                      background: carregandoPreview || !mensagemEditavel.trim()
-                        ? '#9ca3af'
-                        : 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-                      color: '#fff',
-                      cursor: carregandoPreview || !mensagemEditavel.trim() ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'all 0.2s',
-                      boxShadow: carregandoPreview || !mensagemEditavel.trim()
-                        ? 'none'
-                        : '0 2px 8px rgba(37, 211, 102, 0.3)'
-                    }}
-                  >
-                    <Icon icon="mdi:send" width="18" />
-                    Enviar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Confirmação - Cancelar Envio */}
-      <ConfirmModal
-        isOpen={confirmModalCancelar.isOpen}
-        onClose={() => setConfirmModalCancelar({ isOpen: false, mensalidadeId: null })}
-        onConfirm={confirmarCancelarEnvio}
-        title="Cancelar Envio"
-        message="Deseja realmente cancelar o envio desta mensagem?"
-        confirmText="Sim, Cancelar"
-        cancelText="Não"
-        type="warning"
-      />
-
-      {/* Modal de Feedback (Sucesso/Erro) */}
-      <ConfirmModal
-        isOpen={feedbackModal.isOpen}
-        onClose={() => setFeedbackModal({ ...feedbackModal, isOpen: false })}
-        onConfirm={() => setFeedbackModal({ ...feedbackModal, isOpen: false })}
-        title={feedbackModal.title}
-        message={feedbackModal.message}
-        confirmText="OK"
-        cancelText=""
-        type={feedbackModal.type}
-      />
-
-      {/* Loading overlay para envio de WhatsApp */}
-      {enviandoWhatsapp && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '24px 32px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-          }}>
-            <Icon icon="line-md:loading-twotone-loop" width="40" style={{ color: '#25D366', marginBottom: '12px' }} />
-            <p style={{ margin: 0, fontSize: '14px', color: '#333' }}>Enviando mensagem...</p>
-          </div>
-        </div>
-      )}
 
       {/* Onboarding Checklist - painel flutuante */}
       {mostrarChecklist && (
