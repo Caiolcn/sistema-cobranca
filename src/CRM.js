@@ -26,6 +26,18 @@ const COLUNAS_EXP = [
   { id: 'perdido', titulo: 'Perdido', cor: '#6b7280', bg: '#f3f4f6', derivada: false }
 ]
 
+// Colunas do CRM de Alunos (alunos ativos — pipeline de retenção/frequência)
+// Todas derivadas (read-only): classificadas por agendamentos + mensalidade vencida.
+// Precedência: em_risco > agendado > nao_retorno (atraso nunca fica escondido)
+const COLUNAS_ALUNOS = [
+  { id: 'agendado', titulo: 'Agendados', cor: '#3b82f6', bg: '#eff6ff' },
+  { id: 'nao_retorno', titulo: 'Não retorno', cor: '#f59e0b', bg: '#fffbeb' },
+  { id: 'em_risco', titulo: 'Em risco / Atrasado', cor: '#ef4444', bg: '#fef2f2' }
+]
+
+// Dias sem aula a partir dos quais um aluno em "Não retorno" vira alerta (vermelho)
+const DIAS_ALERTA_RETORNO = 14
+
 const ORIGEM_LABEL = {
   manual: 'Manual',
   whatsapp_bot: 'Bot WhatsApp',
@@ -63,8 +75,10 @@ export default function CRM() {
   const { isSmallScreen } = useWindowSize()
   const crmLocked = isLocked('premium')
 
-  const [activeTab, setActiveTab] = useState('leads') // 'leads' | 'experimentais'
+  const [activeTab, setActiveTab] = useState('leads') // 'leads' | 'experimentais' | 'alunos'
   const [leads, setLeads] = useState([])
+  const [alunos, setAlunos] = useState([])
+  const [mensalidadePorAluno, setMensalidadePorAluno] = useState({})
   const [agendamentosPorDevedor, setAgendamentosPorDevedor] = useState({})
   const [aulasMap, setAulasMap] = useState({})
   const [planos, setPlanos] = useState([])
@@ -89,22 +103,52 @@ export default function CRM() {
 
   const carregarTudo = async () => {
     setLoading(true)
-    const [{ data: leadsData }, { data: planosData }] = await Promise.all([
+    // Alunos ativos = mesmo conjunto da tela de Alunos (não-lixo, não-experimental)
+    const [{ data: leadsData }, { data: planosData }, { data: alunosData }] = await Promise.all([
       supabase.from('leads').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('planos').select('id, nome, valor, tipo, numero_aulas, ciclo_cobranca').eq('user_id', userId)
+      supabase.from('planos').select('id, nome, valor, tipo, numero_aulas, ciclo_cobranca').eq('user_id', userId),
+      supabase.from('devedores')
+        .select('id, nome, telefone, email, assinatura_ativa, experimental')
+        .eq('user_id', userId)
+        .or('lixo.is.null,lixo.eq.false')
+        .order('nome', { ascending: true })
     ])
 
     const leadsList = leadsData || []
+    // Aluno = pagante (assinatura ativa) OU já não-experimental.
+    // Quem tem assinatura ativa deixa de ser experimental automaticamente,
+    // mesmo que o flag `experimental` não tenha sido virado manualmente.
+    const alunosList = (alunosData || []).filter(d => d.assinatura_ativa === true || !d.experimental)
     setLeads(leadsList)
     setPlanos(planosData || [])
+    setAlunos(alunosList)
 
-    // Agendamentos dos devedores vinculados (pra classificar experimentais)
-    const devedorIds = leadsList.map(l => l.convertido_em_devedor_id).filter(Boolean)
+    // Mensalidades em aberto/atrasadas dos alunos — pra marcar "Em risco"
+    if (alunosList.length > 0) {
+      const { data: mens } = await supabase
+        .from('mensalidades')
+        .select('devedor_id, data_vencimento, status')
+        .eq('user_id', userId)
+        .in('status', ['pendente', 'atrasado'])
+        .order('data_vencimento', { ascending: true })
+      // Guarda só a mais próxima por aluno (mesma lógica da tela de Alunos)
+      const mensMap = {}
+      ;(mens || []).forEach(m => { if (!mensMap[m.devedor_id]) mensMap[m.devedor_id] = m })
+      setMensalidadePorAluno(mensMap)
+    } else {
+      setMensalidadePorAluno({})
+    }
+
+    // Agendamentos de TODOS os devedores relevantes (experimentais + alunos ativos)
+    const devedorIds = [
+      ...leadsList.map(l => l.convertido_em_devedor_id).filter(Boolean),
+      ...alunosList.map(a => a.id)
+    ]
     if (devedorIds.length > 0) {
       const { data: ags } = await supabase
         .from('agendamentos')
         .select('id, devedor_id, aula_id, data, status')
-        .in('devedor_id', devedorIds)
+        .in('devedor_id', Array.from(new Set(devedorIds)))
         .order('data', { ascending: false })
 
       const porDev = {}
@@ -125,6 +169,8 @@ export default function CRM() {
         ;(aulas || []).forEach(a => { amap[a.id] = a })
         setAulasMap(amap)
       }
+    } else {
+      setAgendamentosPorDevedor({})
     }
 
     setLoading(false)
@@ -132,7 +178,11 @@ export default function CRM() {
 
   // Separar leads por aba
   const leadsManual = useMemo(() => leads.filter(l => l.origem !== 'agendamento'), [leads])
-  const leadsExperimental = useMemo(() => leads.filter(l => l.origem === 'agendamento'), [leads])
+  const leadsExperimental = useMemo(() => {
+    // Quem já é aluno (assinatura ativa) sai de Experimentais e aparece em Alunos
+    const alunoIds = new Set(alunos.map(a => a.id))
+    return leads.filter(l => l.origem === 'agendamento' && !alunoIds.has(l.convertido_em_devedor_id))
+  }, [leads, alunos])
 
   // Calcular badge + coluna-derivada de cada experimental
   const situacaoExperimental = useMemo(() => {
@@ -184,6 +234,65 @@ export default function CRM() {
     })
     return map
   }, [leadsExperimental, agendamentosPorDevedor])
+
+  // Classificar cada aluno ativo no pipeline de retenção
+  // Precedência: em_risco (mensalidade vencida) > agendado (aula futura) > nao_retorno
+  const situacaoAluno = useMemo(() => {
+    const map = {}
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+
+    alunos.forEach(aluno => {
+      const ags = agendamentosPorDevedor[aluno.id] || []
+      const confirmados = ags.filter(a => a.status === 'confirmado')
+      const futuros = confirmados.filter(a => new Date(a.data + 'T00:00:00') >= hoje)
+      const passados = confirmados.filter(a => new Date(a.data + 'T00:00:00') < hoje)
+
+      // Mensalidade vencida?
+      const m = mensalidadePorAluno[aluno.id]
+      let atrasado = false
+      if (m) {
+        const dv = new Date(m.data_vencimento + (m.data_vencimento.length === 10 ? 'T00:00:00' : ''))
+        dv.setHours(0, 0, 0, 0)
+        atrasado = m.status === 'atrasado' || dv < hoje
+      }
+
+      let coluna, badge
+      if (atrasado) {
+        coluna = 'em_risco'
+        const dias = diasAtras(m.data_vencimento.substring(0, 10))
+        badge = {
+          texto: dias > 0 ? `Vencido há ${dias}d` : 'Vence hoje',
+          cor: '#b91c1c', bg: '#fee2e2', icone: 'mdi:cash-remove'
+        }
+      } else if (futuros.length > 0) {
+        coluna = 'agendado'
+        const proxima = futuros.sort((a, b) => a.data.localeCompare(b.data))[0]
+        const dias = Math.floor((new Date(proxima.data + 'T00:00:00') - hoje) / (1000 * 60 * 60 * 24))
+        badge = {
+          texto: dias === 0 ? 'Aula hoje' : dias === 1 ? 'Aula amanhã' : `Aula em ${dias}d`,
+          cor: '#1d4ed8', bg: '#eff6ff', data: proxima.data, aula_id: proxima.aula_id
+        }
+      } else {
+        coluna = 'nao_retorno'
+        if (passados.length > 0) {
+          const ultima = passados.sort((a, b) => b.data.localeCompare(a.data))[0]
+          const dias = diasAtras(ultima.data)
+          const alerta = dias > DIAS_ALERTA_RETORNO
+          badge = {
+            texto: dias === 0 ? 'Fez aula hoje' : `Fez aula há ${dias}d`,
+            cor: alerta ? '#b45309' : '#6b7280', bg: alerta ? '#fffbeb' : '#f3f4f6',
+            data: ultima.data, aula_id: ultima.aula_id, icone: alerta ? 'mdi:alert' : 'mdi:calendar-check'
+          }
+        } else {
+          badge = { texto: 'Sem aula agendada', cor: '#b45309', bg: '#fffbeb', icone: 'mdi:calendar-remove' }
+        }
+      }
+
+      map[aluno.id] = { coluna, badge, futuros: futuros.length, passados: passados.length }
+    })
+    return map
+  }, [alunos, agendamentosPorDevedor, mensalidadePorAluno])
 
   const abrirNovo = () => {
     setLeadEditando({ nome: '', telefone: '', email: '', interesse: '', observacoes: '', status: 'novo', origem: 'manual' })
@@ -250,6 +359,23 @@ export default function CRM() {
   const abrirWhatsApp = (lead) => {
     if (!lead.telefone) return showToast('Lead sem telefone', 'error')
     setModalMsg({ aberto: true, lead, texto: gerarMsgPadrao(lead), enviando: false })
+  }
+
+  const gerarMsgAluno = (aluno) => {
+    const situ = situacaoAluno[aluno.id]
+    const nome = (aluno.nome || '').split(' ')[0]
+    if (situ?.coluna === 'em_risco') {
+      return `Oi ${nome}! Tudo bem? Notei que sua mensalidade está em aberto. Posso te ajudar a regularizar? 😊`
+    }
+    if (situ?.coluna === 'nao_retorno') {
+      return `Oi ${nome}! Sentimos sua falta por aqui. Que tal marcar sua próxima aula essa semana? 😊`
+    }
+    return `Oi ${nome}! Só passando pra confirmar sua próxima aula. Te espero lá! 😊`
+  }
+
+  const abrirWhatsAppAluno = (aluno) => {
+    if (!aluno.telefone) return showToast('Aluno sem telefone', 'error')
+    setModalMsg({ aberto: true, lead: aluno, texto: gerarMsgAluno(aluno), enviando: false })
   }
 
   const enviarMensagemWhatsApp = async () => {
@@ -378,6 +504,7 @@ export default function CRM() {
   // Contadores das abas
   const countLeads = leadsManual.length
   const countExp = leadsExperimental.length
+  const countAlunos = alunos.length
 
   return (
     <div style={{ padding: isSmallScreen ? '16px' : '24px', flex: 1, width: '100%', backgroundColor: '#ffffff', minHeight: '100vh', boxSizing: 'border-box' }}>
@@ -408,12 +535,14 @@ export default function CRM() {
           >
             <option value="leads">Leads ({countLeads})</option>
             <option value="experimentais">Experimentais ({countExp})</option>
+            <option value="alunos">Alunos ({countAlunos})</option>
           </select>
         ) : (
           <div style={{ display: 'inline-flex', gap: '4px', backgroundColor: '#f3f4f6', borderRadius: '10px', padding: '4px' }}>
             {[
               { id: 'leads', label: `Leads (${countLeads})`, icon: 'mdi:account-multiple' },
-              { id: 'experimentais', label: `Experimentais (${countExp})`, icon: 'mdi:calendar-account' }
+              { id: 'experimentais', label: `Experimentais (${countExp})`, icon: 'mdi:calendar-account' },
+              { id: 'alunos', label: `Alunos (${countAlunos})`, icon: 'mdi:account-school' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -444,27 +573,40 @@ export default function CRM() {
         )}
       </div>
 
-      {activeTab === 'leads'
-        ? <AbaLeads
-            leads={filtrarPorBusca(leadsManual)}
-            busca={busca} setBusca={setBusca}
-            abrirNovo={abrirNovo} abrirLead={abrirLead}
-            moverLead={moverLeadManual} loading={loading}
-            isSmallScreen={isSmallScreen}
-          />
-        : <AbaExperimentais
-            leads={filtrarPorBusca(leadsExperimental)}
-            busca={busca} setBusca={setBusca}
-            abrirLead={abrirLead}
-            moverLead={moverExperimental}
-            situacao={situacaoExperimental}
-            aulasMap={aulasMap}
-            abrirWhatsApp={abrirWhatsApp}
-            abrirConverter={abrirConverter}
-            loading={loading}
-            isSmallScreen={isSmallScreen}
-          />
-      }
+      {activeTab === 'leads' && (
+        <AbaLeads
+          leads={filtrarPorBusca(leadsManual)}
+          busca={busca} setBusca={setBusca}
+          abrirNovo={abrirNovo} abrirLead={abrirLead}
+          moverLead={moverLeadManual} loading={loading}
+          isSmallScreen={isSmallScreen}
+        />
+      )}
+      {activeTab === 'experimentais' && (
+        <AbaExperimentais
+          leads={filtrarPorBusca(leadsExperimental)}
+          busca={busca} setBusca={setBusca}
+          abrirLead={abrirLead}
+          moverLead={moverExperimental}
+          situacao={situacaoExperimental}
+          aulasMap={aulasMap}
+          abrirWhatsApp={abrirWhatsApp}
+          abrirConverter={abrirConverter}
+          loading={loading}
+          isSmallScreen={isSmallScreen}
+        />
+      )}
+      {activeTab === 'alunos' && (
+        <AbaAlunos
+          alunos={filtrarPorBusca(alunos)}
+          busca={busca} setBusca={setBusca}
+          situacao={situacaoAluno}
+          aulasMap={aulasMap}
+          abrirWhatsApp={abrirWhatsAppAluno}
+          loading={loading}
+          isSmallScreen={isSmallScreen}
+        />
+      )}
 
       {/* Modal de edição do lead */}
       {modalAberto && leadEditando && (
@@ -933,6 +1075,117 @@ function AbaExperimentais({ leads, busca, setBusca, abrirLead, moverLead, situac
                   {leadsCol.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '20px 10px', color: '#9ca3af', fontSize: '12px' }}>
                       {col.derivada ? 'Vazio' : 'Arraste cards aqui'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ============================================================
+// Aba: CRM de Alunos (alunos ativos — pipeline de retenção/frequência)
+// Tudo derivado (read-only). Classificação em situacaoAluno.
+// ============================================================
+function AbaAlunos({ alunos, busca, setBusca, situacao, aulasMap, abrirWhatsApp, loading, isSmallScreen }) {
+  const alunosPorColuna = (colId) => alunos.filter(a => situacao[a.id]?.coluna === colId)
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>CRM de Alunos</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
+            Acompanhe a frequência dos alunos ativos: quem tem aula marcada, quem sumiu e quem está com pagamento atrasado
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input type="text" placeholder="Buscar nome ou telefone..." value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', width: isSmallScreen ? '100%' : '240px' }} />
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Carregando...</div>
+      ) : alunos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#666' }}>
+          <Icon icon="mdi:account-school" width="48" style={{ color: '#d1d5db', marginBottom: '12px' }} />
+          <div style={{ fontSize: '15px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Nenhum aluno ativo</div>
+          <div style={{ fontSize: '13px', color: '#9ca3af' }}>Converta experimentais ou cadastre alunos pra acompanhá-los aqui.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '12px' }}>
+          {COLUNAS_ALUNOS.map(col => {
+            const alunosCol = alunosPorColuna(col.id)
+            return (
+              <div key={col.id}
+                style={{ flex: '1 1 240px', minWidth: '240px', backgroundColor: col.bg, borderRadius: '12px', padding: '12px', minHeight: '400px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', padding: '0 4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: col.cor }} />
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{col.titulo}</span>
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#666', fontWeight: '600' }}>{alunosCol.length}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {alunosCol.map(aluno => {
+                    const situ = situacao[aluno.id]
+                    const aula = situ?.badge?.aula_id ? aulasMap[situ.badge.aula_id] : null
+                    return (
+                      <div key={aluno.id}
+                        style={{ backgroundColor: 'white', borderRadius: '10px', padding: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          <Icon icon="mdi:account" width="14" style={{ color: col.cor, flexShrink: 0 }} />
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {aluno.nome}
+                          </span>
+                        </div>
+                        {aluno.telefone && (
+                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                            📱 {aluno.telefone}
+                          </div>
+                        )}
+                        {situ?.badge && (
+                          <div style={{ marginTop: '4px', marginBottom: '4px' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', backgroundColor: situ.badge.bg, color: situ.badge.cor, fontSize: '11px', fontWeight: '600' }}>
+                              <Icon icon={situ.badge.icone || 'mdi:calendar-clock'} width="12" />
+                              {situ.badge.texto}
+                            </div>
+                            {situ.badge.data && (
+                              <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                                {formatarData(situ.badge.data)}
+                                {aula?.horario && ` • ${aula.horario.substring(0, 5)}`}
+                                {aula?.descricao && ` • ${aula.descricao}`}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                          {aluno.telefone && (
+                            <button onClick={() => abrirWhatsApp(aluno)} title="Enviar WhatsApp"
+                              style={{ flex: 1, padding: '6px', backgroundColor: '#25d366', color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                              <Icon icon="mdi:whatsapp" width="13" />
+                              WhatsApp
+                            </button>
+                          )}
+                          <button onClick={() => { window.location.href = `/app/clientes?abrir=${aluno.id}` }} title="Ver ficha do aluno"
+                            style={{ flex: 1, padding: '6px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                            <Icon icon="mdi:account-details" width="13" />
+                            Ver ficha
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {alunosCol.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '20px 10px', color: '#9ca3af', fontSize: '12px' }}>
+                      Vazio
                     </div>
                   )}
                 </div>
