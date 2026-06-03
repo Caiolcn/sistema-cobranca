@@ -783,6 +783,16 @@
   color: #FF9800;
 }
 
+.card-aulas-hoje .card-icon {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+
+.card-radar .card-icon {
+  background: #F3E5F5;
+  color: #9C27B0;
+}
+
 .card-taxa-cancelamento .card-icon {
   background: #FFEBEE;
   color: #f44336;

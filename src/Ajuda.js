@@ -261,15 +261,15 @@ const CATEGORIAS = [
         bg: '#f5f3ff',
         videoUrl: 'https://zvlnkkmcytjtridiojxx.supabase.co/storage/v1/object/public/CentralDeAjuda/Anamnese%20-%201.mp4'
       },
-      // {
-      //   id: 'site',
-      //   titulo: 'Site',
-      //   descricao: 'Criar o site público da sua empresa para captar alunos',
-      //   icon: 'fluent:globe-20-regular',
-      //   cor: '#ec4899',
-      //   bg: '#fdf2f8',
-      //   videoUrl: null
-      // }
+      {
+        id: 'site',
+        titulo: 'Site',
+        descricao: 'Criar o site público da sua empresa para captar alunos',
+        icon: 'fluent:globe-20-regular',
+        cor: '#ec4899',
+        bg: '#fdf2f8',
+        videoUrl: null
+      }
     ]
   }
 ]

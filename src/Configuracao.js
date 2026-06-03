@@ -14,9 +14,18 @@ import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
+import { SITE_TEMPLATES } from './data/siteTemplates'
+import { SITE_FONTS } from './data/siteFonts'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+
+// Dispositivos para o preview responsivo da landing. width=null => ocupa a coluna toda.
+const PREVIEW_DEVICES = [
+  { id: 'mobile', label: 'Celular', icon: 'mdi:cellphone', width: 390 },
+  { id: 'tablet', label: 'Tablet', icon: 'mdi:tablet', width: 820 },
+  { id: 'desktop', label: 'Computador', icon: 'mdi:monitor', width: null }
+]
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
 
@@ -27,7 +36,8 @@ function mascararNomePreview(nome) {
   return `${partes[0]} ${partes[partes.length - 1][0]}.`
 }
 
-function CollapseCard({ open, onToggle, title, icon, children }) {
+function CollapseCard({ open, onToggle, title, icon, children, visivel, onToggleVisivel }) {
+  const temOlho = typeof onToggleVisivel === 'function'
   return (
     <div style={{
       border: '1px solid #e5e7eb',
@@ -55,7 +65,23 @@ function CollapseCard({ open, onToggle, title, icon, children }) {
           textAlign: 'left'
         }}>
         <Icon icon={icon} width="18" style={{ color: '#344848', flexShrink: 0 }} />
-        <span style={{ flex: 1 }}>{title}</span>
+        <span style={{ flex: 1, opacity: temOlho && !visivel ? 0.45 : 1 }}>{title}</span>
+        {temOlho && (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label={visivel ? 'Ocultar seção no site' : 'Mostrar seção no site'}
+            title={visivel ? 'Visível no site — clique para ocultar' : 'Oculta no site — clique para mostrar'}
+            onClick={(e) => { e.stopPropagation(); onToggleVisivel() }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleVisivel() } }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, marginRight: '4px', padding: '2px', cursor: 'pointer',
+              color: visivel ? '#9ca3af' : '#cbd5e1', transition: 'color 0.15s'
+            }}>
+            <Icon icon={visivel ? 'mdi:eye-outline' : 'mdi:eye-off-outline'} width="19" />
+          </span>
+        )}
         <svg
           width="18" height="18" viewBox="0 0 24 24" fill="none"
           stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -225,7 +251,9 @@ function Configuracao() {
     galeria: [],
     faq: [],
     depoimentosManuais: [],
-    ordemSecoes: ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa'],
+    corSecundaria: '',
+    fonte: 'inter',
+    ordemSecoes: ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa'],
     mostrarDepoimentos: true,
     mostrarPlanos: true,
     mostrarHorarios: true,
@@ -245,6 +273,14 @@ function Configuracao() {
   const [previewAulas, setPreviewAulas] = useState([])
   const [previewNpsDepoimentos, setPreviewNpsDepoimentos] = useState([])
   const [previewDadosCarregados, setPreviewDadosCarregados] = useState(false)
+  // Dispositivo simulado no preview da landing (celular / tablet / computador)
+  const [previewDevice, setPreviewDevice] = useState('desktop')
+  // Confirmação para aplicar um template pronto (quando já há conteúdo)
+  const [templateConfirm, setTemplateConfirm] = useState({ show: false, tpl: null })
+  // Card de progresso do site (colapsável)
+  const [progressoAberto, setProgressoAberto] = useState(false)
+  // Faixa de modelos prontos (null = adaptativo: abre só quando o site está vazio)
+  const [templatesAberto, setTemplatesAberto] = useState(null)
 
   // Quais secoes do accordion estao abertas (so 1 aberta por padrao)
   const [landingSecoesAbertas, setLandingSecoesAbertas] = useState({
@@ -340,6 +376,8 @@ function Configuracao() {
         slug: data.landing_slug || '',
         descricao: data.landing_descricao || '',
         corPrimaria: data.landing_cor_primaria || '#344848',
+        corSecundaria: data.landing_cor_secundaria || '',
+        fonte: data.landing_fonte || 'inter',
         fotoCapaUrl: data.landing_foto_capa_url || '',
         instagramUrl: data.instagram_url || '',
         facebookUrl: data.facebook_url || '',
@@ -355,7 +393,7 @@ function Configuracao() {
         depoimentosManuais: Array.isArray(data.landing_depoimentos_manuais) ? data.landing_depoimentos_manuais : [],
         ordemSecoes: Array.isArray(data.landing_ordem_secoes) && data.landing_ordem_secoes.length > 0
           ? data.landing_ordem_secoes
-          : ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa'],
+          : ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa'],
         mostrarDepoimentos: data.landing_mostrar_depoimentos !== false,
         mostrarPlanos: data.landing_mostrar_planos !== false,
         mostrarHorarios: data.landing_mostrar_horarios !== false,
@@ -3285,9 +3323,10 @@ function Configuracao() {
     showToast('Slug gerado!', 'success')
   }
 
-  const salvarLanding = async () => {
-    if (landingConfig.ativo && !landingConfig.slug) {
-      showToast('Defina um endereço antes de ativar', 'warning')
+  const salvarLanding = async (opts = {}) => {
+    const ativoFinal = (opts && typeof opts.ativo === 'boolean') ? opts.ativo : landingConfig.ativo
+    if (ativoFinal && !landingConfig.slug) {
+      showToast('Defina um endereço antes de publicar o site', 'warning')
       return
     }
     if (landingConfig.slug && landingConfig.slug.length < 3) {
@@ -3311,10 +3350,12 @@ function Configuracao() {
       const { error } = await supabase
         .from('usuarios')
         .update({
-          landing_ativo: landingConfig.ativo,
+          landing_ativo: ativoFinal,
           landing_slug: landingConfig.slug || null,
           landing_descricao: landingConfig.descricao || null,
           landing_cor_primaria: landingConfig.corPrimaria || '#344848',
+          landing_cor_secundaria: landingConfig.corSecundaria || null,
+          landing_fonte: landingConfig.fonte || null,
           landing_foto_capa_url: landingConfig.fotoCapaUrl || null,
           instagram_url: landingConfig.instagramUrl || null,
           facebook_url: (landingConfig.facebookUrl || '').trim() || null,
@@ -3347,7 +3388,17 @@ function Configuracao() {
         }
         throw error
       }
-      showToast('Site atualizado!', 'success')
+      if (ativoFinal !== landingConfig.ativo) {
+        setLandingConfig(prev => ({ ...prev, ativo: ativoFinal }))
+      }
+      showToast(
+        opts.ativo === true
+          ? 'Site publicado! Já está no ar. 🚀'
+          : opts.ativo === false
+            ? 'Site tirado do ar. Voltou a ser rascunho.'
+            : 'Site salvo!',
+        'success'
+      )
     } catch (err) {
       console.error('Erro ao salvar landing:', err)
       showToast('Erro ao salvar: ' + (err.message || 'erro desconhecido'), 'error')
@@ -3431,12 +3482,30 @@ function Configuracao() {
     planos: 'Planos',
     galeria: 'Galeria de fotos',
     horarios: 'Horários das aulas',
+    agendamento: 'Agendar online',
     depoimentos: 'Depoimentos',
     faq: 'Perguntas frequentes',
     mapa: 'Como chegar (mapa)'
   }
 
-  const ORDEM_PADRAO = ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa']
+  const ORDEM_PADRAO = ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa']
+
+  // Mostra/oculta a seção de agendamento adicionando/removendo 'agendamento' da ordem
+  // das seções (persiste em landing_ordem_secoes, sem precisar de coluna nova).
+  const toggleSecaoAgendamento = (mostrar) => {
+    setLandingConfig(prev => {
+      const atual = prev.ordemSecoes || ORDEM_PADRAO
+      if (mostrar) {
+        if (atual.includes('agendamento')) return prev
+        const idx = atual.indexOf('horarios')
+        const nova = [...atual]
+        if (idx >= 0) nova.splice(idx + 1, 0, 'agendamento')
+        else nova.push('agendamento')
+        return { ...prev, ordemSecoes: nova }
+      }
+      return { ...prev, ordemSecoes: atual.filter(s => s !== 'agendamento') }
+    })
+  }
 
   // Carrega dados reais pro preview quando abre a aba landing
   useEffect(() => {
@@ -3508,6 +3577,8 @@ function Configuracao() {
         foto_capa_url: landingConfig.fotoCapaUrl,
         descricao: landingConfig.descricao,
         cor_primaria: landingConfig.corPrimaria || '#344848',
+        cor_secundaria: landingConfig.corSecundaria || null,
+        fonte: landingConfig.fonte || 'inter',
         telefone: dadosEmpresa.telefone,
         instagram_url: landingConfig.instagramUrl,
         facebook_url: landingConfig.facebookUrl,
@@ -3634,6 +3705,243 @@ function Configuracao() {
     }))
   }
 
+  // Aplica um template pronto. Se já houver conteúdo, pede confirmação antes (substitui tudo).
+  const aplicarTemplateSite = (tpl) => {
+    const temConteudo = Boolean(
+      (landingConfig.heroTitulo || '').trim() ||
+      (landingConfig.heroSubtitulo || '').trim() ||
+      (landingConfig.descricao || '').trim() ||
+      (landingConfig.ctaFinalTitulo || '').trim() ||
+      (landingConfig.faq || []).length ||
+      (landingConfig.depoimentosManuais || []).length ||
+      (landingConfig.galeria || []).length
+    )
+    if (temConteudo) {
+      setTemplateConfirm({ show: true, tpl })
+    } else {
+      confirmarAplicarTemplate(tpl)
+    }
+  }
+
+  const confirmarAplicarTemplate = (tplArg) => {
+    const tpl = tplArg || templateConfirm.tpl
+    if (!tpl) return
+    setLandingConfig(prev => ({
+      ...prev,
+      // Gera um endereço inicial se ainda não houver (a pessoa pode trocar depois)
+      slug: prev.slug || slugifyLocal(dadosEmpresa.nomeEmpresa || tpl.nome),
+      corPrimaria: tpl.cor,
+      fotoCapaUrl: tpl.capaUrl,
+      descricao: tpl.descricao,
+      heroTitulo: tpl.heroTitulo,
+      heroSubtitulo: tpl.heroSubtitulo,
+      ctaTexto: tpl.ctaTexto,
+      ctaFinalTitulo: tpl.ctaFinalTitulo,
+      ctaFinalSubtitulo: tpl.ctaFinalSubtitulo,
+      faq: (tpl.faq || []).map(f => ({ ...f })),
+      depoimentosManuais: (tpl.depoimentosManuais || []).map(d => ({ ...d })),
+      galeria: [...(tpl.galeria || [])],
+      // Garante que as seções preenchidas pelo modelo apareçam
+      mostrarGaleria: true,
+      mostrarDepoimentos: true,
+      mostrarFaq: true,
+      mostrarCtaFinal: true
+    }))
+    showToast(`Modelo "${tpl.nome}" aplicado! Revise os textos e clique em Salvar.`, 'success')
+  }
+
+  const publicarLanding = () => salvarLanding({ ativo: true })
+  const despublicarLanding = () => salvarLanding({ ativo: false })
+
+  // Barra de publicação: status (no ar/rascunho) + Salvar, Publicar/Tirar do ar, Visualizar, Copiar link.
+  const renderPublishBar = () => {
+    const noAr = landingConfig.ativo
+    const temSlug = !!(landingConfig.slug && landingConfig.slug.length >= 3)
+    const btnBase = {
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+      padding: '9px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+      cursor: 'pointer', border: '1px solid #d1d5db', backgroundColor: 'white', color: '#344848',
+      transition: 'all 0.15s', whiteSpace: 'nowrap'
+    }
+    const btnDisabled = { cursor: 'not-allowed', opacity: 0.45 }
+    const btnTertiary = {
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      padding: '7px 9px', borderRadius: '7px', fontSize: '12px', fontWeight: '600',
+      cursor: 'pointer', border: 'none', backgroundColor: 'transparent', color: '#6b7280',
+      whiteSpace: 'nowrap', transition: 'all 0.15s'
+    }
+    return (
+      <div style={{
+        border: '1px solid #e5e7eb', borderRadius: '12px', padding: '14px 16px',
+        backgroundColor: 'white', marginBottom: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+      }}>
+        {/* Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <span style={{
+            width: '9px', height: '9px', borderRadius: '50%', flexShrink: 0,
+            backgroundColor: noAr ? '#16a34a' : '#9ca3af',
+            boxShadow: noAr ? '0 0 0 3px rgba(22,163,74,0.18)' : 'none'
+          }} />
+          <span style={{ fontSize: '13px', fontWeight: '700', color: noAr ? '#16a34a' : '#6b7280' }}>
+            {noAr ? 'No ar' : 'Fora do ar — rascunho'}
+          </span>
+        </div>
+        {/* Endereço (editável) */}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{
+              flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
+              border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9fafb'
+            }}>
+              <span style={{ padding: '8px 0 8px 10px', fontSize: '12px', color: '#888', whiteSpace: 'nowrap' }}>
+                mensalli.com.br/
+              </span>
+              <input
+                type="text"
+                value={landingConfig.slug}
+                onChange={e => setLandingConfig(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                placeholder="meunegocio"
+                style={{
+                  flex: 1, minWidth: 0, padding: '8px 10px 8px 0', border: 'none', outline: 'none',
+                  fontSize: '13px', fontWeight: '500', backgroundColor: 'transparent', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <button onClick={gerarLandingSlug}
+              style={{
+                padding: '8px 12px', backgroundColor: '#f3f4f6', border: '1px solid #ddd',
+                borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                fontSize: '12px', fontWeight: '600', color: '#555', flexShrink: 0
+              }}>
+              <Icon icon="mdi:auto-fix" width="15" /> Gerar
+            </button>
+          </div>
+          {slugEhReservado(landingConfig.slug) && (
+            <div style={{ marginTop: '6px', fontSize: '11px', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Icon icon="mdi:alert-circle-outline" width="14" />
+              "{landingConfig.slug}" é uma palavra reservada. Escolha outro endereço.
+            </div>
+          )}
+        </div>
+        {/* Ações — hierarquia: principal / secundário / terciários */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {noAr ? (
+            // Já no ar: a ação principal é salvar as alterações
+            <button onClick={() => salvarLanding()} disabled={salvandoLanding}
+              style={{ ...btnBase, color: 'white', border: 'none', backgroundColor: '#344848', padding: '11px 20px', fontSize: '14px', fontWeight: '700', ...(salvandoLanding ? btnDisabled : {}) }}>
+              <Icon icon={salvandoLanding ? 'eos-icons:loading' : 'mdi:content-save-outline'} width="17" />
+              Salvar alterações
+            </button>
+          ) : (
+            // Rascunho: a ação principal é publicar
+            <>
+              <button onClick={publicarLanding} disabled={salvandoLanding || !temSlug}
+                title={!temSlug ? 'Defina um endereço de pelo menos 3 caracteres antes de publicar' : ''}
+                style={{ ...btnBase, color: 'white', border: 'none', backgroundColor: '#16a34a', padding: '11px 22px', fontSize: '14px', fontWeight: '700', ...((salvandoLanding || !temSlug) ? btnDisabled : {}) }}>
+                <Icon icon="mdi:rocket-launch-outline" width="17" />
+                Publicar
+              </button>
+              <button onClick={() => salvarLanding()} disabled={salvandoLanding}
+                style={{ ...btnBase, ...(salvandoLanding ? btnDisabled : {}) }}>
+                <Icon icon={salvandoLanding ? 'eos-icons:loading' : 'mdi:content-save-outline'} width="16" />
+                Salvar
+              </button>
+            </>
+          )}
+          {/* Terciários discretos */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: 'auto' }}>
+            <button onClick={abrirLandingPreview} disabled={!temSlug}
+              style={{ ...btnTertiary, ...(!temSlug ? btnDisabled : {}) }}>
+              <Icon icon="mdi:open-in-new" width="15" /> Visualizar
+            </button>
+            <button onClick={copiarLinkLanding} disabled={!temSlug}
+              style={{ ...btnTertiary, ...(!temSlug ? btnDisabled : {}) }}>
+              <Icon icon="mdi:content-copy" width="15" /> Copiar
+            </button>
+            {noAr && (
+              <button onClick={despublicarLanding} disabled={salvandoLanding}
+                style={{ ...btnTertiary, color: '#b45309', ...(salvandoLanding ? btnDisabled : {}) }}>
+                <Icon icon="mdi:eye-off-outline" width="15" /> Tirar do ar
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Checklist de conclusão do site: só itens que o construtor/template preenche
+  // (cada um corresponde a um card/campo desta tela). Planos/Horários/WhatsApp vêm
+  // de outras áreas (abas Planos, Agenda e Dados da Empresa) e não entram aqui.
+  const getLandingChecklist = () => {
+    const slugOk = !!(landingConfig.slug && landingConfig.slug.length >= 3 && !slugEhReservado(landingConfig.slug))
+    const faqOk = (landingConfig.faq || []).filter(f => f && (f.pergunta || '').trim() && (f.resposta || '').trim()).length > 0
+    const depoOk = (landingConfig.depoimentosManuais || []).filter(d => d && (d.comentario || '').trim()).length > 0
+    return [
+      { key: 'endereco', label: 'Endereço', ok: slugOk },
+      { key: 'destaque', label: 'Topo (hero)', ok: !!(landingConfig.heroTitulo || '').trim() },
+      { key: 'sobre', label: 'Sobre nós', ok: !!(landingConfig.descricao || '').trim() },
+      { key: 'capa', label: 'Foto de capa', ok: !!landingConfig.fotoCapaUrl },
+      { key: 'galeria', label: 'Galeria', ok: (landingConfig.galeria || []).length > 0 },
+      { key: 'depoimentos', label: 'Depoimentos', ok: depoOk },
+      { key: 'faq', label: 'FAQ', ok: faqOk }
+    ]
+  }
+
+  const renderProgressCard = () => {
+    const itens = getLandingChecklist()
+    const feitos = itens.filter(i => i.ok).length
+    const pct = Math.round((feitos / itens.length) * 100)
+    const faltam = itens.filter(i => !i.ok)
+    const completo = pct >= 100
+    const corBarra = completo ? '#16a34a' : pct >= 60 ? '#16a34a' : '#f59e0b'
+    return (
+      <div style={{ marginBottom: '22px' }}>
+        {/* Título + progresso (clicável para expandir o checklist) */}
+        <div
+          onClick={() => setProgressoAberto(o => !o)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', cursor: 'pointer' }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#344848', whiteSpace: 'nowrap' }}>
+            Meu site
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {completo && <Icon icon="mdi:check-circle" width="15" style={{ color: '#16a34a' }} />}
+            <span style={{ fontSize: '13px', fontWeight: '700', color: completo ? '#16a34a' : '#6b7280' }}>
+              {pct}% concluído
+            </span>
+            <Icon icon="mdi:chevron-down" width="20"
+              style={{ color: '#9ca3af', transform: progressoAberto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+          </div>
+        </div>
+        {/* Barra fina (sempre visível) */}
+        <div style={{ height: '6px', backgroundColor: '#f1f5f9', borderRadius: '999px', overflow: 'hidden', marginTop: '8px' }}>
+          <div style={{ width: `${pct}%`, height: '100%', backgroundColor: corBarra, transition: 'width 0.4s ease' }} />
+        </div>
+        {/* Checklist (colapsável) */}
+        {progressoAberto && (
+          <div style={{ border: '1px solid #eef0f2', borderRadius: '10px', padding: '14px', marginTop: '12px', backgroundColor: '#fafafa' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '8px' }}>
+              {itens.map(i => (
+                <div key={i.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', minWidth: 0 }}>
+                  <Icon icon={i.ok ? 'mdi:check-circle' : 'mdi:checkbox-blank-circle-outline'} width="16"
+                    style={{ color: i.ok ? '#16a34a' : '#cbd5e1', flexShrink: 0 }} />
+                  <span style={{ color: i.ok ? '#374151' : '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {i.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {faltam.length > 0 && (
+              <p style={{ fontSize: '12px', color: '#888', margin: '12px 0 0' }}>
+                Falta: {faltam.map(f => f.label).join(', ')}.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const renderLanding = () => {
     if (isLocked('pro')) {
       return (
@@ -3667,142 +3975,132 @@ function Configuracao() {
 
     const formContent = (
       <div style={{ maxWidth: '680px', width: '100%', boxSizing: 'border-box' }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-          Meu site
-        </h3>
-        <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#888' }}>
-          Monte o site da sua empresa: destaque, planos, horários, depoimentos, mapa e botão direto pro WhatsApp.
-        </p>
+        {renderProgressCard()}
+
+        {/* Modelos prontos — faixa colapsável (abre sozinha quando o site está vazio) */}
+        {(() => {
+          const siteVazio = !(landingConfig.heroTitulo || '').trim() && !(landingConfig.descricao || '').trim()
+          const aberto = templatesAberto !== null ? templatesAberto : siteVazio
+          return (
+            <div style={{ marginBottom: '22px', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
+              <button type="button" onClick={() => setTemplatesAberto(!aberto)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '12px 14px', background: 'white', border: 'none', cursor: 'pointer', textAlign: 'left'
+                }}>
+                <Icon icon="mdi:star" width="20" style={{ color: '#f5b50a', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: '14px', fontWeight: '700', color: '#344848' }}>
+                  Começar com um modelo pronto
+                </span>
+                <Icon icon="mdi:chevron-down" width="20"
+                  style={{ color: '#9ca3af', flexShrink: 0, transform: aberto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+              {aberto && (
+                <div style={{ padding: '0 14px 14px' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#888' }}>
+                    Escolha seu tipo de negócio e a gente preenche textos, fotos e estrutura de exemplo. Você pode ajustar tudo depois.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: '10px' }}>
+                    {SITE_TEMPLATES.map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => aplicarTemplateSite(tpl)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '12px', backgroundColor: 'white',
+                          border: '1px solid #e5e7eb', borderRadius: '10px',
+                          cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.borderColor = tpl.cor
+                          e.currentTarget.style.boxShadow = `0 2px 10px ${tpl.cor}22`
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.borderColor = '#e5e7eb'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}>
+                        <span style={{
+                          width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          backgroundColor: `${tpl.cor}18`, color: tpl.cor
+                        }}>
+                          <Icon icon={tpl.icon} width="20" />
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a', minWidth: 0 }}>
+                          {tpl.nome}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        <ConfirmModal
+          isOpen={templateConfirm.show}
+          onClose={() => setTemplateConfirm({ show: false, tpl: null })}
+          onConfirm={() => confirmarAplicarTemplate()}
+          title={`Aplicar modelo "${templateConfirm.tpl?.nome || ''}"?`}
+          message={'Isso vai substituir os textos do destaque, Sobre nós, CTA, depoimentos, FAQ, a cor e as fotos de exemplo pelos do modelo.\n\nSuas alterações ainda não salvas serão sobrescritas. Você pode revisar tudo antes de salvar.'}
+          confirmText="Aplicar modelo"
+          cancelText="Cancelar"
+          type="warning"
+        />
+
+        <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', color: '#9ca3af', textTransform: 'uppercase', margin: '4px 0 10px', paddingLeft: '2px' }}>
+          Aparência
+        </div>
 
         <CollapseCard
           open={landingSecoesAbertas.iniciais}
           onToggle={() => toggleLandingSecao('iniciais')}
-          title="Configurações iniciais"
-          icon="mdi:cog-outline">
-        {/* Toggle Ativar */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: isMobile ? '12px' : '16px',
-          backgroundColor: landingConfig.ativo ? '#f0fdf4' : '#f9fafb',
-          borderRadius: '10px', marginBottom: '20px',
-          border: landingConfig.ativo ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0, flex: 1 }}>
-            <Icon icon={landingConfig.ativo ? 'mdi:web-check' : 'mdi:web-off'} width={isMobile ? 20 : 24}
-              style={{ color: landingConfig.ativo ? '#16a34a' : '#999', flexShrink: 0 }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '600', color: '#1a1a1a' }}>
-                {landingConfig.ativo ? 'Site ativo' : 'Site desativado'}
-              </div>
-              <div style={{ fontSize: '12px', color: '#888' }}>
-                {landingConfig.ativo ? 'Seu site está no ar' : 'Ninguém consegue acessar ainda'}
-              </div>
-            </div>
-          </div>
-          <div
-            onClick={() => setLandingConfig(prev => ({ ...prev, ativo: !prev.ativo }))}
-            style={{
-              width: '44px', minWidth: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
-              backgroundColor: landingConfig.ativo ? '#16a34a' : '#d1d5db',
-              position: 'relative', transition: 'background-color 0.2s', marginLeft: '8px'
-            }}
-          >
-            <div style={{
-              width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
-              position: 'absolute', top: '2px',
-              left: landingConfig.ativo ? '22px' : '2px',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-            }} />
-          </div>
-        </div>
-
-        {/* Slug */}
-        <div style={{ marginBottom: '20px' }}>
+          title="Identidade visual"
+          icon="mdi:palette-outline">
+        {/* Logo */}
+        <div style={{ marginBottom: '24px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
-            Endereço da página
+            Logo
           </label>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-            <div style={{
-              flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
-              border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9fafb'
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Aparece no menu do topo do site. De preferência PNG com fundo transparente.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <label style={{
+              width: 64, height: 64, borderRadius: '12px',
+              border: dadosEmpresa.logoUrl ? '1px solid #e5e7eb' : '2px dashed #ccc',
+              overflow: 'hidden', cursor: uploadingLogo ? 'wait' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: '#f9fafb', flexShrink: 0, opacity: uploadingLogo ? 0.6 : 1, transition: 'opacity 0.2s'
             }}>
-              <span style={{ padding: '10px 0 10px 12px', fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>
-                mensalli.com.br/
-              </span>
-              <input
-                type="text"
-                value={landingConfig.slug}
-                onChange={e => setLandingConfig(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-                placeholder="meunegocio"
-                style={{
-                  flex: 1, minWidth: 0, padding: '10px 12px 10px 0', border: 'none', outline: 'none',
-                  fontSize: '14px', fontWeight: '500', backgroundColor: 'transparent', boxSizing: 'border-box'
-                }}
-              />
+              {dadosEmpresa.logoUrl ? (
+                <img src={dadosEmpresa.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              ) : (
+                <Icon icon="mdi:image-plus-outline" width="24" style={{ color: '#aaa' }} />
+              )}
+              <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+            </label>
+            <div style={{ fontSize: '12px', color: '#888' }}>
+              {dadosEmpresa.logoUrl ? 'Clique na logo para trocar' : 'Clique para adicionar a logo'}
+              {dadosEmpresa.logoUrl && (
+                <button onClick={removerLogo} style={{
+                  background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
+                  fontSize: '12px', marginLeft: '8px', padding: 0, textDecoration: 'underline'
+                }}>remover</button>
+              )}
             </div>
-            <button
-              onClick={gerarLandingSlug}
-              style={{
-                padding: '10px 14px', backgroundColor: '#f3f4f6', border: '1px solid #ddd',
-                borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                fontSize: '12px', fontWeight: '600', color: '#555', flexShrink: 0
-              }}
-            >
-              <Icon icon="mdi:auto-fix" width="16" />
-              Gerar
-            </button>
           </div>
-          {slugEhReservado(landingConfig.slug) && (
-            <div style={{
-              marginTop: '8px', padding: '8px 12px', backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px',
-              color: '#991b1b', display: 'flex', alignItems: 'center', gap: '6px'
-            }}>
-              <Icon icon="mdi:alert-circle-outline" width="16" />
-              "{landingConfig.slug}" é uma palavra reservada do sistema. Escolha outro endereço.
-            </div>
-          )}
-          {landingConfig.slug && !slugEhReservado(landingConfig.slug) && (
-            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-              <code style={{
-                flex: 1, minWidth: 0, fontSize: isMobile ? '11px' : '12px', padding: '8px 12px', backgroundColor: '#f1f5f9',
-                borderRadius: '6px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap', display: 'block', boxSizing: 'border-box',
-                ...(isMobile ? { width: '100%' } : {})
-              }}>
-                {window.location.origin}/{landingConfig.slug}
-              </code>
-              <div style={{ display: 'flex', gap: '6px', ...(isMobile ? { width: '100%' } : {}) }}>
-                <button onClick={copiarLinkLanding}
-                  style={{
-                    padding: '8px 12px', backgroundColor: '#344848', color: 'white',
-                    border: 'none', borderRadius: '6px', cursor: 'pointer',
-                    fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px',
-                    flex: isMobile ? 1 : 'none', justifyContent: 'center'
-                  }}>
-                  <Icon icon="mdi:content-copy" width="14" /> Copiar
-                </button>
-                <button onClick={abrirLandingPreview}
-                  style={{
-                    padding: '8px 12px', backgroundColor: 'white', color: '#344848',
-                    border: '1px solid #344848', borderRadius: '6px', cursor: 'pointer',
-                    fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px',
-                    flex: isMobile ? 1 : 'none', justifyContent: 'center'
-                  }}>
-                  <Icon icon="mdi:open-in-new" width="14" /> Abrir
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Cor primária */}
-        <div style={{ marginBottom: '0' }}>
+        {/* Cor principal */}
+        <div style={{ marginBottom: '24px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
             Cor principal
           </label>
           <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
-            Define a cor dos botões, títulos de seção e do bloco "Bora começar?".
+            Cor dos botões, títulos de seção e do bloco "Bora começar?".
           </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             {CORES_PRESET.map(c => (
@@ -3823,7 +4121,70 @@ function Configuracao() {
             />
           </div>
         </div>
+
+        {/* Cor secundária */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Cor secundária
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            Usada nos gradientes do topo e do bloco final. Deixe em "Automático" para derivar da cor principal.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setLandingConfig(prev => ({ ...prev, corSecundaria: '' }))}
+              style={{
+                height: '36px', padding: '0 14px', borderRadius: '18px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                border: !landingConfig.corSecundaria ? '2px solid #1a1a1a' : '1px solid #d1d5db',
+                backgroundColor: !landingConfig.corSecundaria ? '#1a1a1a' : 'white',
+                color: !landingConfig.corSecundaria ? 'white' : '#555'
+              }}>
+              Automático
+            </button>
+            {CORES_PRESET.map(c => (
+              <div key={c}
+                onClick={() => setLandingConfig(prev => ({ ...prev, corSecundaria: c }))}
+                style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  backgroundColor: c, cursor: 'pointer',
+                  border: landingConfig.corSecundaria === c ? '3px solid #1a1a1a' : '3px solid transparent',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                }} />
+            ))}
+            <input
+              type="color"
+              value={landingConfig.corSecundaria || '#344848'}
+              onChange={e => setLandingConfig(prev => ({ ...prev, corSecundaria: e.target.value }))}
+              style={{ width: '40px', height: '40px', border: 'none', padding: 0, cursor: 'pointer', backgroundColor: 'transparent' }}
+            />
+          </div>
+        </div>
+
+        {/* Fonte */}
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+            Fonte
+          </label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px' }}>
+            A fonte usada nos textos de todo o site.
+          </p>
+          <select
+            value={landingConfig.fonte || 'inter'}
+            onChange={e => setLandingConfig(prev => ({ ...prev, fonte: e.target.value }))}
+            style={{
+              width: '100%', maxWidth: '260px', padding: '10px 12px', border: '1px solid #ddd',
+              borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', cursor: 'pointer'
+            }}>
+            {SITE_FONTS.map(f => (
+              <option key={f.id} value={f.id}>{f.label}</option>
+            ))}
+          </select>
+        </div>
         </CollapseCard>
+
+        <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', color: '#9ca3af', textTransform: 'uppercase', margin: '22px 0 10px', paddingLeft: '2px' }}>
+          Conteúdo
+        </div>
 
         <CollapseCard
           open={landingSecoesAbertas.topo}
@@ -3992,7 +4353,9 @@ function Configuracao() {
           open={landingSecoesAbertas.galeria}
           onToggle={() => toggleLandingSecao('galeria')}
           title="Galeria de fotos"
-          icon="mdi:image-multiple-outline">
+          icon="mdi:image-multiple-outline"
+          visivel={landingConfig.mostrarGaleria}
+          onToggleVisivel={() => setLandingConfig(prev => ({ ...prev, mostrarGaleria: !prev.mostrarGaleria }))}>
         {/* GALERIA DE FOTOS */}
         <div style={{ marginBottom: '0' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
@@ -4046,7 +4409,9 @@ function Configuracao() {
           open={landingSecoesAbertas.depoimentos}
           onToggle={() => toggleLandingSecao('depoimentos')}
           title="Depoimentos"
-          icon="mdi:star-outline">
+          icon="mdi:star-outline"
+          visivel={landingConfig.mostrarDepoimentos}
+          onToggleVisivel={() => setLandingConfig(prev => ({ ...prev, mostrarDepoimentos: !prev.mostrarDepoimentos }))}>
         {/* DEPOIMENTOS MANUAIS */}
         <div style={{ marginBottom: '0' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
@@ -4106,7 +4471,9 @@ function Configuracao() {
           open={landingSecoesAbertas.faq}
           onToggle={() => toggleLandingSecao('faq')}
           title="Perguntas frequentes (FAQ)"
-          icon="mdi:help-circle-outline">
+          icon="mdi:help-circle-outline"
+          visivel={landingConfig.mostrarFaq}
+          onToggleVisivel={() => setLandingConfig(prev => ({ ...prev, mostrarFaq: !prev.mostrarFaq }))}>
         {/* FAQ */}
         <div style={{ marginBottom: '0' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
@@ -4166,7 +4533,9 @@ function Configuracao() {
           open={landingSecoesAbertas.ctaFinal}
           onToggle={() => toggleLandingSecao('ctaFinal')}
           title={'Seção "Bora começar?"'}
-          icon="mdi:bullhorn-outline">
+          icon="mdi:bullhorn-outline"
+          visivel={landingConfig.mostrarCtaFinal}
+          onToggleVisivel={() => setLandingConfig(prev => ({ ...prev, mostrarCtaFinal: !prev.mostrarCtaFinal }))}>
         <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#888' }}>
           O bloco grande colorido com chamada final. O texto do botão é o mesmo do hero.
         </p>
@@ -4330,6 +4699,10 @@ function Configuracao() {
 
         </CollapseCard>
 
+        <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em', color: '#9ca3af', textTransform: 'uppercase', margin: '22px 0 10px', paddingLeft: '2px' }}>
+          Estrutura
+        </div>
+
         <CollapseCard
           open={landingSecoesAbertas.avancado}
           onToggle={() => toggleLandingSecao('avancado')}
@@ -4421,30 +4794,35 @@ function Configuracao() {
                 <span style={{ fontSize: '14px', color: '#333' }}>{opt.label}</span>
               </label>
             ))}
+            {/* Seção de agendamento online — visibilidade controlada pela ordem das seções */}
+            {(() => {
+              const ativa = (landingConfig.ordemSecoes || ORDEM_PADRAO).includes('agendamento')
+              return (
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', border: '1px solid #eee', borderRadius: '8px',
+                  cursor: 'pointer', backgroundColor: ativa ? '#f0fdf4' : '#fafafa'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={ativa}
+                    onChange={e => toggleSecaoAgendamento(e.target.checked)}
+                  />
+                  <Icon icon="mdi:calendar-check" width="18" style={{ color: '#666' }} />
+                  <span style={{ fontSize: '14px', color: '#333' }}>Mostrar seção "Agende seu horário"</span>
+                </label>
+              )
+            })()}
           </div>
+          <p style={{ fontSize: '11px', color: '#999', margin: '8px 0 0' }}>
+            A seção de agendamento mostra um botão que leva pro seu agendamento online. Só aparece no site se o
+            Agendamento estiver ativo (aba <strong>Agendamento Online</strong>) com um endereço definido.
+          </p>
         </div>
         </CollapseCard>
 
-        {/* Botão salvar */}
-        <button
-          onClick={salvarLanding}
-          disabled={salvandoLanding}
-          style={{
-            padding: '12px 28px',
-            backgroundColor: salvandoLanding ? '#ccc' : '#344848',
-            color: 'white', border: 'none', borderRadius: '8px',
-            fontSize: '14px', fontWeight: '600',
-            cursor: salvandoLanding ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: '8px',
-            width: isMobile ? '100%' : 'auto', justifyContent: 'center'
-          }}
-        >
-          {salvandoLanding ? (
-            <><Icon icon="eos-icons:loading" width="18" /> Salvando...</>
-          ) : (
-            <><Icon icon="mdi:check" width="18" /> Salvar site</>
-          )}
-        </button>
+        {/* Ações de publicação — no mobile/tablet (no desktop a barra fica junto ao preview) */}
+        {(isMobile || isTablet) && renderPublishBar()}
       </div>
     )
 
@@ -4452,6 +4830,9 @@ function Configuracao() {
     if (isMobile || isTablet) {
       return formContent
     }
+
+    // Largura simulada do dispositivo selecionado (null = ocupa a coluna toda).
+    const deviceWidth = PREVIEW_DEVICES.find(d => d.id === previewDevice)?.width ?? null
 
     return (
       <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start', width: '100%' }}>
@@ -4478,21 +4859,50 @@ function Configuracao() {
                 Preview ao vivo
               </span>
             </div>
-            <span style={{ fontSize: '11px', color: '#999' }}>
-              atualiza enquanto você edita
-            </span>
+            {/* Botoes de dispositivo (responsividade) */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '2px',
+              backgroundColor: '#f1f5f9', borderRadius: '8px', padding: '3px'
+            }}>
+              {PREVIEW_DEVICES.map((dev) => {
+                const ativo = previewDevice === dev.id
+                return (
+                  <button
+                    key={dev.id}
+                    onClick={() => setPreviewDevice(dev.id)}
+                    title={dev.label}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '32px', height: '28px',
+                      backgroundColor: ativo ? 'white' : 'transparent',
+                      color: ativo ? '#1a1a1a' : '#888',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer',
+                      boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <Icon icon={dev.icon} width="18" />
+                  </button>
+                )
+              })}
+            </div>
           </div>
+
+          {renderPublishBar()}
 
           {/* Container que simula um browser com escala */}
           <div style={{
-            width: '100%',
+            width: deviceWidth ? `${deviceWidth}px` : '100%',
+            maxWidth: '100%',
+            margin: '0 auto',
             height: 'calc(100vh - 100px)',
             borderRadius: '12px',
             overflow: 'hidden',
             border: '1px solid #e5e7eb',
             boxShadow: '0 6px 24px rgba(0,0,0,0.08)',
             backgroundColor: '#f8f9fa',
-            position: 'relative'
+            position: 'relative',
+            transition: 'width 0.25s ease'
           }}>
             {/* Barra tipo browser */}
             <div style={{
@@ -4533,7 +4943,7 @@ function Configuracao() {
                   Carregando preview...
                 </div>
               }>
-                <LandingAcademia previewData={landingPreviewData} />
+                <LandingAcademia previewData={landingPreviewData} viewportWidth={deviceWidth} />
               </Suspense>
             </div>
           </div>
@@ -5010,7 +5420,7 @@ function Configuracao() {
     { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
     { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'mdi:account-tie-outline' },
-    // { id: 'landing', label: 'Site', icon: 'mdi:web' },
+    { id: 'landing', label: 'Site', icon: 'mdi:web' },
     { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
     { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
   ]

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { FUNCTIONS_URL, SUPABASE_ANON_KEY as ANON_KEY } from '../supabaseClient'
+import { getSiteFont } from '../data/siteFonts'
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const headers = { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
@@ -30,7 +31,7 @@ function setMeta(name, content, attr = 'name') {
   el.setAttribute('content', content)
 }
 
-export default function LandingAcademia({ previewData = null }) {
+export default function LandingAcademia({ previewData = null, viewportWidth = null }) {
   const params = useParams()
   const slug = params?.slug
   const isPreview = !!previewData
@@ -38,7 +39,13 @@ export default function LandingAcademia({ previewData = null }) {
   const [erro, setErro] = useState(null)
   const [fetched, setFetched] = useState(null)
   const [faqAberto, setFaqAberto] = useState(null)
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768)
+  // Quando viewportWidth e' informado (preview com simulacao de dispositivo), usa essa
+  // largura no lugar da janela real — o site tem um unico breakpoint em 768px.
+  const [isMobile, setIsMobile] = useState(
+    viewportWidth != null
+      ? viewportWidth < 768
+      : (typeof window !== 'undefined' && window.innerWidth < 768)
+  )
 
   // Em preview, le direto da prop (sem estado intermediario) pra nao atrasar updates.
   // Fora do preview, usa os dados carregados via edge function.
@@ -48,10 +55,28 @@ export default function LandingAcademia({ previewData = null }) {
   const depoimentos = isPreview ? (previewData?.depoimentos || []) : fetched?.depoimentos || []
 
   useEffect(() => {
+    // Simulacao de dispositivo no preview: segue a largura passada por prop.
+    if (viewportWidth != null) {
+      setIsMobile(viewportWidth < 768)
+      return
+    }
     const onResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [])
+  }, [viewportWidth])
+
+  // Carrega a fonte escolhida (Google Fonts) sob demanda
+  useEffect(() => {
+    const f = getSiteFont(empresa?.fonte)
+    if (!f?.google) return
+    const id = 'site-font-' + f.id
+    if (document.getElementById(id)) return
+    const link = document.createElement('link')
+    link.id = id
+    link.rel = 'stylesheet'
+    link.href = `https://fonts.googleapis.com/css2?family=${f.google}&display=swap`
+    document.head.appendChild(link)
+  }, [empresa?.fonte])
 
   useEffect(() => {
     if (isPreview) return // preview usa dados das props, nao fetcha
@@ -123,6 +148,8 @@ export default function LandingAcademia({ previewData = null }) {
   }
 
   const cor = empresa.cor_primaria || '#344848'
+  const corSec = empresa.cor_secundaria || null
+  const fontStack = getSiteFont(empresa.fonte).stack
   const telWa = formatarTelefoneWa(empresa.telefone)
   const msgWa = encodeURIComponent(`Olá! Quero conhecer a ${empresa.nome_empresa}`)
   const linkWaBase = telWa ? `https://wa.me/${telWa}?text=${msgWa}` : null
@@ -134,6 +161,11 @@ export default function LandingAcademia({ previewData = null }) {
   // Footer: sempre mostra se tem telefone (eh contato, nao CTA)
   const linkWaFooter = linkWaBase
   const linkAgendar = (empresa.agendamento_ativo && empresa.agendamento_slug && empresa.mostrar_cta_agendar !== false)
+    ? `${window.location.origin}/agendar/${empresa.agendamento_slug}`
+    : null
+  // Seção dedicada de agendamento — independe do botão do hero.
+  // A visibilidade da seção vem da ordem das seções (presença de 'agendamento').
+  const urlAgendar = (empresa.agendamento_ativo && empresa.agendamento_slug)
     ? `${window.location.origin}/agendar/${empresa.agendamento_slug}`
     : null
 
@@ -166,18 +198,111 @@ export default function LandingAcademia({ previewData = null }) {
   // Ordem das secoes (com fallback seguro)
   const ordem = Array.isArray(empresa.ordem_secoes) && empresa.ordem_secoes.length > 0
     ? empresa.ordem_secoes
-    : ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'mapa']
+    : ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa']
+
+  // Menu fixo do topo: links só das seções que realmente aparecem + um CTA
+  const navLinks = [
+    { id: 'sobre', label: 'Sobre', ok: !!empresa.descricao },
+    { id: 'planos', label: 'Planos', ok: !!empresa.mostrar_planos && planos.length > 0 },
+    { id: 'horarios', label: 'Horários', ok: !!empresa.mostrar_horarios && aulas.length > 0 },
+    { id: 'depoimentos', label: 'Depoimentos', ok: !!empresa.mostrar_depoimentos && depoimentos.length > 0 },
+    { id: 'faq', label: 'FAQ', ok: !!empresa.mostrar_faq && faq.length > 0 }
+  ].filter(l => l.ok)
+  const ctaHeader = linkWaBase
+    ? { href: linkWaBase, external: true, icon: 'mdi:whatsapp', label: 'WhatsApp' }
+    : urlAgendar
+      ? { href: urlAgendar, external: false, icon: 'mdi:calendar-check', label: 'Agendar' }
+      : null
+
+  // Alternância de fundo branco/cinza entre as seções que realmente aparecem
+  const secaoVisivel = {
+    sobre: !!empresa.descricao,
+    planos: !!empresa.mostrar_planos && planos.length > 0,
+    galeria: !!empresa.mostrar_galeria && galeria.length > 0,
+    horarios: !!empresa.mostrar_horarios && aulas.length > 0,
+    agendamento: !!urlAgendar,
+    depoimentos: !!empresa.mostrar_depoimentos && depoimentos.length > 0,
+    faq: !!empresa.mostrar_faq && faq.length > 0,
+    mapa: !!mapaUrl
+  }
+  const secoesVisiveis = ordem.filter(s => secaoVisivel[s])
+  // 1ª seção visível = cinza, 2ª = branca, 3ª = cinza...
+  const corFundoSecao = (s) => (secoesVisiveis.indexOf(s) % 2 === 0 ? '#f8f9fa' : 'white')
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', fontFamily: 'Inter, -apple-system, sans-serif', color: '#1a1a1a' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', fontFamily: fontStack, color: '#1a1a1a' }}>
+      <style>{`
+        html { scroll-behavior: smooth; }
+        section[id], footer[id] { scroll-margin-top: ${isMobile ? 64 : 76}px; }
+      `}</style>
+
+      {/* MENU FIXO (topo) */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+        padding: isMobile ? '10px 16px' : '12px 28px',
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        borderBottom: '1px solid #eceff1',
+        boxShadow: '0 1px 8px rgba(0,0,0,0.04)'
+      }}>
+        {/* Marca: logo (ou nome, se não houver logo) */}
+        <a href="#topo" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', minWidth: 0 }}>
+          {empresa.logo_url ? (
+            <img src={empresa.logo_url} alt={empresa.nome_empresa || 'Logo'}
+              style={{ height: isMobile ? '34px' : '44px', width: 'auto', maxWidth: '190px', objectFit: 'contain', display: 'block' }} />
+          ) : (
+            <span style={{ fontSize: isMobile ? '16px' : '19px', fontWeight: '800', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {empresa.nome_empresa || 'Meu site'}
+            </span>
+          )}
+        </a>
+
+        {/* Links das seções (desktop) */}
+        {!isMobile && (
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            {navLinks.map(l => (
+              <a key={l.id} href={`#${l.id}`}
+                style={{ fontSize: '14px', fontWeight: '600', color: '#374151', textDecoration: 'none' }}
+                onMouseOver={e => (e.currentTarget.style.color = cor)}
+                onMouseOut={e => (e.currentTarget.style.color = '#374151')}>
+                {l.label}
+              </a>
+            ))}
+            <a href="#contato"
+              style={{ fontSize: '14px', fontWeight: '600', color: '#374151', textDecoration: 'none' }}
+              onMouseOver={e => (e.currentTarget.style.color = cor)}
+              onMouseOut={e => (e.currentTarget.style.color = '#374151')}>
+              Contato
+            </a>
+          </nav>
+        )}
+
+        {/* CTA */}
+        {ctaHeader && (
+          <a href={ctaHeader.href}
+            target={ctaHeader.external ? '_blank' : undefined}
+            rel={ctaHeader.external ? 'noreferrer' : undefined}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+              padding: isMobile ? '9px 12px' : '10px 18px',
+              backgroundColor: cor, color: 'white', borderRadius: '999px',
+              textDecoration: 'none', fontWeight: '700', fontSize: isMobile ? '13px' : '14px', whiteSpace: 'nowrap'
+            }}>
+            <Icon icon={ctaHeader.icon} width="18" />
+            {!isMobile && ctaHeader.label}
+          </a>
+        )}
+      </header>
+
       {/* HERO */}
-      <section style={{
+      <section id="topo" style={{
         position: 'relative',
         minHeight: isMobile ? '420px' : '520px',
         backgroundColor: cor,
         backgroundImage: empresa.foto_capa_url
           ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${empresa.foto_capa_url})`
-          : `linear-gradient(135deg, ${cor} 0%, ${shade(cor, -20)} 100%)`,
+          : `linear-gradient(135deg, ${cor} 0%, ${corSec || shade(cor, -20)} 100%)`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
@@ -189,16 +314,17 @@ export default function LandingAcademia({ previewData = null }) {
       }}>
         <div style={{ maxWidth: '720px', width: '100%' }}>
           <h1 style={{
-            fontSize: isMobile ? '30px' : '44px',
-            fontWeight: '800',
-            margin: '0 0 12px',
+            fontSize: isMobile ? '36px' : '56px',
+            fontWeight: '900',
+            margin: '0 0 16px',
+            lineHeight: '1.08',
             textShadow: '0 2px 12px rgba(0,0,0,0.3)',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-1px'
           }}>
             {heroTitulo}
           </h1>
           {heroSubtitulo && (
-            <p style={{ fontSize: isMobile ? '15px' : '17px', opacity: 0.92, margin: '0 0 28px', maxWidth: '560px', marginLeft: 'auto', marginRight: 'auto', lineHeight: '1.5' }}>
+            <p style={{ fontSize: isMobile ? '16px' : '19px', fontWeight: '400', opacity: 0.9, margin: '0 0 28px', maxWidth: '560px', marginLeft: 'auto', marginRight: 'auto', lineHeight: '1.5' }}>
               {heroSubtitulo}
             </p>
           )}
@@ -210,13 +336,13 @@ export default function LandingAcademia({ previewData = null }) {
                   alignItems: 'center',
                   gap: '8px',
                   padding: isMobile ? '14px 22px' : '16px 32px',
-                  backgroundColor: '#25d366',
+                  backgroundColor: cor,
                   color: 'white',
                   borderRadius: '999px',
                   textDecoration: 'none',
                   fontWeight: '700',
                   fontSize: isMobile ? '15px' : '16px',
-                  boxShadow: '0 6px 20px rgba(37,211,102,0.45)',
+                  boxShadow: `0 6px 20px ${cor}73`,
                   transition: 'transform 0.15s'
                 }}
                 onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
@@ -255,25 +381,27 @@ export default function LandingAcademia({ previewData = null }) {
           case 'sobre':
             if (!empresa.descricao) return null
             return (
-              <section key="sobre" style={{ padding: isMobile ? '48px 20px' : '72px 24px', maxWidth: '780px', margin: '0 auto' }}>
-                <SectionTitle cor={cor} icon="mdi:information-outline">Sobre nós</SectionTitle>
-                <p style={{
-                  fontSize: isMobile ? '16px' : '18px',
-                  lineHeight: '1.7',
-                  color: '#444',
-                  whiteSpace: 'pre-wrap',
-                  textAlign: 'center',
-                  margin: '24px 0 0'
-                }}>
-                  {empresa.descricao}
-                </p>
+              <section key="sobre" id="sobre" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('sobre') }}>
+                <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+                  <SectionTitle cor={cor} icon="mdi:information-outline">Sobre nós</SectionTitle>
+                  <p style={{
+                    fontSize: isMobile ? '16px' : '18px',
+                    lineHeight: '1.7',
+                    color: '#444',
+                    whiteSpace: 'pre-wrap',
+                    textAlign: 'center',
+                    margin: '24px 0 0'
+                  }}>
+                    {empresa.descricao}
+                  </p>
+                </div>
               </section>
             )
 
           case 'planos':
             if (!empresa.mostrar_planos || planos.length === 0) return null
             return (
-              <section key="planos" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: 'white' }}>
+              <section key="planos" id="planos" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('planos') }}>
                 <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
                   <SectionTitle cor={cor} icon="mdi:package-variant-closed">Nossos planos</SectionTitle>
                   <div style={{
@@ -317,7 +445,7 @@ export default function LandingAcademia({ previewData = null }) {
           case 'galeria':
             if (!empresa.mostrar_galeria || galeria.length === 0) return null
             return (
-              <section key="galeria" style={{ padding: isMobile ? '48px 20px' : '72px 24px' }}>
+              <section key="galeria" id="galeria" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('galeria') }}>
                 <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
                   <SectionTitle cor={cor} icon="mdi:image-multiple-outline">Conheça o espaço</SectionTitle>
                   <div style={{
@@ -351,7 +479,7 @@ export default function LandingAcademia({ previewData = null }) {
           case 'horarios':
             if (!empresa.mostrar_horarios || aulas.length === 0) return null
             return (
-              <section key="horarios" style={{ padding: isMobile ? '48px 20px' : '72px 24px' }}>
+              <section key="horarios" id="horarios" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('horarios') }}>
                 <div style={{ maxWidth: '900px', margin: '0 auto' }}>
                   <SectionTitle cor={cor} icon="mdi:calendar-clock">Horários das aulas</SectionTitle>
                   <div style={{
@@ -386,10 +514,34 @@ export default function LandingAcademia({ previewData = null }) {
               </section>
             )
 
+          case 'agendamento':
+            if (!urlAgendar) return null
+            return (
+              <section key="agendamento" id="agendamento" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('agendamento') }}>
+                <div style={{ maxWidth: '680px', margin: '0 auto', textAlign: 'center' }}>
+                  <SectionTitle cor={cor} icon="mdi:calendar-check">Agende seu horário</SectionTitle>
+                  <p style={{ fontSize: isMobile ? '15px' : '17px', color: '#555', lineHeight: '1.6', margin: '14px 0 28px' }}>
+                    Escolha o melhor dia e horário pra você. É rápido, fácil e sem complicação.
+                  </p>
+                  <a href={urlAgendar}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '10px',
+                      padding: isMobile ? '15px 28px' : '16px 36px',
+                      backgroundColor: cor, color: 'white', borderRadius: '999px',
+                      textDecoration: 'none', fontWeight: '700', fontSize: isMobile ? '15px' : '16px',
+                      boxShadow: `0 10px 28px ${cor}55`
+                    }}>
+                    <Icon icon="mdi:calendar-check" width="22" />
+                    Agendar online
+                  </a>
+                </div>
+              </section>
+            )
+
           case 'depoimentos':
             if (!empresa.mostrar_depoimentos || depoimentos.length === 0) return null
             return (
-              <section key="depoimentos" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: '#fff' }}>
+              <section key="depoimentos" id="depoimentos" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('depoimentos') }}>
                 <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
                   <SectionTitle cor={cor} icon="mdi:star-outline">O que nossos alunos dizem</SectionTitle>
                   <div style={{
@@ -425,7 +577,7 @@ export default function LandingAcademia({ previewData = null }) {
           case 'faq':
             if (!empresa.mostrar_faq || faq.length === 0) return null
             return (
-              <section key="faq" style={{ padding: isMobile ? '48px 20px' : '72px 24px' }}>
+              <section key="faq" id="faq" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('faq') }}>
                 <div style={{ maxWidth: '760px', margin: '0 auto' }}>
                   <SectionTitle cor={cor} icon="mdi:help-circle-outline">Perguntas frequentes</SectionTitle>
                   <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -471,7 +623,7 @@ export default function LandingAcademia({ previewData = null }) {
           case 'mapa':
             if (!mapaUrl) return null
             return (
-              <section key="mapa" style={{ padding: isMobile ? '48px 20px' : '72px 24px' }}>
+              <section key="mapa" id="mapa" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('mapa') }}>
                 <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                   <SectionTitle cor={cor} icon="mdi:map-marker-outline">Como chegar</SectionTitle>
                   <p style={{ textAlign: 'center', color: '#666', fontSize: '14px', marginTop: '8px', marginBottom: '24px' }}>
@@ -504,7 +656,7 @@ export default function LandingAcademia({ previewData = null }) {
       {mostrarSecaoFinal && (
         <section style={{
           padding: isMobile ? '56px 20px' : '80px 24px',
-          backgroundColor: cor,
+          background: corSec ? `linear-gradient(135deg, ${cor} 0%, ${corSec} 100%)` : cor,
           color: 'white',
           textAlign: 'center'
         }}>
@@ -540,7 +692,7 @@ export default function LandingAcademia({ previewData = null }) {
       )}
 
       {/* FOOTER */}
-      <footer style={{
+      <footer id="contato" style={{
         padding: '36px 20px',
         backgroundColor: '#1a1a1a',
         color: '#aaa',

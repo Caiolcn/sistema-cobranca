@@ -41,7 +41,10 @@ function Home() {
     assinaturasAtivas: 0,
     recebimentosMes: 0,
     valorEmAtraso: 0,
-    alunosEmRisco: 0
+    alunosEmRisco: 0,
+    aulasHoje: 0,
+    taxaInadimplencia: 0,
+    qtdInadimplentes: 0
   });
 
   // Onboarding checklist
@@ -81,13 +84,14 @@ function Home() {
       const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
       const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
 
-      // 5 queries essenciais
+      // 6 queries essenciais
       const [
         { data: todasMensalidades },
         { data: todosClientes },
         { data: whatsappConectado },
         { data: vendasData },
-        { count: radarRiscoCount }
+        { count: radarRiscoCount },
+        { count: aulasHojeCount }
       ] = await Promise.all([
         // 1. Mensalidades - para KPIs
         supabase
@@ -123,7 +127,15 @@ function Home() {
           .from('vw_radar_evasao')
           .select('devedor_id', { count: 'exact', head: true })
           .eq('user_id', userId)
-          .gte('score_total', 50)
+          .gte('score_total', 50),
+
+        // 6. Aulas de hoje - turmas/individuais ativas no dia da semana atual
+        supabase
+          .from('aulas')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('ativo', true)
+          .eq('dia_semana', hoje.getDay())
       ]);
 
       // ========== PROCESSAMENTO LOCAL ==========
@@ -132,6 +144,10 @@ function Home() {
 
       let recebidoMes = 0;
       let valorAtraso = 0;
+      // Inadimplência: das mensalidades já vencidas (até hoje) de clientes ativos,
+      // quantas seguem pendentes vs. o total que deveria ter sido pago.
+      let venciasNaoPagas = 0;
+      let venciasTotal = 0;
 
       todasMensalidades?.forEach(p => {
         const valor = parseFloat(p.valor || 0);
@@ -146,7 +162,15 @@ function Home() {
         if (p.status === 'pendente' && dataVenc < hojeStr && clientesAtivosSet.has(p.devedor_id)) {
           valorAtraso += valor;
         }
+
+        // Taxa de inadimplência (conta mensalidades vencidas de clientes ativos)
+        if (dataVenc && dataVenc < hojeStr && (p.status === 'pago' || p.status === 'pendente') && clientesAtivosSet.has(p.devedor_id)) {
+          venciasTotal += 1;
+          if (p.status === 'pendente') venciasNaoPagas += 1;
+        }
       });
+
+      const taxaInadimplencia = venciasTotal > 0 ? (venciasNaoPagas / venciasTotal) * 100 : 0;
 
       // Incluir vendas (cobranças avulsas) nos KPIs
       vendasData?.forEach(v => {
@@ -200,7 +224,10 @@ function Home() {
         assinaturasAtivas: ativas,
         recebimentosMes: recebidoMes,
         valorEmAtraso: valorAtraso,
-        alunosEmRisco: radarRiscoCount || 0
+        alunosEmRisco: radarRiscoCount || 0,
+        aulasHoje: aulasHojeCount || 0,
+        taxaInadimplencia,
+        qtdInadimplentes: venciasNaoPagas
       });
 
     } catch (error) {
@@ -262,7 +289,7 @@ function Home() {
     );
   }
 
-  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, alunosEmRisco } = dashboardData;
+  const { mrr, assinaturasAtivas, recebimentosMes, valorEmAtraso, alunosEmRisco, aulasHoje, taxaInadimplencia, qtdInadimplentes } = dashboardData;
 
   const nomeEmpresa = nomeEmpresaContext || 'Empresa';
 
@@ -446,6 +473,76 @@ function Home() {
           <button className="quick-action-card-btn outline" onClick={(e) => { e.stopPropagation(); navigate('/app/financeiro'); }}>
             Ver Financeiro <Icon icon="mdi:arrow-right" width="16" />
           </button>
+        </div>
+      </div>
+
+      {/* Indicadores de Gestão - 3 Cards */}
+      <div className="home-cards-grid home-cards-3">
+        {/* 1. Aulas de Hoje */}
+        <div className="home-card card-aulas-hoje">
+          <div className="card-header">
+            <span className="card-label">Aulas de Hoje</span>
+            <div className="card-icon">
+              <Icon icon="fluent:calendar-20-regular" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value">{aulasHoje}</span>
+            <span className="card-subtitle">
+              {aulasHoje === 1 ? 'aula na grade de hoje' : 'aulas na grade de hoje'}
+            </span>
+          </div>
+          <div className="card-footer">
+            <button className="btn-ver" onClick={() => navigate('/app/horarios')}>
+              Ver agenda
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Radar de Evasão */}
+        <div className="home-card card-radar">
+          <div className="card-header">
+            <span className="card-label">Alunos em Risco de Evasão</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:radar" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value" style={{ color: alunosEmRisco > 0 ? '#f44336' : '#4CAF50' }}>
+              {alunosEmRisco}
+            </span>
+            <span className="card-subtitle">
+              {alunosEmRisco === 1 ? 'aluno com risco alto/crítico' : 'alunos com risco alto/crítico'}
+            </span>
+          </div>
+          <div className="card-footer">
+            <button className="btn-ver" onClick={() => navigate('/app/clientes?aba=radar')}>
+              Ver radar
+            </button>
+          </div>
+        </div>
+
+        {/* 3. Taxa de Inadimplência */}
+        <div className="home-card card-inadimplencia">
+          <div className="card-header">
+            <span className="card-label">Taxa de Inadimplência</span>
+            <div className="card-icon">
+              <Icon icon="material-symbols:percent" width="20" />
+            </div>
+          </div>
+          <div className="card-body">
+            <span className="card-value" style={{ color: taxaInadimplencia >= 15 ? '#f44336' : taxaInadimplencia > 0 ? '#FF9800' : '#4CAF50' }}>
+              {taxaInadimplencia.toFixed(1).replace('.', ',')}%
+            </span>
+            <span className="card-subtitle">
+              {qtdInadimplentes === 1 ? '1 mensalidade vencida em aberto' : `${qtdInadimplentes} mensalidades vencidas em aberto`}
+            </span>
+          </div>
+          <div className="card-footer">
+            <button className="btn-ver" onClick={() => navigate('/app/financeiro?status=atrasado')}>
+              Ver atrasadas
+            </button>
+          </div>
         </div>
       </div>
 
