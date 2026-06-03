@@ -12,6 +12,12 @@ import './Home.css';
 // Campos: data (livre), tag (opcional, ex: "Novo"), titulo e texto.
 const NOVIDADES = [
   {
+    data: '03/06',
+    tag: 'Novo',
+    titulo: 'CRM de Alunos',
+    texto: 'O CRM ganhou uma aba de Alunos: acompanhe num quadro quem tem aula marcada, quem sumiu (sem retorno) e quem está com pagamento atrasado. E quem tem a assinatura ativada passa de Experimental pra Aluno automaticamente.'
+  },
+  {
     data: '01/06',
     tag: 'Novo',
     titulo: 'Dashboard repaginada',
