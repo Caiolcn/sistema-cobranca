@@ -6,7 +6,7 @@ import ConfirmModal from './ConfirmModal'
 import { SkeletonList } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
-import { isoDate } from './agendaUtils'
+import { isoDate, parseISO, addDias, inicioSemana, MESES } from './agendaUtils'
 import AgendaNovaDia from './AgendaNovaDia'
 import AgendaNovaSemana from './AgendaNovaSemana'
 import AgendaAulaModal from './AgendaAulaModal'
@@ -14,6 +14,7 @@ import AgendaFixoModal from './AgendaFixoModal'
 import AgendaDatePicker from './AgendaDatePicker'
 import AgendaExportarModal from './AgendaExportarModal'
 import AgendaNovaCriarModal from './AgendaNovaCriarModal'
+import Select from './design-system/components/Select'
 
 // ==========================================
 // Agenda NOVA — container experimental (rota /app/agenda-nova).
@@ -63,6 +64,13 @@ export default function AgendaNovaContainer() {
   const [exportarAberto, setExportarAberto] = useState(false)
   const [confirmExcluirAula, setConfirmExcluirAula] = useState(null)
   const [confirmRemoverFixo, setConfirmRemoverFixo] = useState(null)
+
+  // Filtro de aluno (esconde tudo que não tem o aluno selecionado)
+  const [filtroAlunoId, setFiltroAlunoId] = useState('')
+  const [filtroAberto, setFiltroAberto] = useState(false)
+
+  // Menu kebab de ações secundárias (mobile)
+  const [acoesMobAberto, setAcoesMobAberto] = useState(false)
 
   // --- carregar base ---
   const carregarBase = useCallback(async () => {
@@ -209,6 +217,11 @@ export default function AgendaNovaContainer() {
 
   const totalOcupado = useCallback((aulaId) => fixos.filter(f => f.aula_id === aulaId).length, [fixos])
 
+  // Opções pro Select de filtro (memo precisa vir ANTES de qualquer early return)
+  const opcoesAlunos = useMemo(() =>
+    clientes.map(c => ({ value: c.id, label: c.nome }))
+  , [clientes])
+
   if (loadingBase) {
     return <div style={{ paddingTop: '12px' }}><SkeletonList count={5} /></div>
   }
@@ -217,6 +230,7 @@ export default function AgendaNovaContainer() {
     enviarNotifPresenca, dataSel, setDataSel,
     aulas, fixos, creditos, onCredito: aplicarCredito,
     versao,
+    filtroAlunoId,
     onEditarAula: abrirEditarAula,
     onToggleAtivoAula: toggleAtivoAula,
     onExcluirAula: (aula) => setConfirmExcluirAula(aula),
@@ -227,47 +241,277 @@ export default function AgendaNovaContainer() {
     onRecarregarBase: carregarBase
   }
 
+  const alunoFiltrado = filtroAlunoId
+    ? clientes.find(c => c.id === filtroAlunoId)
+    : null
+
+  // Label do range de datas baseado no modo (mobile=Dia, desktop=Semana)
+  const labelRange = (() => {
+    const d = parseISO(dataSel)
+    if (isMobile) {
+      return `${d.getDate()} de ${MESES[d.getMonth()].slice(0, 3)}. de ${d.getFullYear()}`
+    }
+    const ini = parseISO(inicioSemana(dataSel))
+    const fim = parseISO(addDias(inicioSemana(dataSel), 6))
+    if (ini.getMonth() === fim.getMonth()) {
+      return `${ini.getDate()} - ${fim.getDate()} de ${MESES[fim.getMonth()].slice(0, 3)}. de ${fim.getFullYear()}`
+    }
+    return `${ini.getDate()} de ${MESES[ini.getMonth()].slice(0, 3)}. - ${fim.getDate()} de ${MESES[fim.getMonth()].slice(0, 3)}. de ${fim.getFullYear()}`
+  })()
+
   return (
     <div>
-      {/* Header: ações alinhadas à direita (toggle de modos virá depois) */}
-      <div style={{
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-        gap: '10px', marginBottom: '14px', flexWrap: 'wrap'
-      }}>
-        {/* Toggle notificação WhatsApp */}
-        <label style={{
-          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
-          fontSize: '12px', color: enviarNotifPresenca ? '#16a34a' : '#999', fontWeight: '500'
+      {/* Banner quando filtro ativo */}
+      {alunoFiltrado && (
+        <div style={{
+          backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '8px',
+          padding: '8px 12px', marginBottom: '12px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          fontSize: '13px', color: '#3730a3'
         }}>
-          <div onClick={() => toggleNotif(!enviarNotifPresenca)}
+          <Icon icon="mdi:filter-variant" width="16" style={{ color: '#4338ca', flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>
+            Mostrando só horários de <strong>{alunoFiltrado.nome}</strong>.
+          </span>
+          <button onClick={() => setFiltroAlunoId('')}
             style={{
-              width: '36px', height: '20px', borderRadius: '10px',
-              backgroundColor: enviarNotifPresenca ? '#16a34a' : '#d1d5db',
-              position: 'relative', transition: 'background-color 0.2s', cursor: 'pointer', flexShrink: 0
-            }}>
-            <div style={{
-              width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white',
-              position: 'absolute', top: '2px',
-              left: enviarNotifPresenca ? '18px' : '2px',
-              transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-            }} />
-          </div>
-          <Icon icon="mdi:whatsapp" width={16} style={{ color: enviarNotifPresenca ? '#25D366' : '#999' }} />
-          {!isMobile && (enviarNotifPresenca ? 'Notificar aluno' : 'Notificação off')}
-        </label>
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#4338ca', fontSize: '12px', fontWeight: '600',
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              padding: '4px 8px', borderRadius: '6px'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e0e7ff'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+            <Icon icon="mdi:close" width="13" /> Limpar
+          </button>
+        </div>
+      )}
 
-        <AgendaDatePicker value={dataSel} onChange={setDataSel} />
+      {/* Header: navegação à esquerda + ações à direita (linha única no mobile) */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: isMobile ? '6px' : '10px', marginBottom: '14px',
+        flexWrap: isMobile ? 'nowrap' : 'wrap'
+      }}>
+        {/* Navegação de data: ←  Hoje  → */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '2px' : '4px', flexShrink: 0 }}>
+          <button onClick={() => setDataSel(addDias(dataSel, isMobile ? -1 : -7))}
+            title={isMobile ? 'Dia anterior' : 'Semana anterior'}
+            style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              border: '1px solid #e5e7eb', backgroundColor: '#fff', color: '#475569',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}>
+            <Icon icon="mdi:chevron-left" width="18" />
+          </button>
+          <button onClick={() => setDataSel(isoDate(new Date()))}
+            title="Ir pra hoje"
+            style={{
+              height: '32px', padding: '0 14px', borderRadius: '8px',
+              border: '1px solid #e5e7eb', backgroundColor: '#fff', color: '#344848',
+              fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+              display: 'flex', alignItems: 'center'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}>
+            Hoje
+          </button>
+          <button onClick={() => setDataSel(addDias(dataSel, isMobile ? 1 : 7))}
+            title={isMobile ? 'Próximo dia' : 'Próxima semana'}
+            style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              border: '1px solid #e5e7eb', backgroundColor: '#fff', color: '#475569',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}>
+            <Icon icon="mdi:chevron-right" width="18" />
+          </button>
 
-        <button onClick={() => setExportarAberto(true)} title="Exportar presenças"
-          style={{
-            padding: isMobile ? '8px 12px' : '9px 14px',
-            backgroundColor: '#fff', color: '#344848',
-            border: '1px solid #d1d5db', borderRadius: '8px',
-            fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '6px'
+          {/* Botão de data: ícone + range. Click abre o calendário via AgendaDatePicker */}
+          <AgendaDatePicker
+            value={dataSel}
+            onChange={setDataSel}
+            align={isMobile ? 'left' : 'right'}
+            renderTrigger={({ aberto, abrir }) => (
+              <button onClick={abrir}
+                title={isMobile ? `Data: ${labelRange}` : 'Selecionar data'}
+                style={{
+                  height: '32px', padding: isMobile ? '0 8px' : '0 12px', marginLeft: isMobile ? '2px' : '6px',
+                  borderRadius: '8px',
+                  border: '1px solid transparent',
+                  backgroundColor: aberto ? '#f1f5f9' : 'transparent',
+                  color: '#344848', fontSize: '13px', fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px',
+                  transition: 'background-color 0.12s, border-color 0.12s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9'
+                  e.currentTarget.style.borderColor = '#e2e8f0'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = aberto ? '#f1f5f9' : 'transparent'
+                  e.currentTarget.style.borderColor = aberto ? '#e2e8f0' : 'transparent'
+                }}>
+                <Icon icon="mdi:calendar-blank-outline" width="16" />
+                {!isMobile && labelRange}
+              </button>
+            )}
+          />
+        </div>
+
+        {/* Ações à direita */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          gap: isMobile ? '6px' : '10px',
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
+          flexShrink: 0
+        }}>
+        {/* Toggle notificação WhatsApp — escondido no mobile, vai pro kebab */}
+        {!isMobile && (
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+            fontSize: '12px', color: enviarNotifPresenca ? '#16a34a' : '#999', fontWeight: '500'
           }}>
-          <Icon icon="mdi:download" width="15" /> {!isMobile && 'Exportar'}
-        </button>
+            <div onClick={() => toggleNotif(!enviarNotifPresenca)}
+              style={{
+                width: '36px', height: '20px', borderRadius: '10px',
+                backgroundColor: enviarNotifPresenca ? '#16a34a' : '#d1d5db',
+                position: 'relative', transition: 'background-color 0.2s', cursor: 'pointer', flexShrink: 0
+              }}>
+              <div style={{
+                width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white',
+                position: 'absolute', top: '2px',
+                left: enviarNotifPresenca ? '18px' : '2px',
+                transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+              }} />
+            </div>
+            <Icon icon="mdi:whatsapp" width={16} style={{ color: enviarNotifPresenca ? '#25D366' : '#999' }} />
+            {enviarNotifPresenca ? 'Notificar aluno' : 'Notificação off'}
+          </label>
+        )}
+
+        {/* Botão Filtrar (popup com Select de aluno) */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setFiltroAberto(v => !v)}
+            title="Filtrar por aluno"
+            style={{
+              padding: isMobile ? '8px 10px' : '9px 11px',
+              backgroundColor: filtroAlunoId ? '#eef2ff' : '#fff',
+              color: filtroAlunoId ? '#4338ca' : '#344848',
+              border: `1px solid ${filtroAlunoId ? '#c7d2fe' : '#d1d5db'}`,
+              borderRadius: '8px',
+              fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', position: 'relative'
+            }}>
+            <Icon icon="mdi:filter-variant" width="16" />
+            {filtroAlunoId && (
+              <div style={{
+                position: 'absolute', top: '6px', right: '6px',
+                width: '7px', height: '7px', borderRadius: '50%',
+                backgroundColor: '#4338ca'
+              }} />
+            )}
+          </button>
+          {filtroAberto && (
+            <>
+              <div onClick={() => setFiltroAberto(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                width: '280px', zIndex: 100,
+                backgroundColor: '#fff', borderRadius: '10px',
+                border: '1px solid #e5e7eb', boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                padding: '10px'
+              }}>
+                <Select
+                  options={opcoesAlunos}
+                  value={filtroAlunoId}
+                  onChange={(v) => { setFiltroAlunoId(v); if (v) setFiltroAberto(false) }}
+                  searchable
+                  clearable
+                  placeholder="Selecione um aluno…"
+                  searchPlaceholder="Buscar aluno…"
+                  emptyMessage="Nenhum aluno encontrado"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Exportar — só desktop. No mobile vai pro kebab */}
+        {!isMobile && (
+          <button onClick={() => setExportarAberto(true)} title="Exportar presenças"
+            style={{
+              padding: '9px 11px',
+              backgroundColor: '#fff', color: '#344848',
+              border: '1px solid #d1d5db', borderRadius: '8px',
+              fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+              display: 'flex', alignItems: 'center'
+            }}>
+            <Icon icon="fluent:arrow-download-24-regular" width="16" />
+          </button>
+        )}
+
+        {/* Kebab de ações secundárias — só mobile */}
+        {isMobile && (
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setAcoesMobAberto(v => !v)}
+              title="Mais opções"
+              style={{
+                padding: '8px 10px',
+                backgroundColor: '#fff', color: '#344848',
+                border: '1px solid #d1d5db', borderRadius: '8px',
+                cursor: 'pointer', display: 'flex', alignItems: 'center'
+              }}>
+              <Icon icon="mdi:dots-vertical" width="18" />
+            </button>
+            {acoesMobAberto && (
+              <>
+                <div onClick={() => setAcoesMobAberto(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                  minWidth: '220px', zIndex: 100,
+                  backgroundColor: '#fff', borderRadius: '10px',
+                  border: '1px solid #e5e7eb', boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                  padding: '4px 0', overflow: 'hidden'
+                }}>
+                  <button onClick={() => { toggleNotif(!enviarNotifPresenca); setAcoesMobAberto(false) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      width: '100%', padding: '10px 14px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: '500', color: '#344848', textAlign: 'left'
+                    }}>
+                    <Icon icon="mdi:whatsapp" width="16"
+                      style={{ color: enviarNotifPresenca ? '#25D366' : '#999' }} />
+                    <span style={{ flex: 1 }}>Notificar aluno</span>
+                    <span style={{
+                      fontSize: '11px', fontWeight: '700',
+                      color: enviarNotifPresenca ? '#16a34a' : '#999'
+                    }}>
+                      {enviarNotifPresenca ? 'On' : 'Off'}
+                    </span>
+                  </button>
+                  <button onClick={() => { setExportarAberto(true); setAcoesMobAberto(false) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      width: '100%', padding: '10px 14px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: '500', color: '#344848', textAlign: 'left'
+                    }}>
+                    <Icon icon="fluent:arrow-download-24-regular" width="16" />
+                    Exportar presenças
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <button onClick={() => setCriarAberto(true)}
           style={{
@@ -276,8 +520,9 @@ export default function AgendaNovaContainer() {
             fontSize: '13px', fontWeight: '600', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '6px'
           }}>
-          <Icon icon="mdi:plus" width="16" /> Nova
+          <Icon icon="mdi:plus" width="16" /> {!isMobile && 'Adicionar'}
         </button>
+        </div>
       </div>
 
       {/* Alerta créditos baixos */}

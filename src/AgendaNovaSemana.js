@@ -34,6 +34,7 @@ const presKey3 = (data, aulaId, devedorId) => `${data}_${aulaId}_${devedorId}`
 export default function AgendaNovaSemana({
   enviarNotifPresenca, dataSel, setDataSel,
   aulas, fixos, creditos, onCredito, versao,
+  filtroAlunoId,
   onEditarAula, onToggleAtivoAula, onExcluirAula, onAddFixo, onRemoverFixo,
   onRemoverAluno, onRecarregarBase
 }) {
@@ -60,9 +61,23 @@ export default function AgendaNovaSemana({
   const [confirmCancelAg, setConfirmCancelAg] = useState(null)
   const [confirmRemAluno, setConfirmRemAluno] = useState(null) // aula (individual) a remover
 
-  // Separa aulas por tipo (turma vs aluno individual)
-  const aulasTurma  = useMemo(() => aulas.filter(a => !a.devedor_id), [aulas])
-  const aulasAluno  = useMemo(() => aulas.filter(a => !!a.devedor_id), [aulas])
+  // Separa aulas por tipo (turma vs aluno individual). Aplica filtro de aluno:
+  // - turma só aparece se o aluno é fixo OU tem agendamento avulso nela (semana)
+  // - aula individual só aparece se devedor_id bate
+  const aulasTurma = useMemo(() => {
+    const lista = aulas.filter(a => !a.devedor_id)
+    if (!filtroAlunoId) return lista
+    return lista.filter(a =>
+      fixos.some(f => f.aula_id === a.id && f.devedor_id === filtroAlunoId)
+      || agendamentos.some(ag => ag.aula_id === a.id && ag.devedor_id === filtroAlunoId)
+    )
+  }, [aulas, fixos, agendamentos, filtroAlunoId])
+
+  const aulasAluno = useMemo(() =>
+    aulas
+      .filter(a => !!a.devedor_id)
+      .filter(a => !filtroAlunoId || a.devedor_id === filtroAlunoId)
+  , [aulas, filtroAlunoId])
 
   const carregarSemana = useCallback(async () => {
     if (!userId) return
@@ -257,35 +272,7 @@ export default function AgendaNovaSemana({
 
   return (
     <div>
-      {/* Stats */}
-      {aulas.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
-          <StatCard icon="mdi:calendar-clock" cor="#4338ca" bg="#eef2ff" label="Aulas" valor={resumo.aulas} />
-          <StatCard icon="mdi:check-circle-outline" cor="#16a34a" bg="#f0fdf4" label="Presenças (semana)" valor={`${resumo.marcadas}/${resumo.alunos}`} />
-          <StatCard icon="mdi:alert-circle-outline" cor={resumo.creditosBaixos > 0 ? '#d97706' : '#9ca3af'} bg={resumo.creditosBaixos > 0 ? '#fffbeb' : '#f8f9fa'} label="Créditos baixos" valor={resumo.creditosBaixos} />
-        </div>
-      )}
 
-      {/* Navegação semana */}
-      <div style={{
-        border: '1px solid #eee', borderRadius: '12px', padding: isMobile ? '10px 12px' : '10px 16px',
-        marginBottom: '12px', backgroundColor: '#fff',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px'
-      }}>
-        <button onClick={() => setDataSel(addDias(dataSel, -7))} title="Semana anterior" style={navBtn}>
-          <Icon icon="mdi:chevron-left" width="22" />
-        </button>
-        <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700', color: COR }}>{labelSemana}</div>
-          <div style={{ fontSize: '12px', color: '#888' }}>{a6.getFullYear()}</div>
-        </div>
-        <button onClick={() => setDataSel(hojeRef)} title="Semana atual" style={{ ...navBtn, width: 'auto', padding: '0 12px', gap: '5px', fontSize: '13px', fontWeight: '600' }}>
-          <Icon icon="mdi:calendar-today" width="16" /> {!isMobile && 'Hoje'}
-        </button>
-        <button onClick={() => setDataSel(addDias(dataSel, 7))} title="Próxima semana" style={navBtn}>
-          <Icon icon="mdi:chevron-right" width="22" />
-        </button>
-      </div>
 
       {/* Mobile: faixa de 7 dias clicáveis */}
       {isMobile && (

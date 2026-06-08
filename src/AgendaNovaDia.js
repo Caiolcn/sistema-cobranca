@@ -28,6 +28,7 @@ const COR = '#344848'
 export default function AgendaNovaDia({
   enviarNotifPresenca, dataSel, setDataSel,
   aulas, fixos, creditos, onCredito, versao,
+  filtroAlunoId,
   onEditarAula, onToggleAtivoAula, onExcluirAula, onAddFixo, onRemoverFixo,
   onRemoverAluno, onRecarregarBase
 }) {
@@ -83,18 +84,24 @@ export default function AgendaNovaDia({
   }, [dataSel])
 
   // Separa aulas do dia: turmas vs alunos individuais
+  // Aplica filtro de aluno se ativo (esconde turmas/aulas que não têm o aluno)
   const aulasTurmaDia = useMemo(() => {
     return aulas
       .filter(a => !a.devedor_id && a.dia_semana === diaSemana)
       .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''))
       .map(aula => ({ aula, roster: montarRoster(aula.id, dataSel, fixos, agendamentos, ausencias) }))
-  }, [aulas, fixos, agendamentos, ausencias, diaSemana, dataSel])
+      .filter(({ roster }) => {
+        if (!filtroAlunoId) return true
+        return roster.some(r => r.devedorId === filtroAlunoId)
+      })
+  }, [aulas, fixos, agendamentos, ausencias, diaSemana, dataSel, filtroAlunoId])
 
   const aulasAlunoDia = useMemo(() => {
     return aulas
       .filter(a => !!a.devedor_id && a.dia_semana === diaSemana)
+      .filter(a => !filtroAlunoId || a.devedor_id === filtroAlunoId)
       .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''))
-  }, [aulas, diaSemana])
+  }, [aulas, diaSemana, filtroAlunoId])
 
   const resumo = useMemo(() => {
     let alunos = 0, marcadas = 0
@@ -205,59 +212,6 @@ export default function AgendaNovaDia({
 
   return (
     <div>
-      {/* Stats */}
-      {totalNoDia > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
-          <StatCard icon="mdi:calendar-check" cor="#3b82f6" bg="#eff6ff" label="Aulas" valor={resumo.aulas} />
-          <StatCard icon="mdi:check-circle-outline" cor="#16a34a" bg="#f0fdf4" label="Presenças" valor={`${resumo.marcadas}/${resumo.alunos}`} />
-          <StatCard icon="mdi:alert-circle-outline" cor={resumo.creditosBaixos > 0 ? '#d97706' : '#9ca3af'} bg={resumo.creditosBaixos > 0 ? '#fffbeb' : '#f8f9fa'} label="Créditos baixos" valor={resumo.creditosBaixos} />
-        </div>
-      )}
-
-      {/* Navegação de data */}
-      <div style={{
-        border: '1px solid #eee', borderRadius: '12px', padding: isMobile ? '12px' : '14px 16px',
-        marginBottom: '14px', backgroundColor: '#fff'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-          <button onClick={() => setDataSel(addDias(dataSel, -1))} title="Dia anterior" style={navBtn}>
-            <Icon icon="mdi:chevron-left" width="22" />
-          </button>
-          <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: '700', color: COR }}>
-              {DIAS_LONGO[diaSemana]}
-            </div>
-            <div style={{ fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              {dataObj.getDate()} de {MESES[dataObj.getMonth()]} de {dataObj.getFullYear()}
-              {isHoje && <span style={badge('#16a34a', '#dcfce7')}>Hoje</span>}
-              {isFuturo && <span style={badge('#4338ca', '#eef2ff')}>Futuro</span>}
-            </div>
-          </div>
-          <button onClick={() => setDataSel(addDias(dataSel, 1))} title="Próximo dia" style={navBtn}>
-            <Icon icon="mdi:chevron-right" width="22" />
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', gap: isMobile ? '3px' : '6px', marginTop: '12px' }}>
-          {semana.map(d => {
-            const dObj = parseISO(d)
-            const sel = d === dataSel
-            const ehHoje = d === hojeRef
-            return (
-              <button key={d} onClick={() => setDataSel(d)}
-                style={{
-                  flex: 1, padding: isMobile ? '6px 2px' : '8px 4px', borderRadius: '9px', cursor: 'pointer',
-                  border: ehHoje && !sel ? `1px solid ${COR}` : '1px solid transparent',
-                  backgroundColor: sel ? COR : '#f3f4f6', color: sel ? '#fff' : '#444',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', transition: 'all 0.15s'
-                }}>
-                <span style={{ fontSize: '10px', fontWeight: '600', opacity: 0.85 }}>{DIAS_CURTO[dObj.getDay()]}</span>
-                <span style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: '700' }}>{dObj.getDate()}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
 
       {/* Aulas do dia */}
       {loadingDia ? (

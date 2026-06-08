@@ -11,13 +11,42 @@ const DIAS_HEADER = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const COR = '#344848'
 const SEL = '#16a34a'
 
-export default function AgendaDatePicker({ value, onChange }) {
+export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right' }) {
   const [aberto, setAberto] = useState(false)
   const valorObj = parseISO(value)
   // navegação interna do calendário (independente do value até o usuário clicar num dia)
   const [mes, setMes] = useState(valorObj.getMonth())
   const [ano, setAno] = useState(valorObj.getFullYear())
   const containerRef = useRef(null)
+  // posição calculada do popup (position: fixed) — sempre dentro da viewport
+  const [popupPos, setPopupPos] = useState({ top: 0, left: 0 })
+
+  const recalcularPos = () => {
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const popupWidth = 290
+    const margin = 8
+    const vw = window.innerWidth
+    // base: alinha pela esquerda do trigger se align=left; pela direita se align=right
+    let left = align === 'left' ? rect.left : rect.right - popupWidth
+    // clamp pra ficar dentro da viewport
+    if (left + popupWidth > vw - margin) left = vw - popupWidth - margin
+    if (left < margin) left = margin
+    setPopupPos({ top: rect.bottom + 6, left })
+  }
+
+  useEffect(() => { if (aberto) recalcularPos() // eslint-disable-next-line
+  }, [aberto, align])
+  useEffect(() => {
+    if (!aberto) return
+    window.addEventListener('scroll', recalcularPos, true)
+    window.addEventListener('resize', recalcularPos)
+    return () => {
+      window.removeEventListener('scroll', recalcularPos, true)
+      window.removeEventListener('resize', recalcularPos)
+    }
+    // eslint-disable-next-line
+  }, [aberto])
 
   // re-sincroniza navegação interna sempre que o popup abre
   useEffect(() => {
@@ -89,27 +118,32 @@ export default function AgendaDatePicker({ value, onChange }) {
 
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
-      {/* Trigger */}
-      <button onClick={() => setAberto(v => !v)} title="Selecionar data"
-        style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '8px 12px', borderRadius: '8px',
-          border: `1px solid ${aberto ? COR : '#ddd'}`,
-          cursor: 'pointer', fontSize: '13px',
-          backgroundColor: '#fff'
-        }}>
-        <Icon icon="mdi:calendar-blank-outline" width="16" style={{ color: COR }} />
-        <span style={{ color: '#555', fontWeight: '500' }}>Data</span>
-        <span style={{ color: '#1a1a1a', fontWeight: '600' }}>{valorFmt}</span>
-      </button>
+      {/* Trigger (custom via renderTrigger ou padrão) */}
+      {renderTrigger ? (
+        renderTrigger({ aberto, abrir: () => setAberto(v => !v), valorFmt })
+      ) : (
+        <button onClick={() => setAberto(v => !v)} title="Selecionar data"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 12px', borderRadius: '8px',
+            border: `1px solid ${aberto ? COR : '#ddd'}`,
+            cursor: 'pointer', fontSize: '13px',
+            backgroundColor: '#fff'
+          }}>
+          <Icon icon="mdi:calendar-blank-outline" width="16" style={{ color: COR }} />
+          <span style={{ color: '#555', fontWeight: '500' }}>Data</span>
+          <span style={{ color: '#1a1a1a', fontWeight: '600' }}>{valorFmt}</span>
+        </button>
+      )}
 
-      {/* Popup */}
+      {/* Popup — position: fixed com coordenadas calculadas (sempre na viewport) */}
       {aberto && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 200,
+          position: 'fixed', top: popupPos.top, left: popupPos.left,
+          zIndex: 1100,
           backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb',
           boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
-          width: '290px', padding: '14px'
+          width: '290px', maxWidth: 'calc(100vw - 16px)', padding: '14px'
         }}>
           {/* Header: ‹ mês ano › */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
