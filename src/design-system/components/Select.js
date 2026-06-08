@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useId, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '@iconify/react'
 import './Select.css'
 
@@ -78,6 +79,11 @@ export default function Select({
   icon,
   disabled = false,
 
+  // Quando true, renderiza o dropdown via portal (document.body) com
+  // position:fixed calculado — não afeta a altura do container pai
+  // (útil dentro de modais com overflow:auto).
+  portal = false,
+
   id: idProp,
   className = '',
   style,
@@ -92,6 +98,34 @@ export default function Select({
   const fieldRef = useRef(null)
   const triggerRef = useRef(null)
   const searchInputRef = useRef(null)
+
+  // Posição do dropdown no modo portal (position: fixed)
+  const [portalPos, setPortalPos] = useState({ top: 0, left: 0, width: 0 })
+
+  const recalcPortalPos = () => {
+    if (!portal || !fieldRef.current) return
+    const rect = fieldRef.current.getBoundingClientRect()
+    const margin = 8
+    const vw = window.innerWidth
+    const width = Math.max(220, rect.width)
+    let left = rect.left
+    if (left + width > vw - margin) left = vw - width - margin
+    if (left < margin) left = margin
+    setPortalPos({ top: rect.bottom + 4, left, width })
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    recalcPortalPos()
+    if (!portal) return
+    window.addEventListener('scroll', recalcPortalPos, true)
+    window.addEventListener('resize', recalcPortalPos)
+    return () => {
+      window.removeEventListener('scroll', recalcPortalPos, true)
+      window.removeEventListener('resize', recalcPortalPos)
+    }
+    // eslint-disable-next-line
+  }, [isOpen, portal])
 
   const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18
   const isMulti = multiple === true
@@ -320,8 +354,13 @@ export default function Select({
         </span>
       </button>
 
-      {isOpen && (
-        <div className="ds-select-dropdown" role="presentation">
+      {isOpen && (() => {
+        const dropdown = (
+        <div className="ds-select-dropdown" role="presentation"
+          style={portal ? {
+            position: 'fixed', top: portalPos.top, left: portalPos.left,
+            width: portalPos.width, zIndex: 10100
+          } : undefined}>
           {searchable && (
             <div className="ds-select-search">
               <span className="ds-select-search-icon">
@@ -402,7 +441,9 @@ export default function Select({
             </button>
           )}
         </div>
-      )}
+        )
+        return portal ? createPortal(dropdown, document.body) : dropdown
+      })()}
       </div>{/* /ds-select-control */}
 
       {(error || helper) && (

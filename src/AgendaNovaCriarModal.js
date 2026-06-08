@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
+import Select from './design-system/components/Select'
+import TimeInput from './design-system/components/TimeInput'
+import Input from './design-system/components/Input'
+import Button from './design-system/components/Button'
 
 // ==========================================
 // Modal unificado da Agenda Nova
@@ -154,7 +158,7 @@ export default function AgendaNovaCriarModal({
       }}>
       <div style={{
         backgroundColor: 'white', borderRadius: '12px', padding: '24px',
-        width: '100%', maxWidth: '460px', maxHeight: '90vh', overflowY: 'auto'
+        width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
           <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Adicionar à agenda</h3>
@@ -206,24 +210,18 @@ export default function AgendaNovaCriarModal({
         )}
 
         <div style={{ display: 'flex', gap: '10px', marginTop: '22px' }}>
-          <button onClick={onClose} disabled={salvando}
-            style={{
-              flex: 1, padding: '11px', backgroundColor: '#f5f5f5', color: '#333',
-              border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-            }}>
+          <Button variant="outline" onClick={onClose} disabled={salvando} style={{ flex: 1 }}>
             Cancelar
-          </button>
-          <button onClick={tipo === 'aluno' ? salvarAluno : salvarTurma} disabled={salvando}
-            style={{
-              flex: 2, padding: '11px',
-              backgroundColor: salvando ? '#ccc' : '#344848', color: 'white',
-              border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600',
-              cursor: salvando ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-            }}>
-            <Icon icon={tipo === 'aluno' ? 'mdi:account-plus' : 'mdi:plus'} width="17" />
-            {salvando ? 'Salvando...' : (tipo === 'aluno' ? 'Adicionar aluno' : 'Criar turma')}
-          </button>
+          </Button>
+          <Button
+            variant="primary"
+            icon={tipo === 'aluno' ? 'mdi:account-plus' : 'mdi:plus'}
+            onClick={tipo === 'aluno' ? salvarAluno : salvarTurma}
+            loading={salvando}
+            style={{ flex: 2 }}
+          >
+            {tipo === 'aluno' ? 'Adicionar aluno' : 'Criar turma'}
+          </Button>
         </div>
       </div>
     </div>
@@ -236,26 +234,34 @@ function FormAluno({ aluno, setField, clientes }) {
   return (
     <div>
       <div style={fieldBlock}>
-        <label style={labelStyle}>Aluno</label>
-        <select value={aluno.devedorId} onChange={e => setField('devedorId', e.target.value)}
-          style={inputStyle}>
-          <option value="">Selecionar...</option>
-          {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
+        <Select
+          label="Aluno"
+          required
+          options={clientes.map(c => ({ value: c.id, label: c.nome }))}
+          value={aluno.devedorId}
+          onChange={(v) => setField('devedorId', v)}
+          searchable
+          clearable
+          portal
+          placeholder="Selecionar aluno…"
+          searchPlaceholder="Buscar aluno…"
+          emptyMessage="Nenhum aluno encontrado"
+        />
       </div>
 
       <div style={fieldBlock}>
         <label style={labelStyle}>Dia da semana</label>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DIAS_OPTS.length}, 1fr)`, gap: '6px' }}>
           {DIAS_OPTS.map(d => {
             const sel = aluno.diaSemana === d.valor
             return (
               <button key={d.valor} onClick={() => setField('diaSemana', d.valor)}
                 style={{
-                  padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                  border: sel ? '2px solid #344848' : '1px solid #ddd',
-                  backgroundColor: sel ? '#f0f4f4' : 'white',
-                  color: sel ? '#344848' : '#666', cursor: 'pointer'
+                  padding: '8px 0', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+                  fontFamily: 'var(--font-sans)',
+                  border: sel ? '2px solid #344848' : '1px solid var(--neutral-300, #CBD5E1)',
+                  backgroundColor: sel ? '#f0f4f4' : 'var(--color-bg-surface, #fff)',
+                  color: sel ? '#344848' : 'var(--color-text-muted, #64748B)', cursor: 'pointer'
                 }}>
                 {d.abrev}
               </button>
@@ -265,20 +271,21 @@ function FormAluno({ aluno, setField, clientes }) {
       </div>
 
       <div style={fieldBlock}>
-        <label style={labelStyle}>Horário</label>
-        <input type="time" value={aluno.horario}
-          onChange={e => setField('horario', e.target.value)}
-          style={inputStyle} />
+        <TimeInput
+          label="Horário"
+          value={aluno.horario}
+          onChange={(v) => setField('horario', v)}
+          portal
+        />
       </div>
 
       <div style={{ ...fieldBlock, marginBottom: 0 }}>
-        <label style={labelStyle}>
-          Tag/Descrição <span style={{ color: '#999', fontWeight: '400' }}>(opcional)</span>
-        </label>
-        <input type="text" value={aluno.descricao}
+        <Input
+          label="Tag/Descrição"
+          value={aluno.descricao}
           onChange={e => setField('descricao', e.target.value)}
           placeholder="Ex: Pilates, Avaliação, Personal..."
-          style={inputStyle} />
+        />
       </div>
     </div>
   )
@@ -289,16 +296,17 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios 
     <div>
       <div style={fieldBlock}>
         <label style={labelStyle}>Dias da semana</label>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DIAS_OPTS.length}, 1fr)`, gap: '6px' }}>
           {DIAS_OPTS.map(d => {
             const sel = turma.dias.includes(d.valor)
             return (
               <button key={d.valor} onClick={() => toggleDia(d.valor)}
                 style={{
-                  padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                  border: sel ? '2px solid #344848' : '1px solid #ddd',
-                  backgroundColor: sel ? '#f0f4f4' : 'white',
-                  color: sel ? '#344848' : '#666', cursor: 'pointer'
+                  padding: '8px 0', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+                  fontFamily: 'var(--font-sans)',
+                  border: sel ? '2px solid #344848' : '1px solid var(--neutral-300, #CBD5E1)',
+                  backgroundColor: sel ? '#f0f4f4' : 'var(--color-bg-surface, #fff)',
+                  color: sel ? '#344848' : 'var(--color-text-muted, #64748B)', cursor: 'pointer'
                 }}>
                 {d.abrev}
               </button>
@@ -309,16 +317,20 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios 
 
       <div style={{ ...fieldBlock, display: 'flex', gap: '10px' }}>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Início</label>
-          <input type="time" value={turma.horario}
-            onChange={e => setField('horario', e.target.value)}
-            style={inputStyle} />
+          <TimeInput
+            label="Início"
+            value={turma.horario}
+            onChange={(v) => setField('horario', v)}
+            portal
+          />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Fim</label>
-          <input type="time" value={turma.horarioFim}
-            onChange={e => setField('horarioFim', e.target.value)}
-            style={inputStyle} />
+          <TimeInput
+            label="Fim"
+            value={turma.horarioFim}
+            onChange={(v) => setField('horarioFim', v)}
+            portal
+          />
         </div>
       </div>
 
@@ -363,34 +375,41 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios 
       )}
 
       <div style={fieldBlock}>
-        <label style={labelStyle}>Nome da turma</label>
-        <input type="text" value={turma.descricao}
+        <Input
+          label="Nome da turma"
+          value={turma.descricao}
           onChange={e => setField('descricao', e.target.value)}
           placeholder="Ex: Pilates avançado"
-          style={inputStyle} />
+        />
       </div>
 
       <div style={fieldBlock}>
-        <label style={labelStyle}>Capacidade (vagas)</label>
-        <input type="number" min="1" max="100" value={turma.capacidade}
+        <Input
+          label="Capacidade (vagas)"
+          type="number"
+          min="1"
+          max="100"
+          value={turma.capacidade}
           onChange={e => setField('capacidade', parseInt(e.target.value) || 1)}
-          style={inputStyle} />
+        />
       </div>
 
       <div style={{ ...fieldBlock, marginBottom: 0 }}>
-        <label style={labelStyle}>
-          Professor <span style={{ color: '#999', fontWeight: '400' }}>(opcional)</span>
-        </label>
-        <select value={turma.professorId}
-          onChange={e => setField('professorId', e.target.value)}
-          style={inputStyle}>
-          <option value="">— Sem professor —</option>
-          {colaboradores.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.nome}{!c.ativo ? ' (inativo)' : ''}
-            </option>
-          ))}
-        </select>
+        <Select
+          label="Professor"
+          options={colaboradores.map(c => ({
+            value: c.id,
+            label: `${c.nome}${!c.ativo ? ' (inativo)' : ''}`
+          }))}
+          value={turma.professorId}
+          onChange={(v) => setField('professorId', v)}
+          searchable
+          clearable
+          portal
+          placeholder="— Sem professor —"
+          searchPlaceholder="Buscar professor…"
+          emptyMessage="Nenhum professor encontrado"
+        />
       </div>
     </div>
   )
