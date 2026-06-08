@@ -66,7 +66,8 @@ export default function TimeInput({
   // Ao focar/clicar (sem digitar), mostra todos os horários.
   const [filtrar, setFiltrar] = useState(false)
   const containerRef = useRef(null)
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
+  // `acima` = abre pra cima do input quando não tem espaço embaixo
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 260, acima: false })
 
   const sugestoes = useMemo(
     () => gerarHorarios(range.start, range.end, stepMinutes),
@@ -79,17 +80,27 @@ export default function TimeInput({
     return sugestoes.filter(h => h.startsWith(prefixo))
   }, [sugestoes, value, filtrar])
 
-  // Recalcula posição quando portal (igual o Select)
+  // Recalcula posição quando portal (igual o Select) + escolhe se abre embaixo
+  // ou pra cima, baseado no espaço disponível no viewport.
   const recalcPos = () => {
     if (!portal || !containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     const margin = 8
     const vw = window.innerWidth
+    const vh = window.innerHeight
     const width = Math.max(220, rect.width)
     let left = rect.left
     if (left + width > vw - margin) left = vw - width - margin
     if (left < margin) left = margin
-    setPos({ top: rect.bottom + 4, left, width })
+
+    const spaceBelow = vh - rect.bottom - margin
+    const spaceAbove = rect.top - margin
+    const desiredHeight = 260
+    // Abre pra cima se não tem espaço suficiente embaixo E há mais espaço em cima
+    const acima = spaceBelow < Math.min(desiredHeight, 180) && spaceAbove > spaceBelow
+    const maxHeight = Math.max(140, acima ? spaceAbove : spaceBelow)
+    const top = acima ? rect.top - 4 : rect.bottom + 4
+    setPos({ top, left, width, maxHeight, acima })
   }
 
   useEffect(() => {
@@ -165,17 +176,20 @@ export default function TimeInput({
         ...(portal
           ? {
               position: 'fixed', top: pos.top, left: pos.left, width: pos.width,
-              zIndex: 10100
+              transform: pos.acima ? 'translateY(-100%)' : 'none',
+              zIndex: 10100,
+              maxHeight: `${pos.maxHeight}px`
             }
           : {
               position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-              zIndex: 100
+              zIndex: 100,
+              maxHeight: '260px'
             }),
         backgroundColor: '#fff',
         border: '1px solid var(--neutral-200, #e2e8f0)',
         borderRadius: '10px',
         boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
-        maxHeight: '260px', overflowY: 'auto',
+        overflowY: 'auto',
         padding: '6px 0'
       }}>
       {sugestoesFiltradas.length === 0 ? (

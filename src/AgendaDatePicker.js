@@ -11,9 +11,10 @@ const DIAS_HEADER = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const COR = '#344848'
 const SEL = '#16a34a'
 
-export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right' }) {
+export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right', popupZIndex = 1100 }) {
   const [aberto, setAberto] = useState(false)
-  const valorObj = parseISO(value)
+  // Se value vier vazio (ex: filtro "Tudo"), navega a partir de hoje
+  const valorObj = value ? parseISO(value) : new Date()
   // navegação interna do calendário (independente do value até o usuário clicar num dia)
   const [mes, setMes] = useState(valorObj.getMonth())
   const [ano, setAno] = useState(valorObj.getFullYear())
@@ -51,7 +52,7 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
   // re-sincroniza navegação interna sempre que o popup abre
   useEffect(() => {
     if (aberto) {
-      const d = parseISO(value)
+      const d = value ? parseISO(value) : new Date()
       setMes(d.getMonth())
       setAno(d.getFullYear())
     }
@@ -140,7 +141,7 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
       {aberto && (
         <div style={{
           position: 'fixed', top: popupPos.top, left: popupPos.left,
-          zIndex: 1100,
+          zIndex: popupZIndex,
           backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb',
           boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
           width: '290px', maxWidth: 'calc(100vw - 16px)', padding: '14px'
