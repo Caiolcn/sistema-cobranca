@@ -10,6 +10,7 @@ import Button from './design-system/components/Button'
 import Checkbox from './design-system/components/Checkbox'
 import Select from './design-system/components/Select'
 import AgendaDatePicker from './AgendaDatePicker'
+import './design-system/components/Input.css' // estilos .ds-input-field / .ds-input-label usados pelo DateField
 
 // Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom
 function DateField({ value, onChange, label, required, placeholder = 'dd/mm/aaaa' }) {
