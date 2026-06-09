@@ -6,6 +6,9 @@ import { useUserPlan } from '../hooks/useUserPlan'
 import useWindowSize from '../hooks/useWindowSize'
 import whatsappService from '../services/whatsappService'
 import { showToast } from '../Toast'
+import SearchInput from '../design-system/components/SearchInput'
+import Select from '../design-system/components/Select'
+import Button from '../design-system/components/Button'
 
 const FAIXAS = [
   { key: 'critico', label: 'Crítico', min: 70, max: 100, cor: '#f44336', bg: '#fff5f5', border: '#fecaca', icon: 'solar:danger-triangle-linear' },
@@ -115,13 +118,9 @@ export default function RadarEvasao({ onAbrirPerfil }) {
         <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888' }}>
           Disponível no plano <strong>Premium</strong>.
         </p>
-        <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
-          style={{
-            padding: '12px 32px', backgroundColor: '#dc2626', color: 'white',
-            border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
-          }}>
+        <Button variant="danger" size="lg" onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}>
           Fazer Upgrade
-        </button>
+        </Button>
       </div>
     )
   }
@@ -255,35 +254,25 @@ export default function RadarEvasao({ onAbrirPerfil }) {
       </div>
 
       {/* Busca + Ordenação */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-          <Icon icon="mdi:magnify" width="18" style={{
-            position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#999'
-          }} />
-          <input
-            type="text"
-            placeholder="Buscar aluno..."
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            style={{
-              width: '100%', padding: '10px 10px 10px 34px', border: '1px solid #ddd',
-              borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box'
-            }}
-          />
-        </div>
-        <select
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <SearchInput
+          placeholder="Buscar aluno..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          style={{ flex: 1, minWidth: '200px' }}
+        />
+        <Select
+          fullWidth={false}
           value={ordenacao}
-          onChange={e => setOrdenacao(e.target.value)}
-          style={{
-            padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
-            fontSize: '16px', backgroundColor: 'white', cursor: 'pointer'
-          }}
-        >
-          <option value="score">Maior risco</option>
-          <option value="dias">Dias sem aparecer</option>
-          <option value="atraso">Dias em atraso</option>
-          <option value="nome">Nome (A-Z)</option>
-        </select>
+          onChange={v => setOrdenacao(v || 'score')}
+          style={{ width: isSmallScreen ? '100%' : '210px' }}
+          options={[
+            { value: 'score', label: 'Maior risco' },
+            { value: 'dias', label: 'Dias sem aparecer' },
+            { value: 'atraso', label: 'Dias em atraso' },
+            { value: 'nome', label: 'Nome (A-Z)' },
+          ]}
+        />
       </div>
 
       {/* Info */}
@@ -442,43 +431,32 @@ export default function RadarEvasao({ onAbrirPerfil }) {
                   </span>
 
                   {telWa && (
-                    <button
+                    <Button
+                      variant={contatadosHoje.has(aluno.devedor_id) ? 'gray' : 'whatsapp'}
+                      size="sm"
+                      iconOnly
+                      icon={contatadosHoje.has(aluno.devedor_id) ? 'mdi:check' : 'mdi:whatsapp'}
+                      aria-label={contatadosHoje.has(aluno.devedor_id) ? 'Contatado hoje' : 'Enviar mensagem'}
                       title={contatadosHoje.has(aluno.devedor_id) ? 'Contatado hoje' : 'Enviar mensagem'}
                       onClick={(e) => {
                         e.stopPropagation()
                         const tplKey = detectarTemplatePadrao(aluno)
                         setModalMsg({ aberto: true, aluno, texto: gerarMsgRetencao(aluno), enviando: false, templateAtivo: tplKey })
                       }}
-                      style={{
-                        width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                        backgroundColor: contatadosHoje.has(aluno.devedor_id) ? '#9ca3af' : '#25d366',
-                        color: 'white', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.15s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                    >
-                      <Icon icon={contatadosHoje.has(aluno.devedor_id) ? 'mdi:check' : 'mdi:whatsapp'} width="18" />
-                    </button>
+                    />
                   )}
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    iconOnly
+                    icon="mdi:account-outline"
+                    aria-label="Ver perfil"
                     title="Ver perfil"
                     onClick={(e) => {
                       e.stopPropagation()
                       if (onAbrirPerfil) onAbrirPerfil(aluno.devedor_id)
                     }}
-                    style={{
-                      width: '32px', height: '32px', borderRadius: '8px',
-                      border: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#555', transition: 'all 0.15s'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.borderColor = '#999' }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#e5e7eb' }}
-                  >
-                    <Icon icon="mdi:account-outline" width="18" />
-                  </button>
+                  />
 
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -543,34 +521,29 @@ export default function RadarEvasao({ onAbrirPerfil }) {
                   {/* Ações */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {telWa && (
-                      <button
+                      <Button
+                        variant="whatsapp"
+                        size="sm"
+                        icon="mdi:whatsapp"
                         onClick={(e) => {
                           e.stopPropagation()
                           setModalMsg({ aberto: true, aluno, texto: gerarMsgRetencao(aluno), enviando: false })
                         }}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '6px',
-                          padding: '10px 16px', backgroundColor: '#25d366', color: 'white',
-                          borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600'
-                        }}>
-                        <Icon icon="mdi:whatsapp" width="18" />
+                      >
                         Mandar mensagem
-                      </button>
+                      </Button>
                     )}
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon="mdi:account-outline"
                       onClick={(e) => {
                         e.stopPropagation()
                         if (onAbrirPerfil) onAbrirPerfil(aluno.devedor_id)
                       }}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '10px 16px', backgroundColor: 'white', color: '#344848',
-                        border: '1px solid #344848', borderRadius: '8px',
-                        fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-                      }}>
-                      <Icon icon="mdi:account-outline" width="18" />
+                    >
                       Ver perfil
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -618,17 +591,15 @@ export default function RadarEvasao({ onAbrirPerfil }) {
                   Para: <strong>{modalMsg.aluno?.nome}</strong> · {modalMsg.aluno?.telefone}
                 </div>
               </div>
-              <button
-                onClick={() => setModalMsg(prev => ({ ...prev, aberto: false }))}
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                icon="mdi:close"
+                aria-label="Fechar"
                 disabled={modalMsg.enviando}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '8px', border: 'none',
-                  backgroundColor: '#f3f4f6', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                <Icon icon="mdi:close" width="18" style={{ color: '#666' }} />
-              </button>
+                onClick={() => setModalMsg(prev => ({ ...prev, aberto: false }))}
+              />
             </div>
 
             {/* Seletor de template com indicador visual */}
@@ -689,12 +660,16 @@ export default function RadarEvasao({ onAbrirPerfil }) {
                 disabled={modalMsg.enviando}
                 rows={8}
                 style={{
-                  width: '100%', padding: '14px', borderRadius: '10px',
-                  border: '1px solid #d1d5db', fontSize: '14px',
-                  fontFamily: 'inherit', resize: 'vertical',
+                  width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-lg, 8px)',
+                  border: '1px solid var(--neutral-300, #CBD5E1)', fontSize: '14px',
+                  fontFamily: 'inherit', resize: 'vertical', outline: 'none',
                   boxSizing: 'border-box', lineHeight: '1.6',
-                  backgroundColor: modalMsg.enviando ? '#f9fafb' : 'white'
+                  color: 'var(--color-text-primary, #1e293b)',
+                  transition: 'border-color .15s, box-shadow .15s',
+                  backgroundColor: modalMsg.enviando ? 'var(--neutral-50, #f8fafc)' : 'white'
                 }}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--mensalli-green-500, #4CAF50)'; e.target.style.boxShadow = '0 0 0 3px rgba(76,175,80,0.15)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--neutral-300, #CBD5E1)'; e.target.style.boxShadow = 'none' }}
               />
               <div style={{ fontSize: '11px', color: '#999', textAlign: 'right', marginTop: '4px' }}>
                 {modalMsg.texto.length} caracteres
@@ -706,18 +681,18 @@ export default function RadarEvasao({ onAbrirPerfil }) {
               padding: '16px 20px', borderTop: '1px solid #f0f0f0',
               display: 'flex', justifyContent: 'flex-end', gap: '10px'
             }}>
-              <button
-                onClick={() => setModalMsg(prev => ({ ...prev, aberto: false }))}
+              <Button
+                variant="outline"
                 disabled={modalMsg.enviando}
-                style={{
-                  padding: '10px 20px', borderRadius: '8px',
-                  border: '1px solid #d1d5db', backgroundColor: 'white',
-                  fontSize: '14px', fontWeight: '500', cursor: 'pointer', color: '#555'
-                }}
+                onClick={() => setModalMsg(prev => ({ ...prev, aberto: false }))}
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="whatsapp"
+                icon="mdi:send"
+                loading={modalMsg.enviando}
+                disabled={!modalMsg.texto.trim()}
                 onClick={async () => {
                   if (!modalMsg.texto.trim() || !modalMsg.aluno?.telefone) return
                   setModalMsg(prev => ({ ...prev, enviando: true }))
@@ -739,21 +714,9 @@ export default function RadarEvasao({ onAbrirPerfil }) {
                     setModalMsg(prev => ({ ...prev, enviando: false }))
                   }
                 }}
-                disabled={modalMsg.enviando || !modalMsg.texto.trim()}
-                style={{
-                  padding: '10px 24px', borderRadius: '8px', border: 'none',
-                  backgroundColor: modalMsg.enviando ? '#86efac' : '#25d366',
-                  color: 'white', fontSize: '14px', fontWeight: '600',
-                  cursor: modalMsg.enviando ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px'
-                }}
               >
-                {modalMsg.enviando ? (
-                  <><Icon icon="eos-icons:loading" width="18" /> Enviando...</>
-                ) : (
-                  <><Icon icon="mdi:send" width="18" /> Enviar via WhatsApp</>
-                )}
-              </button>
+                Enviar via WhatsApp
+              </Button>
             </div>
           </div>
         </div>

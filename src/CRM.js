@@ -6,6 +6,45 @@ import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
 import whatsappService from './services/whatsappService'
 import { showToast } from './Toast'
+import Button from './design-system/components/Button'
+import Checkbox from './design-system/components/Checkbox'
+import Select from './design-system/components/Select'
+import AgendaDatePicker from './AgendaDatePicker'
+
+// Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom
+function DateField({ value, onChange, label, required, placeholder = 'dd/mm/aaaa' }) {
+  const valorFmt = value
+    ? (() => { const [y, m, d] = value.split('-'); return `${d}/${m}/${y}` })()
+    : ''
+  return (
+    <div className="ds-input-field" style={{ flex: 1, minWidth: 0 }}>
+      {label && (
+        <label className="ds-input-label">
+          {label}{required && <span style={{ color: 'var(--danger-500, #ef4444)' }}> *</span>}
+        </label>
+      )}
+      <AgendaDatePicker
+        value={value}
+        onChange={onChange}
+        align="left"
+        popupZIndex={10100}
+        renderTrigger={({ aberto, abrir }) => (
+          <button type="button" onClick={abrir} style={{ width: '100%' }}
+            className={`ds-select-trigger ds-select-trigger--md${aberto ? ' ds-select-trigger--open' : ''}`}>
+            <span className="ds-select-content">
+              {valorFmt
+                ? <span className="ds-select-value-text">{valorFmt}</span>
+                : <span className="ds-select-placeholder">{placeholder}</span>}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
+              <Icon icon="mdi:calendar-blank-outline" width={16} />
+            </span>
+          </button>
+        )}
+      />
+    </div>
+  )
+}
 
 // Colunas do CRM de Leads (fluxo manual/bot/landing)
 const COLUNAS_LEADS = [
@@ -92,6 +131,9 @@ export default function CRM() {
   const [convPlanoId, setConvPlanoId] = useState('')
   const [convDataInicio, setConvDataInicio] = useState('')
   const [convDataVenc, setConvDataVenc] = useState('')
+  const [convEnviarBoasVindas, setConvEnviarBoasVindas] = useState(true)
+  const [convMostrarEdicaoBoasVindas, setConvMostrarEdicaoBoasVindas] = useState(false)
+  const [convMensagemBoasVindasCustom, setConvMensagemBoasVindasCustom] = useState('')
   const [convertendo, setConvertendo] = useState(false)
 
   // Modal de envio de WhatsApp
@@ -405,6 +447,9 @@ export default function CRM() {
     if (!devedor) return alert('Aluno vinculado não encontrado')
 
     setModalConverter({ lead, devedor })
+    setConvEnviarBoasVindas(true)
+    setConvMostrarEdicaoBoasVindas(false)
+    setConvMensagemBoasVindasCustom('')
     setConvPlanoId(planos[0]?.id || '')
     const hoje = new Date()
     setConvDataInicio(hoje.toISOString().split('T')[0])
@@ -455,6 +500,28 @@ export default function CRM() {
       await supabase.from('leads').update({ status: 'convertido' }).eq('id', lead.id)
 
       setModalConverter(null)
+
+      // Enviar boas-vindas (não bloqueia a conversão se o WhatsApp falhar)
+      if (convEnviarBoasVindas) {
+        try {
+          const resultado = await whatsappService.enviarBoasVindas(devedor.id, convMensagemBoasVindasCustom)
+          if (resultado.sucesso) {
+            showToast('Aluno convertido e boas-vindas enviada!', 'success')
+          } else if (resultado.erro && resultado.erro.includes('desconectado')) {
+            showToast('Aluno convertido! Boas-vindas não enviada: WhatsApp desconectado. Reconecte em WhatsApp > Conexão.', 'warning')
+          } else if (resultado.erro && resultado.erro.includes('não existe no WhatsApp')) {
+            showToast('Aluno convertido! Boas-vindas não enviada: número não tem WhatsApp.', 'warning')
+          } else {
+            showToast('Aluno convertido! (Não foi possível enviar boas-vindas: ' + resultado.erro + ')', 'warning')
+          }
+        } catch (waErr) {
+          console.error('Erro ao enviar boas-vindas:', waErr)
+          showToast('Aluno convertido! (Erro ao enviar boas-vindas)', 'warning')
+        }
+      } else {
+        showToast('Aluno convertido com sucesso!', 'success')
+      }
+
       carregarTudo()
     } catch (err) {
       alert('Erro ao converter: ' + err.message)
@@ -764,41 +831,80 @@ export default function CRM() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '4px' }}>Plano *</label>
-                  <select value={convPlanoId} onChange={e => setConvPlanoId(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', boxSizing: 'border-box' }}>
-                    {planos.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome} — R$ {Number(p.valor).toFixed(2)} {p.tipo === 'pacote' ? `(${p.numero_aulas} aulas)` : `(${p.ciclo_cobranca || 'mensal'})`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Select
+                  label="Plano"
+                  required
+                  portal
+                  value={convPlanoId}
+                  onChange={(v) => setConvPlanoId(v)}
+                  options={planos.map(p => ({
+                    value: p.id,
+                    label: `${p.nome} — R$ ${Number(p.valor).toFixed(2)} ${p.tipo === 'pacote' ? `(${p.numero_aulas} aulas)` : `(${p.ciclo_cobranca || 'mensal'})`}`
+                  }))}
+                />
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '4px' }}>Início *</label>
-                    <input type="date" value={convDataInicio} onChange={e => atualizarDataInicio(e.target.value)}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <DateField label="Início" required value={convDataInicio} onChange={(v) => atualizarDataInicio(v)} />
+                  <DateField label="Vencimento 1ª mensalidade" required value={convDataVenc} onChange={(v) => setConvDataVenc(v)} />
+                </div>
+
+                {/* Boas-vindas */}
+                <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <Checkbox
+                      checked={convEnviarBoasVindas}
+                      onChange={(e) => setConvEnviarBoasVindas(e.target.checked)}
+                      label={
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <Icon icon="mdi:whatsapp" width="16" style={{ color: '#25D366' }} />
+                          Enviar mensagem de boas-vindas
+                        </span>
+                      }
+                    />
+                    {convEnviarBoasVindas && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon={convMostrarEdicaoBoasVindas ? 'mdi:chevron-up' : 'mdi:pencil'}
+                        onClick={() => setConvMostrarEdicaoBoasVindas(!convMostrarEdicaoBoasVindas)}
+                      >
+                        {convMostrarEdicaoBoasVindas ? 'Fechar' : 'Editar'}
+                      </Button>
+                    )}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: '13px', color: '#666', display: 'block', marginBottom: '4px' }}>Vencimento 1ª mensalidade *</label>
-                    <input type="date" value={convDataVenc} onChange={e => setConvDataVenc(e.target.value)}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', boxSizing: 'border-box' }} />
-                  </div>
+                  {convEnviarBoasVindas && convMostrarEdicaoBoasVindas && (
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label className="ds-input-label" style={{ fontSize: '12px' }}>Personalizar mensagem:</label>
+                        {convMensagemBoasVindasCustom && (
+                          <Button variant="ghost" size="xs" onClick={() => setConvMensagemBoasVindasCustom('')}>
+                            Restaurar padrão
+                          </Button>
+                        )}
+                      </div>
+                      <textarea
+                        value={convMensagemBoasVindasCustom || `Olá, ${(modalConverter.lead.nome || '').trim().split(' ')[0] || '[Nome]'}! 👋\n\nSeja muito bem-vindo(a)!\n\nEste é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:\n\n✅ Lembretes de vencimento\n✅ Confirmações de pagamento\n✅ Comunicados importantes\n\n*Salve nosso número* para não perder nenhuma mensagem!\n\nQualquer dúvida, estamos à disposição.`}
+                        onChange={(e) => setConvMensagemBoasVindasCustom(e.target.value)}
+                        style={{ width: '100%', minHeight: '120px', padding: '10px 12px', border: '1px solid var(--neutral-300, #CBD5E1)', borderRadius: 'var(--radius-lg, 8px)', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', backgroundColor: 'white', boxSizing: 'border-box', lineHeight: '1.5', outline: 'none' }}
+                        onFocus={(e) => { e.target.style.borderColor = 'var(--mensalli-green-500, #4CAF50)'; e.target.style.boxShadow = '0 0 0 3px rgba(76,175,80,0.15)' }}
+                        onBlur={(e) => { e.target.style.borderColor = 'var(--neutral-300, #CBD5E1)'; e.target.style.boxShadow = 'none' }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setModalConverter(null)} disabled={convertendo}
-                style={{ padding: '10px 16px', backgroundColor: 'white', color: '#666', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: convertendo ? 'wait' : 'pointer' }}>
+              <Button variant="outline" disabled={convertendo} onClick={() => setModalConverter(null)}>
                 Cancelar
-              </button>
-              <button onClick={confirmarConversao} disabled={convertendo || planos.length === 0}
-                style={{ padding: '10px 20px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: convertendo || planos.length === 0 ? 'wait' : 'pointer', opacity: planos.length === 0 ? 0.5 : 1 }}>
-                {convertendo ? 'Convertendo...' : 'Confirmar conversão'}
-              </button>
+              </Button>
+              <Button
+                variant="primary"
+                loading={convertendo}
+                disabled={planos.length === 0}
+                onClick={confirmarConversao}
+              >
+                Confirmar conversão
+              </Button>
             </div>
           </div>
         </div>

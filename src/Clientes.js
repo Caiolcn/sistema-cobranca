@@ -1710,6 +1710,76 @@ Equipe ${nomeEmpresa}`
     { id: 'radar', label: 'Radar de Evasão', icon: 'mdi:shield-alert-outline' }
   ]
 
+  // Abas (dropdown no mobile, segmented no desktop) — usado tanto na linha única
+  // da aba Alunos quanto sozinho na aba Radar.
+  const tabsEl = isMobile ? (
+    <div style={{ position: 'relative' }}>
+      <select
+        value={abaAtiva}
+        onChange={(e) => setAbaAtiva(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '12px 40px 12px 14px',
+          backgroundColor: '#f3f4f6',
+          border: '1px solid #e5e7eb',
+          borderRadius: '10px',
+          fontSize: '15px',
+          fontWeight: '600',
+          color: '#1a1a1a',
+          cursor: 'pointer',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 12px center',
+          backgroundSize: '20px',
+          boxSizing: 'border-box'
+        }}
+      >
+        {TABS_CLIENTES.map(tab => (
+          <option key={tab.id} value={tab.id}>{tab.label}</option>
+        ))}
+      </select>
+    </div>
+  ) : (
+    <div style={{
+      display: 'inline-flex',
+      gap: '4px',
+      backgroundColor: '#f3f4f6',
+      borderRadius: '10px',
+      padding: '4px',
+      flexShrink: 0
+    }}>
+      {TABS_CLIENTES.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => setAbaAtiva(tab.id)}
+          style={{
+            padding: '8px 20px',
+            backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
+            color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: abaAtiva === tab.id ? '600' : '400',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.2s',
+            boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            opacity: abaAtiva === tab.id ? 1 : 0.75,
+            flexShrink: 0
+          }}
+        >
+          <Icon icon={tab.icon} width={18} />
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Título global (acima das tabs) */}
@@ -1724,77 +1794,13 @@ Equipe ${nomeEmpresa}`
         </p>
       </div>
 
-      {/* Tabs — dropdown no mobile, segmented control no desktop */}
-      {isMobile ? (
-        <div style={{ position: 'relative', marginBottom: '16px' }}>
-          <select
-            value={abaAtiva}
-            onChange={(e) => setAbaAtiva(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 40px 12px 14px',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #e5e7eb',
-              borderRadius: '10px',
-              fontSize: '15px',
-              fontWeight: '600',
-              color: '#1a1a1a',
-              cursor: 'pointer',
-              appearance: 'none',
-              WebkitAppearance: 'none',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 12px center',
-              backgroundSize: '20px',
-              boxSizing: 'border-box'
-            }}
-          >
-            {TABS_CLIENTES.map(tab => (
-              <option key={tab.id} value={tab.id}>{tab.label}</option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        <div style={{
-          display: 'inline-flex',
-          gap: '4px',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '10px',
-          padding: '4px',
-          marginBottom: '25px'
-        }}>
-          {TABS_CLIENTES.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setAbaAtiva(tab.id)}
-              style={{
-                padding: '8px 20px',
-                backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
-                color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: abaAtiva === tab.id ? '600' : '400',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                opacity: abaAtiva === tab.id ? 1 : 0.75,
-                flexShrink: 0
-              }}
-            >
-              <Icon icon={tab.icon} width={18} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Tabs */}
+      <div style={{ marginBottom: isMobile ? '16px' : '25px' }}>{tabsEl}</div>
 
       {/* Conteúdo da aba Radar de Evasão */}
       {abaAtiva === 'radar' && <RadarEvasao onAbrirPerfil={async (devedorId) => {
+        // O modal de perfil só renderiza na aba "alunos" — troca antes de abrir
+        setAbaAtiva('alunos')
         // Busca o cliente completo e abre o modal de perfil
         const cliente = clientes.find(c => c.id === devedorId)
         if (cliente) {
@@ -1818,19 +1824,6 @@ Equipe ${nomeEmpresa}`
         border: 'none',
         boxShadow: 'none'
       }}>
-        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{
-            padding: '2px 8px',
-            backgroundColor: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#ffebee' : '#e8f5e9',
-            color: clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length >= limiteClientes ? '#c62828' : '#2e7d32',
-            borderRadius: '10px',
-            fontSize: '11px',
-            fontWeight: '600'
-          }}>
-            {clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length}/{limiteClientes} ativos
-          </span>
-        </div>
-
         {/* Busca + Botões */}
         <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: isSmallScreen ? 'stretch' : 'center', gap: '8px' }}>
           {/* Campo de busca */}

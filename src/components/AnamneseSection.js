@@ -2,6 +2,83 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { Icon } from '@iconify/react'
 import useWindowSize from '../hooks/useWindowSize'
+import Input from '../design-system/components/Input'
+import Select from '../design-system/components/Select'
+import Button from '../design-system/components/Button'
+import AgendaDatePicker from '../AgendaDatePicker'
+
+// Opções Sim/Não pros selects booleanos
+const SIM_NAO = [
+  { value: 'nao', label: 'Não' },
+  { value: 'sim', label: 'Sim' },
+]
+
+// Título de seção limpo: rótulo + hairline
+function Secao({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+      <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#344848' }}>{children}</span>
+      <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--neutral-200, #E2E8F0)' }} />
+    </div>
+  )
+}
+
+// Textarea no padrão do DS (não há componente DS pra isso)
+function Textarea({ label, required, rows = 2, style, ...rest }) {
+  return (
+    <div className="ds-input-field" style={{ minWidth: 0 }}>
+      {label && (
+        <label className="ds-input-label">
+          {label}{required && <span style={{ color: 'var(--danger-500, #ef4444)' }}> *</span>}
+        </label>
+      )}
+      <textarea
+        rows={rows}
+        {...rest}
+        style={{
+          width: '100%', padding: '9px 12px', border: '1px solid var(--neutral-300, #CBD5E1)',
+          borderRadius: 'var(--radius-lg, 8px)', fontSize: '14px', fontFamily: 'inherit',
+          resize: 'vertical', outline: 'none', boxSizing: 'border-box',
+          color: 'var(--color-text-primary, #1e293b)', transition: 'border-color .15s, box-shadow .15s',
+          ...style
+        }}
+        onFocus={(e) => { e.target.style.borderColor = 'var(--mensalli-green-500, #4CAF50)'; e.target.style.boxShadow = '0 0 0 3px rgba(76,175,80,0.15)' }}
+        onBlur={(e) => { e.target.style.borderColor = 'var(--neutral-300, #CBD5E1)'; e.target.style.boxShadow = 'none' }}
+      />
+    </div>
+  )
+}
+
+// Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom
+function DateField({ value, onChange, label }) {
+  const valorFmt = value
+    ? (() => { const [y, m, d] = value.split('-'); return `${d}/${m}/${y}` })()
+    : ''
+  return (
+    <div className="ds-input-field" style={{ minWidth: 0 }}>
+      {label && <label className="ds-input-label">{label}</label>}
+      <AgendaDatePicker
+        value={value}
+        onChange={onChange}
+        align="left"
+        popupZIndex={10100}
+        renderTrigger={({ aberto, abrir }) => (
+          <button type="button" onClick={abrir} style={{ width: '100%' }}
+            className={`ds-select-trigger ds-select-trigger--md${aberto ? ' ds-select-trigger--open' : ''}`}>
+            <span className="ds-select-content">
+              {valorFmt
+                ? <span className="ds-select-value-text">{valorFmt}</span>
+                : <span className="ds-select-placeholder">dd/mm/aaaa</span>}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
+              <Icon icon="mdi:calendar-blank-outline" width={16} />
+            </span>
+          </button>
+        )}
+      />
+    </div>
+  )
+}
 
 const OBJETIVOS = [
   { value: '', label: 'Selecione...' },
@@ -289,22 +366,8 @@ export default function AnamneseSection({ clienteId, userId, isLocked }) {
     )
   }
 
-  // ============================================================
-  // Estilos comuns do form
-  // ============================================================
-  const inputStyle = {
-    width: '100%',
-    padding: '8px 12px',
-    borderRadius: '6px',
-    border: '1px solid #d1d5db',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box'
-  }
-
-  const labelStyle = { fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px', fontWeight: '500' }
-
-  const sectionTitle = { fontSize: '13px', fontWeight: '600', color: '#7c3aed', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }
+  const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }
+  const gridMedidas = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }
 
   return (
     <>
@@ -445,201 +508,121 @@ export default function AnamneseSection({ clienteId, userId, isLocked }) {
               <h3 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#1a1a1a' }}>
                 {editandoId ? 'Editar avaliação' : 'Nova avaliação'}
               </h3>
-              <button onClick={cancelar} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', display: 'flex', minWidth: '44px', minHeight: '44px', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon icon="mdi:close" width="22" style={{ color: '#666' }} />
-              </button>
+              <Button variant="ghost" iconOnly icon="mdi:close" aria-label="Fechar" onClick={cancelar} />
             </div>
 
             {/* Corpo scrollável */}
             <div style={{ flex: 1, overflow: 'auto', padding: isSmallScreen ? '14px 16px' : '20px 24px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
         {/* Data */}
-        <div style={{ maxWidth: '200px' }}>
-          <label style={labelStyle}>Data da avaliação</label>
-          <input type="date" value={form.data_avaliacao} onChange={e => setForm({ ...form, data_avaliacao: e.target.value })} style={inputStyle} />
+        <div style={{ maxWidth: '220px' }}>
+          <DateField label="Data da avaliação" value={form.data_avaliacao} onChange={v => setForm({ ...form, data_avaliacao: v })} />
         </div>
 
         {/* SAÚDE */}
         <div>
-          <div style={sectionTitle}>Saúde</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Tem alguma dor ou desconforto?</label>
-              <textarea value={form.tem_dores || ''} onChange={e => setForm({ ...form, tem_dores: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>Lesão recente?</label>
-              <select value={form.lesao_recente ? 'sim' : 'nao'} onChange={e => setForm({ ...form, lesao_recente: e.target.value === 'sim' })} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                <option value="nao">Não</option>
-                <option value="sim">Sim</option>
-              </select>
+          <Secao>Saúde</Secao>
+          <div style={gridStyle}>
+            <Textarea label="Tem alguma dor ou desconforto?" value={form.tem_dores || ''} onChange={e => setForm({ ...form, tem_dores: e.target.value })} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <Select label="Lesão recente?" portal value={form.lesao_recente ? 'sim' : 'nao'} options={SIM_NAO}
+                onChange={v => setForm({ ...form, lesao_recente: v === 'sim' })} />
               {form.lesao_recente && (
-                <textarea value={form.lesoes_descricao || ''} onChange={e => setForm({ ...form, lesoes_descricao: e.target.value })} rows={2} placeholder="Descreva a lesão..." style={{ ...inputStyle, marginTop: '6px', resize: 'vertical' }} />
+                <Textarea value={form.lesoes_descricao || ''} placeholder="Descreva a lesão..." onChange={e => setForm({ ...form, lesoes_descricao: e.target.value })} />
               )}
             </div>
-            <div>
-              <label style={labelStyle}>Cirurgias anteriores</label>
-              <textarea value={form.cirurgias || ''} onChange={e => setForm({ ...form, cirurgias: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>Doenças (hipertensão, diabetes, etc)</label>
-              <textarea value={form.doencas || ''} onChange={e => setForm({ ...form, doencas: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>Medicamentos em uso</label>
-              <textarea value={form.medicamentos || ''} onChange={e => setForm({ ...form, medicamentos: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>Alergias</label>
-              <textarea value={form.alergias || ''} onChange={e => setForm({ ...form, alergias: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-            <div>
-              <label style={labelStyle}>Já desmaiou durante exercício?</label>
-              <select value={form.ja_desmaiou ? 'sim' : 'nao'} onChange={e => setForm({ ...form, ja_desmaiou: e.target.value === 'sim' })} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                <option value="nao">Não</option>
-                <option value="sim">Sim</option>
-              </select>
-            </div>
+            <Textarea label="Cirurgias anteriores" value={form.cirurgias || ''} onChange={e => setForm({ ...form, cirurgias: e.target.value })} />
+            <Textarea label="Doenças (hipertensão, diabetes, etc)" value={form.doencas || ''} onChange={e => setForm({ ...form, doencas: e.target.value })} />
+            <Textarea label="Medicamentos em uso" value={form.medicamentos || ''} onChange={e => setForm({ ...form, medicamentos: e.target.value })} />
+            <Textarea label="Alergias" value={form.alergias || ''} onChange={e => setForm({ ...form, alergias: e.target.value })} />
+            <Select label="Já desmaiou durante exercício?" portal value={form.ja_desmaiou ? 'sim' : 'nao'} options={SIM_NAO}
+              onChange={v => setForm({ ...form, ja_desmaiou: v === 'sim' })} />
           </div>
         </div>
 
         {/* HISTÓRICO */}
         <div>
-          <div style={sectionTitle}>Histórico físico</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Já praticou atividade física antes?</label>
-              <select value={form.praticou_esporte ? 'sim' : 'nao'} onChange={e => setForm({ ...form, praticou_esporte: e.target.value === 'sim' })} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                <option value="nao">Não</option>
-                <option value="sim">Sim</option>
-              </select>
+          <Secao>Histórico físico</Secao>
+          <div style={gridStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <Select label="Já praticou atividade física antes?" portal value={form.praticou_esporte ? 'sim' : 'nao'} options={SIM_NAO}
+                onChange={v => setForm({ ...form, praticou_esporte: v === 'sim' })} />
               {form.praticou_esporte && (
-                <textarea value={form.esportes_descricao || ''} onChange={e => setForm({ ...form, esportes_descricao: e.target.value })} rows={2} placeholder="Quais atividades..." style={{ ...inputStyle, marginTop: '6px', resize: 'vertical' }} />
+                <Textarea value={form.esportes_descricao || ''} placeholder="Quais atividades..." onChange={e => setForm({ ...form, esportes_descricao: e.target.value })} />
               )}
             </div>
-            <div>
-              <label style={labelStyle}>Tempo parado</label>
-              <select value={form.tempo_parado || ''} onChange={e => setForm({ ...form, tempo_parado: e.target.value })} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                {TEMPOS_PARADO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
+            <Select label="Tempo parado" portal placeholder="Selecione..." value={form.tempo_parado || ''}
+              options={TEMPOS_PARADO.filter(t => t.value)}
+              onChange={v => setForm({ ...form, tempo_parado: v || '' })} />
           </div>
         </div>
 
         {/* OBJETIVO */}
         <div>
-          <div style={sectionTitle}>Objetivo</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Principal objetivo</label>
-              <select value={form.objetivo || ''} onChange={e => setForm({ ...form, objetivo: e.target.value })} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                {OBJETIVOS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Detalhes / prazo</label>
-              <textarea value={form.objetivo_descricao || ''} onChange={e => setForm({ ...form, objetivo_descricao: e.target.value })} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
+          <Secao>Objetivo</Secao>
+          <div style={gridStyle}>
+            <Select label="Principal objetivo" portal placeholder="Selecione..." value={form.objetivo || ''}
+              options={OBJETIVOS.filter(o => o.value)}
+              onChange={v => setForm({ ...form, objetivo: v || '' })} />
+            <Textarea label="Detalhes / prazo" value={form.objetivo_descricao || ''} onChange={e => setForm({ ...form, objetivo_descricao: e.target.value })} />
           </div>
         </div>
 
         {/* MEDIDAS */}
         <div>
-          <div style={sectionTitle}>Medidas</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Peso (kg)</label>
-              <input type="number" step="0.1" value={form.peso || ''} onChange={e => setForm({ ...form, peso: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Altura (m)</label>
-              <input type="number" step="0.01" value={form.altura || ''} onChange={e => setForm({ ...form, altura: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Cintura (cm)</label>
-              <input type="number" step="0.1" value={form.cintura || ''} onChange={e => setForm({ ...form, cintura: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Quadril (cm)</label>
-              <input type="number" step="0.1" value={form.quadril || ''} onChange={e => setForm({ ...form, quadril: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Braço D. (cm)</label>
-              <input type="number" step="0.1" value={form.braco_direito || ''} onChange={e => setForm({ ...form, braco_direito: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Braço E. (cm)</label>
-              <input type="number" step="0.1" value={form.braco_esquerdo || ''} onChange={e => setForm({ ...form, braco_esquerdo: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Coxa D. (cm)</label>
-              <input type="number" step="0.1" value={form.coxa_direita || ''} onChange={e => setForm({ ...form, coxa_direita: e.target.value })} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Coxa E. (cm)</label>
-              <input type="number" step="0.1" value={form.coxa_esquerda || ''} onChange={e => setForm({ ...form, coxa_esquerda: e.target.value })} style={inputStyle} />
-            </div>
+          <Secao>Medidas</Secao>
+          <div style={gridMedidas}>
+            <Input label="Peso (kg)" type="number" step="0.1" value={form.peso || ''} onChange={e => setForm({ ...form, peso: e.target.value })} />
+            <Input label="Altura (m)" type="number" step="0.01" value={form.altura || ''} onChange={e => setForm({ ...form, altura: e.target.value })} />
+            <Input label="Cintura (cm)" type="number" step="0.1" value={form.cintura || ''} onChange={e => setForm({ ...form, cintura: e.target.value })} />
+            <Input label="Quadril (cm)" type="number" step="0.1" value={form.quadril || ''} onChange={e => setForm({ ...form, quadril: e.target.value })} />
+            <Input label="Braço D. (cm)" type="number" step="0.1" value={form.braco_direito || ''} onChange={e => setForm({ ...form, braco_direito: e.target.value })} />
+            <Input label="Braço E. (cm)" type="number" step="0.1" value={form.braco_esquerdo || ''} onChange={e => setForm({ ...form, braco_esquerdo: e.target.value })} />
+            <Input label="Coxa D. (cm)" type="number" step="0.1" value={form.coxa_direita || ''} onChange={e => setForm({ ...form, coxa_direita: e.target.value })} />
+            <Input label="Coxa E. (cm)" type="number" step="0.1" value={form.coxa_esquerda || ''} onChange={e => setForm({ ...form, coxa_esquerda: e.target.value })} />
           </div>
         </div>
 
         {/* CAMPOS EXTRAS (configurados pelo dono) */}
         {camposExtras.length > 0 && (
           <div>
-            <div style={sectionTitle}>Perguntas extras</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+            <Secao>Perguntas extras</Secao>
+            <div style={gridStyle}>
               {camposExtras.map(campo => {
                 const valor = form.campos_extras?.[campo.id] ?? ''
-                return (
-                  <div key={campo.id}>
-                    <label style={labelStyle}>
-                      {campo.label}
-                      {campo.obrigatorio && <span style={{ color: '#dc2626' }}> *</span>}
-                    </label>
-                    {campo.tipo === 'texto' && (
-                      <input type="text" value={valor} onChange={e => updateExtra(campo.id, e.target.value)} style={inputStyle} />
-                    )}
-                    {campo.tipo === 'textarea' && (
-                      <textarea value={valor} onChange={e => updateExtra(campo.id, e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
-                    )}
-                    {campo.tipo === 'numero' && (
-                      <input type="number" value={valor} onChange={e => updateExtra(campo.id, e.target.value)} style={inputStyle} />
-                    )}
-                    {campo.tipo === 'sim_nao' && (
-                      <select value={valor === true ? 'sim' : valor === false ? 'nao' : ''} onChange={e => updateExtra(campo.id, e.target.value === 'sim' ? true : e.target.value === 'nao' ? false : '')} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                        <option value="">--</option>
-                        <option value="sim">Sim</option>
-                        <option value="nao">Não</option>
-                      </select>
-                    )}
-                    {campo.tipo === 'select' && (
-                      <select value={valor} onChange={e => updateExtra(campo.id, e.target.value)} style={{ ...inputStyle, backgroundColor: 'white' }}>
-                        <option value="">Selecione...</option>
-                        {(campo.opcoes || []).map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    )}
-                  </div>
-                )
+                if (campo.tipo === 'textarea') {
+                  return <Textarea key={campo.id} label={campo.label} required={campo.obrigatorio} value={valor} onChange={e => updateExtra(campo.id, e.target.value)} />
+                }
+                if (campo.tipo === 'numero') {
+                  return <Input key={campo.id} label={campo.label} required={campo.obrigatorio} type="number" value={valor} onChange={e => updateExtra(campo.id, e.target.value)} />
+                }
+                if (campo.tipo === 'sim_nao') {
+                  return <Select key={campo.id} label={campo.label} required={campo.obrigatorio} portal placeholder="--"
+                    value={valor === true ? 'sim' : valor === false ? 'nao' : ''} options={SIM_NAO}
+                    onChange={v => updateExtra(campo.id, v === 'sim' ? true : v === 'nao' ? false : '')} />
+                }
+                if (campo.tipo === 'select') {
+                  return <Select key={campo.id} label={campo.label} required={campo.obrigatorio} portal placeholder="Selecione..."
+                    value={valor} options={(campo.opcoes || []).map(o => ({ value: o, label: o }))}
+                    onChange={v => updateExtra(campo.id, v || '')} />
+                }
+                return <Input key={campo.id} label={campo.label} required={campo.obrigatorio} value={valor} onChange={e => updateExtra(campo.id, e.target.value)} />
               })}
             </div>
           </div>
         )}
 
         {/* OBSERVAÇÕES */}
-        <div>
-          <label style={labelStyle}>Observações do professor</label>
-          <textarea value={form.observacoes || ''} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
-        </div>
+        <Textarea label="Observações do professor" rows={3} value={form.observacoes || ''} onChange={e => setForm({ ...form, observacoes: e.target.value })} />
       </div>
             </div>
 
             {/* Footer fixo */}
             <div style={{ padding: isSmallScreen ? '12px 16px' : '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px', backgroundColor: '#fafafa' }}>
-              <button onClick={cancelar} style={{ padding: '12px 18px', backgroundColor: 'white', color: '#666', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', minHeight: '44px' }}>
-                Cancelar
-              </button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: '12px 24px', backgroundColor: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: salvando ? 'not-allowed' : 'pointer', opacity: salvando ? 0.6 : 1, minHeight: '44px' }}>
-                {salvando ? 'Salvando...' : 'Salvar avaliação'}
-              </button>
+              <Button variant="outline" onClick={cancelar}>Cancelar</Button>
+              <Button variant="primary" icon="mdi:content-save-outline" loading={salvando} onClick={salvar}>
+                Salvar avaliação
+              </Button>
             </div>
           </div>
         </div>

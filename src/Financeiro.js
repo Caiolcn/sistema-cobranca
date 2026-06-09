@@ -18,6 +18,54 @@ import CobrancasAvulsas from './CobrancasAvulsas'
 import ConfirmModal from './ConfirmModal'
 import { validarCPF } from './utils/validators'
 import DateInput from './components/DateInput'
+import SearchInput from './design-system/components/SearchInput'
+import Button from './design-system/components/Button'
+import Select from './design-system/components/Select'
+import Checkbox from './design-system/components/Checkbox'
+import AgendaDatePicker from './AgendaDatePicker'
+
+// Linha "rótulo → valor" pra resumos/detalhes
+function InfoRow({ label, value, valueColor, isFirst, big }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
+      padding: big ? '12px 0' : '9px 0', borderTop: isFirst ? 'none' : '1px solid #f1f5f9'
+    }}>
+      <span style={{ fontSize: big ? '14px' : '13px', color: '#64748b' }}>{label}</span>
+      <span style={{ fontSize: big ? '18px' : '14px', fontWeight: 700, color: valueColor || '#1e293b', textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
+
+// Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom
+function DateField({ value, onChange, placeholder = 'dd/mm/aaaa' }) {
+  const valorFmt = value
+    ? (() => { const [y, m, d] = value.split('-'); return `${d}/${m}/${y}` })()
+    : ''
+  return (
+    <div className="ds-input-field" style={{ flex: 1, minWidth: 0 }}>
+      <AgendaDatePicker
+        value={value}
+        onChange={onChange}
+        align="left"
+        popupZIndex={10100}
+        renderTrigger={({ aberto, abrir }) => (
+          <button type="button" onClick={abrir} style={{ width: '100%' }}
+            className={`ds-select-trigger ds-select-trigger--md${aberto ? ' ds-select-trigger--open' : ''}`}>
+            <span className="ds-select-content">
+              {valorFmt
+                ? <span className="ds-select-value-text">{valorFmt}</span>
+                : <span className="ds-select-placeholder">{placeholder}</span>}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
+              <Icon icon="mdi:calendar-blank-outline" width={16} />
+            </span>
+          </button>
+        )}
+      />
+    </div>
+  )
+}
 
 export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -1216,7 +1264,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   // Fechar popover ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (mostrarFiltros && !event.target.closest('.popover-filtros') && !event.target.closest('.btn-filtrar')) {
+      if (mostrarFiltros && !event.target.closest('.popover-filtros') && !event.target.closest('.btn-filtrar')
+          && !event.target.closest('.ds-select-dropdown')) {
         setMostrarFiltros(false)
       }
     }
@@ -1266,7 +1315,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       </div>
 
       {/* Menu de Abas + Botões */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: isSmallScreen ? '16px' : '24px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isSmallScreen ? '16px' : '25px', marginBottom: isSmallScreen ? '16px' : '25px' }}>
+        {/* Linha: abas + ações de Vendas/Despesas */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         {/* Tabs segmented control */}
         <div style={{
           display: 'inline-flex',
@@ -1306,97 +1357,38 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             </button>
           ))}
         </div>
+        {/* Portal target para botões de Vendas/Despesas */}
+        <div ref={(el) => { buttonsPortalRef.current = el; if (el && !portalReady) setPortalReady(true) }} style={{ display: 'contents' }} />
+        </div>
 
-        {/* Busca + Botões (apenas aba Mensalidades) */}
+        {/* Toolbar Mensalidades — busca full width + ações à direita */}
         {abaAtiva === 'mensalidades' && (
-          <div style={{ display: 'flex', gap: '8px', position: 'relative', justifyContent: isSmallScreen ? 'stretch' : 'flex-end', alignItems: 'center' }}>
-            {/* Busca por nome */}
-            <div style={{ position: 'relative', flex: isSmallScreen ? 1 : 'none' }}>
-              <Icon icon="mdi:magnify" width="18" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
-              <input
-                type="text"
-                value={filtroNome}
-                onChange={(e) => setFiltroNome(e.target.value)}
-                placeholder="Buscar aluno..."
-                style={{
-                  width: isSmallScreen ? '100%' : '200px',
-                  padding: '9px 32px 9px 34px',
-                  fontSize: '16px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  backgroundColor: 'white',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-              {filtroNome && (
-                <button
-                  onClick={() => setFiltroNome('')}
-                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', color: '#999' }}
-                >
-                  <Icon icon="mdi:close-circle" width="16" />
-                </button>
-              )}
-            </div>
+          <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: isSmallScreen ? 'stretch' : 'center', gap: '8px' }}>
+            <SearchInput
+              placeholder="Buscar aluno..."
+              value={filtroNome}
+              onChange={(e) => setFiltroNome(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
 
-            <button
+            <Button
+              variant="outline"
+              icon="ph:export-light"
+              iconOnly
+              aria-label="Exportar"
+              title="Exportar"
               onClick={() => exportarMensalidades(mensalidadesFiltradas)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: 'white',
-                color: '#333',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#344848'
-                e.currentTarget.style.color = '#344848'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#ddd'
-                e.currentTarget.style.color = '#333'
-              }}
-            >
-              <Icon icon="ph:export-light" width="18" height="18" />
-            </button>
+              style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
+            />
 
-            <button
+            <Button
               className="btn-filtrar"
+              variant={temFiltrosAtivos ? 'secondary' : 'outline'}
+              icon="mdi:filter-outline"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
-                color: temFiltrosAtivos ? 'white' : '#333',
-                border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                position: 'relative',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5'
-              }}
-              onMouseLeave={(e) => {
-                if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = 'white'
-              }}
+              style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
             >
-              <Icon icon="mdi:filter-outline" width="18" height="18" />
               {!isSmallScreen && 'Filtrar'}
               {temFiltrosAtivos && (
                 <span style={{
@@ -1418,7 +1410,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   {filtroStatus.length + (filtroVencimento ? 1 : 0)}
                 </span>
               )}
-            </button>
+            </Button>
 
             {/* Popover de filtros */}
             {mostrarFiltros && (
@@ -1478,101 +1470,55 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 <div style={{ padding: '20px', flex: 1 }}>
                   {/* Seção Status */}
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '12px', fontSize: '14px', color: '#333' }}>
+                    <label className="ds-input-label" style={{ display: 'block', marginBottom: '12px' }}>
                       Status
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {['pago', 'aberto', 'atrasado'].map(status => (
-                        <label key={status} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={filtroStatus.includes(status)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFiltroStatus([...filtroStatus, status])
-                              } else {
-                                setFiltroStatus(filtroStatus.filter(s => s !== status))
-                              }
-                            }}
-                            style={{
-                              width: '16px',
-                              height: '16px',
-                              cursor: 'pointer',
-                              accentColor: '#2196F3'
-                            }}
-                          />
-                          <span style={{ fontSize: '14px', color: '#555' }}>
-                            {status === 'pago' && 'Pago'}
-                            {status === 'aberto' && 'Em aberto'}
-                            {status === 'atrasado' && 'Em atraso'}
-                          </span>
-                        </label>
+                        <Checkbox
+                          key={status}
+                          checked={filtroStatus.includes(status)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFiltroStatus([...filtroStatus, status])
+                            } else {
+                              setFiltroStatus(filtroStatus.filter(s => s !== status))
+                            }
+                          }}
+                          label={status === 'pago' ? 'Pago' : status === 'aberto' ? 'Em aberto' : 'Em atraso'}
+                        />
                       ))}
                     </div>
                   </div>
 
                   {/* Seção Vencimento */}
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', fontSize: '14px', color: '#333' }}>
-                      Vencimento
-                    </label>
-                    <select
+                    <Select
+                      label="Vencimento"
+                      portal
+                      placeholder="Todos"
                       value={filtroVencimento || ''}
-                      onChange={(e) => setFiltroVencimento(e.target.value || null)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '6px',
-                        border: '1px solid #ddd',
-                        fontSize: '16px',
-                        backgroundColor: 'white',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="">Todos</option>
-                      <option value="hoje">Hoje</option>
-                      <option value="7dias">Próximos 7 dias</option>
-                      <option value="30dias">Próximos 30 dias</option>
-                    </select>
+                      onChange={(v) => setFiltroVencimento(v || null)}
+                      options={[
+                        { value: '', label: 'Todos' },
+                        { value: 'hoje', label: 'Hoje' },
+                        { value: '7dias', label: 'Próximos 7 dias' },
+                        { value: '30dias', label: 'Próximos 30 dias' },
+                      ]}
+                    />
                   </div>
 
                   {/* Período Personalizado */}
                   <div>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#333'
-                    }}>
+                    <label className="ds-input-label" style={{ display: 'block', marginBottom: '10px' }}>
                       Período Personalizado
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <input
-                        type="date"
-                        value={filtroDataInicio}
-                        onChange={(e) => setFiltroDataInicio(e.target.value)}
-                        style={{
-                          width: '100%', padding: '10px 12px', borderRadius: '6px',
-                          border: '1px solid #ddd', fontSize: '16px', outline: 'none',
-                          cursor: 'pointer', boxSizing: 'border-box'
-                        }}
-                      />
+                      <DateField value={filtroDataInicio} onChange={setFiltroDataInicio} />
                       <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
                         até
                       </div>
-                      <input
-                        type="date"
-                        value={filtroDataFim}
-                        onChange={(e) => setFiltroDataFim(e.target.value)}
-                        style={{
-                          width: '100%', padding: '10px 12px', borderRadius: '6px',
-                          border: '1px solid #ddd', fontSize: '16px', outline: 'none',
-                          cursor: 'pointer', boxSizing: 'border-box'
-                        }}
-                      />
+                      <DateField value={filtroDataFim} onChange={setFiltroDataFim} />
                     </div>
                   </div>
                 </div>
@@ -1586,49 +1532,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   gap: '10px',
                   ...(isSmallScreen ? { position: 'sticky', bottom: 0, paddingBottom: '20px' } : {})
                 }}>
-                  <button
-                    onClick={limparFiltros}
+                  <Button
+                    variant="outline"
                     disabled={!temFiltrosAtivos}
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      backgroundColor: 'white',
-                      color: temFiltrosAtivos ? '#344848' : '#999',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      cursor: temFiltrosAtivos ? 'pointer' : 'not-allowed',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
-                    }}
+                    onClick={limparFiltros}
+                    style={{ flex: 1 }}
                   >
                     Limpar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
                     onClick={() => setMostrarFiltros(false)}
-                    style={{
-                      flex: 2,
-                      padding: '12px',
-                      backgroundColor: '#344848',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s'
-                    }}
+                    style={{ flex: 2 }}
                   >
                     Aplicar Filtros
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
-
-        {/* Portal target para botões de Vendas/Despesas */}
-        <div ref={(el) => { buttonsPortalRef.current = el; if (el && !portalReady) setPortalReady(true) }} style={{ display: 'contents' }} />
       </div>
 
       {/* ========== ABA: COBRANÇAS AVULSAS ========== */}
@@ -2214,82 +2138,43 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
             {/* Body */}
             <div style={{ padding: '24px', flex: 1, overflow: 'auto' }}>
-              {/* Cliente */}
-              <div style={{ marginBottom: '20px' }}>
-                <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Aluno</p>
-                <p style={{ fontSize: '16px', fontWeight: '600', color: '#333', margin: 0 }}>
-                  {mensalidadeDetalhes.devedor?.nome || 'N/A'}
-                </p>
-              </div>
-
-              {/* Grid de informações */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                {/* Valor */}
-                <div>
-                  <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Valor</p>
-                  <p style={{ fontSize: '20px', fontWeight: '700', color: '#333', margin: 0 }}>
-                    R$ {parseFloat(mensalidadeDetalhes.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-
-                {/* Status */}
-                <div>
-                  <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Status</p>
-                  {getStatusBadge(mensalidadeDetalhes.statusCalculado)}
-                </div>
-
-                {/* Vencimento */}
-                <div>
-                  <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Vencimento</p>
-                  <p style={{ fontSize: '15px', fontWeight: '500', color: '#333', margin: 0 }}>
-                    {new Date(mensalidadeDetalhes.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-
-                {/* Plano */}
-                <div>
-                  <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Plano</p>
-                  <p style={{ fontSize: '15px', fontWeight: '500', color: '#333', margin: 0 }}>
-                    {mensalidadeDetalhes.devedor?.plano?.nome || '-'}
-                  </p>
-                </div>
-
-                {/* Data Pagamento (se pago) */}
-                {mensalidadeDetalhes.data_pagamento && (
-                  <div>
-                    <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Data do Pagamento</p>
-                    <p style={{ fontSize: '15px', fontWeight: '500', color: '#4CAF50', margin: 0 }}>
-                      {new Date(mensalidadeDetalhes.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                )}
-
-                {/* Forma Pagamento (se pago) */}
-                {mensalidadeDetalhes.forma_pagamento && (
-                  <div>
-                    <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Forma de Pagamento</p>
-                    <p style={{ fontSize: '15px', fontWeight: '500', color: '#333', margin: 0 }}>
-                      {mensalidadeDetalhes.forma_pagamento}
-                    </p>
-                  </div>
-                )}
-
-                {/* Dias em Atraso (se atrasado) */}
-                {mensalidadeDetalhes.statusCalculado === 'atrasado' && (() => {
-                  const hoje = new Date()
-                  hoje.setHours(0, 0, 0, 0)
-                  const vencimento = new Date(mensalidadeDetalhes.data_vencimento + 'T12:00:00')
-                  const diffTime = hoje.getTime() - vencimento.getTime()
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-                  return (
-                    <div>
-                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Dias em Atraso</p>
-                      <p style={{ fontSize: '15px', fontWeight: '600', color: '#f44336', margin: 0 }}>
-                        {diffDays} {diffDays === 1 ? 'dia' : 'dias'}
-                      </p>
+              {/* Card de resumo da mensalidade */}
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
+                {/* Hero: nome do aluno (título) + status à direita */}
+                <div style={{ padding: '16px 18px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '2px' }}>Aluno</div>
+                    <div style={{ fontSize: '17px', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {mensalidadeDetalhes.devedor?.nome || 'N/A'}
                     </div>
-                  )
-                })()}
+                  </div>
+                  <div style={{ flexShrink: 0 }}>
+                    {getStatusBadge(mensalidadeDetalhes.statusCalculado)}
+                  </div>
+                </div>
+
+                {/* Detalhes em linhas */}
+                <div style={{ padding: '4px 18px 10px' }}>
+                  <InfoRow isFirst big label="Valor" value={`R$ ${parseFloat(mensalidadeDetalhes.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                  <InfoRow label="Vencimento" value={new Date(mensalidadeDetalhes.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')} />
+                  <InfoRow label="Plano" value={mensalidadeDetalhes.devedor?.plano?.nome || '—'} />
+
+                  {mensalidadeDetalhes.statusCalculado === 'atrasado' && (() => {
+                    const hoje = new Date()
+                    hoje.setHours(0, 0, 0, 0)
+                    const vencimento = new Date(mensalidadeDetalhes.data_vencimento + 'T12:00:00')
+                    const diffDays = Math.ceil((hoje.getTime() - vencimento.getTime()) / (1000 * 60 * 60 * 24))
+                    return <InfoRow label="Dias em atraso" valueColor="#dc2626" value={`${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`} />
+                  })()}
+
+                  {mensalidadeDetalhes.data_pagamento && (
+                    <InfoRow label="Data do pagamento" valueColor="#16a34a" value={new Date(mensalidadeDetalhes.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR')} />
+                  )}
+
+                  {mensalidadeDetalhes.forma_pagamento && (
+                    <InfoRow label="Forma de pagamento" value={mensalidadeDetalhes.forma_pagamento} />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2301,154 +2186,71 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               flexDirection: 'column',
               gap: '12px'
             }}>
-              {/* Botões de ação principais - só aparece se não está pago */}
+              {/* Ações secundárias (não pago): Link e Boleto — outline neutro */}
               {mensalidadeDetalhes.status !== 'pago' && (
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  {/* Botão Link de Pagamento */}
-                  <button
+                  <Button
+                    variant="outline"
+                    icon="mdi:link-variant"
+                    loading={gerandoLink}
                     onClick={() => handleGerarLinkPagamento(mensalidadeDetalhes)}
-                    disabled={gerandoLink}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      backgroundColor: '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: gerandoLink ? 'wait' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      opacity: gerandoLink ? 0.7 : 1
-                    }}
+                    style={{ flex: 1 }}
                   >
-                    <Icon icon={gerandoLink ? 'mdi:loading' : 'mdi:link-variant'} width="18" style={gerandoLink ? { animation: 'spin 1s linear infinite' } : {}} />
-                    {gerandoLink ? 'Gerando...' : 'Link de Pagamento'}
-                  </button>
+                    Link de Pagamento
+                  </Button>
 
-                  {/* Botão Gerar/Visualizar Boleto - só aparece se modo é Asaas E está configurado */}
                   {modoIntegracao === 'asaas' && asaasConfigurado && (
                     mensalidadeDetalhes.boletos?.length > 0 ? (
-                      <button
+                      <Button
+                        variant="outline"
+                        icon="mdi:file-document-outline"
                         onClick={() => handleVisualizarBoleto(mensalidadeDetalhes)}
-                        style={{
-                          flex: 1,
-                          padding: '12px 16px',
-                          backgroundColor: '#FF9800',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px'
-                        }}
+                        style={{ flex: 1 }}
                       >
-                        <Icon icon="mdi:file-document-outline" width="18" />
                         Ver Boleto
-                      </button>
+                      </Button>
                     ) : (
-                      <button
+                      <Button
+                        variant="outline"
+                        icon="mdi:barcode"
+                        loading={gerandoBoleto}
                         onClick={() => handleGerarBoleto(mensalidadeDetalhes)}
-                        disabled={gerandoBoleto}
-                        style={{
-                          flex: 1,
-                          padding: '12px 16px',
-                          backgroundColor: '#FF9800',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          cursor: gerandoBoleto ? 'wait' : 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          opacity: gerandoBoleto ? 0.7 : 1
-                        }}
+                        style={{ flex: 1 }}
                       >
-                        <Icon icon={gerandoBoleto ? 'mdi:loading' : 'mdi:barcode'} width="18" style={gerandoBoleto ? { animation: 'spin 1s linear infinite' } : {}} />
-                        {gerandoBoleto ? 'Gerando...' : 'Gerar Boleto'}
-                      </button>
+                        Gerar Boleto
+                      </Button>
                     )
                   )}
                 </div>
               )}
 
-              {/* Botão de envio do recibo - só aparece se está pago */}
+              {/* Recibo (pago) */}
               {mensalidadeDetalhes.status === 'pago' && (
-                <button
+                <Button
+                  variant="outline"
+                  icon="mdi:whatsapp"
+                  loading={enviandoReciboWhatsApp}
+                  fullWidth
                   onClick={() => handleEnviarReciboWhatsApp(mensalidadeDetalhes)}
-                  disabled={enviandoReciboWhatsApp}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    backgroundColor: 'white',
-                    color: '#344848',
-                    border: '1px solid #344848',
-                    borderRadius: '8px',
-                    cursor: enviandoReciboWhatsApp ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    opacity: enviandoReciboWhatsApp ? 0.6 : 1
-                  }}
                 >
-                  <Icon icon={enviandoReciboWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'} width="18" style={enviandoReciboWhatsApp ? { animation: 'spin 1s linear infinite' } : {}} />
-                  {enviandoReciboWhatsApp ? 'Enviando...' : 'Enviar Recibo via WhatsApp'}
-                </button>
+                  Enviar Recibo via WhatsApp
+                </Button>
               )}
 
-              {/* Botão principal de ação: Marcar como Pago / Desfazer */}
-              <button
+              {/* Ação principal: Marcar como Pago / Desfazer */}
+              <Button
+                variant={mensalidadeDetalhes.status === 'pago' ? 'danger-soft' : 'primary'}
+                icon={mensalidadeDetalhes.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle'}
+                fullWidth
                 onClick={marcarPagoDoModal}
-                style={{
-                  width: '100%',
-                  padding: '14px 20px',
-                  backgroundColor: mensalidadeDetalhes.status === 'pago' ? '#f44336' : '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
               >
-                <Icon icon={mensalidadeDetalhes.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle'} width="20" />
                 {mensalidadeDetalhes.status === 'pago' ? 'Desfazer Pagamento' : 'Marcar como Pago'}
-              </button>
+              </Button>
 
-              {/* Botão Fechar - secundário */}
-              <button
-                onClick={() => setMostrarModalDetalhes(false)}
-                style={{
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: 'transparent',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
+              {/* Fechar — discreto */}
+              <Button variant="ghost" fullWidth onClick={() => setMostrarModalDetalhes(false)}>
                 Fechar
-              </button>
+              </Button>
             </div>
           </div>
         </div>
