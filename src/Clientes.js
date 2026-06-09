@@ -22,6 +22,7 @@ import Input from './design-system/components/Input'
 import Button from './design-system/components/Button'
 import Select from './design-system/components/Select'
 import Switch from './design-system/components/Switch'
+import Checkbox from './design-system/components/Checkbox'
 import Dropdown from './design-system/components/Dropdown'
 import AgendaDatePicker from './AgendaDatePicker'
 import RadarEvasao from './components/RadarEvasao'
@@ -2871,6 +2872,7 @@ Equipe ${nomeEmpresa}`
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>Tags / Turmas</label>
                       <TagInput
+                        portal
                         tags={tagsEdit}
                         onChange={setTagsEdit}
                         tagsDisponiveis={tagsDisponiveis}
@@ -2882,13 +2884,16 @@ Equipe ${nomeEmpresa}`
                   </div>
 
                   {/* Endereço */}
-                  <details style={{ marginBottom: '14px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                    <summary style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#444' }}>
-                      <Icon icon="mdi:map-marker-outline" width="16" style={{ color: '#666' }} />
-                      Endereço
-                      {(cepEdit || enderecoEdit || cidadeEdit) && (
-                        <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '500', marginLeft: '4px' }}>preenchido</span>
-                      )}
+                  <details style={{ marginBottom: '14px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid var(--neutral-300, #CBD5E1)', overflow: 'hidden' }}>
+                    <summary className="ds-collapsible-summary" style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', fontWeight: '500', color: '#475569' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <Icon icon="mdi:map-marker-outline" width="18" style={{ color: '#94a3b8' }} />
+                        Endereço
+                        {(cepEdit || enderecoEdit || cidadeEdit) && (
+                          <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '500' }}>preenchido</span>
+                        )}
+                      </span>
+                      <Icon icon="mdi:chevron-down" width="18" className="ds-details-chevron" style={{ color: '#94a3b8' }} />
                     </summary>
                     <div style={{ padding: '0 12px 12px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '160px 1fr 100px', gap: '10px', marginBottom: '10px' }}>
@@ -3897,10 +3902,8 @@ Equipe ${nomeEmpresa}`
                 <h3 style={{ margin: 0, fontSize: isSmallScreen ? '18px' : '20px', fontWeight: '600', color: '#1a1a1a' }}>
                   Novo Aluno
                 </h3>
-                <button onClick={() => { setMostrarModalNovoCliente(false); setStepCadastro(1); setErroModalNovoCliente('') }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex' }}>
-                  <Icon icon="mdi:close" width="24" style={{ color: '#666' }} />
-                </button>
+                <Button variant="ghost" iconOnly icon="mdi:close" aria-label="Fechar"
+                  onClick={() => { setMostrarModalNovoCliente(false); setStepCadastro(1); setErroModalNovoCliente('') }} />
               </div>
 
               {/* Step indicator */}
@@ -3943,147 +3946,97 @@ Equipe ${nomeEmpresa}`
               <div>
                 <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Nome do aluno *</label>
-                    <input type="text" value={novoClienteNome} onChange={(e) => setNovoClienteNome(e.target.value)} placeholder="Nome completo"
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
+                    <Input label="Nome do aluno" required placeholder="Nome completo"
+                      value={novoClienteNome} onChange={(e) => setNovoClienteNome(e.target.value)} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: temResponsavel ? '#999' : '#333' }}>
-                      Telefone {!temResponsavel && '*'}
-                      {temResponsavel && <span style={{ fontSize: '11px', color: '#999' }}> (do responsável)</span>}
-                    </label>
-                    <input type="text" value={temResponsavel ? novoClienteResponsavelTelefone : novoClienteTelefone}
-                      onChange={(e) => !temResponsavel && setNovoClienteTelefone(formatarTelefone(e.target.value))}
-                      disabled={temResponsavel} placeholder="(00) 00000-0000" maxLength="15"
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: temResponsavel ? '#f5f5f5' : 'white', color: temResponsavel ? '#999' : '#333' }}
-                      onFocus={(e) => !temResponsavel && (e.target.style.borderColor = '#333')} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                      CPF <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
-                    </label>
-                    <input type="text" value={novoClienteCpf} onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))} placeholder="000.000.000-00" maxLength="14"
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                      Nascimento <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
-                    </label>
-                    <input type="date" value={novoClienteDataNascimento} onChange={(e) => setNovoClienteDataNascimento(e.target.value)}
-                      style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none', height: '40px' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                      E-mail <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
-                    </label>
-                    <input type="email" value={novoClienteEmail} onChange={(e) => setNovoClienteEmail(e.target.value)} placeholder="email@exemplo.com"
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                  </div>
+                  <Input
+                    label="Telefone"
+                    required={!temResponsavel}
+                    helper={temResponsavel ? 'Usa o telefone do responsável' : undefined}
+                    placeholder="(00) 00000-0000"
+                    maxLength={15}
+                    disabled={temResponsavel}
+                    style={{ minWidth: 0 }}
+                    value={temResponsavel ? novoClienteResponsavelTelefone : novoClienteTelefone}
+                    onChange={(e) => !temResponsavel && setNovoClienteTelefone(formatarTelefone(e.target.value))}
+                  />
+                  <Input label="CPF" placeholder="000.000.000-00" maxLength={14} style={{ minWidth: 0 }}
+                    value={novoClienteCpf} onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))} />
+                  <DateField label="Nascimento" value={novoClienteDataNascimento} onChange={setNovoClienteDataNascimento} />
+                  <Input label="E-mail" type="email" placeholder="email@exemplo.com" style={{ minWidth: 0 }}
+                    value={novoClienteEmail} onChange={(e) => setNovoClienteEmail(e.target.value)} />
                 </div>
 
-                {/* Endereço (opcional) */}
-                <details style={{ marginBottom: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                  <summary style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                    <Icon icon="mdi:map-marker-outline" width="18" style={{ color: '#666' }} />
-                    Endereço <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
+                {/* Endereço */}
+                <details style={{ marginBottom: '16px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid var(--neutral-300, #CBD5E1)', overflow: 'hidden' }}>
+                  <summary className="ds-collapsible-summary" style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', fontWeight: '500', color: '#475569' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <Icon icon="mdi:map-marker-outline" width="18" style={{ color: '#94a3b8' }} />
+                      Endereço
+                    </span>
+                    <Icon icon="mdi:chevron-down" width="18" className="ds-details-chevron" style={{ color: '#94a3b8' }} />
                   </summary>
                   <div style={{ padding: '0 14px 14px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '160px 1fr 100px', gap: '12px', marginBottom: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>CEP</label>
-                        <input type="text" value={novoClienteCep}
-                          onChange={(e) => setNovoClienteCep(formatarCep(e.target.value))}
-                          onBlur={(e) => buscarCep(e.target.value, 'novo')}
-                          maxLength="9" placeholder="00000-000"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} />
-                        {buscandoCepNovo && <span style={{ fontSize: '11px', color: '#666' }}>Buscando...</span>}
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Rua / Logradouro</label>
-                        <input type="text" value={novoClienteEndereco} onChange={(e) => setNovoClienteEndereco(e.target.value)} placeholder="Av. Brasil"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Número</label>
-                        <input type="text" value={novoClienteNumero} onChange={(e) => setNovoClienteNumero(e.target.value)} placeholder="123"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
+                      <Input label="CEP" maxLength={9} placeholder="00000-000" loading={buscandoCepNovo} style={{ minWidth: 0 }}
+                        value={novoClienteCep}
+                        onChange={(e) => setNovoClienteCep(formatarCep(e.target.value))}
+                        onBlur={(e) => buscarCep(e.target.value, 'novo')} />
+                      <Input label="Rua / Logradouro" placeholder="Av. Brasil" style={{ minWidth: 0 }}
+                        value={novoClienteEndereco} onChange={(e) => setNovoClienteEndereco(e.target.value)} />
+                      <Input label="Número" placeholder="123" style={{ minWidth: 0 }}
+                        value={novoClienteNumero} onChange={(e) => setNovoClienteNumero(e.target.value)} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr 1fr 80px', gap: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Complemento</label>
-                        <input type="text" value={novoClienteComplemento} onChange={(e) => setNovoClienteComplemento(e.target.value)} placeholder="Apto, bloco..."
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Bairro</label>
-                        <input type="text" value={novoClienteBairro} onChange={(e) => setNovoClienteBairro(e.target.value)} placeholder="Centro"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Cidade</label>
-                        <input type="text" value={novoClienteCidade} onChange={(e) => setNovoClienteCidade(e.target.value)} placeholder="São Paulo"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>UF</label>
-                        <input type="text" value={novoClienteEstado} onChange={(e) => setNovoClienteEstado(e.target.value.toUpperCase().slice(0, 2))} maxLength="2" placeholder="SP"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white', textTransform: 'uppercase' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
+                      <Input label="Complemento" placeholder="Apto, bloco..." style={{ minWidth: 0 }}
+                        value={novoClienteComplemento} onChange={(e) => setNovoClienteComplemento(e.target.value)} />
+                      <Input label="Bairro" placeholder="Centro" style={{ minWidth: 0 }}
+                        value={novoClienteBairro} onChange={(e) => setNovoClienteBairro(e.target.value)} />
+                      <Input label="Cidade" placeholder="São Paulo" style={{ minWidth: 0 }}
+                        value={novoClienteCidade} onChange={(e) => setNovoClienteCidade(e.target.value)} />
+                      <Input label="UF" maxLength={2} placeholder="SP" style={{ minWidth: 0 }}
+                        value={novoClienteEstado} onChange={(e) => setNovoClienteEstado(e.target.value.toUpperCase().slice(0, 2))} />
                     </div>
                   </div>
                 </details>
 
                 {/* Toggle Responsável */}
-                <div style={{ marginBottom: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                  <div onClick={() => {
-                    const novo = !temResponsavel
-                    setTemResponsavel(novo)
-                    if (novo) setNovoClienteTelefone('')
-                    else { setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('') }
-                  }} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Icon icon="mdi:account-child-outline" width="18" style={{ color: '#666' }} />
-                      Aluno menor de idade?
-                    </div>
-                    <div style={{ width: '40px', height: '22px', borderRadius: '11px', backgroundColor: temResponsavel ? '#4CAF50' : '#ddd', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}>
-                      <div style={{ width: '18px', height: '18px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: temResponsavel ? '20px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                    </div>
+                <div style={{ marginBottom: '16px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid var(--neutral-300, #CBD5E1)', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 14px' }}>
+                    <Switch
+                      labelPosition="left"
+                      checked={temResponsavel}
+                      onChange={(e) => {
+                        const novo = e.target.checked
+                        setTemResponsavel(novo)
+                        if (novo) setNovoClienteTelefone('')
+                        else { setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('') }
+                      }}
+                      label={
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: '#475569' }}>
+                          <Icon icon="mdi:account-child-outline" width="18" style={{ color: '#94a3b8' }} />
+                          Aluno menor de idade?
+                        </span>
+                      }
+                    />
                   </div>
                   {temResponsavel && (
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', padding: '0 14px 14px' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Nome do Responsável *</label>
-                        <input type="text" value={novoClienteResponsavelNome} onChange={(e) => setNovoClienteResponsavelNome(e.target.value)} placeholder="Nome Responsável"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#333', fontWeight: '500' }}>Telefone do Responsável *</label>
-                        <input type="tel" value={novoClienteResponsavelTelefone} onChange={(e) => setNovoClienteResponsavelTelefone(formatarTelefone(e.target.value))} placeholder="(00) 00000-0000" maxLength="15"
-                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', backgroundColor: 'white' }}
-                          onFocus={(e) => e.target.style.borderColor = '#333'} onBlur={(e) => e.target.style.borderColor = '#e0e0e0'} />
-                      </div>
+                      <Input label="Nome do Responsável" required placeholder="Nome Responsável" style={{ minWidth: 0 }}
+                        value={novoClienteResponsavelNome} onChange={(e) => setNovoClienteResponsavelNome(e.target.value)} />
+                      <Input label="Telefone do Responsável" required type="tel" maxLength={15} placeholder="(00) 00000-0000" style={{ minWidth: 0 }}
+                        value={novoClienteResponsavelTelefone} onChange={(e) => setNovoClienteResponsavelTelefone(formatarTelefone(e.target.value))} />
                     </div>
                   )}
                 </div>
 
                 {/* Tags / Turmas */}
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                    Tags / Turmas <span style={{ color: '#999', fontSize: '11px' }}>(opcional)</span>
+                  <label className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>
+                    Tags / Turmas
                   </label>
                   <TagInput
+                    portal
                     tags={novoClienteTags}
                     onChange={setNovoClienteTags}
                     tagsDisponiveis={tagsDisponiveis}
@@ -4110,11 +4063,10 @@ Equipe ${nomeEmpresa}`
               return (
               <div>
                 {/* Toggle configurar depois */}
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  marginBottom: '16px', cursor: 'pointer', fontSize: '13px', color: '#666'
-                }}>
-                  <input type="checkbox" checked={!criarAssinatura}
+                <div style={{ marginBottom: '16px' }}>
+                  <Checkbox
+                    label="Configurar mensalidade depois"
+                    checked={!criarAssinatura}
                     onChange={(e) => {
                       const pular = e.target.checked
                       setCriarAssinatura(!pular)
@@ -4128,49 +4080,43 @@ Equipe ${nomeEmpresa}`
                         setDataVencimentoAssinatura(venc.toISOString().split('T')[0])
                       }
                     }}
-                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#666' }} />
-                  Configurar mensalidade depois
-                </label>
+                  />
+                </div>
 
                 {criarAssinatura ? (
-                  <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Data de Inicio</label>
-                        <input type="date" value={dataInicioAssinatura}
-                          onChange={(e) => {
-                            setDataInicioAssinatura(e.target.value)
-                            if (e.target.value) {
-                              const inicio = new Date(e.target.value + 'T00:00:00')
-                              inicio.setDate(inicio.getDate() + 30)
-                              setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
-                            }
-                          }}
-                          style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none' }} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Vencimento</label>
-                        <input type="date" value={dataVencimentoAssinatura} onChange={(e) => setDataVencimentoAssinatura(e.target.value)}
-                          style={{ display: 'block', width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', backgroundColor: 'white', boxSizing: 'border-box', WebkitAppearance: 'none', appearance: 'none' }} />
-                      </div>
+                      <DateField
+                        label="Data de Início"
+                        value={dataInicioAssinatura}
+                        onChange={(v) => {
+                          setDataInicioAssinatura(v)
+                          if (v) {
+                            const inicio = new Date(v + 'T00:00:00')
+                            inicio.setDate(inicio.getDate() + 30)
+                            setDataVencimentoAssinatura(inicio.toISOString().split('T')[0])
+                          }
+                        }}
+                      />
+                      <DateField label="Vencimento" value={dataVencimentoAssinatura} onChange={setDataVencimentoAssinatura} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#333' }}>Plano</label>
-                      <select value={planoSelecionado} onChange={(e) => setPlanoSelecionado(e.target.value)}
-                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '16px', outline: 'none', cursor: 'pointer', backgroundColor: 'white', boxSizing: 'border-box' }}>
-                        <option value="">Selecione um plano</option>
-                        {planos.map(plano => (
-                          <option key={plano.id} value={plano.id}>
-                            {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}{plano.tipo === 'pacote' ? ` (${plano.numero_aulas} aulas)` : '/mês'}
-                          </option>
-                        ))}
-                      </select>
+                      <Select
+                        label="Plano"
+                        portal
+                        placeholder="Selecione um plano"
+                        value={planoSelecionado}
+                        onChange={(v) => setPlanoSelecionado(v || '')}
+                        options={planos.map(plano => ({
+                          value: plano.id,
+                          label: `${plano.nome} - R$ ${formatCurrency(parseFloat(plano.valor))}${plano.tipo === 'pacote' ? ` (${plano.numero_aulas} aulas)` : '/mês'}`
+                        }))}
+                      />
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                        <button type="button" onClick={() => setMostrarModalCriarPlano(true)}
-                          style={{ padding: '6px 12px', backgroundColor: 'transparent', color: '#2196F3', border: '1px dashed #2196F3', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Icon icon="material-symbols:add" width="14" /> Novo Plano
-                        </button>
-                        <span style={{ fontSize: '11px', color: '#888' }}>Vencimento = inicio + 30 dias</span>
+                        <Button variant="outline" size="sm" icon="mdi:plus" onClick={() => setMostrarModalCriarPlano(true)}>
+                          Novo Plano
+                        </Button>
+                        <span style={{ fontSize: '11px', color: '#888' }}>Vencimento = início + 30 dias</span>
                       </div>
                     </div>
                   </div>
@@ -4236,40 +4182,44 @@ Equipe ${nomeEmpresa}`
 
                 {/* Boas-vindas */}
                 <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: '#333', gap: '8px', flex: 1 }}>
-                      <input type="checkbox" checked={enviarBoasVindas} onChange={(e) => setEnviarBoasVindas(e.target.checked)}
-                        style={{ width: '16px', height: '16px', marginTop: '2px', cursor: 'pointer', accentColor: '#2196F3' }} />
-                      <div>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <Checkbox
+                      checked={enviarBoasVindas}
+                      onChange={(e) => setEnviarBoasVindas(e.target.checked)}
+                      label={
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <Icon icon="mdi:whatsapp" width="16" style={{ color: '#25D366' }} />
                           Enviar mensagem de boas-vindas
                         </span>
-                      </div>
-                    </label>
+                      }
+                    />
                     {enviarBoasVindas && (
-                      <button type="button" onClick={() => setMostrarEdicaoBoasVindas(!mostrarEdicaoBoasVindas)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#2196F3', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '500' }}>
-                        <Icon icon={mostrarEdicaoBoasVindas ? 'mdi:chevron-up' : 'mdi:pencil'} width="14" />
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon={mostrarEdicaoBoasVindas ? 'mdi:chevron-up' : 'mdi:pencil'}
+                        onClick={() => setMostrarEdicaoBoasVindas(!mostrarEdicaoBoasVindas)}
+                      >
                         {mostrarEdicaoBoasVindas ? 'Fechar' : 'Editar'}
-                      </button>
+                      </Button>
                     )}
                   </div>
                   {enviarBoasVindas && mostrarEdicaoBoasVindas && (
                     <div style={{ marginTop: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: '500', color: '#333' }}>Personalizar mensagem:</label>
+                        <label className="ds-input-label" style={{ fontSize: '12px' }}>Personalizar mensagem:</label>
                         {mensagemBoasVindasCustom && (
-                          <button type="button" onClick={() => setMensagemBoasVindasCustom('')}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: '11px', textDecoration: 'underline' }}>
+                          <Button variant="ghost" size="xs" onClick={() => setMensagemBoasVindasCustom('')}>
                             Restaurar padrão
-                          </button>
+                          </Button>
                         )}
                       </div>
                       <textarea
                         value={mensagemBoasVindasCustom || `Olá, ${novoClienteNome.trim().split(' ')[0] || '[Nome]'}! 👋\n\nSeja muito bem-vindo(a)!\n\nEste é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:\n\n✅ Lembretes de vencimento\n✅ Confirmações de pagamento\n✅ Comunicados importantes\n\n*Salve nosso número* para não perder nenhuma mensagem!\n\nQualquer dúvida, estamos à disposição.`}
                         onChange={(e) => setMensagemBoasVindasCustom(e.target.value)}
-                        style={{ width: '100%', minHeight: '120px', padding: '12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', backgroundColor: 'white', boxSizing: 'border-box', lineHeight: '1.5' }} />
+                        style={{ width: '100%', minHeight: '120px', padding: '10px 12px', border: '1px solid var(--neutral-300, #CBD5E1)', borderRadius: 'var(--radius-lg, 8px)', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', backgroundColor: 'white', boxSizing: 'border-box', lineHeight: '1.5', outline: 'none' }}
+                        onFocus={(e) => { e.target.style.borderColor = 'var(--mensalli-green-500, #4CAF50)'; e.target.style.boxShadow = '0 0 0 3px rgba(76,175,80,0.15)' }}
+                        onBlur={(e) => { e.target.style.borderColor = 'var(--neutral-300, #CBD5E1)'; e.target.style.boxShadow = 'none' }} />
                     </div>
                   )}
                 </div>
@@ -4278,7 +4228,9 @@ Equipe ${nomeEmpresa}`
 
             {/* Botões de navegação */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', marginTop: '8px' }}>
-              <button
+              <Button
+                variant="outline"
+                icon={stepCadastro === 1 ? undefined : 'mdi:chevron-left'}
                 onClick={() => {
                   if (stepCadastro === 1) {
                     setMostrarModalNovoCliente(false); setStepCadastro(1); setErroModalNovoCliente('')
@@ -4293,14 +4245,9 @@ Equipe ${nomeEmpresa}`
                     setErroModalNovoCliente('')
                   }
                 }}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: '1px solid #e0e0e0',
-                  backgroundColor: 'white', color: '#666', fontSize: '14px', fontWeight: '500', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '4px'
-                }}
               >
-                {stepCadastro === 1 ? 'Cancelar' : <><Icon icon="mdi:chevron-left" width="18" /> Voltar</>}
-              </button>
+                {stepCadastro === 1 ? 'Cancelar' : 'Voltar'}
+              </Button>
 
               {stepCadastro < 3 ? (() => {
                 const stepCompleto = stepCadastro === 1
@@ -4309,7 +4256,10 @@ Equipe ${nomeEmpresa}`
                     : !!(novoClienteNome.trim() && novoClienteTelefone.trim())
                   : !criarAssinatura || !!(dataInicioAssinatura && dataVencimentoAssinatura && planoSelecionado)
                 return (
-                <button
+                <Button
+                  variant="secondary"
+                  iconRight="mdi:chevron-right"
+                  style={{ opacity: stepCompleto ? 1 : 0.5 }}
                   onClick={() => {
                     setErroModalNovoCliente('')
                     if (stepCadastro === 1) {
@@ -4337,29 +4287,14 @@ Equipe ${nomeEmpresa}`
                     }
                     setStepCadastro(stepCadastro + 1)
                   }}
-                  style={{
-                    padding: '10px 24px', borderRadius: '6px', border: 'none',
-                    backgroundColor: '#333', color: 'white', fontSize: '14px', fontWeight: '500',
-                    cursor: stepCompleto ? 'pointer' : 'default',
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                    opacity: stepCompleto ? 1 : 0.4, transition: 'opacity 0.2s'
-                  }}
-                  onMouseEnter={(e) => { if (stepCompleto) e.currentTarget.style.backgroundColor = '#222' }}
-                  onMouseLeave={(e) => { if (stepCompleto) e.currentTarget.style.backgroundColor = '#333' }}
                 >
-                  Próximo <Icon icon="mdi:chevron-right" width="18" />
-                </button>
+                  Próximo
+                </Button>
                 )
               })() : (
-                <button onClick={handleCriarCliente} disabled={salvandoCliente}
-                  style={{
-                    padding: '10px 24px', borderRadius: '6px', border: 'none',
-                    backgroundColor: salvandoCliente ? '#999' : '#16a34a', color: 'white',
-                    fontSize: '14px', fontWeight: '600', cursor: salvandoCliente ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '6px', opacity: salvandoCliente ? 0.7 : 1
-                  }}>
-                  {salvandoCliente ? 'Salvando...' : <><Icon icon="mdi:check" width="18" /> Criar Aluno</>}
-                </button>
+                <Button variant="primary" icon="mdi:check" loading={salvandoCliente} onClick={handleCriarCliente}>
+                  Criar Aluno
+                </Button>
               )}
             </div>
           </div>
@@ -4741,7 +4676,7 @@ Equipe ${nomeEmpresa}`
               <textarea
                 value={novoPlanoDescricao}
                 onChange={(e) => setNovoPlanoDescricao(e.target.value)}
-                placeholder="Descrição ou observação sobre o plano (opcional)"
+                placeholder="Descrição ou observação sobre o plano"
                 rows="3"
                 style={{
                   width: '100%',

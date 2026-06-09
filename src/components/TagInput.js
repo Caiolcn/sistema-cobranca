@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '@iconify/react'
 import { corTextoContrastante } from '../utils/tagColors'
 
@@ -8,15 +9,39 @@ export default function TagInput({
   tagsDisponiveis = [],
   onCriar,
   onEditar,
-  onDeletar
+  onDeletar,
+  // Quando true, renderiza o dropdown via portal (document.body) com position:fixed
+  // — útil dentro de modais com overflow:auto pra não empurrar o scroll.
+  portal = false
 }) {
   const [aberto, setAberto] = useState(false)
   const [busca, setBusca] = useState('')
   const containerRef = useRef(null)
+  const dropdownRef = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
+
+  const recalcPos = () => {
+    if (!portal || !containerRef.current) return
+    const r = containerRef.current.getBoundingClientRect()
+    setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+  }
+
+  useEffect(() => {
+    if (!aberto || !portal) return
+    recalcPos()
+    window.addEventListener('scroll', recalcPos, true)
+    window.addEventListener('resize', recalcPos)
+    return () => {
+      window.removeEventListener('scroll', recalcPos, true)
+      window.removeEventListener('resize', recalcPos)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto, portal])
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+      if (containerRef.current && !containerRef.current.contains(e.target)
+        && !(dropdownRef.current && dropdownRef.current.contains(e.target))) {
         setAberto(false)
       }
     }
@@ -50,20 +75,20 @@ export default function TagInput({
         style={{
           minHeight: '40px',
           padding: '6px 10px',
-          border: `1px solid ${aberto ? '#3B82F6' : '#ddd'}`,
-          borderRadius: '6px',
+          border: `1px solid ${aberto ? 'var(--mensalli-green-500, #4CAF50)' : 'var(--neutral-300, #CBD5E1)'}`,
+          borderRadius: 'var(--radius-lg, 8px)',
           backgroundColor: 'white',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '4px',
-          boxShadow: aberto ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
+          boxShadow: aberto ? '0 0 0 3px rgba(76,175,80,0.15)' : 'none',
           transition: 'border-color 0.15s, box-shadow 0.15s'
         }}
       >
         {tags.length === 0 ? (
-          <span style={{ color: '#999', fontSize: '14px', flex: 1 }}>Selecione tags...</span>
+          <span style={{ color: 'var(--color-text-muted, #64748B)', fontSize: '14px', flex: 1 }}>Selecione tags...</span>
         ) : (
           tags.map(nome => {
             const info = tagInfo(nome)
@@ -104,8 +129,20 @@ export default function TagInput({
       </div>
 
       {/* Dropdown */}
-      {aberto && (
-        <div style={{
+      {aberto && (() => {
+        const dropdownEl = (
+        <div ref={dropdownRef} style={portal ? {
+          position: 'fixed',
+          top: pos.top,
+          left: pos.left,
+          width: pos.width,
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          zIndex: 10100,
+          overflow: 'hidden'
+        } : {
           position: 'absolute',
           top: 'calc(100% + 4px)',
           left: 0,
@@ -236,7 +273,9 @@ export default function TagInput({
             </div>
           )}
         </div>
-      )}
+        )
+        return portal ? createPortal(dropdownEl, document.body) : dropdownEl
+      })()}
     </div>
   )
 }

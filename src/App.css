@@ -16,6 +16,16 @@
   padding: 0;
 }
 
+/* Collapsible/toggle rows leves (ex.: Endereço, opções em modais) */
+.ds-collapsible-summary {
+  transition: background-color 0.15s;
+  list-style: none;
+}
+.ds-collapsible-summary::-webkit-details-marker { display: none; }
+.ds-collapsible-summary:hover { background-color: #f8fafc; }
+.ds-details-chevron { transition: transform 0.2s; }
+details[open] > .ds-collapsible-summary .ds-details-chevron { transform: rotate(180deg); }
+
 html, body {
   overflow-x: hidden;
   width: 100%;

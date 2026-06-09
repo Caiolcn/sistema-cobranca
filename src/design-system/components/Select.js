@@ -98,6 +98,7 @@ export default function Select({
   const fieldRef = useRef(null)
   const triggerRef = useRef(null)
   const searchInputRef = useRef(null)
+  const dropdownRef = useRef(null)
 
   // Posição do dropdown no modo portal (position: fixed)
   const [portalPos, setPortalPos] = useState({ top: 0, left: 0, width: 0 })
@@ -143,7 +144,8 @@ export default function Select({
   useEffect(() => {
     if (!isOpen) return
     function handleClickOutside(e) {
-      if (fieldRef.current && !fieldRef.current.contains(e.target)) {
+      if (fieldRef.current && !fieldRef.current.contains(e.target)
+        && !(dropdownRef.current && dropdownRef.current.contains(e.target))) {
         setIsOpen(false)
       }
     }
@@ -356,7 +358,7 @@ export default function Select({
 
       {isOpen && (() => {
         const dropdown = (
-        <div className="ds-select-dropdown" role="presentation"
+        <div ref={dropdownRef} className="ds-select-dropdown" role="presentation"
           style={portal ? {
             position: 'fixed', top: portalPos.top, left: portalPos.left,
             width: portalPos.width, zIndex: 10100
