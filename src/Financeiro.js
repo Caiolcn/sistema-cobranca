@@ -116,8 +116,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [vencemHoje, setVencemHoje] = useState(0)
   const [vencemProximos7, setVencemProximos7] = useState(0)
   const [totalProximosVencimentos, setTotalProximosVencimentos] = useState(0)
-  const [mrr, setMrr] = useState(0)
-  const [assinaturasAtivas, setAssinaturasAtivas] = useState(0)
+  const [quantidadeEmAberto, setQuantidadeEmAberto] = useState(0)
+  const [percentualAberto, setPercentualAberto] = useState(0)
 
   // Estados para exclusão e desfazer pagamento
   const [confirmDeleteMensalidade, setConfirmDeleteMensalidade] = useState({ show: false, mensalidade: null })
@@ -163,7 +163,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       // Executar todas as queries em paralelo
       const [
         { data: mensalidadesData, error: mensalidadesError },
-        { data: clientesData, error: clientesError },
         { data: vendasData, error: vendasError }
       ] = await Promise.all([
         // 1. Mensalidades com dados do devedor e boleto (se existir)
@@ -194,15 +193,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           .or('lixo.is.null,lixo.eq.false')
           .order('data_vencimento', { ascending: true }),
 
-        // 2. Clientes com assinaturas para MRR (consolidado, excluindo deletados)
-        supabase
-          .from('devedores')
-          .select('id, nome, assinatura_ativa, plano:planos(valor)')
-          .eq('user_id', userId)
-          .or('lixo.is.null,lixo.eq.false')
-          .order('nome', { ascending: true }),
-
-        // 3. Vendas (cobranças avulsas) para incluir nos totais
+        // 2. Vendas (cobranças avulsas) para incluir nos totais
         supabase
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
@@ -211,7 +202,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       ])
 
       if (mensalidadesError) throw mensalidadesError
-      if (clientesError) throw clientesError
       if (vendasError) throw vendasError
 
       // Processar mensalidades
@@ -222,16 +212,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       setMensalidades(mensalidadesComStatus)
       calcularTotais(mensalidadesComStatus, vendasData || [])
-
-      // Calcular MRR a partir dos clientes já carregados
-      const assinaturasAtivasList = clientesData?.filter(c => c.assinatura_ativa && c.plano?.valor) || []
-      const ativas = assinaturasAtivasList.length
-      const mrrCalculado = assinaturasAtivasList.reduce((sum, assin) => {
-        return sum + (parseFloat(assin.plano?.valor) || 0)
-      }, 0)
-
-      setAssinaturasAtivas(ativas)
-      setMrr(mrrCalculado)
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -258,6 +238,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     let emAberto = 0
     let recebido = 0
     let qtdAtraso = 0
+    let qtdAberto = 0
     let qtdRecebido = 0
     let qtdHoje = 0
     let qtd7Dias = 0
@@ -278,6 +259,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         qtdAtraso++
       } else if (status === 'aberto') {
         emAberto += valor
+        qtdAberto++
 
         // Contar vencimentos próximos
         if (diffDias === 0) {
@@ -308,6 +290,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         qtdAtraso++
       } else if (v.status === 'pendente') {
         emAberto += valor
+        qtdAberto++
         if (diffDias === 0) { qtdHoje++; totalProx += valor }
         if (diffDias >= 0 && diffDias <= 7) { qtd7Dias++ }
       }
@@ -318,8 +301,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setTotalEmAberto(emAberto)
     setTotalRecebido(recebido)
     setQuantidadeEmAtraso(qtdAtraso)
+    setQuantidadeEmAberto(qtdAberto)
     setQuantidadeRecebido(qtdRecebido)
     setPercentualAtrasado(Math.round((qtdAtraso / total) * 100))
+    setPercentualAberto(Math.round((qtdAberto / total) * 100))
     setPercentualRecebido(Math.round((qtdRecebido / total) * 100))
     setVencemHoje(qtdHoje)
     setVencemProximos7(qtd7Dias)
@@ -1811,7 +1796,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </button>
             </div>
 
-            {/* Card 4: MRR */}
+            {/* Card 4: Em Aberto */}
             <div style={{
               flex: 1,
               padding: '14px 18px',
@@ -1822,21 +1807,46 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               flexDirection: 'column',
               gap: '8px'
             }}>
-              <div>
-                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>MRR</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="mdi:chart-line" width="18" height="18" style={{ color: '#2196F3' }} />
-                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                    R$ {mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Em Aberto</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon icon="solar:wallet-money-linear" width="18" height="18" style={{ color: '#2196F3' }} />
+                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
+                      R$ {totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
+                    {quantidadeEmAberto} mensalidade{quantidadeEmAberto !== 1 ? 's' : ''} a vencer
+                  </p>
                 </div>
-                <p style={{ fontSize: '11px', color: '#888', margin: '4px 0 0 0' }}>
-                  Receita mensal esperada
-                </p>
-                <p style={{ fontSize: '12px', color: '#2196F3', margin: '8px 0 0 0', fontWeight: '600' }}>
-                  {assinaturasAtivas} assinatura{assinaturasAtivas !== 1 ? 's' : ''} ativa{assinaturasAtivas !== 1 ? 's' : ''}
-                </p>
+                <span style={{
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {percentualAberto}%
+                </span>
               </div>
+              <button
+                onClick={() => toggleFiltroStatus('aberto')}
+                style={{
+                  background: 'none',
+                  color: '#2196F3',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontWeight: '600',
+                  textAlign: 'left'
+                }}
+              >
+                Ver detalhes →
+              </button>
             </div>
           </div>
         </div>
