@@ -19,6 +19,7 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
   const [mes, setMes] = useState(valorObj.getMonth())
   const [ano, setAno] = useState(valorObj.getFullYear())
   const containerRef = useRef(null)
+  const popupRef = useRef(null)
   // posição calculada do popup (position: fixed) — sempre dentro da viewport
   const [popupPos, setPopupPos] = useState({ top: 0, left: 0 })
 
@@ -26,18 +27,27 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
     if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     const popupWidth = 290
+    // altura real do popup (já montado); fallback enquanto não mediu
+    const popupHeight = popupRef.current ? popupRef.current.offsetHeight : 360
     const margin = 8
     const vw = window.innerWidth
+    const vh = window.innerHeight
     // base: alinha pela esquerda do trigger se align=left; pela direita se align=right
     let left = align === 'left' ? rect.left : rect.right - popupWidth
     // clamp pra ficar dentro da viewport
     if (left + popupWidth > vw - margin) left = vw - popupWidth - margin
     if (left < margin) left = margin
-    setPopupPos({ top: rect.bottom + 6, left })
+    // vertical: abre pra baixo; se não couber, vira pra cima (colado no campo); senão gruda na viewport
+    let top = rect.bottom + 6
+    if (top + popupHeight > vh - margin) {
+      const acima = rect.top - 6 - popupHeight
+      top = acima >= margin ? acima : Math.max(margin, vh - popupHeight - margin)
+    }
+    setPopupPos({ top, left })
   }
 
   useEffect(() => { if (aberto) recalcularPos() // eslint-disable-next-line
-  }, [aberto, align])
+  }, [aberto, align, mes, ano])
   useEffect(() => {
     if (!aberto) return
     window.addEventListener('scroll', recalcularPos, true)
@@ -139,12 +149,13 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
 
       {/* Popup — position: fixed com coordenadas calculadas (sempre na viewport) */}
       {aberto && (
-        <div style={{
+        <div ref={popupRef} style={{
           position: 'fixed', top: popupPos.top, left: popupPos.left,
           zIndex: popupZIndex,
           backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb',
           boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
-          width: '290px', maxWidth: 'calc(100vw - 16px)', padding: '14px'
+          width: '290px', maxWidth: 'calc(100vw - 16px)', padding: '14px',
+          maxHeight: 'calc(100vh - 16px)', overflowY: 'auto'
         }}>
           {/* Header: ‹ mês ano › */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>

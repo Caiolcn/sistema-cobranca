@@ -17,8 +17,57 @@ import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
-import DateInput from './components/DateInput'
+import SearchInput from './design-system/components/SearchInput'
+import Input from './design-system/components/Input'
+import Button from './design-system/components/Button'
+import Select from './design-system/components/Select'
+import Switch from './design-system/components/Switch'
+import Dropdown from './design-system/components/Dropdown'
+import AgendaDatePicker from './AgendaDatePicker'
 import RadarEvasao from './components/RadarEvasao'
+
+// Soft-delete: mensalidades na lixeira têm lixo = true.
+// SEMPRE busque mensalidades para exibição/contagem/edição por aqui, para o filtro
+// nunca divergir entre Resumo, Histórico e Lista — bug recorrente de "X/Y pagas"
+// (Resumo contava soft-deletadas que o Histórico escondia).
+const FILTRO_NAO_LIXO = 'lixo.is.null,lixo.eq.false'
+const queryMensalidadesAtivas = (colunas = '*') =>
+  supabase.from('mensalidades').select(colunas).or(FILTRO_NAO_LIXO)
+
+// Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom.
+// Evita o <input type="date"> nativo e o react-datepicker (popper incompatível na v9).
+function DateField({ value, onChange, placeholder = 'dd/mm/aaaa', label, size = 'md' }) {
+  const valorFmt = value
+    ? (() => { const [y, m, d] = value.split('-'); return `${d}/${m}/${y}` })()
+    : ''
+  return (
+    <div className="ds-input-field" style={{ flex: 1, minWidth: 0 }}>
+      {label && <label className="ds-input-label">{label}</label>}
+      <AgendaDatePicker
+        value={value}
+        onChange={onChange}
+        align="left"
+        popupZIndex={10100}
+        renderTrigger={({ aberto, abrir }) => (
+          <button
+            type="button"
+            onClick={abrir}
+            style={{ width: '100%' }}
+            className={`ds-select-trigger ds-select-trigger--${size}${aberto ? ' ds-select-trigger--open' : ''}`}>
+            <span className="ds-select-content">
+              {valorFmt
+                ? <span className="ds-select-value-text">{valorFmt}</span>
+                : <span className="ds-select-placeholder">{placeholder}</span>}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
+              <Icon icon="mdi:calendar-blank-outline" width={16} />
+            </span>
+          </button>
+        )}
+      />
+    </div>
+  )
+}
 
 function calcularIdade(dataNascimento) {
   if (!dataNascimento) return null
@@ -84,7 +133,6 @@ export default function Clientes() {
   const [novoClienteTags, setNovoClienteTags] = useState([])
   const [tagsEdit, setTagsEdit] = useState([])
   const [filtroTag, setFiltroTag] = useState(searchParams.get('tag') || 'todas')
-  const [mostrarDropdownExport, setMostrarDropdownExport] = useState(false)
   const [tagsDisponiveis, setTagsDisponiveis] = useState([])
   const [tagFormModal, setTagFormModal] = useState({ show: false, tag: null, contexto: null })
   const [confirmDeleteTag, setConfirmDeleteTag] = useState({ show: false, tag: null })
@@ -210,16 +258,14 @@ export default function Clientes() {
   // Fechar popover ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (mostrarFiltros && !event.target.closest('.popover-filtros') && !event.target.closest('.btn-filtrar')) {
+      if (mostrarFiltros && !event.target.closest('.popover-filtros') && !event.target.closest('.btn-filtrar')
+          && !event.target.closest('.ds-select-dropdown')) {
         setMostrarFiltros(false)
-      }
-      if (mostrarDropdownExport && !event.target.closest('.dropdown-export')) {
-        setMostrarDropdownExport(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [mostrarFiltros, mostrarDropdownExport])
+  }, [mostrarFiltros])
 
   useEffect(() => {
     // Filtrar clientes quando busca ou filtros mudarem
@@ -458,9 +504,7 @@ export default function Clientes() {
           .order('nome', { ascending: true }),
 
         // Buscar próximas mensalidades (apenas futuras ou pendentes)
-        supabase
-          .from('mensalidades')
-          .select('devedor_id, data_vencimento, status, is_mensalidade')
+        queryMensalidadesAtivas('devedor_id, data_vencimento, status, is_mensalidade')
           .eq('user_id', userId)
           .in('status', ['pendente', 'atrasado'])
           .order('data_vencimento', { ascending: true })
@@ -521,11 +565,8 @@ export default function Clientes() {
 
   const carregarMensalidadesCliente = async (clienteId) => {
     try {
-      const { data, error } = await supabase
-        .from('mensalidades')
-        .select('*')
+      const { data, error } = await queryMensalidadesAtivas('*')
         .eq('devedor_id', clienteId)
-        .or('lixo.is.null,lixo.eq.false')
         .order('data_vencimento', { ascending: true })
 
       if (error) throw error
@@ -575,9 +616,7 @@ export default function Clientes() {
       }
 
       // Carregar mensalidades primeiro para calcular estatísticas
-      const { data: mensalidadesData, error } = await supabase
-        .from('mensalidades')
-        .select('*')
+      const { data: mensalidadesData, error } = await queryMensalidadesAtivas('*')
         .eq('devedor_id', cliente.id)
         .order('data_vencimento', { ascending: true })
 
@@ -774,9 +813,7 @@ export default function Clientes() {
 
       // Atualizar dia de vencimento das mensalidades pendentes
       if (diaVencimentoEdit !== '' && !isNaN(diaNum)) {
-        const { data: pendentes } = await supabase
-          .from('mensalidades')
-          .select('id, data_vencimento')
+        const { data: pendentes } = await queryMensalidadesAtivas('id, data_vencimento')
           .eq('devedor_id', clienteSelecionado.id)
           .eq('status', 'pendente')
 
@@ -848,12 +885,9 @@ export default function Clientes() {
       const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
 
       // Verificar se já existe (ignorar lixo)
-      const { data: jaExiste } = await supabase
-        .from('mensalidades')
-        .select('id')
+      const { data: jaExiste } = await queryMensalidadesAtivas('id')
         .eq('devedor_id', mensalidadeAtual.devedor_id)
         .eq('data_vencimento', proximoVencimentoStr)
-        .eq('lixo', false)
         .maybeSingle()
 
       if (jaExiste) return
@@ -1047,13 +1081,10 @@ export default function Clientes() {
 
       // Verificar se já existe mensalidade pendente para não duplicar
       if (plano.tipo !== 'pacote') {
-        const { data: existentes } = await supabase
-          .from('mensalidades')
-          .select('id')
+        const { data: existentes } = await queryMensalidadesAtivas('id')
           .eq('devedor_id', clienteId)
           .eq('status', 'pendente')
           .eq('is_mensalidade', true)
-          .or('lixo.is.null,lixo.eq.false')
           .limit(1)
 
         if (!existentes || existentes.length === 0) {
@@ -1236,9 +1267,7 @@ export default function Clientes() {
 
     try {
       // Buscar a mensalidade do cliente
-      const { data: mensalidade, error } = await supabase
-        .from('mensalidades')
-        .select('*')
+      const { data: mensalidade, error } = await queryMensalidadesAtivas('*')
         .eq('devedor_id', cliente.id)
         .eq('data_vencimento', cliente.proxima_mensalidade)
         .single()
@@ -1804,195 +1833,63 @@ Equipe ${nomeEmpresa}`
         {/* Busca + Botões */}
         <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: isSmallScreen ? 'stretch' : 'center', gap: '8px' }}>
           {/* Campo de busca */}
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Icon
-              icon="material-symbols:search"
-              width="20"
-              height="20"
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#999'
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou telefone..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px 10px 40px',
-                fontSize: '16px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#344848'}
-              onBlur={(e) => e.target.style.borderColor = '#ddd'}
-            />
-            {busca && (
-              <button
-                onClick={() => setBusca('')}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: '#999'
-                }}
-              >
-                <Icon icon="mdi:close-circle" width="18" height="18" />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            placeholder="Buscar por nome ou telefone..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            style={{ flex: 1 }}
+          />
 
           {/* Botões */}
-          <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
-            <button
-              onClick={() => setMostrarImportModal(true)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: 'white',
-                color: '#333',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#344848'
-                e.currentTarget.style.color = '#344848'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#ddd'
-                e.currentTarget.style.color = '#333'
-              }}
+          <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
+            <Button
+              variant="outline"
+              icon="iconoir:import"
+              iconOnly
+              aria-label="Importar alunos via CSV"
               title="Importar alunos via CSV"
-            >
-              <Icon icon="iconoir:import" width="18" height="18" />
-            </button>
-            <div style={{ position: 'relative', flex: isSmallScreen ? 1 : 'none' }} className="dropdown-export">
-              <button
-                onClick={() => setMostrarDropdownExport(!mostrarDropdownExport)}
-                style={{
-                  padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                  backgroundColor: 'white',
-                  color: '#333',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s',
-                  width: '100%'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#344848'
-                  e.currentTarget.style.color = '#344848'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#ddd'
-                  e.currentTarget.style.color = '#333'
-                }}
-                title="Exportar lista"
-              >
-                <Icon icon="ph:export-light" width="18" height="18" />
-              </button>
-              {mostrarDropdownExport && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  right: 0,
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  zIndex: 1000,
-                  minWidth: '180px',
-                  overflow: 'hidden'
-                }}>
-                  <button
-                    onClick={() => { exportarClientes(clientesFiltrados); setMostrarDropdownExport(false) }}
-                    style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                  >
-                    <Icon icon="mdi:file-delimited-outline" width="18" style={{ color: '#16a34a' }} />
-                    Exportar CSV
-                  </button>
-                  <button
-                    onClick={() => {
-                      const subtitulo = filtroTag !== 'todas' ? `Tag: ${filtroTag}` : ''
-                      exportarClientesPDF(clientesFiltrados, { subtitulo })
-                      setMostrarDropdownExport(false)
-                    }}
-                    style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#333', display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid #f0f0f0' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                  >
-                    <Icon icon="mdi:file-pdf-box" width="18" style={{ color: '#dc2626' }} />
-                    Exportar PDF
-                  </button>
-                </div>
-              )}
-            </div>
+              onClick={() => setMostrarImportModal(true)}
+              style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
+            />
 
-            <button
-              className="btn-filtrar"
-              onClick={() => setMostrarFiltros(!mostrarFiltros)}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
-                color: temFiltrosAtivos ? 'white' : '#333',
-                border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                position: 'relative',
-                transition: 'all 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (!temFiltrosAtivos) {
-                  e.currentTarget.style.borderColor = '#344848'
-                  e.currentTarget.style.color = '#344848'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!temFiltrosAtivos) {
-                  e.currentTarget.style.borderColor = '#ddd'
-                  e.currentTarget.style.color = '#333'
-                }
-              }}
+            <Dropdown
+              align="end"
+              style={{ flex: isSmallScreen ? 1 : 'none' }}
+              trigger={
+                <Button
+                  variant="outline"
+                  icon="ph:export-light"
+                  iconOnly
+                  aria-label="Exportar lista"
+                  title="Exportar lista"
+                  style={{ width: isSmallScreen ? '100%' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
+                />
+              }
             >
-              <Icon icon="mdi:filter-outline" width="18" height="18" />
+              <Dropdown.Item
+                icon={<Icon icon="mdi:file-delimited-outline" width="18" style={{ color: '#16a34a' }} />}
+                onClick={() => exportarClientes(clientesFiltrados)}
+              >
+                Exportar CSV
+              </Dropdown.Item>
+              <Dropdown.Item
+                icon={<Icon icon="mdi:file-pdf-box" width="18" style={{ color: '#dc2626' }} />}
+                onClick={() => {
+                  const subtitulo = filtroTag !== 'todas' ? `Tag: ${filtroTag}` : ''
+                  exportarClientesPDF(clientesFiltrados, { subtitulo })
+                }}
+              >
+                Exportar PDF
+              </Dropdown.Item>
+            </Dropdown>
+
+            <Button
+              className="btn-filtrar"
+              variant={temFiltrosAtivos ? 'secondary' : 'outline'}
+              icon="mdi:filter-outline"
+              onClick={() => setMostrarFiltros(!mostrarFiltros)}
+              style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
+            >
               {!isSmallScreen && 'Filtrar'}
               {temFiltrosAtivos && (
                 <span style={{
@@ -2016,9 +1913,11 @@ Equipe ${nomeEmpresa}`
                    (filtroAssinatura !== 'todos' ? 1 : 0) + (filtroInadimplente ? 1 : 0)}
                 </span>
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="secondary"
+              icon="mdi:plus"
               onClick={() => {
                 setErroModalNovoCliente('')
                 setNovoClienteNome(''); setNovoClienteTelefone(''); setNovoClienteCpf('')
@@ -2033,28 +1932,10 @@ Equipe ${nomeEmpresa}`
                 setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
                 setMostrarModalNovoCliente(true)
               }}
-              style={{
-                padding: isSmallScreen ? '10px 14px' : '10px 20px',
-                backgroundColor: '#333',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'background-color 0.2s',
-                flex: isSmallScreen ? 1 : 'none'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#222'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+              style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
             >
-              <Icon icon="mdi:plus" width="18" height="18" />
               {!isSmallScreen && 'Adicionar'}
-            </button>
+            </Button>
 
             {/* Popover de filtros */}
             {mostrarFiltros && (
@@ -2068,12 +1949,13 @@ Equipe ${nomeEmpresa}`
                   bottom: isSmallScreen ? 0 : 'auto',
                   width: isSmallScreen ? '100%' : '340px',
                   height: isSmallScreen ? '100vh' : 'auto',
+                  maxHeight: isSmallScreen ? '100vh' : 'calc(100vh - 70px)',
                   backgroundColor: 'white',
                   borderRadius: isSmallScreen ? 0 : '8px',
                   boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
                   border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
                   zIndex: 1001,
-                  overflow: isSmallScreen ? 'auto' : 'hidden',
+                  overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column'
                 }}
@@ -2085,7 +1967,7 @@ Equipe ${nomeEmpresa}`
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  position: isSmallScreen ? 'sticky' : 'relative',
+                  position: 'sticky',
                   top: 0,
                   backgroundColor: 'white',
                   zIndex: 1
@@ -2113,207 +1995,86 @@ Equipe ${nomeEmpresa}`
                 <div style={{ padding: '16px' }}>
                   {/* Filtro por Nome */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                      Nome do Aluno
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <Icon
-                        icon="mdi:magnify"
-                        width="18"
-                        height="18"
-                        style={{
-                          position: 'absolute',
-                          left: '10px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: '#999'
-                        }}
-                      />
-                      <input
-                        type="text"
-                        value={busca}
-                        onChange={(e) => setBusca(e.target.value)}
-                        placeholder="Buscar por nome..."
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px 8px 36px',
-                          fontSize: '16px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                      {busca && (
-                        <button
-                          onClick={() => setBusca('')}
-                          style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '2px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            color: '#999'
-                          }}
-                        >
-                          <Icon icon="mdi:close-circle" width="16" height="16" />
-                        </button>
-                      )}
-                    </div>
+                    <SearchInput
+                      label="Nome do Aluno"
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="Buscar por nome..."
+                    />
                   </div>
 
                   {/* Filtro Status */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                      Status
-                    </label>
-                    <select
+                    <Select
+                      label="Status"
+                      portal
                       value={filtroStatus}
-                      onChange={(e) => setFiltroStatus(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: '16px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="todos">Todos</option>
-                      <option value="ativo">Ativo</option>
-                      <option value="inadimplente">Inadimplente</option>
-                      <option value="cancelado">Cancelado</option>
-                    </select>
+                      onChange={(v) => setFiltroStatus(v || 'todos')}
+                      options={[
+                        { value: 'todos', label: 'Todos' },
+                        { value: 'ativo', label: 'Ativo' },
+                        { value: 'inadimplente', label: 'Inadimplente' },
+                        { value: 'cancelado', label: 'Cancelado' },
+                      ]}
+                    />
                   </div>
 
                   {/* Filtro Plano */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                      Plano
-                    </label>
-                    <select
+                    <Select
+                      label="Plano"
+                      portal
                       value={filtroPlano}
-                      onChange={(e) => setFiltroPlano(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: '16px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="todos">Todos os planos</option>
-                      {planos.map(plano => (
-                        <option key={plano.id} value={plano.id}>{plano.nome}</option>
-                      ))}
-                    </select>
+                      onChange={(v) => setFiltroPlano(v || 'todos')}
+                      options={[
+                        { value: 'todos', label: 'Todos os planos' },
+                        ...planos.map(plano => ({ value: plano.id, label: plano.nome })),
+                      ]}
+                    />
                   </div>
 
                   {/* Filtro Tag / Turma */}
                   {tagsDisponiveis.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                        Tag / Turma
-                      </label>
-                      <select
+                      <Select
+                        label="Tag / Turma"
+                        portal
+                        searchable
                         value={filtroTag}
-                        onChange={(e) => setFiltroTag(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          fontSize: '16px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          cursor: 'pointer',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      >
-                        <option value="todas">Todas as tags</option>
-                        {tagsDisponiveis.map(tag => (
-                          <option key={tag.id} value={tag.nome}>{tag.nome}</option>
-                        ))}
-                      </select>
+                        onChange={(v) => setFiltroTag(v || 'todas')}
+                        options={[
+                          { value: 'todas', label: 'Todas as tags' },
+                          ...tagsDisponiveis.map(tag => ({ value: tag.nome, label: tag.nome })),
+                        ]}
+                        searchPlaceholder="Buscar tag…"
+                      />
                     </div>
                   )}
 
                   {/* Filtro Assinatura */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
-                      Assinatura
-                    </label>
-                    <select
+                    <Select
+                      label="Assinatura"
+                      portal
                       value={filtroAssinatura}
-                      onChange={(e) => setFiltroAssinatura(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: '16px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        backgroundColor: 'white',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="todos">Todas</option>
-                      <option value="ativada">Ativada</option>
-                      <option value="desativada">Desativada</option>
-                    </select>
+                      onChange={(v) => setFiltroAssinatura(v || 'todos')}
+                      options={[
+                        { value: 'todos', label: 'Todas' },
+                        { value: 'ativada', label: 'Ativada' },
+                        { value: 'desativada', label: 'Desativada' },
+                      ]}
+                    />
                   </div>
 
                   {/* Filtro por Vencimento */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' }}>
+                    <label className="ds-input-label" style={{ display: 'block', marginBottom: '8px' }}>
                       Próximo Vencimento
                     </label>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input
-                        type="date"
-                        value={filtroVencimentoDe}
-                        onChange={(e) => setFiltroVencimentoDe(e.target.value)}
-                        style={{
-                          flex: 1,
-                          padding: '8px 10px',
-                          fontSize: '14px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
+                      <DateField value={filtroVencimentoDe} onChange={setFiltroVencimentoDe} />
                       <span style={{ fontSize: '12px', color: '#999' }}>até</span>
-                      <input
-                        type="date"
-                        value={filtroVencimentoAte}
-                        onChange={(e) => setFiltroVencimentoAte(e.target.value)}
-                        style={{
-                          flex: 1,
-                          padding: '8px 10px',
-                          fontSize: '14px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          backgroundColor: 'white',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
+                      <DateField value={filtroVencimentoAte} onChange={setFiltroVencimentoAte} />
                     </div>
                   </div>
 
@@ -2334,30 +2095,17 @@ Equipe ${nomeEmpresa}`
                         Aniversariantes do mês
                       </span>
                     </div>
-                    <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={filtroAniversariante}
-                        onChange={(e) => setFiltroAniversariante(e.target.checked)}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: filtroAniversariante ? '#4CAF50' : '#d1d5db',
-                        borderRadius: '20px', transition: 'background-color 0.3s'
-                      }} />
-                      <span style={{
-                        position: 'absolute', top: '2px',
-                        left: filtroAniversariante ? '18px' : '2px',
-                        width: '16px', height: '16px',
-                        backgroundColor: 'white', borderRadius: '50%',
-                        transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                      }} />
-                    </label>
+                    <Switch
+                      checked={filtroAniversariante}
+                      onChange={(e) => setFiltroAniversariante(e.target.checked)}
+                    />
                   </div>
 
                   {/* Botão Limpar Filtros */}
-                  <button
+                  <Button
+                    variant="gray"
+                    icon="mdi:filter-off-outline"
+                    fullWidth
                     onClick={() => {
                       setFiltroStatus('todos')
                       setFiltroPlano('todos')
@@ -2371,29 +2119,9 @@ Equipe ${nomeEmpresa}`
                       setSearchParams({})
                       setMostrarFiltros(false)
                     }}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      backgroundColor: '#f5f5f5',
-                      color: '#666',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ebebeb'
-                      e.currentTarget.style.borderColor = '#999'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f5f5f5'
-                      e.currentTarget.style.borderColor = '#ddd'
-                    }}
                   >
                     Limpar Filtros
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -3044,17 +2772,20 @@ Equipe ${nomeEmpresa}`
               ) : (
                 <div style={{ padding: '16px 24px 0' }}>
                   <div style={{
-                    display: 'inline-flex',
+                    display: 'flex',
                     gap: '4px',
                     backgroundColor: '#f3f4f6',
+                    border: '1px solid #e5e7eb',
                     borderRadius: '10px',
-                    padding: '4px'
+                    padding: '4px',
+                    overflow: 'hidden'
                   }}>
                     {ABAS_PERFIL.map(t => (
                       <button
                         key={t.id}
                         onClick={() => setAbaPerfil(t.id)}
                         style={{
+                          flex: 1,
                           padding: '8px 20px',
                           backgroundColor: abaPerfil === t.id ? 'white' : 'transparent',
                           color: abaPerfil === t.id ? '#1a1a1a' : '#555',
@@ -3065,6 +2796,7 @@ Equipe ${nomeEmpresa}`
                           fontWeight: abaPerfil === t.id ? '600' : '400',
                           display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'center',
                           gap: '6px',
                           whiteSpace: 'nowrap',
                           transition: 'all 0.2s',
@@ -3125,50 +2857,19 @@ Equipe ${nomeEmpresa}`
                 <div style={{ padding: '0 16px 16px' }}>
                   {/* Dados editáveis (sempre visíveis) */}
                   <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nome</label>
-                      <input type="text" value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Telefone</label>
-                      <input type="tel" value={telefoneEdit} onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15"
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: '#333', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>CPF/CNPJ</label>
-                      <input type="text" value={cpfEdit} onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))} maxLength="18" placeholder="000.000.000-00"
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cpfEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>E-mail</label>
-                      <input type="email" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} placeholder="email@exemplo.com"
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: emailEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Nascimento</label>
-                      <input type="date" value={dataNascimentoEdit} onChange={(e) => setDataNascimentoEdit(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: dataNascimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Dia Vencimento</label>
-                      <input type="number" min="1" max="31" value={diaVencimentoEdit} placeholder="1-31"
-                        onChange={(e) => { const val = e.target.value; if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) setDiaVencimentoEdit(val) }}
-                        onFocus={(e) => e.target.select()}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: diaVencimentoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Responsável Legal</label>
-                      <input type="text" value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} placeholder="Nome do responsável"
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelNomeEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tel. Responsável</label>
-                      <input type="tel" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} maxLength="15" placeholder="(00) 00000-0000"
-                        style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: responsavelTelefoneEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                    </div>
+                    <Input size="md" label="Nome" value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)} />
+                    <Input size="md" label="Telefone" type="tel" maxLength={15} value={telefoneEdit} onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))} />
+                    <Input size="md" label="CPF/CNPJ" maxLength={18} placeholder="000.000.000-00" value={cpfEdit} onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))} />
+                    <Input size="md" label="E-mail" type="email" placeholder="email@exemplo.com" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} />
+                    <DateField size="md" label="Nascimento" value={dataNascimentoEdit} onChange={setDataNascimentoEdit} />
+                    <Input size="md" label="Dia Vencimento" type="number" min={1} max={31} placeholder="1-31"
+                      value={diaVencimentoEdit}
+                      onChange={(e) => { const val = e.target.value; if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) setDiaVencimentoEdit(val) }}
+                      onFocus={(e) => e.target.select()} />
+                    <Input size="md" label="Responsável Legal" placeholder="Nome do responsável" value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} />
+                    <Input size="md" label="Tel. Responsável" type="tel" maxLength={15} placeholder="(00) 00000-0000" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} />
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Tags / Turmas</label>
+                      <label className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>Tags / Turmas</label>
                       <TagInput
                         tags={tagsEdit}
                         onChange={setTagsEdit}
@@ -3191,47 +2892,18 @@ Equipe ${nomeEmpresa}`
                     </summary>
                     <div style={{ padding: '0 12px 12px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '160px 1fr 100px', gap: '10px', marginBottom: '10px' }}>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>CEP</label>
-                          <input type="text" value={cepEdit}
-                            onChange={(e) => setCepEdit(formatarCep(e.target.value))}
-                            onBlur={(e) => buscarCep(e.target.value, 'edit')}
-                            maxLength="9" placeholder="00000-000"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cepEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                          {buscandoCepEdit && <span style={{ fontSize: '11px', color: '#666' }}>Buscando...</span>}
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Rua / Logradouro</label>
-                          <input type="text" value={enderecoEdit} onChange={(e) => setEnderecoEdit(e.target.value)} placeholder="Av. Brasil"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: enderecoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Número</label>
-                          <input type="text" value={numeroEnderecoEdit} onChange={(e) => setNumeroEnderecoEdit(e.target.value)} placeholder="123"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: numeroEnderecoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
+                        <Input size="md" label="CEP" maxLength={9} placeholder="00000-000" loading={buscandoCepEdit}
+                          value={cepEdit} style={{ minWidth: 0 }}
+                          onChange={(e) => setCepEdit(formatarCep(e.target.value))}
+                          onBlur={(e) => buscarCep(e.target.value, 'edit')} />
+                        <Input size="md" label="Rua / Logradouro" placeholder="Av. Brasil" style={{ minWidth: 0 }} value={enderecoEdit} onChange={(e) => setEnderecoEdit(e.target.value)} />
+                        <Input size="md" label="Número" placeholder="123" style={{ minWidth: 0 }} value={numeroEnderecoEdit} onChange={(e) => setNumeroEnderecoEdit(e.target.value)} />
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr 1fr 80px', gap: '10px' }}>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Complemento</label>
-                          <input type="text" value={complementoEdit} onChange={(e) => setComplementoEdit(e.target.value)} placeholder="Apto, bloco..."
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: complementoEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Bairro</label>
-                          <input type="text" value={bairroEdit} onChange={(e) => setBairroEdit(e.target.value)} placeholder="Centro"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: bairroEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>Cidade</label>
-                          <input type="text" value={cidadeEdit} onChange={(e) => setCidadeEdit(e.target.value)} placeholder="São Paulo"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: cidadeEdit ? '#333' : '#999', boxSizing: 'border-box' }} />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#666', fontWeight: '500' }}>UF</label>
-                          <input type="text" value={estadoEdit} onChange={(e) => setEstadoEdit(e.target.value.toUpperCase().slice(0, 2))} maxLength="2" placeholder="SP"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', backgroundColor: 'white', color: estadoEdit ? '#333' : '#999', boxSizing: 'border-box', textTransform: 'uppercase' }} />
-                        </div>
+                        <Input size="md" label="Complemento" placeholder="Apto, bloco..." style={{ minWidth: 0 }} value={complementoEdit} onChange={(e) => setComplementoEdit(e.target.value)} />
+                        <Input size="md" label="Bairro" placeholder="Centro" style={{ minWidth: 0 }} value={bairroEdit} onChange={(e) => setBairroEdit(e.target.value)} />
+                        <Input size="md" label="Cidade" placeholder="São Paulo" style={{ minWidth: 0 }} value={cidadeEdit} onChange={(e) => setCidadeEdit(e.target.value)} />
+                        <Input size="md" label="UF" maxLength={2} placeholder="SP" style={{ minWidth: 0 }} value={estadoEdit} onChange={(e) => setEstadoEdit(e.target.value.toUpperCase().slice(0, 2))} />
                       </div>
                     </div>
                   </details>
@@ -3261,7 +2933,9 @@ Equipe ${nomeEmpresa}`
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             {clienteSelecionado.assinatura_ativa && (
-                              <button
+                              <Button
+                                size="xs"
+                                variant="outline"
                                 onClick={() => {
                                   setPlanoParaAtivar(clienteSelecionado.plano_id || '')
                                   const hoje = new Date()
@@ -3271,35 +2945,17 @@ Equipe ${nomeEmpresa}`
                                   setDataVencimentoAssinaturaModal(venc.toISOString().split('T')[0])
                                   setMostrarModalSelecionarPlano({ show: true, clienteId: clienteSelecionado.id })
                                 }}
-                                style={{
-                                  padding: '5px 12px',
-                                  backgroundColor: '#e0f2fe',
-                                  color: '#0284c7',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: '600'
-                                }}
                               >
                                 Alterar
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
+                              size="xs"
+                              variant={clienteSelecionado.assinatura_ativa ? 'danger-soft' : 'primary'}
                               onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
-                              style={{
-                                padding: '5px 12px',
-                                backgroundColor: clienteSelecionado.assinatura_ativa ? '#fee2e2' : '#dcfce7',
-                                color: clienteSelecionado.assinatura_ativa ? '#dc2626' : '#16a34a',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                              }}
                             >
                               {clienteSelecionado.assinatura_ativa ? 'Cancelar' : 'Reativar'}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -3321,43 +2977,24 @@ Equipe ${nomeEmpresa}`
                             {clienteSelecionado.bloquear_mensagens ? 'Cobranças pausadas' : 'Cobranças ativas'}
                           </span>
                         </div>
-                        <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={!clienteSelecionado.bloquear_mensagens}
-                            onChange={async (e) => {
-                              const novoValor = !e.target.checked
-                              try {
-                                await supabase.from('devedores').update({ bloquear_mensagens: novoValor }).eq('id', clienteSelecionado.id)
-                                setClienteSelecionado({ ...clienteSelecionado, bloquear_mensagens: novoValor })
-                                setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? { ...c, bloquear_mensagens: novoValor } : c))
-                                showToast(novoValor ? 'Cobranças pausadas para este aluno' : 'Cobranças reativadas', 'success')
-                              } catch { showToast('Erro ao atualizar', 'error') }
-                            }}
-                            style={{ opacity: 0, width: 0, height: 0 }}
-                          />
-                          <span style={{
-                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                            backgroundColor: clienteSelecionado.bloquear_mensagens ? '#d1d5db' : '#4CAF50',
-                            borderRadius: '20px', transition: 'background-color 0.3s'
-                          }} />
-                          <span style={{
-                            position: 'absolute', top: '2px',
-                            left: clienteSelecionado.bloquear_mensagens ? '2px' : '18px',
-                            width: '16px', height: '16px',
-                            backgroundColor: 'white', borderRadius: '50%',
-                            transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                          }} />
-                        </label>
+                        <Switch
+                          checked={!clienteSelecionado.bloquear_mensagens}
+                          onChange={async (e) => {
+                            const novoValor = !e.target.checked
+                            try {
+                              await supabase.from('devedores').update({ bloquear_mensagens: novoValor }).eq('id', clienteSelecionado.id)
+                              setClienteSelecionado({ ...clienteSelecionado, bloquear_mensagens: novoValor })
+                              setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? { ...c, bloquear_mensagens: novoValor } : c))
+                              showToast(novoValor ? 'Cobranças pausadas para este aluno' : 'Cobranças reativadas', 'success')
+                            } catch { showToast('Erro ao atualizar', 'error') }
+                          }}
+                        />
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                        <button onClick={handleSalvarEdicao}
-                          style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <Icon icon="mdi:content-save-outline" width="16" />
+                        <Button variant="primary" icon="mdi:content-save-outline" onClick={handleSalvarEdicao}>
                           Salvar alterações
-                        </button>
+                        </Button>
                       </div>
                 </div>
               </details>
@@ -4119,146 +3756,71 @@ Equipe ${nomeEmpresa}`
               {planos.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px' }}>
                   <Icon icon="mdi:package-variant-closed" width="48" style={{ color: '#ccc' }} />
-                  <p style={{ color: '#666', margin: '12px 0 0' }}>Nenhum plano cadastrado</p>
-                  <button
+                  <p style={{ color: '#666', margin: '12px 0 16px' }}>Nenhum plano cadastrado</p>
+                  <Button
+                    variant="primary"
+                    icon="mdi:plus"
                     onClick={() => {
                       setMostrarModalSelecionarPlano({ show: false, clienteId: null })
                       setMostrarModalCriarPlano(true)
                     }}
-                    style={{
-                      marginTop: '16px',
-                      padding: '10px 20px',
-                      backgroundColor: '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
                   >
                     Criar Plano
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#333'
-                    }}>
-                      Plano
-                    </label>
-                    <select
+                    <Select
+                      label="Plano"
+                      portal
+                      placeholder="Selecione um plano"
                       value={planoParaAtivar}
-                      onChange={(e) => setPlanoParaAtivar(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="">Selecione um plano</option>
-                      {planos.map(plano => (
-                        <option key={plano.id} value={plano.id}>
-                          {plano.nome} - R$ {formatCurrency(parseFloat(plano.valor))}{plano.tipo === 'pacote' ? ` (${plano.numero_aulas} aulas)` : '/mês'}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => setPlanoParaAtivar(v || '')}
+                      options={planos.map(plano => ({
+                        value: plano.id,
+                        label: `${plano.nome} - R$ ${formatCurrency(parseFloat(plano.valor))}${plano.tipo === 'pacote' ? ` (${plano.numero_aulas} aulas)` : '/mês'}`
+                      }))}
+                    />
                   </div>
 
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#333'
-                    }}>
-                      Data de Início
-                    </label>
-                    <input
-                      type="date"
+                    <DateField
+                      label="Data de Início"
                       value={dataInicioAssinaturaModal}
-                      onChange={(e) => {
-                        setDataInicioAssinaturaModal(e.target.value)
-                        if (e.target.value) {
-                          const inicio = new Date(e.target.value + 'T00:00:00')
+                      onChange={(v) => {
+                        setDataInicioAssinaturaModal(v)
+                        if (v) {
+                          const inicio = new Date(v + 'T00:00:00')
                           inicio.setDate(inicio.getDate() + 30)
                           setDataVencimentoAssinaturaModal(inicio.toISOString().split('T')[0])
                         }
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
                       }}
                     />
                   </div>
 
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#333'
-                    }}>
-                      Data de Vencimento
-                    </label>
-                    <input
-                      type="date"
+                    <DateField
+                      label="Data de Vencimento"
                       value={dataVencimentoAssinaturaModal}
-                      onChange={(e) => setDataVencimentoAssinaturaModal(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: 'white'
-                      }}
+                      onChange={setDataVencimentoAssinaturaModal}
                     />
                     <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#888' }}>
                       Data da primeira mensalidade. Auto-preenchido com início + 30 dias.
                     </p>
                   </div>
 
-                  <button
+                  <Button
+                    variant="outline"
+                    icon="mdi:plus"
+                    fullWidth
                     onClick={() => {
                       setMostrarModalSelecionarPlano({ show: false, clienteId: null })
                       setMostrarModalCriarPlano(true)
                     }}
-                    style={{
-                      marginTop: '12px',
-                      padding: '10px 16px',
-                      backgroundColor: 'transparent',
-                      color: '#2196F3',
-                      border: '2px dashed #2196F3',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      width: '100%',
-                      justifyContent: 'center'
-                    }}
                   >
-                    <Icon icon="material-symbols:add" width="18" />
                     Criar novo plano
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -4271,42 +3833,24 @@ Equipe ${nomeEmpresa}`
               justifyContent: 'flex-end',
               gap: '12px'
             }}>
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setMostrarModalSelecionarPlano({ show: false, clienteId: null })
                   setPlanoParaAtivar('')
                   setDataInicioAssinaturaModal('')
                   setDataVencimentoAssinaturaModal('')
                 }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'transparent',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={confirmarAtivarAssinaturaComPlano}
                 disabled={!planoParaAtivar || !dataInicioAssinaturaModal || !dataVencimentoAssinaturaModal}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: (planoParaAtivar && dataInicioAssinaturaModal && dataVencimentoAssinaturaModal) ? '#4CAF50' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: (planoParaAtivar && dataInicioAssinaturaModal && dataVencimentoAssinaturaModal) ? 'pointer' : 'not-allowed',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
               >
                 Ativar Assinatura
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -5089,7 +4633,11 @@ Equipe ${nomeEmpresa}`
                 Criar Novo Plano
               </h3>
               {isMobile && (
-                <button
+                <Button
+                  variant="ghost"
+                  iconOnly
+                  icon="mdi:close"
+                  aria-label="Fechar"
                   onClick={() => {
                     setMostrarModalCriarPlano(false)
                     setNovoPlanoNome('')
@@ -5097,123 +4645,57 @@ Equipe ${nomeEmpresa}`
                     setNovoPlanoCiclo('mensal')
                     setNovoPlanoDescricao('')
                   }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
-                </button>
+                />
               )}
             </div>
 
             {/* Nome do plano */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                Nome do Plano *
-              </label>
-              <input
-                type="text"
+              <Input
+                label="Nome do Plano"
+                required
+                autoFocus
+                placeholder="Ex: Plano Mensal"
                 value={novoPlanoNome}
                 onChange={(e) => setNovoPlanoNome(e.target.value)}
-                placeholder="Ex: Plano Mensal"
-                autoFocus
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
               />
             </div>
 
             {/* Valor do plano */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                Valor (R$) *
-              </label>
-              <input
+              <Input
+                label="Valor"
+                required
                 type="number"
-                value={novoPlanoValor}
-                onChange={(e) => setNovoPlanoValor(e.target.value)}
-                placeholder="0.00"
                 step="0.01"
                 min="0"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                prefix="R$"
+                placeholder="0,00"
+                value={novoPlanoValor}
+                onChange={(e) => setNovoPlanoValor(e.target.value)}
               />
             </div>
 
             {/* Tipo do plano */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                Tipo do Plano *
+              <label className="ds-input-label" style={{ display: 'block', marginBottom: '8px' }}>
+                Tipo do Plano <span style={{ color: 'var(--danger-500, #ef4444)' }}>*</span>
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {[
-                  { value: 'recorrente', label: 'Recorrente', icon: 'mdi:refresh' },
-                  { value: 'pacote', label: 'Pacote de Aulas', icon: 'mdi:package-variant' }
+                  { value: 'recorrente', label: 'Recorrente' },
+                  { value: 'pacote', label: 'Pacote de Aulas' }
                 ].map(opt => (
-                  <button
+                  <Button
                     key={opt.value}
-                    type="button"
+                    variant="outline"
+                    selected={novoPlanoTipo === opt.value}
+                    selectedTone="info"
                     onClick={() => setNovoPlanoTipo(opt.value)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: `2px solid ${novoPlanoTipo === opt.value ? '#2196F3' : '#e0e0e0'}`,
-                      backgroundColor: novoPlanoTipo === opt.value ? '#e3f2fd' : 'white',
-                      color: novoPlanoTipo === opt.value ? '#1565C0' : '#666',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s'
-                    }}
+                    style={{ flex: 1, fontWeight: 500 }}
                   >
-                    <Icon icon={opt.icon} width={18} />
                     {opt.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -5221,84 +4703,39 @@ Equipe ${nomeEmpresa}`
             {/* Número de aulas (só para pacote) */}
             {novoPlanoTipo === 'pacote' && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#333'
-                }}>
-                  Número de Aulas *
-                </label>
-                <input
+                <Input
+                  label="Número de Aulas"
+                  required
                   type="number"
+                  min="1"
+                  placeholder="Ex: 8"
+                  helper="Quantidade de aulas que o aluno pode fazer com este pacote"
                   value={novoPlanoNumeroAulas}
                   onChange={(e) => setNovoPlanoNumeroAulas(e.target.value)}
-                  placeholder="Ex: 8"
-                  min="1"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
                 />
-                <span style={{ fontSize: '12px', color: '#888', marginTop: '4px', display: 'block' }}>
-                  Quantidade de aulas que o aluno pode fazer com este pacote
-                </span>
               </div>
             )}
 
             {/* Ciclo de cobrança (só para recorrente) */}
             {novoPlanoTipo === 'recorrente' && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
-                Ciclo de Cobrança *
-              </label>
-              <select
+              <Select
+                label="Ciclo de Cobrança"
+                required
                 value={novoPlanoCiclo}
-                onChange={(e) => setNovoPlanoCiclo(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  backgroundColor: 'white',
-                  cursor: 'pointer'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-              >
-                <option value="mensal">Mensal</option>
-                <option value="trimestral">Trimestral</option>
-                <option value="anual">Anual</option>
-              </select>
+                onChange={(v) => setNovoPlanoCiclo(v || 'mensal')}
+                options={[
+                  { value: 'mensal', label: 'Mensal' },
+                  { value: 'trimestral', label: 'Trimestral' },
+                  { value: 'anual', label: 'Anual' },
+                ]}
+              />
             </div>
             )}
 
             {/* Descrição/Observação */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333'
-              }}>
+              <label className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>
                 Observação
               </label>
               <textarea
@@ -5308,23 +4745,26 @@ Equipe ${nomeEmpresa}`
                 rows="3"
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '6px',
+                  padding: '10px 12px',
+                  border: '1px solid var(--neutral-300, #CBD5E1)',
+                  borderRadius: 'var(--radius-lg, 8px)',
                   fontSize: '14px',
+                  color: 'var(--color-text-primary, #1e293b)',
                   outline: 'none',
-                  transition: 'border-color 0.2s',
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
                   resize: 'vertical',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--mensalli-green-500, #4CAF50)'; e.target.style.boxShadow = '0 0 0 3px rgba(76,175,80,0.15)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--neutral-300, #CBD5E1)'; e.target.style.boxShadow = 'none' }}
               />
             </div>
 
             {/* Botões */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setMostrarModalCriarPlano(false)
                   setNovoPlanoNome('')
@@ -5334,44 +4774,12 @@ Equipe ${nomeEmpresa}`
                   setNovoPlanoTipo('recorrente')
                   setNovoPlanoNumeroAulas('')
                 }}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  border: '1px solid #e0e0e0',
-                  backgroundColor: 'white',
-                  color: '#666',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white'
-                }}
               >
                 Cancelar
-              </button>
-              <button
-                onClick={handleCriarPlanoRapido}
-                style={{
-                  padding: '10px 24px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1976D2'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2196F3'}
-              >
+              </Button>
+              <Button variant="primary" onClick={handleCriarPlanoRapido}>
                 Criar Plano
-              </button>
+              </Button>
             </div>
           </div>
         </div>
