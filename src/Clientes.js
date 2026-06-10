@@ -25,6 +25,7 @@ import Switch from './design-system/components/Switch'
 import Checkbox from './design-system/components/Checkbox'
 import Dropdown from './design-system/components/Dropdown'
 import AgendaDatePicker from './AgendaDatePicker'
+import DateFieldEditavel from './components/DateField' // versão com digitação (em teste só no Novo Aluno)
 import RadarEvasao from './components/RadarEvasao'
 
 // Soft-delete: mensalidades na lixeira têm lixo = true.
@@ -3955,7 +3956,7 @@ Equipe ${nomeEmpresa}`
                   />
                   <Input label="CPF" placeholder="000.000.000-00" maxLength={14} style={{ minWidth: 0 }}
                     value={novoClienteCpf} onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))} />
-                  <DateField label="Nascimento" value={novoClienteDataNascimento} onChange={setNovoClienteDataNascimento} />
+                  <DateFieldEditavel label="Nascimento" value={novoClienteDataNascimento} onChange={setNovoClienteDataNascimento} />
                   <Input label="E-mail" type="email" placeholder="email@exemplo.com" style={{ minWidth: 0 }}
                     value={novoClienteEmail} onChange={(e) => setNovoClienteEmail(e.target.value)} />
                 </div>
@@ -4079,7 +4080,7 @@ Equipe ${nomeEmpresa}`
                 {criarAssinatura ? (
                   <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <DateField
+                      <DateFieldEditavel
                         label="Data de Início"
                         value={dataInicioAssinatura}
                         onChange={(v) => {
@@ -4091,7 +4092,7 @@ Equipe ${nomeEmpresa}`
                           }
                         }}
                       />
-                      <DateField label="Vencimento" value={dataVencimentoAssinatura} onChange={setDataVencimentoAssinatura} />
+                      <DateFieldEditavel label="Vencimento" value={dataVencimentoAssinatura} onChange={setDataVencimentoAssinatura} />
                     </div>
                     <div>
                       <Select

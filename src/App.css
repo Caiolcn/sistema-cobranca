@@ -26,6 +26,9 @@
 .ds-details-chevron { transition: transform 0.2s; }
 details[open] > .ds-collapsible-summary .ds-details-chevron { transform: rotate(180deg); }
 
+/* Placeholder do DateField no mesmo tom dos inputs do DS */
+.ds-datefield-input::placeholder { color: var(--color-text-muted, #64748B); opacity: 1; }
+
 html, body {
   overflow-x: hidden;
   width: 100%;
