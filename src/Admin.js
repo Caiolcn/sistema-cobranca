@@ -5,6 +5,53 @@ import { supabase } from './supabaseClient'
 import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
 import RetencaoSaas from './components/RetencaoSaas'
+import whatsappService from './services/whatsappService'
+
+// Instância do WhatsApp do Mensalli que dispara os lembretes de vencimento
+// (mesma que o n8n usava — ver n8n-recuperar-trials.json)
+const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+// Intervalo entre envios no disparo direto (anti-bloqueio do WhatsApp)
+const INTERVALO_ENVIO_MS = 15000
+
+// Templates dos lembretes de vencimento — editáveis no modal antes de disparar.
+// Variáveis: {{nome}} {{plano}} {{valor}} {{vencimento}} {{dias}} {{dias_atraso}} {{pix}}
+const TEMPLATES_LEMBRETE = {
+  venc_d3:
+`Oi {{nome}}! 👋
+
+Passando pra lembrar que sua mensalidade do Mensalli vence em *{{dias}} dias* ({{vencimento}}).
+
+💰 *Valor:* R$ {{valor}}
+💳 *Pix:* 62981618862
+
+⚠️ Após o vencimento, os disparos automáticos para seus alunos ficam pausados — ou seja, suas cobranças param de ser enviadas e seus alunos não recebem mais as mensagens.
+
+Pra manter tudo rodando, é só pagar até a data. Qualquer dúvida, é só chamar! 🙌`,
+
+  venc_hoje:
+`Oi {{nome}}! 👋
+
+Passando pra lembrar que sua mensalidade do Mensalli *vence hoje* ({{vencimento}}).
+
+💰 *Valor:* R$ {{valor}}
+💳 *Pix:* 62981618862
+
+⚠️ A partir do vencimento, os disparos automáticos para seus alunos ficam pausados — ou seja, suas cobranças param de ser enviadas e seus alunos não recebem mais as mensagens.
+
+Pra não ter interrupção, garante o pagamento ainda hoje. Qualquer dúvida, é só chamar! 🙌`,
+
+  venc_vencido:
+`Oi {{nome}}! 👋
+
+Sua mensalidade do Mensalli *venceu há {{dias_atraso}} dia(s)* ({{vencimento}}) e ainda não identifiquei o pagamento.
+
+💰 *Valor:* R$ {{valor}}
+💳 *Pix:* 62981618862
+
+⚠️ Enquanto está em aberto, os disparos automáticos para seus alunos seguem pausados — suas cobranças não estão sendo enviadas e seus alunos não recebem mais as mensagens.
+
+Pra reativar tudo na hora, é só fazer o pagamento. Qualquer dúvida, é só chamar! 🙌`
+}
 
 export default function Admin() {
   const { isAdmin, loading: userLoading, userId, chavePix } = useUser()
@@ -37,6 +84,9 @@ export default function Admin() {
   const [resultadoRecuperacao, setResultadoRecuperacao] = useState(null)
   const [selecionados, setSelecionados] = useState(new Set())
   const [buscaModal, setBuscaModal] = useState('')
+  // Lembretes de vencimento: texto editável + progresso do disparo direto (sem n8n)
+  const [mensagemLembrete, setMensagemLembrete] = useState('')
+  const [progressoEnvio, setProgressoEnvio] = useState(null) // { total, enviados, falhas, erros: [] }
 
   // Redirecionar se não for admin
   useEffect(() => {
@@ -387,6 +437,107 @@ export default function Admin() {
       starter: { cor: '#f57c00', bg: '#fff3e0' }
     }
     return config[plano] || config.starter
+  }
+
+  // === Lembretes de vencimento: monta a mensagem por cliente e dispara direto (sem n8n) ===
+  const formatarDataBR = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' })
+  }
+
+  const diasAteVencimento = (iso) => {
+    if (!iso) return null
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+    const venc = new Date(iso); venc.setHours(0, 0, 0, 0)
+    if (isNaN(venc.getTime())) return null
+    return Math.round((venc - hoje) / (1000 * 60 * 60 * 24))
+  }
+
+  const montarMensagemLembrete = (template, cliente) => {
+    const planoKey = cliente.plano || 'starter'
+    const primeiroNome = (cliente.nome_completo || cliente.nome_empresa || 'Cliente').split(' ')[0]
+    const valor = (PRECOS_PLANO[planoKey] || PRECOS_PLANO.starter).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const dias = diasAteVencimento(cliente.plano_vencimento)
+    const diasAtraso = dias !== null && dias < 0 ? Math.abs(dias) : ''
+    return (template || '')
+      .replace(/\{\{nome\}\}/g, primeiroNome)
+      .replace(/\{\{plano\}\}/g, NOMES_PLANO[planoKey] || 'Starter')
+      .replace(/\{\{valor\}\}/g, valor)
+      .replace(/\{\{vencimento\}\}/g, formatarDataBR(cliente.plano_vencimento))
+      .replace(/\{\{dias\}\}/g, dias !== null && dias > 0 ? String(dias) : '')
+      .replace(/\{\{dias_atraso\}\}/g, String(diasAtraso))
+      .replace(/\{\{pix\}\}/g, chavePix || '(PIX não configurado)')
+  }
+
+  // Disparo direto pela Evolution API (sem passar pelo n8n).
+  // Envia 1 por vez, com intervalo anti-bloqueio. A aba precisa ficar aberta.
+  const dispararLembreteDireto = async () => {
+    const alvos = listaAlvo.filter(c => selecionados.has(c.id))
+    if (alvos.length === 0) {
+      setResultadoRecuperacao({ sucesso: false, erro: 'Selecione ao menos um usuário.' })
+      return
+    }
+    if (!mensagemLembrete.trim()) {
+      setResultadoRecuperacao({ sucesso: false, erro: 'A mensagem não pode ficar vazia.' })
+      return
+    }
+
+    const rotulo = {
+      venc_d3: 'Lembrete vencimento (3 dias antes)',
+      venc_hoje: 'Lembrete vencimento (hoje)',
+      venc_vencido: 'Lembrete vencimento (vencido)'
+    }[grupoOrigem] || 'Lembrete vencimento'
+
+    setEnviandoRecuperacao(true)
+    setResultadoRecuperacao(null)
+    setProgressoEnvio({ total: alvos.length, enviados: 0, falhas: 0, erros: [] })
+
+    let enviados = 0
+    let falhas = 0
+    const erros = []
+    const logs = []
+
+    for (let i = 0; i < alvos.length; i++) {
+      const c = alvos[i]
+      const nomeBase = c.nome_empresa || c.nome_completo || c.email || 'Cliente'
+      const tel = c.telefone || c.mz?.telefone || c.mz?.whatsapp_numero
+      const mensagem = montarMensagemLembrete(mensagemLembrete, c)
+
+      if (!tel) {
+        falhas++
+        erros.push(`${nomeBase}: sem telefone`)
+        logs.push({ usuario_id: c.id, tipo: grupoOrigem, mensagem: rotulo, canal: 'crm_direto', status: 'falha', erro: 'sem telefone', enviado_por: userId })
+      } else {
+        const res = await whatsappService.enviarMensagem(tel, mensagem, INSTANCIA_MENSALLI)
+        if (res.sucesso) {
+          enviados++
+          logs.push({ usuario_id: c.id, tipo: grupoOrigem, mensagem, canal: 'crm_direto', status: 'enviado', enviado_por: userId })
+        } else {
+          falhas++
+          erros.push(`${nomeBase}: ${res.erro}`)
+          logs.push({ usuario_id: c.id, tipo: grupoOrigem, mensagem: rotulo, canal: 'crm_direto', status: 'falha', erro: res.erro, enviado_por: userId })
+        }
+      }
+
+      setProgressoEnvio({ total: alvos.length, enviados, falhas, erros: [...erros] })
+
+      // Intervalo anti-bloqueio entre envios (não espera depois do último)
+      if (i < alvos.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, INTERVALO_ENVIO_MS))
+      }
+    }
+
+    // Log de auditoria (best-effort — não bloqueia o resultado pro admin)
+    try {
+      if (logs.length) await supabase.from('retencao_saas_envios').insert(logs)
+    } catch (e) {
+      console.error('Falha ao gravar log de lembretes:', e)
+    }
+
+    setEnviandoRecuperacao(false)
+    setResultadoRecuperacao({ sucesso: true, total: enviados, falhas, erros, direto: true })
   }
 
   const dispararRecuperacaoTrial = async () => {
@@ -835,8 +986,10 @@ export default function Admin() {
                 onClick={() => {
                   setGrupoOrigem(b.key)
                   setResultadoRecuperacao(null)
+                  setProgressoEnvio(null)
                   setBuscaModal('')
                   setSelecionados(new Set(b.lista.map(c => c.id)))
+                  if (b.key.startsWith('venc_')) setMensagemLembrete(TEMPLATES_LEMBRETE[b.key] || '')
                   setRecuperarModal(true)
                 }}
                 disabled={b.count === 0}
@@ -1347,7 +1500,7 @@ export default function Admin() {
                   {grupoVisual.titulo}
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-                  {selecionados.size} de {listaAlvo.length} selecionado{selecionados.size !== 1 ? 's' : ''} ser{selecionados.size !== 1 ? 'ão' : 'á'} contatado{selecionados.size !== 1 ? 's' : ''} via n8n
+                  {selecionados.size} de {listaAlvo.length} selecionado{selecionados.size !== 1 ? 's' : ''} ser{selecionados.size !== 1 ? 'ão' : 'á'} contatado{selecionados.size !== 1 ? 's' : ''} {isLembrete ? 'via WhatsApp do Mensalli' : 'via n8n'}
                 </p>
               </div>
               <button
@@ -1406,12 +1559,49 @@ export default function Admin() {
                   )}
 
                   {isLembrete && (
-                    <div style={{ marginBottom: '20px', padding: '12px 14px', borderRadius: '8px', backgroundColor: grupoVisual.bg, border: `1px solid ${grupoVisual.cor}33`, fontSize: '13px', color: '#333' }}>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                        <Icon icon={grupoVisual.icone} width="18" style={{ color: grupoVisual.cor, flexShrink: 0, marginTop: '1px' }} />
-                        <div>
-                          Esse disparo envia um <strong>lembrete fixo</strong> (mensagem definida no n8n por bucket). Sem oferta — só o aviso de vencimento.
-                        </div>
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '600', color: '#344848', marginBottom: '8px' }}>
+                        <span>Mensagem do lembrete</span>
+                        <button
+                          type="button"
+                          onClick={() => setMensagemLembrete(TEMPLATES_LEMBRETE[grupoOrigem] || '')}
+                          style={{ background: 'none', border: 'none', color: grupoVisual.cor, fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Icon icon="mdi:restore" width="14" /> Restaurar padrão
+                        </button>
+                      </label>
+                      <textarea
+                        value={mensagemLembrete}
+                        onChange={(e) => setMensagemLembrete(e.target.value)}
+                        disabled={enviandoRecuperacao}
+                        rows={10}
+                        style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', backgroundColor: enviandoRecuperacao ? '#f3f4f6' : 'white' }}
+                      />
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                        <span style={{ color: '#999' }}>Variáveis:</span>
+                        {['{{nome}}', '{{plano}}', '{{valor}}', '{{vencimento}}', '{{dias}}', '{{dias_atraso}}'].map(v => (
+                          <code key={v} style={{ backgroundColor: '#f3f4f6', padding: '1px 6px', borderRadius: '4px', fontSize: '11px' }}>{v}</code>
+                        ))}
+                      </div>
+
+                      {(() => {
+                        const exemplo = listaAlvo.find(c => selecionados.has(c.id)) || listaAlvo[0]
+                        if (!exemplo) return null
+                        return (
+                          <div style={{ marginTop: '12px' }}>
+                            <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>
+                              Prévia ({exemplo.nome_empresa || exemplo.nome_completo || exemplo.email}):
+                            </div>
+                            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: '#dcf8c6', border: '1px solid #c5e8a8', fontSize: '13px', color: '#1a1a1a', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                              {montarMensagemLembrete(mensagemLembrete, exemplo)}
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: grupoVisual.bg, border: `1px solid ${grupoVisual.cor}33`, fontSize: '12px', color: '#555', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                        <Icon icon="mdi:whatsapp" width="16" style={{ color: '#25d366', flexShrink: 0, marginTop: '1px' }} />
+                        <span>Envio direto pelo WhatsApp do Mensalli, 1 por vez a cada {INTERVALO_ENVIO_MS / 1000}s. <strong>Mantenha esta aba aberta</strong> até terminar.</span>
                       </div>
                     </div>
                   )}
@@ -1528,24 +1718,55 @@ export default function Admin() {
                     )
                   })()}
 
-                  <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', fontSize: '12px', color: '#92400e', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <Icon icon="mdi:information-outline" width="16" style={{ flexShrink: 0, marginTop: '1px' }} />
-                    <span>
-                      O fluxo n8n receberá o payload via webhook configurado em <code style={{ backgroundColor: '#fef3c7', padding: '1px 5px', borderRadius: '3px' }}>config.n8n_webhook_recuperar_trial</code>. Disparos são logados em <code style={{ backgroundColor: '#fef3c7', padding: '1px 5px', borderRadius: '3px' }}>retencao_saas_envios</code>.
-                    </span>
-                  </div>
+                  {!isLembrete && (
+                    <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', fontSize: '12px', color: '#92400e', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <Icon icon="mdi:information-outline" width="16" style={{ flexShrink: 0, marginTop: '1px' }} />
+                      <span>
+                        O fluxo n8n receberá o payload via webhook configurado em <code style={{ backgroundColor: '#fef3c7', padding: '1px 5px', borderRadius: '3px' }}>config.n8n_webhook_recuperar_trial</code>. Disparos são logados em <code style={{ backgroundColor: '#fef3c7', padding: '1px 5px', borderRadius: '3px' }}>retencao_saas_envios</code>.
+                      </span>
+                    </div>
+                  )}
+
+                  {isLembrete && enviandoRecuperacao && progressoEnvio && (
+                    <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#334155' }}>
+                        <Icon icon="mdi:loading" width="16" style={{ animation: 'spin 1s linear infinite', color: grupoVisual.cor }} />
+                        Enviando {progressoEnvio.enviados + progressoEnvio.falhas} de {progressoEnvio.total}...
+                      </div>
+                      <div style={{ marginTop: '8px', height: '8px', borderRadius: '999px', backgroundColor: '#e2e8f0', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.round(((progressoEnvio.enviados + progressoEnvio.falhas) / progressoEnvio.total) * 100)}%`, backgroundColor: grupoVisual.cor, transition: 'width 0.3s' }} />
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                        ✅ {progressoEnvio.enviados} enviado(s){progressoEnvio.falhas > 0 ? ` · ⚠️ ${progressoEnvio.falhas} falha(s)` : ''} · não feche esta aba
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
               {resultadoRecuperacao?.sucesso && (
-                <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #86efac', textAlign: 'center' }}>
-                  <Icon icon="mdi:check-circle" width="40" style={{ color: '#16a34a' }} />
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: '#15803d', marginTop: '8px' }}>
-                    Fluxo disparado com sucesso!
+                <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #86efac' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <Icon icon="mdi:check-circle" width="40" style={{ color: '#16a34a' }} />
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#15803d', marginTop: '8px' }}>
+                      {resultadoRecuperacao.direto ? 'Lembretes enviados!' : 'Fluxo disparado com sucesso!'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#166534', marginTop: '4px' }}>
+                      {resultadoRecuperacao.direto
+                        ? `${resultadoRecuperacao.total} enviado${resultadoRecuperacao.total !== 1 ? 's' : ''} via WhatsApp${resultadoRecuperacao.falhas > 0 ? ` · ${resultadoRecuperacao.falhas} falha${resultadoRecuperacao.falhas !== 1 ? 's' : ''}` : ''}`
+                        : `${resultadoRecuperacao.total} usuário${resultadoRecuperacao.total !== 1 ? 's' : ''} enviado${resultadoRecuperacao.total !== 1 ? 's' : ''} pro n8n`}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#166534', marginTop: '4px' }}>
-                    {resultadoRecuperacao.total} usuário{resultadoRecuperacao.total !== 1 ? 's' : ''} enviado{resultadoRecuperacao.total !== 1 ? 's' : ''} pro n8n
-                  </div>
+                  {resultadoRecuperacao.direto && resultadoRecuperacao.erros?.length > 0 && (
+                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#991b1b', marginBottom: '4px' }}>
+                        Não enviados ({resultadoRecuperacao.erros.length}):
+                      </div>
+                      <div style={{ maxHeight: '120px', overflow: 'auto', fontSize: '11px', color: '#7f1d1d', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {resultadoRecuperacao.erros.map((e, i) => <div key={i}>• {e}</div>)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1577,8 +1798,8 @@ export default function Admin() {
               </button>
               {!resultadoRecuperacao?.sucesso && (
                 <button
-                  onClick={dispararRecuperacaoTrial}
-                  disabled={enviandoRecuperacao || selecionados.size === 0}
+                  onClick={isLembrete ? dispararLembreteDireto : dispararRecuperacaoTrial}
+                  disabled={enviandoRecuperacao || selecionados.size === 0 || (isLembrete && !mensagemLembrete.trim())}
                   style={{
                     padding: '10px 24px',
                     backgroundColor: selecionados.size === 0 ? '#d1d5db' : grupoVisual.cor,
@@ -1590,9 +1811,11 @@ export default function Admin() {
                   }}
                 >
                   {enviandoRecuperacao ? (
-                    <><Icon icon="mdi:loading" width="16" style={{ animation: 'spin 1s linear infinite' }} /> Disparando...</>
+                    <><Icon icon="mdi:loading" width="16" style={{ animation: 'spin 1s linear infinite' }} /> {isLembrete ? 'Enviando...' : 'Disparando...'}</>
                   ) : resultadoRecuperacao && !resultadoRecuperacao.sucesso ? (
                     <><Icon icon="mdi:refresh" width="16" /> Tentar novamente</>
+                  ) : isLembrete ? (
+                    <><Icon icon="mdi:whatsapp" width="16" /> Enviar para {selecionados.size}</>
                   ) : (
                     <><Icon icon="mdi:rocket-launch" width="16" /> Disparar para {selecionados.size}</>
                   )}
