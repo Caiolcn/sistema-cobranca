@@ -68,8 +68,8 @@ export default function AgendaPresencaModal({
 
     showToast(presente ? 'Presença registrada!' : 'Falta registrada!', 'success')
 
-    // Notificação WhatsApp (fire-and-forget)
-    if (enviarNotifPresenca && devedores?.telefone) {
+    // Notificação WhatsApp (fire-and-forget) — respeita o master switch do aluno
+    if (enviarNotifPresenca && devedores?.telefone && !(await whatsappService.alunoSilenciado(devedorId))) {
       try {
         const desc = aula.descricao ? ` - ${aula.descricao}` : ''
         const cred = credito ? { ...credito, aulas_restantes: novoCredito !== undefined ? novoCredito : credito.aulas_restantes } : null

@@ -105,8 +105,8 @@ export async function marcarPresencaRapida({
 
   showToast(presente ? 'Presença registrada!' : 'Falta registrada!', 'success')
 
-  // WhatsApp (fire-and-forget)
-  if (enviarNotifPresenca && devedores?.telefone) {
+  // WhatsApp (fire-and-forget) — respeita o master switch do aluno
+  if (enviarNotifPresenca && devedores?.telefone && !(await whatsappService.alunoSilenciado(devedorId))) {
     try {
       const nome = devedores?.nome || 'Aluno'
       const desc = aula.descricao ? ` - ${aula.descricao}` : ''

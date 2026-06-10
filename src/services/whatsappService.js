@@ -1232,6 +1232,27 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
    * Verifica status da conexão com WhatsApp
    */
   /**
+   * Master switch por aluno: retorna true se o aluno tem as comunicações
+   * desativadas (devedores.comunicacoes_ativas = false). Quando true,
+   * NENHUMA mensagem deve ser enviada — vence qualquer outro toggle.
+   * Use antes de envios disparados por código (boas-vindas, confirmação,
+   * presença); as views de cobrança/aula/aniversário já filtram no SQL.
+   */
+  async alunoSilenciado(devedorId) {
+    if (!devedorId) return false
+    try {
+      const { data } = await supabase
+        .from('devedores')
+        .select('comunicacoes_ativas')
+        .eq('id', devedorId)
+        .maybeSingle()
+      return data?.comunicacoes_ativas === false
+    } catch (e) {
+      return false // fail-open: erro de leitura não deve travar envio legítimo
+    }
+  }
+
+  /**
    * Envia confirmação de pagamento ao cliente via WhatsApp
    * Usado quando o gestor marca manualmente uma mensalidade como paga
    */
@@ -1242,9 +1263,15 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // Buscar dados da mensalidade + devedor
       const { data: mensalidade } = await supabase
         .from('mensalidades')
-        .select('*, devedores(id, nome, telefone, responsavel_nome, responsavel_telefone)')
+        .select('*, devedores(id, nome, telefone, responsavel_nome, responsavel_telefone, comunicacoes_ativas)')
         .eq('id', mensalidadeId)
         .single()
+
+      // Master switch: aluno com comunicações desativadas não recebe nada
+      if (mensalidade?.devedores?.comunicacoes_ativas === false) {
+        console.log('⏩ Confirmação WhatsApp: comunicações desativadas para este aluno')
+        return { sucesso: false, erro: 'Comunicações desativadas para este aluno' }
+      }
 
       const destinatario = resolverDestinatario(mensalidade?.devedores)
       if (!destinatario.telefone) {
@@ -1353,11 +1380,17 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // Buscar dados do aluno
       const { data: devedor } = await supabase
         .from('devedores')
-        .select('id, nome, telefone, responsavel_nome, responsavel_telefone, user_id')
+        .select('id, nome, telefone, responsavel_nome, responsavel_telefone, user_id, comunicacoes_ativas')
         .eq('id', devedorId)
         .single()
 
       if (!devedor) return { sucesso: false, erro: 'Aluno não encontrado' }
+
+      // Master switch: aluno com comunicações desativadas não recebe nada
+      if (devedor.comunicacoes_ativas === false) {
+        console.log('⏩ Boas-vindas WhatsApp: comunicações desativadas para este aluno')
+        return { sucesso: false, erro: 'Comunicações desativadas para este aluno' }
+      }
 
       const destinatario = resolverDestinatario(devedor)
       if (!destinatario.telefone) {

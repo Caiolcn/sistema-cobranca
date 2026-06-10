@@ -230,7 +230,7 @@ export default function Clientes() {
         .from('devedores')
         .select(`
           id, nome, telefone, cpf, assinatura_ativa, plano_id, created_at,
-          email, responsavel_nome, responsavel_telefone, bloquear_mensagens,
+          email, responsavel_nome, responsavel_telefone, bloquear_mensagens, comunicacoes_ativas,
           data_nascimento, portal_token, aulas_restantes, aulas_total,
           foto_url, tags, cep, endereco, numero, complemento, bairro,
           cidade, estado, lixo, experimental,
@@ -485,6 +485,7 @@ export default function Clientes() {
             responsavel_nome,
             responsavel_telefone,
             bloquear_mensagens,
+            comunicacoes_ativas,
             data_nascimento,
             portal_token,
             aulas_restantes,
@@ -2958,6 +2959,42 @@ Equipe ${nomeEmpresa}`
                           </div>
                         </div>
                       )}
+
+                      {/* Toggle MASTER: Comunicações ativas — desligado silencia TUDO */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        backgroundColor: clienteSelecionado.comunicacoes_ativas === false ? '#fee2e2' : '#f9fafb',
+                        borderRadius: '8px',
+                        border: `1px solid ${clienteSelecionado.comunicacoes_ativas === false ? '#f87171' : '#e5e7eb'}`,
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Icon icon={clienteSelecionado.comunicacoes_ativas === false ? 'mdi:message-off-outline' : 'mdi:message-text-outline'} width="16" style={{ color: clienteSelecionado.comunicacoes_ativas === false ? '#dc2626' : '#888' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: clienteSelecionado.comunicacoes_ativas === false ? '#991b1b' : '#555' }}>
+                              {clienteSelecionado.comunicacoes_ativas === false ? 'Comunicações desativadas' : 'Comunicações ativas'}
+                            </span>
+                            <span style={{ fontSize: '10px', color: '#999' }}>
+                              Desligado: não recebe nenhuma mensagem (cobrança, aula, aniversário, boas-vindas)
+                            </span>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={clienteSelecionado.comunicacoes_ativas !== false}
+                          onChange={async (e) => {
+                            const novoValor = e.target.checked
+                            try {
+                              await supabase.from('devedores').update({ comunicacoes_ativas: novoValor }).eq('id', clienteSelecionado.id)
+                              setClienteSelecionado({ ...clienteSelecionado, comunicacoes_ativas: novoValor })
+                              setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? { ...c, comunicacoes_ativas: novoValor } : c))
+                              showToast(novoValor ? 'Comunicações reativadas' : 'Comunicações desativadas — aluno não receberá nenhuma mensagem', 'success')
+                            } catch { showToast('Erro ao atualizar', 'error') }
+                          }}
+                        />
+                      </div>
 
                       {/* Toggle pausar cobranças */}
                       <div style={{

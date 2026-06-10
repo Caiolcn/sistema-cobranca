@@ -73,10 +73,11 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
   const buscarDestinatarios = async () => {
     setCarregandoDest(true)
     let query = supabase.from('devedores')
-      .select('id, nome, telefone, responsavel_nome, responsavel_telefone, assinatura_ativa, plano_id, bloquear_mensagens')
+      .select('id, nome, telefone, responsavel_nome, responsavel_telefone, assinatura_ativa, plano_id, bloquear_mensagens, comunicacoes_ativas')
       .eq('user_id', contextUserId)
       .or('lixo.is.null,lixo.eq.false')
       .or('bloquear_mensagens.is.null,bloquear_mensagens.eq.false')
+      .or('comunicacoes_ativas.is.null,comunicacoes_ativas.eq.true')
       .not('telefone', 'is', null)
 
     if (segmento === 'todos') {
