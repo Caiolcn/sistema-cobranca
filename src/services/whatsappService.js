@@ -1340,6 +1340,116 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
     }
   }
 
+  /**
+   * Envia mensagem de boas-vindas ao aluno via WhatsApp
+   * Usado no cadastro direto e na conversão de aluno no CRM (template tipo 'welcome')
+   * @param {string} devedorId - ID do aluno (devedor)
+   * @param {string} [mensagemCustomizada] - Mensagem inline (opcional, usa template salvo se não fornecida)
+   */
+  async enviarBoasVindas(devedorId, mensagemCustomizada = null) {
+    try {
+      await this.ensureInitialized()
+
+      // Buscar dados do aluno
+      const { data: devedor } = await supabase
+        .from('devedores')
+        .select('id, nome, telefone, responsavel_nome, responsavel_telefone, user_id')
+        .eq('id', devedorId)
+        .single()
+
+      if (!devedor) return { sucesso: false, erro: 'Aluno não encontrado' }
+
+      const destinatario = resolverDestinatario(devedor)
+      if (!destinatario.telefone) {
+        console.log('⏩ Boas-vindas WhatsApp: cliente sem telefone')
+        return { sucesso: false, erro: 'Cliente sem telefone' }
+      }
+
+      // Usar o dono do registro (não o admin logado)
+      const ownerId = devedor.user_id
+
+      // Buscar nome da empresa e template 'welcome' em paralelo
+      const [{ data: usuario }, { data: template }] = await Promise.all([
+        supabase
+          .from('usuarios')
+          .select('nome_empresa')
+          .eq('id', ownerId)
+          .maybeSingle(),
+        supabase
+          .from('templates')
+          .select('mensagem')
+          .eq('user_id', ownerId)
+          .eq('tipo', 'welcome')
+          .eq('ativo', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ])
+
+      const nomeEmpresa = usuario?.nome_empresa || 'nossa empresa'
+      // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
+      // {{nomeResponsavel}} explícito quando usuário usa a tag.
+      const nomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      const nomeCliente = nomeAluno
+      const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
+
+      const aplicarTags = (txt) => txt
+        .replace(/\[Nome\]/g, nomeCliente)
+        .replace(/\{\{nomeCliente\}\}/g, nomeCliente)
+        .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
+        .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
+        .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
+
+      // Mensagem personalizada inline > template salvo > padrão
+      let mensagemTexto
+      if (mensagemCustomizada && mensagemCustomizada.trim()) {
+        mensagemTexto = aplicarTags(mensagemCustomizada)
+      } else if (template?.mensagem) {
+        mensagemTexto = aplicarTags(template.mensagem)
+      } else {
+        mensagemTexto = aplicarTags(`Olá, {{nomeCliente}}! 👋
+
+Seja muito bem-vindo(a) à {{nomeEmpresa}}!
+
+Este é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:
+
+✅ Lembretes de vencimento
+✅ Confirmações de pagamento
+✅ Comunicados importantes
+
+*Salve nosso número* para não perder nenhuma mensagem!
+
+Qualquer dúvida, estamos à disposição.
+
+Abraços,
+Equipe {{nomeEmpresa}}`)
+      }
+
+      // Usar instância do dono do registro (não do admin logado)
+      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const resultado = await this.enviarMensagem(destinatario.telefone, mensagemTexto, ownerInstanceName)
+
+      // Logar envio (sempre com user_id do dono)
+      await supabase.from('logs_mensagens').insert({
+        user_id: ownerId,
+        devedor_id: devedor.id,
+        tipo: 'welcome',
+        mensagem: mensagemTexto,
+        status: resultado.sucesso ? 'enviado' : 'falha',
+        telefone: destinatario.telefone,
+        erro: resultado.erro || null,
+        erro_codigo: resultado.erroCodigo || (resultado.sucesso ? null : 'unknown'),
+        http_status: resultado.httpStatus || null,
+        response_api: resultado.responseApi || null
+      })
+
+      return resultado
+    } catch (error) {
+      console.error('⚠️ Erro ao enviar boas-vindas:', error)
+      return { sucesso: false, erro: error.message }
+    }
+  }
+
   async verificarStatus() {
     await this.ensureInitialized()
 
