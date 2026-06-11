@@ -53,7 +53,7 @@ export default function AgendaNovaCriarModal({
   // Aluno individual
   const [aluno, setAluno] = useState({
     devedorId: '',
-    diaSemana: 1,
+    dias: [1],
     horario: '09:00',
     descricao: ''
   })
@@ -82,28 +82,42 @@ export default function AgendaNovaCriarModal({
     })
   }
 
+  const toggleDiaAluno = (v) => {
+    setAluno(prev => {
+      if (prev.dias.includes(v)) {
+        if (prev.dias.length === 1) return prev
+        return { ...prev, dias: prev.dias.filter(d => d !== v) }
+      }
+      return { ...prev, dias: [...prev.dias, v] }
+    })
+  }
+
   const previewHorarios = gerarHorarios(turma.horario, turma.horarioFim, turma.intervalo)
 
   // ===== Salvar aluno individual =====
   // Insere direto em `aulas` com devedor_id setado — não usa aulas_fixos.
   // Isso marca a linha como "aluno individual" (distinto de turma cap=1).
+  // Um dia selecionado = uma linha em `aulas` (mesmo horário/descrição),
+  // pra o cliente cadastrar vários dias da semana de uma vez.
   const salvarAluno = async () => {
     if (!aluno.devedorId) { showToast('Selecione o aluno', 'warning'); return }
+    if (aluno.dias.length === 0) { showToast('Selecione pelo menos um dia', 'warning'); return }
     if (!aluno.horario) { showToast('Informe o horário', 'warning'); return }
     setSalvando(true)
 
-    const { data: aulaCriada, error: errAula } = await supabase.from('aulas')
-      .insert({
-        user_id: userId,
-        dia_semana: aluno.diaSemana,
-        horario: toHMS(aluno.horario),
-        descricao: aluno.descricao.trim(),
-        capacidade: 1,
-        devedor_id: aluno.devedorId,
-        ativo: true
-      })
+    const registros = aluno.dias.map(d => ({
+      user_id: userId,
+      dia_semana: d,
+      horario: toHMS(aluno.horario),
+      descricao: aluno.descricao.trim(),
+      capacidade: 1,
+      devedor_id: aluno.devedorId,
+      ativo: true
+    }))
+
+    const { data: aulasCriadas, error: errAula } = await supabase.from('aulas')
+      .insert(registros)
       .select('*, devedores(id, nome, telefone, foto_url)')
-      .single()
 
     setSalvando(false)
     if (errAula) {
@@ -111,8 +125,9 @@ export default function AgendaNovaCriarModal({
       return
     }
 
-    showToast('Aluno adicionado!', 'success')
-    onSavedAluno?.({ aula: aulaCriada })
+    const n = aulasCriadas?.length || 0
+    showToast(n > 1 ? `Aluno adicionado em ${n} dias!` : 'Aluno adicionado!', 'success')
+    onSavedAluno?.({ aulas: aulasCriadas || [] })
     onClose()
   }
 
@@ -198,7 +213,7 @@ export default function AgendaNovaCriarModal({
         </div>
 
         {tipo === 'aluno' ? (
-          <FormAluno aluno={aluno} setField={setAlunoField} clientes={clientes} />
+          <FormAluno aluno={aluno} setField={setAlunoField} toggleDia={toggleDiaAluno} clientes={clientes} />
         ) : (
           <FormTurma
             turma={turma}
@@ -230,7 +245,7 @@ export default function AgendaNovaCriarModal({
 
 // ===== Formulários =====
 
-function FormAluno({ aluno, setField, clientes }) {
+function FormAluno({ aluno, setField, toggleDia, clientes }) {
   return (
     <div>
       <div style={fieldBlock}>
@@ -250,12 +265,12 @@ function FormAluno({ aluno, setField, clientes }) {
       </div>
 
       <div style={fieldBlock}>
-        <label style={labelStyle}>Dia da semana</label>
+        <label style={labelStyle}>Dias da semana</label>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DIAS_OPTS.length}, 1fr)`, gap: '6px' }}>
           {DIAS_OPTS.map(d => {
-            const sel = aluno.diaSemana === d.valor
+            const sel = aluno.dias.includes(d.valor)
             return (
-              <button key={d.valor} onClick={() => setField('diaSemana', d.valor)}
+              <button key={d.valor} onClick={() => toggleDia(d.valor)}
                 style={{
                   padding: '8px 0', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
                   fontFamily: 'var(--font-sans)',
@@ -267,6 +282,9 @@ function FormAluno({ aluno, setField, clientes }) {
               </button>
             )
           })}
+        </div>
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>
+          O aluno será cadastrado em cada dia selecionado, no mesmo horário.
         </div>
       </div>
 

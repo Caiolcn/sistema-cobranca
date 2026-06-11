@@ -182,12 +182,12 @@ export default function AgendaNovaContainer() {
   }
 
   // --- handlers do modal "Nova" ---
-  // Aluno individual: aula vem com `devedores` já joined (foi inserido com
-  // devedor_id setado). Não cria entrada em aulas_fixos.
-  const onAlunoIndividualCriado = ({ aula }) => {
-    if (!aula) return
-    const aulaCompleta = { ...aula, colaboradores: null }
-    setAulas(prev => [...prev, aulaCompleta]
+  // Aluno individual: 1+ aulas (uma por dia da semana escolhido) vêm com
+  // `devedores` já joined (inseridas com devedor_id setado). Não usa aulas_fixos.
+  const onAlunoIndividualCriado = ({ aulas }) => {
+    if (!aulas?.length) return
+    const completas = aulas.map(a => ({ ...a, colaboradores: null }))
+    setAulas(prev => [...prev, ...completas]
       .sort((a, b) => (a.horario || '').localeCompare(b.horario || '')))
     setVersao(v => v + 1)
   }
