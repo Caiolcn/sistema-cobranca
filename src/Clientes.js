@@ -24,8 +24,7 @@ import Select from './design-system/components/Select'
 import Switch from './design-system/components/Switch'
 import Checkbox from './design-system/components/Checkbox'
 import Dropdown from './design-system/components/Dropdown'
-import AgendaDatePicker from './AgendaDatePicker'
-import DateFieldEditavel from './components/DateField' // versão com digitação (em teste só no Novo Aluno)
+import DateField from './components/DateField'
 import RadarEvasao from './components/RadarEvasao'
 
 // Soft-delete: mensalidades na lixeira têm lixo = true.
@@ -35,41 +34,6 @@ import RadarEvasao from './components/RadarEvasao'
 const FILTRO_NAO_LIXO = 'lixo.is.null,lixo.eq.false'
 const queryMensalidadesAtivas = (colunas = '*') =>
   supabase.from('mensalidades').select(colunas).or(FILTRO_NAO_LIXO)
-
-// Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom.
-// Evita o <input type="date"> nativo e o react-datepicker (popper incompatível na v9).
-function DateField({ value, onChange, placeholder = 'dd/mm/aaaa', label, size = 'md' }) {
-  const valorFmt = value
-    ? (() => { const [y, m, d] = value.split('-'); return `${d}/${m}/${y}` })()
-    : ''
-  return (
-    <div className="ds-input-field" style={{ flex: 1, minWidth: 0 }}>
-      {label && <label className="ds-input-label">{label}</label>}
-      <AgendaDatePicker
-        value={value}
-        onChange={onChange}
-        align="left"
-        popupZIndex={10100}
-        renderTrigger={({ aberto, abrir }) => (
-          <button
-            type="button"
-            onClick={abrir}
-            style={{ width: '100%' }}
-            className={`ds-select-trigger ds-select-trigger--${size}${aberto ? ' ds-select-trigger--open' : ''}`}>
-            <span className="ds-select-content">
-              {valorFmt
-                ? <span className="ds-select-value-text">{valorFmt}</span>
-                : <span className="ds-select-placeholder">{placeholder}</span>}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
-              <Icon icon="mdi:calendar-blank-outline" width={16} />
-            </span>
-          </button>
-        )}
-      />
-    </div>
-  )
-}
 
 function calcularIdade(dataNascimento) {
   if (!dataNascimento) return null
@@ -3993,7 +3957,7 @@ Equipe ${nomeEmpresa}`
                   />
                   <Input label="CPF" placeholder="000.000.000-00" maxLength={14} style={{ minWidth: 0 }}
                     value={novoClienteCpf} onChange={(e) => setNovoClienteCpf(formatarCpfCnpj(e.target.value))} />
-                  <DateFieldEditavel label="Nascimento" value={novoClienteDataNascimento} onChange={setNovoClienteDataNascimento} />
+                  <DateField label="Nascimento" value={novoClienteDataNascimento} onChange={setNovoClienteDataNascimento} />
                   <Input label="E-mail" type="email" placeholder="email@exemplo.com" style={{ minWidth: 0 }}
                     value={novoClienteEmail} onChange={(e) => setNovoClienteEmail(e.target.value)} />
                 </div>
@@ -4117,7 +4081,7 @@ Equipe ${nomeEmpresa}`
                 {criarAssinatura ? (
                   <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                      <DateFieldEditavel
+                      <DateField
                         label="Data de Início"
                         value={dataInicioAssinatura}
                         onChange={(v) => {
@@ -4129,7 +4093,7 @@ Equipe ${nomeEmpresa}`
                           }
                         }}
                       />
-                      <DateFieldEditavel label="Vencimento" value={dataVencimentoAssinatura} onChange={setDataVencimentoAssinatura} />
+                      <DateField label="Vencimento" value={dataVencimentoAssinatura} onChange={setDataVencimentoAssinatura} />
                     </div>
                     <div>
                       <Select

@@ -5,7 +5,7 @@ import useWindowSize from '../hooks/useWindowSize'
 import Input from '../design-system/components/Input'
 import Select from '../design-system/components/Select'
 import Button from '../design-system/components/Button'
-import AgendaDatePicker from '../AgendaDatePicker'
+import DateField from './DateField'
 
 // Opções Sim/Não pros selects booleanos
 const SIM_NAO = [
@@ -44,37 +44,6 @@ function Textarea({ label, required, rows = 2, style, ...rest }) {
         }}
         onFocus={(e) => { e.target.style.borderColor = 'var(--mensalli-green-500, #4CAF50)'; e.target.style.boxShadow = '0 0 0 3px rgba(76,175,80,0.15)' }}
         onBlur={(e) => { e.target.style.borderColor = 'var(--neutral-300, #CBD5E1)'; e.target.style.boxShadow = 'none' }}
-      />
-    </div>
-  )
-}
-
-// Campo de data com visual do DS (trigger = ds-select-trigger) + calendário custom
-function DateField({ value, onChange, label }) {
-  const valorFmt = value
-    ? (() => { const [y, m, d] = value.split('-'); return `${d}/${m}/${y}` })()
-    : ''
-  return (
-    <div className="ds-input-field" style={{ minWidth: 0 }}>
-      {label && <label className="ds-input-label">{label}</label>}
-      <AgendaDatePicker
-        value={value}
-        onChange={onChange}
-        align="left"
-        popupZIndex={10100}
-        renderTrigger={({ aberto, abrir }) => (
-          <button type="button" onClick={abrir} style={{ width: '100%' }}
-            className={`ds-select-trigger ds-select-trigger--md${aberto ? ' ds-select-trigger--open' : ''}`}>
-            <span className="ds-select-content">
-              {valorFmt
-                ? <span className="ds-select-value-text">{valorFmt}</span>
-                : <span className="ds-select-placeholder">dd/mm/aaaa</span>}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
-              <Icon icon="mdi:calendar-blank-outline" width={16} />
-            </span>
-          </button>
-        )}
       />
     </div>
   )
