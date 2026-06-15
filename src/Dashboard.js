@@ -12,6 +12,8 @@ import { useAgendamentoNotifications } from './hooks/useAgendamentoNotifications
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 import NotificacoesDropdown, { contarNaoLidas } from './components/NotificacoesDropdown'
+import ConfigMenu from './components/ConfigMenu'
+import { CONFIG_TABS } from './configTabs'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export default function Dashboard() {
   const [mostrarModalTrial, setMostrarModalTrial] = useState(false)
   const [menuAberto, setMenuAberto] = useState(false)
   const [configSubmenuAberto, setConfigSubmenuAberto] = useState(false)
+  const [configMenuAberto, setConfigMenuAberto] = useState(false)
   const [perfilMenuAberto, setPerfilMenuAberto] = useState(false)
   const [buscaAberta, setBuscaAberta] = useState(false)
   const [buscaTexto, setBuscaTexto] = useState('')
@@ -48,6 +51,7 @@ export default function Dashboard() {
     setBuscaAberta(false)
     setBuscaTexto('')
     setNotifAberta(false)
+    setConfigMenuAberto(false)
   }, [location.pathname])
 
   // Contador de notificações não-lidas (roda a cada 2 min)
@@ -98,6 +102,10 @@ export default function Dashboard() {
 
   // Determinar tela ativa pela rota atual
   const telaAtiva = location.pathname.replace('/app/', '') || 'home'
+  // Aba de Configuração ativa (pra destacar no dropdown da engrenagem)
+  const abaConfigAtiva = telaAtiva === 'configuracao'
+    ? (new URLSearchParams(location.search).get('aba') || 'empresa')
+    : null
 
   useEffect(() => {
     // Inscrever-se para atualizações do status do WhatsApp
@@ -727,17 +735,7 @@ export default function Dashboard() {
                   paddingLeft: '12px',
                   borderLeft: '2px solid #e0e0e0'
                 }}>
-                  {[
-                    { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
-                    { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
-                    { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
-                    { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
-                    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
-                    { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
-                    { id: 'landing', label: 'Site', icon: 'mdi:web' },
-                    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
-                    { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
-                  ].map((item) => (
+                  {CONFIG_TABS.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => {
@@ -1196,23 +1194,33 @@ export default function Dashboard() {
               >
                 <Icon icon="fluent:question-circle-20-regular" width="20" height="20" />
               </div>
-              <div
-                title="Configurações"
-                onClick={() => navigate('/app/configuracao')}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: '#555'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <Icon icon="fluent:settings-20-regular" width="20" height="20" />
+              <div style={{ position: 'relative' }}>
+                <div
+                  title="Configurações"
+                  onClick={() => setConfigMenuAberto(v => !v)}
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: configMenuAberto || telaAtiva === 'configuracao' ? '#333' : '#555',
+                    backgroundColor: configMenuAberto ? '#f0f0f0' : 'transparent'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = configMenuAberto ? '#f0f0f0' : 'transparent'}
+                >
+                  <Icon icon="fluent:settings-20-regular" width="20" height="20" />
+                </div>
+                <ConfigMenu
+                  open={configMenuAberto}
+                  onClose={() => setConfigMenuAberto(false)}
+                  onSelect={(id) => navigate(`/app/configuracao?aba=${id}`)}
+                  activeId={abaConfigAtiva}
+                  anchorStyle={{ top: '46px', right: 0 }}
+                />
               </div>
               <div
                 onClick={() => setMostrarPerfil(true)}

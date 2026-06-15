@@ -16,6 +16,7 @@ import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
 import { SITE_TEMPLATES } from './data/siteTemplates'
 import { SITE_FONTS } from './data/siteFonts'
+import { CONFIG_TABS } from './configTabs'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
@@ -5412,18 +5413,7 @@ function Configuracao() {
     )
   }
 
-  const tabs = [
-    { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
-    { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
-    { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
-    { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
-    { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
-    { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
-    { id: 'colaboradores', label: 'Colaboradores', icon: 'mdi:account-tie-outline' },
-    { id: 'landing', label: 'Site', icon: 'mdi:web' },
-    { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline' },
-    { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline' }
-  ]
+  const tabs = CONFIG_TABS
 
   // Encontrar a aba atual para mostrar no header mobile
   const abaAtual = tabs.find(t => t.id === abaAtiva)
