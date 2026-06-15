@@ -194,7 +194,7 @@ class WhatsAppService {
       // Determinar URL base
       const baseUrl = typeof window !== 'undefined'
         ? window.location.origin
-        : 'https://app.mensallizap.com.br' // URL padrão para produção
+        : 'https://www.mensalli.com.br' // URL padrão para produção
 
       // Criar registro na tabela links_pagamento
       const { error } = await supabase
@@ -781,7 +781,7 @@ class WhatsAppService {
       // Gerar link do portal do cliente
       const baseUrl = typeof window !== 'undefined'
         ? window.location.origin
-        : 'https://app.mensallizap.com.br'
+        : 'https://www.mensalli.com.br'
       const portalToken = mensalidade.devedor?.portal_token
       const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
 
@@ -1011,7 +1011,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // Gerar link do portal do cliente
       const baseUrl = typeof window !== 'undefined'
         ? window.location.origin
-        : 'https://app.mensallizap.com.br'
+        : 'https://www.mensalli.com.br'
       const portalToken = mensalidade.devedor?.portal_token
       const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
 
