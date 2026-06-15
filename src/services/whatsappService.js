@@ -809,15 +809,16 @@ class WhatsAppService {
       const vencimento = new Date(mensalidade.data_vencimento)
       const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
 
-      // Resolver destinatário (telefone segue auto: responsável > aluno).
-      // Nomes: {{nomeCliente}} e {{nomeAluno}} = sempre nome do aluno.
-      // Pra mandar nome do responsável, usuário usa {{nomeResponsavel}} explícito.
+      // Resolver destinatário (telefone e nome seguem auto: responsável > aluno).
+      // {{nomeCliente}} / {{nomeAluno}}: nome do responsável quando há um
+      // cadastrado, senão o nome do próprio aluno (fallback automático).
+      // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
       const destinatario = resolverDestinatario(mensalidade.devedor)
-      const primeiroNomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      const nomeContato = destinatario.primeiroNome || 'Cliente'
 
       const dadosSubstituicao = {
-        nomeCliente: primeiroNomeAluno,
-        nomeAluno: primeiroNomeAluno,
+        nomeCliente: nomeContato,
+        nomeAluno: nomeContato,
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -1014,18 +1015,17 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const portalToken = mensalidade.devedor?.portal_token
       const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
 
-      // Resolver destinatário (responsável > aluno)
+      // Resolver destinatário (telefone e nome seguem auto: responsável > aluno)
       const destinatario = resolverDestinatario(mensalidade.devedor)
-      // Telefone segue auto (responsável > aluno). Nomes:
-      // {{nomeCliente}} e {{nomeAluno}} = sempre nome do aluno (deixa claro
-      // de qual filho é a mensalidade quando responsável tem mais de um).
-      // Pra falar com responsável, usuário usa {{nomeResponsavel}}.
-      const primeiroNomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      // {{nomeCliente}} / {{nomeAluno}}: nome do responsável quando há um
+      // cadastrado, senão o nome do próprio aluno (fallback automático).
+      // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
+      const nomeContato = destinatario.primeiroNome || 'Cliente'
 
       // Preparar dados para substituição
       const dadosSubstituicao = {
-        nomeCliente: primeiroNomeAluno,
-        nomeAluno: primeiroNomeAluno,
+        nomeCliente: nomeContato,
+        nomeAluno: nomeContato,
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -1320,9 +1320,10 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         : ''
 
       const empresa = usuario?.nome_empresa || ''
-      // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
-      // {{nomeResponsavel}} explícito quando usuário usa a tag.
-      const nomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      // {{nomeCliente}} / {{nomeAluno}}: responsável quando há um cadastrado,
+      // senão o próprio aluno (fallback automático).
+      // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
+      const nomeAluno = destinatario.primeiroNome || 'Cliente'
       const nomeCliente = nomeAluno
       const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
 
@@ -1420,9 +1421,10 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       ])
 
       const nomeEmpresa = usuario?.nome_empresa || 'nossa empresa'
-      // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
-      // {{nomeResponsavel}} explícito quando usuário usa a tag.
-      const nomeAluno = destinatario.primeiroNomeAluno || 'Cliente'
+      // {{nomeCliente}} / {{nomeAluno}}: responsável quando há um cadastrado,
+      // senão o próprio aluno (fallback automático).
+      // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
+      const nomeAluno = destinatario.primeiroNome || 'Cliente'
       const nomeCliente = nomeAluno
       const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
 

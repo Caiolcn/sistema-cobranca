@@ -200,13 +200,14 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
 
       const destInfo = resolverDestinatario(dest)
       const telefone = destInfo.telefone
-      // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
-      // {{nomeResponsavel}} explícito quando usuário usa a tag.
-      const primeiroNomeAlunoDest = destInfo.primeiroNomeAluno || 'Aluno'
+      // {{nomeCliente}} / {{nomeAluno}}: responsável quando há um cadastrado,
+      // senão o próprio aluno (fallback automático).
+      // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
+      const nomeContatoDest = destInfo.primeiroNome || 'Aluno'
       const primeiroNomeRespDest = destInfo.ehResponsavel ? destInfo.primeiroNome : ''
       const msgFinal = mensagem
-        .replace(/\{\{nomeCliente\}\}/g, primeiroNomeAlunoDest)
-        .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAlunoDest)
+        .replace(/\{\{nomeCliente\}\}/g, nomeContatoDest)
+        .replace(/\{\{nomeAluno\}\}/g, nomeContatoDest)
         .replace(/\{\{nomeResponsavel\}\}/g, primeiroNomeRespDest)
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
 

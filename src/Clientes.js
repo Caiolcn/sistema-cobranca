@@ -1496,10 +1496,10 @@ export default function Clientes() {
             const nomeEmpresa = usuarioData?.nome_empresa || 'nossa empresa'
             const primeiroNomeAluno = novoClienteNome.trim().split(' ')[0]
             const primeiroNomeResp = (novoClienteResponsavelNome || '').trim().split(' ')[0]
-            // {{nomeCliente}} e {{nomeAluno}} sempre = nome do aluno.
-            // Mensagem vai pro telefone do responsável quando tem, mas o nome
-            // no texto identifica o aluno (deixa claro quem é o destinatário-final).
-            const primeiroNome = primeiroNomeAluno
+            // {{nomeCliente}} / {{nomeAluno}}: nome do responsável quando há um
+            // cadastrado, senão o nome do próprio aluno (fallback automático).
+            // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
+            const primeiroNome = temResponsavel ? primeiroNomeResp : primeiroNomeAluno
 
             // Buscar template de boas-vindas salvo
             const { data: templateWelcome } = await supabase
@@ -1518,13 +1518,13 @@ export default function Clientes() {
               mensagemFinal = mensagemBoasVindasCustom
                 .replace(/\[Nome\]/g, primeiroNome)
                 .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
-                .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAluno)
+                .replace(/\{\{nomeAluno\}\}/g, primeiroNome)
                 .replace(/\{\{nomeResponsavel\}\}/g, temResponsavel ? primeiroNomeResp : '')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
             } else if (templateWelcome?.mensagem) {
               mensagemFinal = templateWelcome.mensagem
                 .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
-                .replace(/\{\{nomeAluno\}\}/g, primeiroNomeAluno)
+                .replace(/\{\{nomeAluno\}\}/g, primeiroNome)
                 .replace(/\{\{nomeResponsavel\}\}/g, temResponsavel ? primeiroNomeResp : '')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
             } else {
