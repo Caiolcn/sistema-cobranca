@@ -11,7 +11,7 @@ const DIAS_HEADER = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const COR = '#344848'
 const SEL = '#16a34a'
 
-export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right', popupZIndex = 1100 }) {
+export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right', popupZIndex = 1100, pastYears = 5, futureYears = 5 }) {
   const [aberto, setAberto] = useState(false)
   // Se value vier vazio (ex: filtro "Tudo"), navega a partir de hoje
   const valorObj = value ? parseISO(value) : new Date()
@@ -120,10 +120,10 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
     setAberto(false)
   }
 
-  // anos: ±5 ao redor do ano atual (ou do ano selecionado)
+  // anos: janela ao redor do ano atual (ou do ano selecionado), configurável
   const anoBase = new Date().getFullYear()
-  const min = Math.min(anoBase, ano) - 5
-  const max = Math.max(anoBase, ano) + 5
+  const min = Math.min(anoBase, ano) - pastYears
+  const max = Math.max(anoBase, ano) + futureYears
   const anos = []
   for (let a = min; a <= max; a++) anos.push(a)
 

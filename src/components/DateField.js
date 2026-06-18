@@ -17,7 +17,7 @@ function isoParaBR(iso) {
   return `${d}/${m}/${y}`
 }
 
-export default function DateField({ value, onChange, label, required, placeholder = 'dd/mm/aaaa', style }) {
+export default function DateField({ value, onChange, label, required, placeholder = 'dd/mm/aaaa', style, pastYears = 100, futureYears = 10 }) {
   const [texto, setTexto] = useState(isoParaBR(value))
   const [focado, setFocado] = useState(false)
 
@@ -61,6 +61,8 @@ export default function DateField({ value, onChange, label, required, placeholde
         onChange={onChange}
         align="left"
         popupZIndex={10100}
+        pastYears={pastYears}
+        futureYears={futureYears}
         renderTrigger={({ aberto, abrir }) => (
           <div style={{
             display: 'flex', alignItems: 'center', width: '100%', boxSizing: 'border-box',
