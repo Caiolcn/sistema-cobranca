@@ -964,10 +964,17 @@ export default function Clientes() {
 
       if (clienteError) throw clienteError
 
-      // Remover o aluno das turmas fixas (limpa o roster da Agenda).
-      // Presenças históricas continuam (com devedor_id apontando pro aluno em lixo),
-      // mas o aluno não aparece mais como fixo em nenhuma turma.
-      await supabase.from('aulas_fixos').delete().eq('devedor_id', cliente.id)
+      // Limpar TODA a presença do aluno na Agenda — senão sobram vínculos
+      // órfãos apontando pra um devedor em lixo (aparecem como perfil deletado).
+      // Presenças históricas (tabela `presencas`) continuam preservadas.
+      await Promise.all([
+        // turmas fixas (roster recorrente)
+        supabase.from('aulas_fixos').delete().eq('devedor_id', cliente.id),
+        // agendamentos online confirmados (avulsos, datados no futuro/passado)
+        supabase.from('agendamentos').delete().eq('devedor_id', cliente.id).eq('status', 'confirmado'),
+        // aulas individuais (slot próprio do aluno) — desativa em vez de apagar
+        supabase.from('aulas').update({ ativo: false }).eq('devedor_id', cliente.id)
+      ])
 
       const mensagem = excluirMensalidades
         ? 'Aluno e mensalidades excluídos com sucesso!'

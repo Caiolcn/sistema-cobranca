@@ -500,10 +500,17 @@ export default function CRM() {
     if (!window.confirm(`Descartar ${lead.nome}? O aluno experimental será arquivado.`)) return
     await supabase.from('leads').update({ status: 'perdido' }).eq('id', lead.id)
     if (lead.convertido_em_devedor_id) {
+      const devedorId = lead.convertido_em_devedor_id
       await supabase.from('devedores').update({
         lixo: true,
         deletado_em: new Date().toISOString()
-      }).eq('id', lead.convertido_em_devedor_id)
+      }).eq('id', devedorId)
+      // Limpa vínculos da Agenda — senão sobram órfãos apontando pro devedor em lixo
+      await Promise.all([
+        supabase.from('aulas_fixos').delete().eq('devedor_id', devedorId),
+        supabase.from('agendamentos').delete().eq('devedor_id', devedorId).eq('status', 'confirmado'),
+        supabase.from('aulas').update({ ativo: false }).eq('devedor_id', devedorId)
+      ])
     }
     setModalAberto(false)
     carregarTudo()

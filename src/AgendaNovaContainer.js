@@ -81,9 +81,13 @@ export default function AgendaNovaContainer() {
       // (devedor_id setado). O join `devedores` traz o aluno quando é individual;
       // pra turmas o campo vem null e os alunos seguem via `aulas_fixos`.
       supabase.from('aulas')
-        .select('*, colaboradores(id, nome), devedores(id, nome, telefone, foto_url)')
+        .select('*, colaboradores(id, nome), devedores(id, nome, telefone, foto_url, lixo)')
         .eq('user_id', userId).eq('ativo', true).order('horario'),
-      supabase.from('aulas_fixos').select('*, devedores(nome, telefone, foto_url)').eq('user_id', userId),
+      // !inner + filtro de lixo: aluno fixo em lixeira não entra no roster
+      supabase.from('aulas_fixos')
+        .select('*, devedores!inner(nome, telefone, foto_url, lixo)')
+        .eq('user_id', userId)
+        .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedores' }),
       supabase.from('devedores')
         .select('id, nome, telefone, foto_url, aulas_restantes, aulas_total')
         .eq('user_id', userId)

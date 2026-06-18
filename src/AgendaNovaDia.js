@@ -51,9 +51,11 @@ export default function AgendaNovaDia({
     if (!userId) return
     setLoadingDia(true)
     const [agRes, ausRes, presRes, filaRes] = await Promise.all([
+      // !inner + filtro de lixo: agendamento de aluno em lixeira não renderiza
       supabase.from('agendamentos')
-        .select('*, devedores(nome, telefone, foto_url, origem, assinatura_ativa, plano_id)')
-        .eq('user_id', userId).eq('data', dataSel).eq('status', 'confirmado'),
+        .select('*, devedores!inner(nome, telefone, foto_url, origem, assinatura_ativa, plano_id, lixo)')
+        .eq('user_id', userId).eq('data', dataSel).eq('status', 'confirmado')
+        .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedores' }),
       supabase.from('ausencias_fixos')
         .select('aula_id, devedor_id, data, motivo').eq('user_id', userId).eq('data', dataSel),
       supabase.from('presencas')
@@ -99,6 +101,8 @@ export default function AgendaNovaDia({
   const aulasAlunoDia = useMemo(() => {
     return aulas
       .filter(a => !!a.devedor_id && a.dia_semana === diaSemana)
+      // esconde aula individual cujo aluno foi pra lixeira (devedor null/lixo=true)
+      .filter(a => a.devedores && !a.devedores.lixo)
       .filter(a => !filtroAlunoId || a.devedor_id === filtroAlunoId)
       .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''))
   }, [aulas, diaSemana, filtroAlunoId])
