@@ -220,6 +220,9 @@ function Configuracao() {
   const [testandoAsaas, setTestandoAsaas] = useState(false)
   const [salvandoAsaas, setSalvandoAsaas] = useState(false)
   const [asaasContaInfo, setAsaasContaInfo] = useState(null)
+  // Formas de pagamento aceitas no portal do aluno (PIX sempre on)
+  const [formasPagamento, setFormasPagamento] = useState({ pix: true, cartao: false, boleto: false })
+  const [salvandoFormas, setSalvandoFormas] = useState(false)
 
   // Logo upload
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -363,6 +366,13 @@ function Configuracao() {
       })
       // Carregar modo de integração
       setModoIntegracao(data.modo_integracao || 'manual')
+
+      // Carregar formas de pagamento aceitas no portal (PIX sempre on)
+      setFormasPagamento({
+        pix: true,
+        cartao: data.asaas_formas_pagamento?.cartao === true,
+        boleto: data.asaas_formas_pagamento?.boleto === true
+      })
 
       // Carregar config de agendamento
       setAgendamentoConfig({
@@ -2515,6 +2525,28 @@ function Configuracao() {
     }
   }
 
+  // Liga/desliga uma forma de pagamento (cartão/boleto) e persiste na hora.
+  // Salva na conta selecionada (contextUserId), igual aos demais saves desta tela —
+  // importante quando o admin edita via o seletor de contas.
+  const toggleFormaPagamento = async (metodo, ativo) => {
+    const anterior = formasPagamento
+    const novas = { pix: true, ...formasPagamento, [metodo]: ativo }
+    setFormasPagamento(novas)
+    setSalvandoFormas(true)
+    try {
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ asaas_formas_pagamento: novas })
+        .eq('id', contextUserId)
+      if (error) throw error
+    } catch {
+      setFormasPagamento(anterior) // reverte em caso de erro
+      showToast('Erro ao salvar formas de pagamento', 'error')
+    } finally {
+      setSalvandoFormas(false)
+    }
+  }
+
   const testarConexaoAsaas = async () => {
     if (!asaasConfig.apiKey) {
       showToast('Digite a API Key do Asaas', 'error')
@@ -2980,6 +3012,102 @@ function Configuracao() {
               </button>
             </div>
           </div>
+
+          {/* Formas de pagamento aceitas no portal do aluno */}
+          {asaasConectado && (
+            <div style={{
+              marginTop: '24px',
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: isSmallScreen ? '20px' : '28px',
+              border: '1px solid #e5e7eb',
+              boxShadow: 'none'
+            }}>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#344848',
+                marginBottom: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: '#e3f2fd',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Icon icon="mdi:credit-card-multiple" width="18" style={{ color: '#2196F3' }} />
+                </div>
+                Formas de pagamento no portal
+              </h3>
+              <p style={{ fontSize: '13px', color: '#888', margin: '0 0 20px 42px' }}>
+                Escolha o que o aluno pode usar pra pagar no portal. Só aparece pra ele o que estiver ativo aqui.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* PIX — sempre ativo */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
+                  cursor: 'not-allowed', backgroundColor: '#f0fdf4'
+                }}>
+                  <input type="checkbox" checked disabled />
+                  <Icon icon="mdi:qrcode" width="22" style={{ color: '#00b386' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>PIX</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Sempre disponível — recebimento imediato, menor taxa</div>
+                  </div>
+                </label>
+
+                {/* Cartão de crédito */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
+                  cursor: salvandoFormas ? 'wait' : 'pointer',
+                  backgroundColor: formasPagamento.cartao ? '#f0fdf4' : '#fff',
+                  opacity: salvandoFormas ? 0.7 : 1
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={formasPagamento.cartao}
+                    disabled={salvandoFormas}
+                    onChange={e => toggleFormaPagamento('cartao', e.target.checked)}
+                  />
+                  <Icon icon="mdi:credit-card-outline" width="22" style={{ color: '#5b6cff' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Cartão de crédito</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Permite parcelamento — taxa do Asaas é maior que a do PIX</div>
+                  </div>
+                </label>
+
+                {/* Boleto */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
+                  cursor: salvandoFormas ? 'wait' : 'pointer',
+                  backgroundColor: formasPagamento.boleto ? '#f0fdf4' : '#fff',
+                  opacity: salvandoFormas ? 0.7 : 1
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={formasPagamento.boleto}
+                    disabled={salvandoFormas}
+                    onChange={e => toggleFormaPagamento('boleto', e.target.checked)}
+                  />
+                  <Icon icon="mdi:barcode" width="22" style={{ color: '#e65100' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Boleto bancário</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Compensação em 1–3 dias úteis</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
 
           {/* Instruções Asaas */}
           <div style={{
