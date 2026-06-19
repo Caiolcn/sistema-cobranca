@@ -51,7 +51,7 @@ serve(async (req) => {
     // Buscar dados da empresa (inclui plano + flags de agendamento para gating do portal)
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('nome_empresa, chave_pix, asaas_api_key, modo_integracao, asaas_ambiente, cpf_cnpj, endereco, numero, bairro, cidade, estado, telefone, logo_url, plano, agendamento_ativo, agendamento_slug')
+      .select('nome_empresa, chave_pix, asaas_api_key, modo_integracao, asaas_ambiente, asaas_formas_pagamento, cpf_cnpj, endereco, numero, bairro, cidade, estado, telefone, logo_url, plano, agendamento_ativo, agendamento_slug')
       .eq('id', devedor.user_id)
       .single()
 
@@ -71,11 +71,14 @@ serve(async (req) => {
     const metodoPagamento = configMetodo?.valor || 'pix_manual'
 
     // Buscar mensalidades do devedor (pendentes e pagas recentes)
+    // Exclui itens na lixeira (lixo / deletado_em) para nao aparecerem no portal do aluno
     const { data: mensalidades } = await supabase
       .from('mensalidades')
       .select('id, valor, data_vencimento, status, created_at, forma_pagamento, updated_at')
       .eq('devedor_id', devedor.id)
       .eq('user_id', devedor.user_id)
+      .not('lixo', 'is', true)
+      .is('deletado_em', null)
       .order('data_vencimento', { ascending: false })
       .limit(20)
 
@@ -214,7 +217,15 @@ serve(async (req) => {
           responsavel_telefone: devedor.responsavel_telefone || null,
           membro_desde: devedor.created_at ? devedor.created_at.split('T')[0] : null,
           aulas_restantes: devedor.aulas_restantes ?? null,
-          aulas_total: devedor.aulas_total ?? null
+          aulas_total: devedor.aulas_total ?? null,
+          // Endereço (usado pela ficha editável do aluno no portal)
+          cep: devedor.cep || null,
+          endereco: devedor.endereco || null,
+          numero: devedor.numero || null,
+          complemento: devedor.complemento || null,
+          bairro: devedor.bairro || null,
+          cidade: devedor.cidade || null,
+          estado: devedor.estado || null
         },
         empresa: {
           nome: usuario?.nome_empresa || 'Empresa',
@@ -226,6 +237,12 @@ serve(async (req) => {
         },
         metodo_pagamento: metodoPagamento,
         asaas_configurado: !!(usuario?.asaas_api_key && usuario?.modo_integracao === 'asaas'),
+        // Formas de pagamento liberadas pelo gestor (PIX sempre on; cartao/boleto a criterio dele)
+        formas_pagamento: {
+          pix: true,
+          cartao: usuario?.asaas_formas_pagamento?.cartao === true,
+          boleto: usuario?.asaas_formas_pagamento?.boleto === true
+        },
         mensalidades: mensalidadesFormatadas,
         grade_horarios: (() => {
           // Une grade legada + aulas fixas do modelo novo, sem duplicar

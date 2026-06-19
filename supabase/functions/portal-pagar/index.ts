@@ -19,6 +19,23 @@ const ASAAS_URLS: Record<string, string> = {
   production: 'https://api.asaas.com/v3'
 }
 
+// Valida CPF (11 digitos + digitos verificadores). Asaas exige cpfCnpj no customer.
+function isValidCpf(value: string): boolean {
+  const cpf = (value || '').replace(/\D/g, '')
+  if (cpf.length !== 11) return false
+  if (/^(\d)\1{10}$/.test(cpf)) return false
+  let soma = 0
+  for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i)
+  let d1 = 11 - (soma % 11)
+  if (d1 >= 10) d1 = 0
+  if (d1 !== parseInt(cpf[9])) return false
+  soma = 0
+  for (let i = 0; i < 10; i++) soma += parseInt(cpf[i]) * (11 - i)
+  let d2 = 11 - (soma % 11)
+  if (d2 >= 10) d2 = 0
+  return d2 === parseInt(cpf[10])
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -27,11 +44,25 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
   try {
-    const { token, mensalidade_id } = await req.json()
+    const { token, mensalidade_id, cpf, metodo } = await req.json()
 
     if (!token || !mensalidade_id) {
       return new Response(
         JSON.stringify({ error: 'token e mensalidade_id são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Metodo escolhido pelo aluno -> billingType do Asaas. Default PIX (compat. com front antigo).
+    const metodoEscolhido = (metodo || 'pix').toString().toLowerCase()
+    const BILLING_TYPE: Record<string, string> = {
+      pix: 'PIX',
+      cartao: 'CREDIT_CARD',
+      boleto: 'BOLETO'
+    }
+    if (!BILLING_TYPE[metodoEscolhido]) {
+      return new Response(
+        JSON.stringify({ error: 'Forma de pagamento inválida' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -73,12 +104,17 @@ serve(async (req) => {
       )
     }
 
-    // 3. Verificar se já existe boleto Asaas para esta mensalidade
-    const { data: boletoExistente } = await supabase
+    // 3. Verificar se já existe cobrança Asaas para esta mensalidade NO MESMO método
+    // (cada método gera uma cobrança própria; PIX também reaproveita registros legados sem forma_pagamento)
+    let boletoQuery = supabase
       .from('boletos')
-      .select('invoice_url, asaas_id, status')
+      .select('invoice_url, boleto_url, asaas_id, status, forma_pagamento')
       .eq('mensalidade_id', mensalidade_id)
       .not('invoice_url', 'is', null)
+    boletoQuery = metodoEscolhido === 'pix'
+      ? boletoQuery.or('forma_pagamento.eq.pix,forma_pagamento.is.null')
+      : boletoQuery.eq('forma_pagamento', metodoEscolhido)
+    const { data: boletoExistente } = await boletoQuery
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -86,13 +122,26 @@ serve(async (req) => {
     // 4. Buscar configuração Asaas do gestor (dono do devedor)
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('asaas_api_key, asaas_ambiente, nome_empresa')
+      .select('asaas_api_key, asaas_ambiente, nome_empresa, asaas_formas_pagamento')
       .eq('id', devedor.user_id)
       .single()
 
     if (!usuario?.asaas_api_key) {
       return new Response(
         JSON.stringify({ error: 'Pagamento online não disponível no momento' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Trava server-side: o método precisa estar habilitado pelo gestor (PIX sempre liberado)
+    const formasGestor = {
+      pix: true,
+      cartao: usuario.asaas_formas_pagamento?.cartao === true,
+      boleto: usuario.asaas_formas_pagamento?.boleto === true
+    }
+    if (!formasGestor[metodoEscolhido as keyof typeof formasGestor]) {
+      return new Response(
+        JSON.stringify({ error: 'Esta forma de pagamento não está disponível' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -118,12 +167,15 @@ serve(async (req) => {
     }
 
     if (boletoExistente?.asaas_id) {
-      console.log('🔗 Reusando boleto existente:', boletoExistente.asaas_id)
-      const pixQr = await fetchPixQrCode(boletoExistente.asaas_id)
+      console.log('🔗 Reusando cobrança existente:', boletoExistente.asaas_id, metodoEscolhido)
+      // PIX devolve QR inline; cartão/boleto vão pro checkout/boleto (invoice_url)
+      const pixQr = metodoEscolhido === 'pix' ? await fetchPixQrCode(boletoExistente.asaas_id) : null
       return new Response(
         JSON.stringify({
           success: true,
+          metodo: metodoEscolhido,
           invoice_url: boletoExistente.invoice_url,
+          boleto_url: boletoExistente.boleto_url || null,
           pix_qr_code: pixQr?.encodedImage || null,
           pix_copia_cola: pixQr?.payload || null
         }),
@@ -131,13 +183,40 @@ serve(async (req) => {
       )
     }
 
-    // 5. Validar CPF do devedor
-    const cpfLimpo = devedor.cpf?.replace(/\D/g, '') || ''
-    if (!cpfLimpo || cpfLimpo.length < 11) {
-      return new Response(
-        JSON.stringify({ error: 'CPF do cliente não cadastrado. Entre em contato com o estabelecimento.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // 5. Resolver CPF do devedor — captura no portal se ainda nao tiver
+    let cpfLimpo = (devedor.cpf || '').replace(/\D/g, '')
+
+    if (!isValidCpf(cpfLimpo)) {
+      const cpfInformado = (cpf || '').replace(/\D/g, '')
+
+      if (!cpfInformado) {
+        // Sem CPF salvo e sem CPF informado: front exibe o campo pra digitar.
+        // `code` = sinal pro front novo; `error` = texto amigavel pro front antigo.
+        return new Response(
+          JSON.stringify({ code: 'cpf_required', error: 'Para gerar o pagamento, informe o CPF do aluno.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (!isValidCpf(cpfInformado)) {
+        return new Response(
+          JSON.stringify({ code: 'cpf_invalid', error: 'CPF inválido. Confira os números e tente novamente.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Grava no devedor apenas se ainda estiver vazio (nunca sobrescreve um CPF existente)
+      const { error: cpfUpdateError } = await supabase
+        .from('devedores')
+        .update({ cpf: cpfInformado })
+        .eq('id', devedor.id)
+        .or('cpf.is.null,cpf.eq.')
+
+      if (cpfUpdateError) {
+        console.error('⚠️ Erro ao salvar CPF do devedor:', cpfUpdateError)
+      }
+
+      cpfLimpo = cpfInformado
     }
 
     // 6. Buscar ou criar cliente no Asaas
@@ -187,15 +266,20 @@ serve(async (req) => {
       })
     }
 
-    // 7. Criar cobrança PIX no Asaas
+    // 7. Criar cobrança no Asaas no método escolhido pelo aluno
+    // Asaas rejeita cobranca com dueDate no passado. Se a mensalidade ja venceu,
+    // usa a data de hoje (UTC nunca fica no passado em relacao ao BRT).
+    const hojeISO = new Date().toISOString().split('T')[0]
+    const dueDateAsaas = mensalidade.data_vencimento < hojeISO ? hojeISO : mensalidade.data_vencimento
+
     const paymentResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
       headers: { 'access_token': asaasApiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer: asaasCustomerId,
-        billingType: 'PIX',
+        billingType: BILLING_TYPE[metodoEscolhido],
         value: parseFloat(String(mensalidade.valor)),
-        dueDate: mensalidade.data_vencimento,
+        dueDate: dueDateAsaas,
         description: `Mensalidade - ${usuario.nome_empresa || 'MensalliZap'}`,
         externalReference: mensalidade_id,
         fine: { value: 2, type: 'PERCENTAGE' },
@@ -205,7 +289,7 @@ serve(async (req) => {
 
     if (!paymentResponse.ok) {
       const errorData = await paymentResponse.json()
-      console.error('❌ Erro ao criar cobrança:', errorData)
+      console.error('❌ Erro ao criar cobrança:', JSON.stringify(errorData))
       return new Response(
         JSON.stringify({ error: 'Erro ao gerar pagamento' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -224,20 +308,23 @@ serve(async (req) => {
       valor: parseFloat(String(mensalidade.valor)),
       data_vencimento: mensalidade.data_vencimento,
       status: payment.status,
+      forma_pagamento: metodoEscolhido,
       boleto_url: payment.bankSlipUrl,
       invoice_url: payment.invoiceUrl,
       descricao: `Mensalidade - ${usuario.nome_empresa || 'MensalliZap'}`
     })
 
-    console.log('✅ Cobrança criada via portal:', payment.id)
+    console.log('✅ Cobrança criada via portal:', payment.id, metodoEscolhido)
 
-    // 9. Buscar QR Code PIX da cobrança recém-criada
-    const pixQr = await fetchPixQrCode(payment.id)
+    // 9. PIX devolve QR inline; cartão/boleto vão pro checkout/boleto (invoice_url)
+    const pixQr = metodoEscolhido === 'pix' ? await fetchPixQrCode(payment.id) : null
 
     return new Response(
       JSON.stringify({
         success: true,
+        metodo: metodoEscolhido,
         invoice_url: payment.invoiceUrl,
+        boleto_url: payment.bankSlipUrl || null,
         pix_qr_code: pixQr?.encodedImage || null,
         pix_copia_cola: pixQr?.payload || null
       }),

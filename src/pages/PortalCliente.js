@@ -6,6 +6,15 @@ import { gerarPixCopiaCola, gerarTxId } from '../services/pixService'
 import { baixarRecibo } from '../utils/pdfGenerator'
 import { FUNCTIONS_URL, SUPABASE_ANON_KEY as ANON_KEY } from '../supabaseClient'
 
+// Máscara progressiva de CPF: 000.000.000-00 conforme o aluno digita
+function maskCpf(value) {
+  const d = String(value || '').replace(/\D/g, '').slice(0, 11)
+  if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+  if (d.length > 6) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`
+  return d
+}
+
 export default function PortalCliente() {
   const { token } = useParams()
   const [loading, setLoading] = useState(true)
@@ -18,8 +27,19 @@ export default function PortalCliente() {
   const [pixCopied, setPixCopied] = useState(false)
   const [pagandoId, setPagandoId] = useState(null)
 
+  // Pedido de CPF inline na hora de pagar (quando o aluno ainda não tem CPF)
+  const [cpfPrompt, setCpfPrompt] = useState(null) // id da mensalidade aguardando CPF
+  const [cpfInput, setCpfInput] = useState('')
+  const [cpfErro, setCpfErro] = useState(null)
+  const [cpfPromptMetodo, setCpfPromptMetodo] = useState('pix') // método escolhido antes de pedir o CPF
+
   // Tabs
   const [activeTab, setActiveTab] = useState('home')
+
+  // Ficha editável (o próprio aluno preenche os dados dele)
+  const [editandoFicha, setEditandoFicha] = useState(false)
+  const [salvandoFicha, setSalvandoFicha] = useState(false)
+  const [fichaForm, setFichaForm] = useState({})
 
   // Menu lateral
   const [menuAberto, setMenuAberto] = useState(false)
@@ -114,30 +134,101 @@ export default function PortalCliente() {
     }
   }
 
-  const handlePagar = async (mensalidade) => {
-    if (expandedId === mensalidade.id) {
-      setExpandedId(null); setPixData(null); setPixCopied(false); return
+  // Abre a ficha em modo edição já preenchida com o que existe hoje
+  function iniciarEdicaoFicha() {
+    const d = (dados && dados.devedor) || {}
+    setFichaForm({
+      cpf: d.cpf ? maskCpf(d.cpf) : '',
+      data_nascimento: d.data_nascimento || '',
+      email: d.email || '',
+      responsavel_nome: d.responsavel_nome || '',
+      cep: d.cep || '',
+      endereco: d.endereco || '',
+      numero: d.numero || '',
+      complemento: d.complemento || '',
+      bairro: d.bairro || '',
+      cidade: d.cidade || '',
+      estado: d.estado || '',
+    })
+    setEditandoFicha(true)
+  }
+
+  async function salvarFicha() {
+    setSalvandoFicha(true)
+    try {
+      const res = await fetch(`${FUNCTIONS_URL}/portal-atualizar-ficha`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({ token, ficha: fichaForm })
+      })
+      const json = await res.json()
+      if (json.success) {
+        await carregarDados() // recarrega pra refletir o estado real salvo no banco
+        setEditandoFicha(false)
+        mostrarPortalToast(json.atualizado === false ? 'Nada novo pra salvar' : 'Dados salvos! Obrigado 😊', json.atualizado === false ? 'info' : 'success')
+      } else {
+        mostrarPortalToast(json.error || 'Não foi possível salvar', 'error')
+      }
+    } catch {
+      mostrarPortalToast('Erro ao salvar. Tente novamente.', 'error')
+    } finally {
+      setSalvandoFicha(false)
+    }
+  }
+
+  // Quando o link vem com ?editar=ficha (botão "Pedir ficha" da escola),
+  // abre direto na aba de dados em modo edição.
+  useEffect(() => {
+    if (!dados) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('editar') === 'ficha') {
+      setActiveTab('perfil')
+      iniciarEdicaoFicha()
+    }
+  }, [dados]) // eslint-disable-line
+
+  const handlePagar = async (mensalidade, cpfManual, metodo) => {
+    // Clique no card já aberto = fechar (mas não quando é retentativa com CPF ou escolha de método)
+    if (expandedId === mensalidade.id && !cpfManual && !metodo) {
+      setExpandedId(null); setPixData(null); setPixCopied(false); setCpfPrompt(null); return
     }
 
     if (dados.asaas_configurado && dados.metodo_pagamento === 'asaas_link') {
+      const formasPg = dados.formas_pagamento || { pix: true }
+      const temOutrasFormas = formasPg.cartao || formasPg.boleto
+      // Se o gestor liberou mais de uma forma e o aluno ainda não escolheu, abre o seletor
+      if (temOutrasFormas && !metodo) {
+        setExpandedId(mensalidade.id)
+        setPixData(null); setCpfPrompt(null)
+        return
+      }
+      const metodoFinal = metodo || 'pix'
       setPagandoId(mensalidade.id)
       setExpandedId(mensalidade.id)
       setPixData(null)
       try {
+        const body = { token, mensalidade_id: mensalidade.id, metodo: metodoFinal }
+        if (cpfManual) body.cpf = cpfManual.replace(/\D/g, '')
         const res = await fetch(`${FUNCTIONS_URL}/portal-pagar`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` },
-          body: JSON.stringify({ token, mensalidade_id: mensalidade.id })
+          body: JSON.stringify(body)
         })
         const json = await res.json()
         if (json.success) {
+          setCpfPrompt(null)
           if (json.pix_copia_cola) {
-            setPixData({ pixCode: json.pix_copia_cola, qrImage: json.pix_qr_code || null, invoiceUrl: json.invoice_url })
+            setPixData({ pixCode: json.pix_copia_cola, qrImage: json.pix_qr_code || null, invoiceUrl: json.invoice_url, metodo: json.metodo || metodoFinal })
           } else if (json.invoice_url) {
-            setPixData({ invoiceUrl: json.invoice_url })
+            setPixData({ invoiceUrl: json.invoice_url, metodo: json.metodo || metodoFinal })
             window.open(json.invoice_url, '_blank')
           }
           await carregarDados()
+        } else if (json.code === 'cpf_required' || json.code === 'cpf_invalid') {
+          // Falta CPF (ou veio inválido): abre o campo inline em vez de só avisar
+          setCpfPrompt(mensalidade.id)
+          setCpfPromptMetodo(metodoFinal) // guarda o método pra retomar após o CPF
+          setCpfErro(json.code === 'cpf_invalid' ? 'CPF inválido. Confira os números.' : null)
         } else { mostrarPortalToast(json.error || 'Erro ao gerar pagamento', 'error'); setExpandedId(null) }
       } catch { mostrarPortalToast('Erro ao processar pagamento', 'error'); setExpandedId(null) }
       finally { setPagandoId(null) }
@@ -438,6 +529,42 @@ export default function PortalCliente() {
   const isPremium = planoAdmin === 'premium'
 
   // Tab content — todas visíveis, bloqueio por plano dentro do conteúdo
+  // ===== Helpers da ficha editável =====
+  const fichaLabelStyle = { fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'block' }
+  const fichaInputStyle = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 14, color: '#0f172a', outline: 'none', boxSizing: 'border-box', background: '#fff' }
+
+  const campoView = (label, valor, full) => valor ? (
+    <div style={{ gridColumn: full ? '1 / -1' : 'auto' }}>
+      <div style={fichaLabelStyle}>{label}</div>
+      <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500, wordBreak: 'break-word' }}>{valor}</div>
+    </div>
+  ) : null
+
+  const campoInput = (label, key, opts = {}) => (
+    <div style={{ gridColumn: opts.full ? '1 / -1' : 'auto' }}>
+      <label style={fichaLabelStyle}>{label}</label>
+      <input
+        type={opts.type || 'text'}
+        inputMode={opts.inputMode}
+        value={fichaForm[key] || ''}
+        onChange={e => setFichaForm(f => ({ ...f, [key]: opts.mask ? opts.mask(e.target.value) : e.target.value }))}
+        placeholder={opts.placeholder || ''}
+        maxLength={opts.maxLength}
+        style={fichaInputStyle}
+      />
+    </div>
+  )
+
+  const campoTravado = (label, valor) => valor ? (
+    <div>
+      <label style={fichaLabelStyle}>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+        <Icon icon="mdi:lock-outline" width="14" style={{ color: '#cbd5e1', flexShrink: 0 }} />
+        <span style={{ fontSize: 14, color: '#64748b' }}>{valor}</span>
+      </div>
+    </div>
+  ) : null
+
   const tabs = [
     { id: 'home', icon: 'mdi:home-variant', label: 'Inicio' },
     { id: 'feed', icon: 'mdi:newspaper-variant-outline', label: 'Avisos' },
@@ -966,6 +1093,8 @@ export default function PortalCliente() {
                 {pendentes.map(m => {
                   const info = getStatusInfo(m)
                   const isExpanded = expandedId === m.id
+                  const formasPg = dados.formas_pagamento || { pix: true }
+                  const multiMetodo = dados.asaas_configurado && dados.metodo_pagamento === 'asaas_link' && (formasPg.cartao || formasPg.boleto)
                   return (
                     <div key={m.id} style={{
                       borderRadius: 14, marginBottom: 10, overflow: 'hidden',
@@ -1012,10 +1141,55 @@ export default function PortalCliente() {
                           ) : isExpanded ? (
                             <><Icon icon="mdi:chevron-up" width="18" /> Fechar</>
                           ) : (
-                            <><Icon icon="mdi:qrcode" width="18" /> Pagar agora</>
+                            <><Icon icon={multiMetodo ? 'mdi:wallet-outline' : 'mdi:qrcode'} width="18" /> Pagar agora</>
                           )}
                         </button>
                       </div>
+
+                      {/* Seletor de forma de pagamento (quando o gestor libera mais de uma) */}
+                      {isExpanded && multiMetodo && !pixData && cpfPrompt !== m.id && (
+                        <div style={{
+                          borderTop: '1px solid #e2e8f0', padding: '16px 16px 20px',
+                          background: '#fafffe', animation: 'expandIn 0.3s ease-out'
+                        }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 12, textAlign: 'center' }}>
+                            Como você quer pagar?
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {[
+                              formasPg.pix !== false && { metodo: 'pix', icon: 'mdi:qrcode', cor: '#00b386', titulo: 'PIX', sub: 'Aprovação na hora' },
+                              formasPg.cartao && { metodo: 'cartao', icon: 'mdi:credit-card-outline', cor: '#5b6cff', titulo: 'Cartão de crédito', sub: 'Pague parcelado' },
+                              formasPg.boleto && { metodo: 'boleto', icon: 'mdi:barcode', cor: '#e65100', titulo: 'Boleto bancário', sub: 'Compensa em 1–3 dias úteis' }
+                            ].filter(Boolean).map(opt => (
+                              <button
+                                key={opt.metodo}
+                                onClick={() => handlePagar(m, null, opt.metodo)}
+                                disabled={pagandoId === m.id}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                                  padding: '14px', borderRadius: 12, border: '1px solid #e2e8f0',
+                                  background: '#fff', cursor: pagandoId === m.id ? 'wait' : 'pointer',
+                                  opacity: pagandoId === m.id ? 0.6 : 1
+                                }}
+                              >
+                                <div style={{
+                                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                                  background: `${opt.cor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                  <Icon icon={opt.icon} width="22" style={{ color: opt.cor }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{opt.titulo}</div>
+                                  <div style={{ fontSize: 12, color: '#64748b' }}>{opt.sub}</div>
+                                </div>
+                                {pagandoId === m.id
+                                  ? <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #e2e8f0', borderTopColor: '#94a3b8', animation: 'spin 0.8s linear infinite' }} />
+                                  : <Icon icon="mdi:chevron-right" width="20" style={{ color: '#cbd5e1' }} />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* PIX Expandido */}
                       {isExpanded && pixData && pixData.pixCode && (
@@ -1066,16 +1240,62 @@ export default function PortalCliente() {
                           borderTop: '1px solid #e2e8f0', padding: '24px 20px',
                           background: '#fafffe', textAlign: 'center', animation: 'expandIn 0.3s ease-out'
                         }}>
-                          <Icon icon="mdi:open-in-new" width="32" style={{ color: '#3b82f6', marginBottom: 10 }} />
-                          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Pagamento aberto</div>
-                          <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Conclua na pagina que foi aberta</div>
+                          <Icon icon={pixData.metodo === 'boleto' ? 'mdi:barcode' : 'mdi:credit-card-outline'} width="32" style={{ color: '#3b82f6', marginBottom: 10 }} />
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
+                            {pixData.metodo === 'boleto' ? 'Boleto gerado' : pixData.metodo === 'cartao' ? 'Pagamento por cartão' : 'Pagamento aberto'}
+                          </div>
+                          <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+                            {pixData.metodo === 'boleto' ? 'Abra o boleto pra copiar a linha digitável ou baixar o PDF' : 'Conclua o pagamento na página que foi aberta'}
+                          </div>
                           <button onClick={() => window.open(pixData.invoiceUrl, '_blank')} style={{
                             padding: '12px 24px', borderRadius: 10, border: '1px solid #e2e8f0',
                             cursor: 'pointer', background: '#fff', color: '#334155', fontSize: 14, fontWeight: 600,
                             display: 'inline-flex', alignItems: 'center', gap: 8
                           }}>
                             <Icon icon="mdi:open-in-new" width="16" />
-                            Abrir novamente
+                            {pixData.metodo === 'boleto' ? 'Abrir boleto' : 'Abrir novamente'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Pedir CPF inline quando falta pra gerar a cobrança */}
+                      {isExpanded && cpfPrompt === m.id && !pixData && (
+                        <div style={{
+                          borderTop: '1px solid #e2e8f0', padding: '20px',
+                          background: '#fafffe', animation: 'expandIn 0.3s ease-out'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <Icon icon="mdi:card-account-details-outline" width="18" style={{ color: '#3b82f6' }} />
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Informe seu CPF</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
+                            Precisamos do seu CPF só uma vez pra gerar a cobrança. Fica salvo pras próximas.
+                          </div>
+                          <input
+                            value={cpfInput}
+                            onChange={e => { setCpfInput(maskCpf(e.target.value)); setCpfErro(null) }}
+                            placeholder="000.000.000-00"
+                            inputMode="numeric"
+                            maxLength={14}
+                            autoFocus
+                            style={{ ...fichaInputStyle, marginBottom: cpfErro ? 6 : 12 }}
+                          />
+                          {cpfErro && <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 12 }}>{cpfErro}</div>}
+                          <button
+                            onClick={() => handlePagar(m, cpfInput, cpfPromptMetodo)}
+                            disabled={pagandoId === m.id || cpfInput.replace(/\D/g, '').length !== 11}
+                            style={{
+                              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                              cursor: (pagandoId === m.id || cpfInput.replace(/\D/g, '').length !== 11) ? 'not-allowed' : 'pointer',
+                              background: cpfInput.replace(/\D/g, '').length === 11 ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#cbd5e1',
+                              color: '#fff', fontSize: 15, fontWeight: 700,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            {pagandoId === m.id
+                              ? <><div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.8s linear infinite' }} /> Gerando...</>
+                              : <><Icon icon="mdi:arrow-right" width="18" /> Continuar</>}
                           </button>
                         </div>
                       )}
@@ -1705,79 +1925,77 @@ export default function PortalCliente() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
               border: '1px solid rgba(0,0,0,0.04)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                <Icon icon="mdi:account-circle-outline" width="20" style={{ color: '#3b82f6' }} />
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Meus Dados</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Nome</div>
-                  <div style={{ fontSize: 15, color: '#0f172a', fontWeight: 600 }}>{dados.devedor.nome}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon icon="mdi:account-circle-outline" width="20" style={{ color: '#3b82f6' }} />
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Meus Dados</span>
                 </div>
-
-                {dados.devedor.plano_nome && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Plano</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>
-                      {dados.devedor.plano_nome}
-                      {dados.devedor.plano_valor && <span style={{ color: '#64748b', fontWeight: 400 }}> - {formatarValor(dados.devedor.plano_valor)}</span>}
-                    </div>
-                  </div>
-                )}
-
-                {dados.devedor.dia_vencimento && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Vencimento</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>Todo dia {dados.devedor.dia_vencimento}</div>
-                  </div>
-                )}
-
-                {dados.devedor.telefone && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Telefone</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{dados.devedor.telefone}</div>
-                  </div>
-                )}
-
-                {dados.devedor.email && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>E-mail</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500, wordBreak: 'break-all' }}>{dados.devedor.email}</div>
-                  </div>
-                )}
-
-                {dados.devedor.cpf && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>CPF</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{dados.devedor.cpf}</div>
-                  </div>
-                )}
-
-                {dados.devedor.data_nascimento && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Nascimento</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{formatarData(dados.devedor.data_nascimento)}</div>
-                  </div>
-                )}
-
-                {dados.devedor.responsavel_nome && (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Responsavel</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>
-                      {dados.devedor.responsavel_nome}
-                      {dados.devedor.responsavel_telefone && <span style={{ color: '#64748b', fontWeight: 400 }}> - {dados.devedor.responsavel_telefone}</span>}
-                    </div>
-                  </div>
-                )}
-
-                {dados.devedor.membro_desde && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Aluno desde</div>
-                    <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 500 }}>{formatarData(dados.devedor.membro_desde)}</div>
-                  </div>
+                {!editandoFicha && (
+                  <button onClick={iniciarEdicaoFicha} style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px',
+                    borderRadius: 8, border: '1px solid #dbeafe', background: '#eff6ff',
+                    color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}>
+                    <Icon icon="mdi:pencil-outline" width="15" /> Editar
+                  </button>
                 )}
               </div>
+
+              {!editandoFicha ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {campoView('Nome', dados.devedor.nome, true)}
+                  {dados.devedor.plano_nome && campoView('Plano', `${dados.devedor.plano_nome}${dados.devedor.plano_valor ? ' - ' + formatarValor(dados.devedor.plano_valor) : ''}`)}
+                  {dados.devedor.dia_vencimento && campoView('Vencimento', `Todo dia ${dados.devedor.dia_vencimento}`)}
+                  {campoView('Telefone', dados.devedor.telefone)}
+                  {campoView('E-mail', dados.devedor.email)}
+                  {campoView('CPF', maskCpf(dados.devedor.cpf))}
+                  {dados.devedor.data_nascimento && campoView('Nascimento', formatarData(dados.devedor.data_nascimento))}
+                  {(dados.devedor.responsavel_nome || dados.devedor.responsavel_telefone) && campoView('Responsável', `${dados.devedor.responsavel_nome || ''}${dados.devedor.responsavel_telefone ? ' - ' + dados.devedor.responsavel_telefone : ''}`, true)}
+                  {campoView('Endereço', [dados.devedor.endereco, dados.devedor.numero, dados.devedor.complemento, dados.devedor.bairro, dados.devedor.cidade, dados.devedor.estado, dados.devedor.cep].filter(Boolean).join(', '), true)}
+                  {dados.devedor.membro_desde && campoView('Aluno desde', formatarData(dados.devedor.membro_desde))}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: '#eff6ff', border: '1px solid #dbeafe', marginBottom: 16 }}>
+                    <Icon icon="mdi:information-outline" width="16" style={{ color: '#2563eb', flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: '#1e40af' }}>Preencha seus dados abaixo. Nome e telefone só a escola altera.</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    {campoTravado('Nome', dados.devedor.nome)}
+                    {campoTravado('Telefone', dados.devedor.telefone)}
+                    {campoInput('E-mail', 'email', { type: 'email', full: true, placeholder: 'seu@email.com' })}
+                    {campoInput('CPF', 'cpf', { placeholder: '000.000.000-00', maxLength: 14, mask: maskCpf, inputMode: 'numeric' })}
+                    {campoInput('Nascimento', 'data_nascimento', { type: 'date' })}
+                    {campoInput('Nome do responsável', 'responsavel_nome', { full: true, placeholder: 'Se menor de idade' })}
+                    {dados.devedor.responsavel_telefone && campoTravado('Tel. do responsável', dados.devedor.responsavel_telefone)}
+                    {campoInput('CEP', 'cep', { placeholder: '00000-000', maxLength: 9 })}
+                    {campoInput('Número', 'numero', { maxLength: 10 })}
+                    {campoInput('Endereço', 'endereco', { full: true, placeholder: 'Rua, avenida...' })}
+                    {campoInput('Complemento', 'complemento', { full: true, placeholder: 'Apto, bloco...' })}
+                    {campoInput('Bairro', 'bairro')}
+                    {campoInput('Cidade', 'cidade')}
+                    {campoInput('Estado', 'estado', { placeholder: 'UF', maxLength: 2 })}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                    <button onClick={() => setEditandoFicha(false)} disabled={salvandoFicha} style={{
+                      flex: 1, padding: '12px', borderRadius: 10, border: '1px solid #e2e8f0',
+                      background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 600, cursor: 'pointer'
+                    }}>Cancelar</button>
+                    <button onClick={salvarFicha} disabled={salvandoFicha} style={{
+                      flex: 2, padding: '12px', borderRadius: 10, border: 'none',
+                      background: salvandoFicha ? '#94a3b8' : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: salvandoFicha ? 'default' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                    }}>
+                      {salvandoFicha
+                        ? <><Icon icon="mdi:loading" width="18" style={{ animation: 'spin 1s linear infinite' }} /> Salvando...</>
+                        : <><Icon icon="mdi:check" width="18" /> Salvar</>}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Info da empresa */}

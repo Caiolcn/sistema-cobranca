@@ -2687,6 +2687,44 @@ Equipe ${nomeEmpresa}`
                         <Icon icon="mdi:whatsapp" width="14" />
                         Enviar portal
                       </button>
+                      <button
+                        onClick={async () => {
+                          const url = `${window.location.origin}/portal/${clienteSelecionado.portal_token}?editar=ficha`
+                          const telefone = clienteSelecionado.responsavel_telefone || clienteSelecionado.telefone
+                          const nome = clienteSelecionado.nome?.split(' ')[0] || 'Aluno'
+                          const msg = `Olá, ${nome}! 👋\n\nPara mantermos seu cadastro completo, preencha seus dados pelo link abaixo:\n\n${url}\n\nÉ rápido e seguro. Qualquer dúvida, é só chamar! 😊`
+                          try {
+                            const resultado = await whatsappService.enviarMensagem(telefone, msg)
+                            if (resultado.sucesso) {
+                              showToast('Pedido de ficha enviado por WhatsApp!', 'success')
+                            } else {
+                              showToast(resultado.erro || 'Erro ao enviar', 'warning')
+                            }
+                          } catch {
+                            showToast('Erro ao enviar WhatsApp', 'error')
+                          }
+                        }}
+                        title="Pedir ao aluno que preencha a própria ficha"
+                        style={{
+                          background: '#eff6ff',
+                          border: '1px solid #dbeafe',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          padding: '3px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#2563eb',
+                          fontWeight: '500',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                      >
+                        <Icon icon="mdi:clipboard-account-outline" width="14" />
+                        Pedir ficha
+                      </button>
                     </>)}
                   </div>
                 </div>
