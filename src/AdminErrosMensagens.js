@@ -58,7 +58,9 @@ export default function AdminErrosMensagens() {
 
       if (logsError) throw logsError
 
-      const logsArr = logsData || []
+      // remote_jid_divergente não é falha de envio: a mensagem foi entregue,
+      // apenas com/sem o 9 no número (JID divergente). Não exibir como erro.
+      const logsArr = (logsData || []).filter(l => l.erro_codigo !== 'remote_jid_divergente')
       setLogs(logsArr)
 
       const userIds = [...new Set(logsArr.map(l => l.user_id).filter(Boolean))]
