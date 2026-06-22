@@ -217,10 +217,11 @@ export default function PortalCliente() {
         const json = await res.json()
         if (json.success) {
           setCpfPrompt(null)
+          const enc = { valorBase: json.valor_base, multa: json.multa, juros: json.juros, valorTotal: json.valor_total, diasAtraso: json.dias_atraso }
           if (json.pix_copia_cola) {
-            setPixData({ pixCode: json.pix_copia_cola, qrImage: json.pix_qr_code || null, invoiceUrl: json.invoice_url, metodo: json.metodo || metodoFinal })
+            setPixData({ pixCode: json.pix_copia_cola, qrImage: json.pix_qr_code || null, invoiceUrl: json.invoice_url, metodo: json.metodo || metodoFinal, ...enc })
           } else if (json.invoice_url) {
-            setPixData({ invoiceUrl: json.invoice_url, metodo: json.metodo || metodoFinal })
+            setPixData({ invoiceUrl: json.invoice_url, metodo: json.metodo || metodoFinal, ...enc })
             window.open(json.invoice_url, '_blank')
           }
           await carregarDados()
@@ -1197,10 +1198,18 @@ export default function PortalCliente() {
                           borderTop: '1px solid #e2e8f0', padding: '20px',
                           background: '#fafffe', animation: 'expandIn 0.3s ease-out'
                         }}>
-                          {/* Valor em destaque */}
+                          {/* Valor em destaque (com multa/juros se houver) */}
                           <div style={{ textAlign: 'center', marginBottom: 16 }}>
                             <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Valor a pagar</div>
-                            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a' }}>{formatarValor(m.valor)}</div>
+                            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a' }}>{formatarValor(pixData.valorTotal ?? m.valor)}</div>
+                            {(pixData.multa > 0 || pixData.juros > 0) && (
+                              <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, lineHeight: 1.6 }}>
+                                Mensalidade {formatarValor(pixData.valorBase)}
+                                {pixData.multa > 0 && <> + multa {formatarValor(pixData.multa)}</>}
+                                {pixData.juros > 0 && <> + juros {formatarValor(pixData.juros)}</>}
+                                {pixData.diasAtraso > 0 && <span style={{ color: '#dc2626' }}> · {pixData.diasAtraso} dias de atraso</span>}
+                              </div>
+                            )}
                           </div>
 
                           {/* Botão copiar PIX - principal */}

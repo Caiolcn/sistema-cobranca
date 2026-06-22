@@ -223,6 +223,8 @@ function Configuracao() {
   // Formas de pagamento aceitas no portal do aluno (PIX sempre on)
   const [formasPagamento, setFormasPagamento] = useState({ pix: true, cartao: false, boleto: false })
   const [salvandoFormas, setSalvandoFormas] = useState(false)
+  const [multaJuros, setMultaJuros] = useState({ ativo: false, multa_percent: 2, juros_mes_percent: 1 })
+  const [salvandoMultaJuros, setSalvandoMultaJuros] = useState(false)
 
   // Logo upload
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -372,6 +374,13 @@ function Configuracao() {
         pix: true,
         cartao: data.asaas_formas_pagamento?.cartao === true,
         boleto: data.asaas_formas_pagamento?.boleto === true
+      })
+
+      // Carregar config de multa/juros por atraso (aplicada no portal)
+      setMultaJuros({
+        ativo: data.asaas_multa_juros?.ativo === true,
+        multa_percent: Number(data.asaas_multa_juros?.multa_percent ?? 2),
+        juros_mes_percent: Number(data.asaas_multa_juros?.juros_mes_percent ?? 1)
       })
 
       // Carregar config de agendamento
@@ -2547,6 +2556,31 @@ function Configuracao() {
     }
   }
 
+  // Salva config de multa/juros por atraso (aplicada no portal). Persiste na conta
+  // selecionada (contextUserId) — igual aos demais saves desta tela.
+  const salvarMultaJuros = async (novo) => {
+    const anterior = multaJuros
+    const limpo = {
+      ativo: novo.ativo === true,
+      multa_percent: Math.max(0, Math.min(100, Number(novo.multa_percent) || 0)),
+      juros_mes_percent: Math.max(0, Math.min(100, Number(novo.juros_mes_percent) || 0))
+    }
+    setMultaJuros(limpo)
+    setSalvandoMultaJuros(true)
+    try {
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ asaas_multa_juros: limpo })
+        .eq('id', contextUserId)
+      if (error) throw error
+    } catch {
+      setMultaJuros(anterior) // reverte em caso de erro
+      showToast('Erro ao salvar multa/juros', 'error')
+    } finally {
+      setSalvandoMultaJuros(false)
+    }
+  }
+
   const testarConexaoAsaas = async () => {
     if (!asaasConfig.apiKey) {
       showToast('Digite a API Key do Asaas', 'error')
@@ -3105,6 +3139,65 @@ function Configuracao() {
                     <div style={{ fontSize: '12px', color: '#999' }}>Compensação em 1–3 dias úteis</div>
                   </div>
                 </label>
+              </div>
+
+              {/* Multa e juros por atraso */}
+              <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #f0f0f0' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#344848', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Icon icon="mdi:alarm-light-outline" width="20" style={{ color: '#e65100' }} />
+                  Multa e juros por atraso
+                </h3>
+                <p style={{ fontSize: '13px', color: '#888', margin: '0 0 16px' }}>
+                  Quando o aluno pagar uma mensalidade vencida pelo portal, o valor já sai com multa e juros calculados.
+                </p>
+
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
+                  cursor: salvandoMultaJuros ? 'wait' : 'pointer',
+                  backgroundColor: multaJuros.ativo ? '#f0fdf4' : '#fff',
+                  opacity: salvandoMultaJuros ? 0.7 : 1
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={multaJuros.ativo}
+                    disabled={salvandoMultaJuros}
+                    onChange={e => salvarMultaJuros({ ...multaJuros, ativo: e.target.checked })}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Cobrar multa e juros</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Aplicado só em mensalidade vencida, na hora do pagamento</div>
+                  </div>
+                </label>
+
+                {multaJuros.ativo && (
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Multa (%)</label>
+                      <input
+                        type="number" min="0" max="100" step="0.1"
+                        value={multaJuros.multa_percent}
+                        disabled={salvandoMultaJuros}
+                        onChange={e => setMultaJuros({ ...multaJuros, multa_percent: e.target.value })}
+                        onBlur={() => salvarMultaJuros(multaJuros)}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
+                      />
+                      <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Cobrada uma vez sobre o valor</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Juros ao mês (%)</label>
+                      <input
+                        type="number" min="0" max="100" step="0.1"
+                        value={multaJuros.juros_mes_percent}
+                        disabled={salvandoMultaJuros}
+                        onChange={e => setMultaJuros({ ...multaJuros, juros_mes_percent: e.target.value })}
+                        onBlur={() => salvarMultaJuros(multaJuros)}
+                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
+                      />
+                      <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Proporcional aos dias de atraso</div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -108,7 +108,7 @@ serve(async (req) => {
     // (cada método gera uma cobrança própria; PIX também reaproveita registros legados sem forma_pagamento)
     let boletoQuery = supabase
       .from('boletos')
-      .select('invoice_url, boleto_url, asaas_id, status, forma_pagamento')
+      .select('invoice_url, boleto_url, asaas_id, status, forma_pagamento, valor')
       .eq('mensalidade_id', mensalidade_id)
       .not('invoice_url', 'is', null)
     boletoQuery = metodoEscolhido === 'pix'
@@ -122,7 +122,7 @@ serve(async (req) => {
     // 4. Buscar configuração Asaas do gestor (dono do devedor)
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('asaas_api_key, asaas_ambiente, nome_empresa, asaas_formas_pagamento')
+      .select('asaas_api_key, asaas_ambiente, nome_empresa, asaas_formas_pagamento, asaas_multa_juros')
       .eq('id', devedor.user_id)
       .single()
 
@@ -174,6 +174,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           metodo: metodoEscolhido,
+          valor_total: boletoExistente.valor,
           invoice_url: boletoExistente.invoice_url,
           boleto_url: boletoExistente.boleto_url || null,
           pix_qr_code: pixQr?.encodedImage || null,
@@ -272,18 +273,31 @@ serve(async (req) => {
     const hojeISO = new Date().toISOString().split('T')[0]
     const dueDateAsaas = mensalidade.data_vencimento < hojeISO ? hojeISO : mensalidade.data_vencimento
 
+    // Multa/juros por atraso calculados POR NÓS: como mandamos dueDate = hoje (exigência
+    // do Asaas, que recusa vencimento no passado), o Asaas não aplicaria multa/juros sozinho.
+    // Config por gestor em usuarios.asaas_multa_juros: {ativo, multa_percent, juros_mes_percent}.
+    const base = parseFloat(String(mensalidade.valor))
+    const mj = usuario.asaas_multa_juros || {}
+    const diasAtraso = Math.max(0, Math.floor((Date.parse(hojeISO) - Date.parse(mensalidade.data_vencimento)) / 86400000))
+    let multaVal = 0, jurosVal = 0
+    if (mj.ativo && diasAtraso > 0) {
+      multaVal = base * (Number(mj.multa_percent || 0) / 100)                         // multa: % única
+      jurosVal = base * (Number(mj.juros_mes_percent || 0) / 100) * (diasAtraso / 30) // juros: % ao mês, pró-rata/dia
+    }
+    multaVal = Math.round(multaVal * 100) / 100
+    jurosVal = Math.round(jurosVal * 100) / 100
+    const valorFinal = Math.round((base + multaVal + jurosVal) * 100) / 100
+
     const paymentResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
       headers: { 'access_token': asaasApiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer: asaasCustomerId,
         billingType: BILLING_TYPE[metodoEscolhido],
-        value: parseFloat(String(mensalidade.valor)),
+        value: valorFinal,
         dueDate: dueDateAsaas,
         description: `Mensalidade - ${usuario.nome_empresa || 'MensalliZap'}`,
         externalReference: mensalidade_id,
-        fine: { value: 2, type: 'PERCENTAGE' },
-        interest: { value: 1, type: 'PERCENTAGE' },
       }),
     })
 
@@ -305,7 +319,7 @@ serve(async (req) => {
       devedor_id: devedor.id,
       asaas_id: payment.id,
       asaas_customer_id: asaasCustomerId,
-      valor: parseFloat(String(mensalidade.valor)),
+      valor: valorFinal,
       data_vencimento: mensalidade.data_vencimento,
       status: payment.status,
       forma_pagamento: metodoEscolhido,
@@ -323,6 +337,11 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         metodo: metodoEscolhido,
+        valor_base: base,
+        multa: multaVal,
+        juros: jurosVal,
+        valor_total: valorFinal,
+        dias_atraso: diasAtraso,
         invoice_url: payment.invoiceUrl,
         boleto_url: payment.bankSlipUrl || null,
         pix_qr_code: pixQr?.encodedImage || null,
