@@ -116,6 +116,61 @@
   margin: 0;
 }
 
+/* Seletor de mês específico */
+.drp-year-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drp-year-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+  flex: 1;
+  text-align: center;
+}
+
+.drp-months-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.drp-month-btn {
+  padding: 10px 0;
+  border: 1px solid #e0e0e0;
+  background: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.drp-month-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #d0d0d0;
+}
+
+.drp-month-btn.active:hover {
+  background: #8867A1;
+  border-color: #8867A1;
+}
+
+.drp-month-btn.active {
+  background: #8867A1;
+  border-color: #8867A1;
+  color: white;
+}
+
+.drp-month-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Calendars Container */
 .drp-calendars {
   display: flex;

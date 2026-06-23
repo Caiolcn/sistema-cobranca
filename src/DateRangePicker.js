@@ -11,6 +11,18 @@ function DateRangePicker({ value, onChange }) {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
+  const mesesAbrev = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+  ];
+
+  const hoje = new Date();
+  // Valor de mês específico tem o formato "mes:AAAA-MM"
+  const mesEspecifico = typeof value === 'string' && value.startsWith('mes:') ? value.slice(4) : null;
+  const [anoView, setAnoView] = useState(() =>
+    mesEspecifico ? parseInt(mesEspecifico.split('-')[0], 10) : hoje.getFullYear()
+  );
+
   // Fechar ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
@@ -47,6 +59,10 @@ function DateRangePicker({ value, onChange }) {
     if (value === 'este_ano') {
       const hoje = new Date();
       return `${hoje.getFullYear()}`;
+    }
+    if (mesEspecifico) {
+      const [ano, mes] = mesEspecifico.split('-').map(Number);
+      return `${meses[mes - 1]} ${ano}`;
     }
 
     // Default: mês atual
@@ -103,12 +119,52 @@ function DateRangePicker({ value, onChange }) {
 
           <div className="drp-info-panel">
             <div className="drp-info-header">
-              <Icon icon="material-symbols:info-outline" width="20" />
-              <span>Filtros por Período Mensal</span>
+              <Icon icon="material-symbols:calendar-month-outline" width="20" />
+              <span>Mês específico</span>
             </div>
+
+            <div className="drp-year-nav">
+              <button
+                className="drp-nav-btn"
+                onClick={() => setAnoView(anoView - 1)}
+                aria-label="Ano anterior"
+              >
+                <Icon icon="material-symbols:chevron-left" width="22" />
+              </button>
+              <span className="drp-year-title">{anoView}</span>
+              <button
+                className="drp-nav-btn"
+                onClick={() => setAnoView(anoView + 1)}
+                disabled={anoView >= hoje.getFullYear()}
+                aria-label="Próximo ano"
+              >
+                <Icon icon="material-symbols:chevron-right" width="22" />
+              </button>
+            </div>
+
+            <div className="drp-months-grid">
+              {mesesAbrev.map((m, idx) => {
+                const mm = String(idx + 1).padStart(2, '0');
+                const val = `mes:${anoView}-${mm}`;
+                const isFuture =
+                  anoView > hoje.getFullYear() ||
+                  (anoView === hoje.getFullYear() && idx > hoje.getMonth());
+                const isActive = value === val;
+                return (
+                  <button
+                    key={m}
+                    className={`drp-month-btn ${isActive ? 'active' : ''}`}
+                    disabled={isFuture}
+                    onClick={() => { onChange(val); setIsOpen(false); }}
+                  >
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+
             <p className="drp-info-text">
-              Os dados do dashboard são calculados com base em períodos mensais completos.
-              Selecione uma opção ao lado para visualizar as métricas do período desejado.
+              Selecione um mês para ver apenas os dados desse período.
             </p>
           </div>
         </div>

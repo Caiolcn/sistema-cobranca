@@ -66,7 +66,12 @@ function Relatorios() {
     const hoje = new Date();
     let inicio, fim;
 
-    if (periodo === 'mes_atual') {
+    if (typeof periodo === 'string' && periodo.startsWith('mes:')) {
+      // Mês específico no formato "mes:AAAA-MM"
+      const [ano, mes] = periodo.slice(4).split('-').map(Number);
+      inicio = new Date(ano, mes - 1, 1).toISOString().split('T')[0];
+      fim = new Date(ano, mes, 0).toISOString().split('T')[0];
+    } else if (periodo === 'mes_atual') {
       inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
       fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
     } else if (periodo === 'mes_anterior') {
