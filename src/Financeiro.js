@@ -42,6 +42,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const { userId, nomeEmpresa, chavePix, cpfCnpj, emailEmpresa, telefoneEmpresa, logoUrl, loading: loadingUser } = useUser()
   const [searchParams] = useSearchParams()
   const [mensalidades, setMensalidades] = useState([])
+  const [vendas, setVendas] = useState([])
   const [mensalidadesFiltradas, setMensalidadesFiltradas] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
@@ -170,7 +171,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   useEffect(() => {
     aplicarFiltros()
-  }, [mensalidades, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim, filtroNomeDebounced])
+  }, [mensalidades, vendas, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim, filtroNomeDebounced])
 
   // OTIMIZAÇÃO: Consolidar carregarMensalidades, carregarClientes e calcularMRR em uma única função
   const carregarDados = useCallback(async () => {
@@ -229,7 +230,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }))
 
       setMensalidades(mensalidadesComStatus)
-      calcularTotais(mensalidadesComStatus, vendasData || [])
+      setVendas(vendasData || [])
+      // Os totais dos cards são recalculados em aplicarFiltros (useEffect),
+      // para que respeitem os filtros ativos.
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -394,6 +397,77 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
     setMensalidadesFiltradas(resultado)
     setPaginaAtual(1) // Resetar para primeira página quando filtros mudam
+
+    // Filtrar vendas (cobranças avulsas) com os mesmos critérios, para os cards
+    const vendasFiltradas = filtrarVendas(vendas)
+
+    // Recalcular os totais dos cards sobre o conjunto FILTRADO
+    calcularTotais(resultado, vendasFiltradas)
+  }
+
+  // Aplica os mesmos filtros da tela às vendas (cobranças avulsas)
+  const filtrarVendas = (lista) => {
+    if (!lista || lista.length === 0) return []
+
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+
+    const statusVenda = (v) => {
+      if (v.status === 'pago') return 'pago'
+      const venc = new Date(v.data_vencimento + 'T12:00:00')
+      venc.setHours(0, 0, 0, 0)
+      return venc < hoje ? 'atrasado' : 'aberto'
+    }
+
+    let resultado = [...lista]
+
+    // Filtro por nome: vendas avulsas não têm nome de aluno aqui, então
+    // qualquer busca por nome as exclui dos totais.
+    if (filtroNomeDebounced.trim() !== '') {
+      return []
+    }
+
+    // Filtro por status (mesmos valores de statusCalculado)
+    if (filtroStatus.length > 0) {
+      resultado = resultado.filter(v => filtroStatus.includes(statusVenda(v)))
+    }
+
+    // Filtro por vencimento
+    if (filtroVencimento) {
+      resultado = resultado.filter(v => {
+        const venc = new Date(v.data_vencimento)
+        venc.setHours(0, 0, 0, 0)
+        const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
+
+        if (filtroVencimento === 'hoje') return diffDias === 0
+        if (filtroVencimento === '7dias') return diffDias >= 0 && diffDias <= 7
+        if (filtroVencimento === '30dias') return diffDias >= 0 && diffDias <= 30
+        return true
+      })
+    }
+
+    // Filtro por período personalizado
+    if (filtroDataInicio || filtroDataFim) {
+      resultado = resultado.filter(v => {
+        const venc = new Date(v.data_vencimento)
+        venc.setHours(0, 0, 0, 0)
+
+        if (filtroDataInicio && filtroDataFim) {
+          const inicio = new Date(filtroDataInicio + 'T00:00:00')
+          const fim = new Date(filtroDataFim + 'T00:00:00')
+          return venc >= inicio && venc <= fim
+        } else if (filtroDataInicio) {
+          const inicio = new Date(filtroDataInicio + 'T00:00:00')
+          return venc >= inicio
+        } else if (filtroDataFim) {
+          const fim = new Date(filtroDataFim + 'T00:00:00')
+          return venc <= fim
+        }
+        return true
+      })
+    }
+
+    return resultado
   }
 
   // Calcular dados de paginação
@@ -561,7 +635,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       })
 
       setMensalidades(novasMensalidades)
-      calcularTotais(novasMensalidades)
+      // Totais recalculados via useEffect/aplicarFiltros ao atualizar mensalidades
       setMostrarModalConfirmacao(false)
       setMensalidadeParaAtualizar(null)
 
