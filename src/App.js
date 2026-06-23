@@ -35,6 +35,7 @@ const AdminErrosMensagens = lazy(() => import('./AdminErrosMensagens'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+const LinkInBio = lazy(() => import('./pages/LinkInBio'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
 
 // Design System (rota interna /app/design-system/*)
@@ -115,6 +116,7 @@ function App() {
               <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
+              <Route path="/links" element={<LinkInBio />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (
