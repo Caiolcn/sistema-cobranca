@@ -8,6 +8,7 @@ import { useUserPlan } from './hooks/useUserPlan';
 import { useUser } from './contexts/UserContext';
 import FeatureLocked from './FeatureLocked';
 import NpsRelatorio from './components/NpsRelatorio';
+import FrequenciaAlunos from './components/FrequenciaAlunos';
 import { SkeletonDashboard } from './components/Skeleton';
 import { showToast } from './Toast';
 import './Home.css';
@@ -912,6 +913,12 @@ function Relatorios() {
           </div>
         </div>
       </FeatureLocked>
+
+      {/* Frequência dos alunos no período */}
+      {(() => {
+        const { inicio, fim } = obterDatasPeriodo();
+        return <FrequenciaAlunos userId={userId} inicio={inicio} fim={fim} />;
+      })()}
 
       {/* NPS - Satisfação dos alunos (Premium) */}
       <NpsRelatorio userId={userId} isLocked={isLocked} />

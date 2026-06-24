@@ -291,9 +291,23 @@ export default function AgendaNovaDia({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontSize: '15px', fontWeight: '700', color: '#0f172a',
+                      display: 'flex', alignItems: 'center', gap: '8px',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
-                      {aula.horario?.substring(0, 5)}{aula.descricao ? ` · ${aula.descricao}` : ''}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {aula.horario?.substring(0, 5)}{aula.descricao ? ` · ${aula.descricao}` : ''}
+                      </span>
+                      {aula.modalidades?.nome && (
+                        <span style={{
+                          flexShrink: 0,
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '1px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                          color: aula.modalidades.cor, backgroundColor: aula.modalidades.cor + '1a'
+                        }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: aula.modalidades.cor }} />
+                          {aula.modalidades.nome}
+                        </span>
+                      )}
                     </div>
                     <div style={{
                       fontSize: '12px', color: '#64748b', marginTop: '2px',

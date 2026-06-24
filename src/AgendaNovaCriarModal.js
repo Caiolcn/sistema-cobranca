@@ -6,6 +6,7 @@ import Select from './design-system/components/Select'
 import TimeInput from './design-system/components/TimeInput'
 import Input from './design-system/components/Input'
 import Button from './design-system/components/Button'
+import ModalidadePicker from './AgendaModalidadePicker'
 
 // ==========================================
 // Modal unificado da Agenda Nova
@@ -44,7 +45,7 @@ const gerarHorarios = (inicio, fim, intervaloMin) => {
 const toHMS = (hhmm) => (hhmm && hhmm.length === 5 ? `${hhmm}:00` : hhmm)
 
 export default function AgendaNovaCriarModal({
-  userId, clientes = [], colaboradores = [],
+  userId, clientes = [], colaboradores = [], modalidades = [], onModalidadeCriada,
   onClose, onSavedAluno, onSavedTurma
 }) {
   const [tipo, setTipo] = useState('aluno')
@@ -66,7 +67,8 @@ export default function AgendaNovaCriarModal({
     intervalo: 60,
     descricao: '',
     capacidade: 10,
-    professorId: ''
+    professorId: '',
+    modalidadeId: ''
   })
 
   const setAlunoField = (k, v) => setAluno(prev => ({ ...prev, [k]: v }))
@@ -152,7 +154,8 @@ export default function AgendaNovaCriarModal({
         horario: h,
         descricao: turma.descricao.trim(),
         capacidade: turma.capacidade,
-        professor_id: turma.professorId || null
+        professor_id: turma.professorId || null,
+        modalidade_id: turma.modalidadeId || null
       })
     }
 
@@ -221,6 +224,9 @@ export default function AgendaNovaCriarModal({
             toggleDia={toggleDiaTurma}
             colaboradores={colaboradores}
             previewHorarios={previewHorarios}
+            userId={userId}
+            modalidades={modalidades}
+            onModalidadeCriada={onModalidadeCriada}
           />
         )}
 
@@ -309,7 +315,7 @@ function FormAluno({ aluno, setField, toggleDia, clientes }) {
   )
 }
 
-function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios }) {
+function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios, userId, modalidades, onModalidadeCriada }) {
   return (
     <div>
       <div style={fieldBlock}>
@@ -398,6 +404,16 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios 
           value={turma.descricao}
           onChange={e => setField('descricao', e.target.value)}
           placeholder="Ex: Pilates avançado"
+        />
+      </div>
+
+      <div style={fieldBlock}>
+        <ModalidadePicker
+          userId={userId}
+          modalidades={modalidades}
+          value={turma.modalidadeId}
+          onChange={(v) => setField('modalidadeId', v)}
+          onCriada={onModalidadeCriada}
         />
       </div>
 

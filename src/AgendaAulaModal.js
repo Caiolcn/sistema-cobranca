@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
+import ModalidadePicker from './AgendaModalidadePicker'
 
 // ==========================================
 // Modal de criar/editar turma
@@ -30,7 +31,7 @@ const gerarHorarios = (inicio, fim, intervaloMin) => {
   return out
 }
 
-export default function AgendaAulaModal({ userId, editandoAula, colaboradores = [], onClose, onSaved }) {
+export default function AgendaAulaModal({ userId, editandoAula, colaboradores = [], modalidades = [], onModalidadeCriada, onClose, onSaved }) {
   const ehEdicao = !!editandoAula
 
   const [dias, setDias] = useState([1, 2, 3, 4, 5])
@@ -40,6 +41,7 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
   const [descricao, setDescricao] = useState('')
   const [capacidade, setCapacidade] = useState(10)
   const [professorId, setProfessorId] = useState('')
+  const [modalidadeId, setModalidadeId] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
       setDescricao(editandoAula.descricao || '')
       setCapacidade(editandoAula.capacidade || 10)
       setProfessorId(editandoAula.professor_id || '')
+      setModalidadeId(editandoAula.modalidade_id || '')
     }
   }, [editandoAula, ehEdicao])
 
@@ -76,7 +79,8 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
       const { data, error } = await supabase.from('aulas')
         .update({
           dia_semana: dias[0], horario, descricao: descricao.trim(),
-          capacidade, professor_id: profPayload, updated_at: new Date().toISOString()
+          capacidade, professor_id: profPayload, modalidade_id: modalidadeId || null,
+          updated_at: new Date().toISOString()
         })
         .eq('id', editandoAula.id).select()
 
@@ -95,7 +99,8 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
       for (const d of dias) for (const h of horarios) {
         registros.push({
           user_id: userId, dia_semana: d, horario: h,
-          descricao: descricao.trim(), capacidade, professor_id: profPayload
+          descricao: descricao.trim(), capacidade, professor_id: profPayload,
+          modalidade_id: modalidadeId || null
         })
       }
       const { data, error } = await supabase.from('aulas').insert(registros).select()
@@ -221,6 +226,17 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
           <input type="text" value={descricao} onChange={e => setDescricao(e.target.value)}
             placeholder="Ex: Pilates avançado"
             style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+        </div>
+
+        {/* Modalidade */}
+        <div style={{ marginBottom: '16px' }}>
+          <ModalidadePicker
+            userId={userId}
+            modalidades={modalidades}
+            value={modalidadeId}
+            onChange={setModalidadeId}
+            onCriada={onModalidadeCriada}
+          />
         </div>
 
         {/* Capacidade */}

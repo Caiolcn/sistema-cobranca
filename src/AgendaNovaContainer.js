@@ -53,6 +53,7 @@ export default function AgendaNovaContainer() {
   const [fixos, setFixos] = useState([])
   const [clientes, setClientes] = useState([])
   const [colaboradores, setColaboradores] = useState([])
+  const [modalidades, setModalidades] = useState([])
   const [creditos, setCreditos] = useState({})
   const [loadingBase, setLoadingBase] = useState(true)
   const [versao, setVersao] = useState(0)
@@ -76,12 +77,12 @@ export default function AgendaNovaContainer() {
   const carregarBase = useCallback(async () => {
     if (!userId) return
     setLoadingBase(true)
-    const [aulasRes, fixosRes, clientesRes, colabRes] = await Promise.all([
+    const [aulasRes, fixosRes, clientesRes, colabRes, modalRes] = await Promise.all([
       // Agenda Nova vê AMBOS: turmas (devedor_id NULL) e alunos individuais
       // (devedor_id setado). O join `devedores` traz o aluno quando é individual;
       // pra turmas o campo vem null e os alunos seguem via `aulas_fixos`.
       supabase.from('aulas')
-        .select('*, colaboradores(id, nome), devedores(id, nome, telefone, foto_url, lixo)')
+        .select('*, colaboradores(id, nome), devedores(id, nome, telefone, foto_url, lixo), modalidades(id, nome, cor)')
         .eq('user_id', userId).eq('ativo', true).order('horario'),
       // !inner + filtro de lixo: aluno fixo em lixeira não entra no roster
       supabase.from('aulas_fixos')
@@ -96,11 +97,16 @@ export default function AgendaNovaContainer() {
       supabase.from('colaboradores')
         .select('id, nome, cargo, ativo')
         .eq('user_id', userId)
+        .order('nome'),
+      supabase.from('modalidades')
+        .select('id, nome, cor')
+        .eq('user_id', userId)
         .order('nome')
     ])
     if (aulasRes.data) setAulas(aulasRes.data)
     if (fixosRes.data) setFixos(fixosRes.data.filter(f => f.ativo !== false))
     if (colabRes.data) setColaboradores(colabRes.data)
+    if (modalRes.data) setModalidades(modalRes.data)
     if (clientesRes.data) {
       setClientes(clientesRes.data)
       const m = {}
@@ -138,10 +144,22 @@ export default function AgendaNovaContainer() {
   const abrirEditarAula = (aula) => setAulaModal({ aula })
 
   const attachProf = useCallback((aula) => {
-    if (!aula.professor_id) return { ...aula, colaboradores: null }
-    const prof = colaboradores.find(c => c.id === aula.professor_id)
-    return { ...aula, colaboradores: prof ? { id: prof.id, nome: prof.nome } : null }
-  }, [colaboradores])
+    const prof = aula.professor_id ? colaboradores.find(c => c.id === aula.professor_id) : null
+    const mod = aula.modalidade_id ? modalidades.find(m => m.id === aula.modalidade_id) : null
+    return {
+      ...aula,
+      colaboradores: prof ? { id: prof.id, nome: prof.nome } : null,
+      modalidades: mod ? { id: mod.id, nome: mod.nome, cor: mod.cor } : null
+    }
+  }, [colaboradores, modalidades])
+
+  // Modalidade criada na hora pelo ModalidadePicker — adiciona à lista local
+  const adicionarModalidade = useCallback((nova) => {
+    if (!nova) return
+    setModalidades(prev => prev.some(m => m.id === nova.id)
+      ? prev
+      : [...prev, nova].sort((a, b) => a.nome.localeCompare(b.nome)))
+  }, [])
 
   const onAulaSalva = ({ inserted, updated }) => {
     if (inserted) setAulas(prev => [...prev, ...inserted.map(attachProf)].sort((a, b) => (a.horario || '').localeCompare(b.horario || '')))
@@ -554,6 +572,8 @@ export default function AgendaNovaContainer() {
           userId={userId}
           clientes={clientes}
           colaboradores={colaboradores}
+          modalidades={modalidades}
+          onModalidadeCriada={adicionarModalidade}
           onSavedAluno={onAlunoIndividualCriado}
           onSavedTurma={onAulaSalva}
           onClose={() => setCriarAberto(false)}
@@ -565,6 +585,8 @@ export default function AgendaNovaContainer() {
           userId={userId}
           editandoAula={aulaModal.aula}
           colaboradores={colaboradores}
+          modalidades={modalidades}
+          onModalidadeCriada={adicionarModalidade}
           onSaved={onAulaSalva}
           onClose={() => setAulaModal(null)}
         />
