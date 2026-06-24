@@ -32,6 +32,7 @@ const Ajuda = lazy(() => import('./Ajuda'))
 const CRM = lazy(() => import('./CRM'))
 const Admin = lazy(() => import('./Admin'))
 const AdminErrosMensagens = lazy(() => import('./AdminErrosMensagens'))
+const AdminCron = lazy(() => import('./AdminCron'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
@@ -164,6 +165,7 @@ function App() {
                     <Route path="crm" element={<CRM />} />
                     <Route path="admin" element={<Admin />} />
                     <Route path="admin/erros-mensagens" element={<AdminErrosMensagens />} />
+                    <Route path="admin/cron" element={<AdminCron />} />
                   </Route>
                 </>
               ) : (

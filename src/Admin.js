@@ -757,6 +757,18 @@ export default function Admin() {
             Erros de envio
           </button>
           <button
+            onClick={() => navigate('/app/admin/cron')}
+            style={{
+              padding: '10px 16px', borderRadius: '8px', border: '1px solid #667eea',
+              backgroundColor: '#f0f4ff', color: '#4f46e5', fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <Icon icon="mdi:clock-outline" width="16" />
+            CRON
+          </button>
+          <button
             onClick={carregarDados}
             disabled={loading}
             style={{
