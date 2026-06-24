@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Icon } from '@iconify/react'
 
 export default function ConfirmModal({
@@ -14,6 +15,10 @@ export default function ConfirmModal({
   checkboxChecked = false,
   onCheckboxChange = () => {}
 }) {
+  // Trava de re-entrada: impede que clique-duplo dispare onConfirm 2x
+  // (gerava mensalidades/registros duplicados). Vale pra todos os usos do modal.
+  const [processing, setProcessing] = useState(false)
+
   if (!isOpen) return null
 
   const getTypeConfig = () => {
@@ -63,8 +68,20 @@ export default function ConfirmModal({
 
   const config = getTypeConfig()
 
-  const handleConfirm = () => {
-    onConfirm()
+  const handleConfirm = async () => {
+    if (processing) return
+    setProcessing(true)
+    try {
+      await onConfirm()
+    } finally {
+      setProcessing(false)
+      onClose()
+    }
+  }
+
+  // Não deixa fechar (overlay/cancelar) no meio do processamento
+  const handleClose = () => {
+    if (processing) return
     onClose()
   }
 
@@ -72,7 +89,7 @@ export default function ConfirmModal({
     <>
       {/* Overlay */}
       <div
-        onClick={onClose}
+        onClick={handleClose}
         style={{
           position: 'fixed',
           top: 0,
@@ -176,7 +193,8 @@ export default function ConfirmModal({
             {/* Cancelar - só mostra se tiver texto */}
             {cancelText && (
               <button
-                onClick={onClose}
+                onClick={handleClose}
+                disabled={processing}
                 style={{
                   padding: '10px 20px',
                   borderRadius: '6px',
@@ -205,6 +223,7 @@ export default function ConfirmModal({
             {/* Confirmar */}
             <button
               onClick={handleConfirm}
+              disabled={processing}
               style={{
                 padding: '10px 20px',
                 borderRadius: '6px',
@@ -213,18 +232,19 @@ export default function ConfirmModal({
                 color: 'white',
                 fontSize: '14px',
                 fontWeight: '500',
-                cursor: 'pointer',
+                cursor: processing ? 'wait' : 'pointer',
                 transition: 'all 0.2s',
-                minWidth: '100px'
+                minWidth: '100px',
+                opacity: processing ? 0.7 : 1
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = config.confirmHover
+                if (!processing) e.currentTarget.style.backgroundColor = config.confirmHover
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = config.confirmBg
               }}
             >
-              {confirmText}
+              {processing ? 'Processando...' : confirmText}
             </button>
           </div>
         </div>
