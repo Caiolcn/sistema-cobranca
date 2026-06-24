@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient'
 import { resolverDestinatario } from '../utils/destinatario'
+import { calcularMultaJuros } from '../utils/multaJuros'
 
 /**
  * Serviço para integração com Evolution API
@@ -165,6 +166,9 @@ class WhatsAppService {
       '{{telefone}}': dados.telefone || '',
       '{{valorMensalidade}}': dados.valorMensalidade || '',
       '{{valorParcela}}': dados.valorMensalidade || '', // Alias para valorMensalidade
+      '{{valorMulta}}': dados.valorMulta || '',
+      '{{valorJuros}}': dados.valorJuros || '',
+      '{{valorTotal}}': dados.valorTotal || dados.valorMensalidade || '',
       '{{dataVencimento}}': dados.dataVencimento || '',
       '{{diasAtraso}}': dados.diasAtraso || '0',
       '{{nomeEmpresa}}': dados.nomeEmpresa || '',
@@ -947,7 +951,7 @@ class WhatsAppService {
       // Buscar dados do usuário/empresa incluindo chave PIX (do dono da mensalidade)
       const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
-        .select('nome_empresa, chave_pix')
+        .select('nome_empresa, chave_pix, asaas_multa_juros')
         .eq('id', ownerId)
         .maybeSingle()
 
@@ -1022,15 +1026,22 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
       const nomeContato = destinatario.primeiroNome || 'Cliente'
 
+      // Multa/juros por atraso (config do dono). Só > 0 em mensalidade vencida.
+      const fmtBRL = (v) => `R$ ${parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      const mj = calcularMultaJuros(mensalidade.valor, mensalidade.data_vencimento, usuario?.asaas_multa_juros)
+
       // Preparar dados para substituição
       const dadosSubstituicao = {
         nomeCliente: nomeContato,
         nomeAluno: nomeContato,
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
-        valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        valorMensalidade: fmtBRL(mensalidade.valor),
         dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
         diasAtraso: diasAtraso.toString(),
+        valorMulta: fmtBRL(mj.multa),
+        valorJuros: fmtBRL(mj.juros),
+        valorTotal: fmtBRL(mj.total),
         nomeEmpresa: nomeEmpresa,
         chavePix: chavePix,
         linkPagamento: '', // Será preenchido se necessário

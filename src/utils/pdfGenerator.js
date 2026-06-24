@@ -65,8 +65,15 @@ function criarReciboPDF(dados, logo = null) {
     cpfCnpj,
     emailEmpresa,
     telefoneEmpresa,
-    descricao
+    descricao,
+    valorBase,
+    valorMulta,
+    valorJuros
   } = dados
+
+  const multaNum = parseFloat(valorMulta) || 0
+  const jurosNum = parseFloat(valorJuros) || 0
+  const temAcrescimo = multaNum > 0 || jurosNum > 0
 
   // Período de referência: se descrição for "Mensalidade" e houver vencimento,
   // anexa "- Mês/Ano" (ex: "Mensalidade - Maio/2026")
@@ -239,6 +246,18 @@ function criarReciboPDF(dados, logo = null) {
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
   doc.text(formaPagamento || 'Não informado', pageWidth - margin - 50, yPos + 8)
+
+  // Detalhamento de multa/juros (só quando houver acréscimo por atraso)
+  if (temAcrescimo) {
+    const fmt = (v) => `R$ ${parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const partes = [`Valor ${fmt(valorBase)}`]
+    if (multaNum > 0) partes.push(`Multa ${fmt(multaNum)}`)
+    if (jurosNum > 0) partes.push(`Juros ${fmt(jurosNum)}`)
+    doc.setTextColor(120, 120, 120)
+    doc.setFontSize(7.5)
+    doc.setFont('helvetica', 'normal')
+    doc.text(partes.join('  +  '), margin + 5, yPos + 21)
+  }
 
   // ============ DESCRIÇÃO ============
   if (descricaoFinal) {

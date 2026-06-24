@@ -11,6 +11,7 @@ import { useUser } from './contexts/UserContext'
 import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
 import { baixarRecibo, imprimirRecibo, gerarReciboBlob } from './utils/pdfGenerator'
 import { resolverDestinatario } from './utils/destinatario'
+import { calcularMultaJuros } from './utils/multaJuros'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
@@ -93,6 +94,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [mensalidadeParaAtualizar, setMensalidadeParaAtualizar] = useState(null)
   const [novoStatusPagamento, setNovoStatusPagamento] = useState(false)
   const [formaPagamento, setFormaPagamento] = useState('')
+  // Multa/juros por atraso na baixa manual (pré-preenchido pela config, editável)
+  const [multaJurosConfig, setMultaJurosConfig] = useState({ ativo: false, multa_percent: 0, juros_mes_percent: 0 })
+  const [baixaMulta, setBaixaMulta] = useState('0.00')
+  const [baixaJuros, setBaixaJuros] = useState('0.00')
 
   // Paginação
   const [paginaAtual, setPaginaAtual] = useState(1)
@@ -150,12 +155,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       // Carregar modo de integração
       supabase
         .from('usuarios')
-        .select('modo_integracao')
+        .select('modo_integracao, asaas_multa_juros')
         .eq('id', userId)
         .single()
         .then(({ data }) => {
           if (data?.modo_integracao) {
             setModoIntegracao(data.modo_integracao)
+          }
+          if (data?.asaas_multa_juros) {
+            setMultaJurosConfig(data.asaas_multa_juros)
           }
         })
     }
@@ -583,6 +591,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const alterarStatusPagamento = (mensalidade, novoPago) => {
     setMensalidadeParaAtualizar(mensalidade)
     setNovoStatusPagamento(novoPago)
+    // Pré-calcular multa/juros sugeridos (só quando estiver dando baixa numa parcela vencida)
+    if (novoPago) {
+      const { multa, juros } = calcularMultaJuros(mensalidade.valor, mensalidade.data_vencimento, multaJurosConfig)
+      setBaixaMulta(multa.toFixed(2))
+      setBaixaJuros(juros.toFixed(2))
+    } else {
+      setBaixaMulta('0.00')
+      setBaixaJuros('0.00')
+    }
     setMostrarModalConfirmacao(true)
   }
 
@@ -604,10 +621,20 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       if (novoStatusPagamento) {
         updateData.forma_pagamento = formaPagamento
         updateData.data_pagamento = new Date().toISOString().split('T')[0] // Data atual em formato ISO
+        // Multa/juros informados na baixa (pré-preenchidos pela config, editáveis)
+        const multa = Math.max(0, parseFloat(baixaMulta) || 0)
+        const juros = Math.max(0, parseFloat(baixaJuros) || 0)
+        const base = parseFloat(mensalidadeParaAtualizar.valor) || 0
+        updateData.valor_multa = multa
+        updateData.valor_juros = juros
+        updateData.valor_pago = Math.round((base + multa + juros) * 100) / 100
       } else {
         // Limpar forma e data se estiver desfazendo
         updateData.forma_pagamento = null
         updateData.data_pagamento = null
+        updateData.valor_multa = 0
+        updateData.valor_juros = 0
+        updateData.valor_pago = null
       }
 
       const { data: mensalidadeAtualizada, error } = await supabase
@@ -663,7 +690,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         setMensalidadePaga({
           ...mensalidadeAtualizada,
           forma_pagamento: formaPagamento,
-          data_pagamento: updateData.data_pagamento
+          data_pagamento: updateData.data_pagamento,
+          valor_multa: updateData.valor_multa,
+          valor_juros: updateData.valor_juros,
+          valor_pago: updateData.valor_pago
         })
         setMostrarModalRecibo(true)
       } else {
@@ -671,11 +701,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }
 
       setFormaPagamento('')
+      setBaixaMulta('0.00')
+      setBaixaJuros('0.00')
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
       setMostrarModalConfirmacao(false)
       setMensalidadeParaAtualizar(null)
       setFormaPagamento('')
+      setBaixaMulta('0.00')
+      setBaixaJuros('0.00')
     }
   }
 
@@ -740,7 +774,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     const dadosRecibo = {
       nomeCliente: mensalidade.devedor?.nome || mensalidade.devedores?.nome || 'Aluno',
       telefoneCliente: mensalidade.devedor?.telefone || mensalidade.devedores?.telefone || '',
-      valor: mensalidade.valor,
+      valor: mensalidade.valor_pago || mensalidade.valor,
+      valorBase: mensalidade.valor,
+      valorMulta: mensalidade.valor_multa,
+      valorJuros: mensalidade.valor_juros,
       dataVencimento: mensalidade.data_vencimento,
       dataPagamento: mensalidade.data_pagamento,
       formaPagamento: mensalidade.forma_pagamento,
@@ -792,7 +829,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       const dadosRecibo = {
         nomeCliente: devedor?.nome || 'Aluno',
         telefoneCliente: devedor?.telefone || '',
-        valor: mensalidade.valor,
+        valor: mensalidade.valor_pago || mensalidade.valor,
+        valorBase: mensalidade.valor,
+        valorMulta: mensalidade.valor_multa,
+        valorJuros: mensalidade.valor_juros,
         dataVencimento: mensalidade.data_vencimento,
         dataPagamento: mensalidade.data_pagamento,
         formaPagamento: mensalidade.forma_pagamento,
@@ -2339,6 +2379,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   setMostrarModalConfirmacao(false)
                   setMensalidadeParaAtualizar(null)
                   setFormaPagamento('')
+                  setBaixaMulta('0.00')
+                  setBaixaJuros('0.00')
                 }}
                 style={{
                   background: 'none',
@@ -2400,6 +2442,45 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   </select>
                 </div>
               )}
+
+              {/* Multa e juros - só ao confirmar pagamento de parcela vencida */}
+              {novoStatusPagamento && mensalidadeParaAtualizar && calcularStatus(mensalidadeParaAtualizar) === 'atrasado' && (() => {
+                const base = parseFloat(mensalidadeParaAtualizar.valor) || 0
+                const multa = Math.max(0, parseFloat(baixaMulta) || 0)
+                const juros = Math.max(0, parseFloat(baixaJuros) || 0)
+                const total = Math.round((base + multa + juros) * 100) / 100
+                return (
+                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
+                      Multa e juros por atraso
+                    </label>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Multa (R$)</span>
+                        <input
+                          type="number" min="0" step="0.01"
+                          value={baixaMulta}
+                          onChange={(e) => setBaixaMulta(e.target.value)}
+                          style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', boxSizing: 'border-box', color: '#344848' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Juros (R$)</span>
+                        <input
+                          type="number" min="0" step="0.01"
+                          value={baixaJuros}
+                          onChange={(e) => setBaixaJuros(e.target.value)}
+                          style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', boxSizing: 'border-box', color: '#344848' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', color: '#344848' }}>
+                      <span style={{ color: '#666' }}>Total a receber</span>
+                      <strong style={{ fontSize: '16px' }}>R$ {total.toFixed(2)}</strong>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Footer */}
@@ -2415,6 +2496,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   setMostrarModalConfirmacao(false)
                   setMensalidadeParaAtualizar(null)
                   setFormaPagamento('')
+                  setBaixaMulta('0.00')
+                  setBaixaJuros('0.00')
                 }}
                 style={{
                   padding: '10px 20px',
@@ -2494,7 +2577,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
               {mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Aluno'} -{' '}
               <strong>
-                R$ {parseFloat(mensalidadePaga.valor || 0).toLocaleString('pt-BR', {
+                R$ {parseFloat(mensalidadePaga.valor_pago || mensalidadePaga.valor || 0).toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
                 })}

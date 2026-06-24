@@ -376,7 +376,7 @@ function Configuracao() {
         boleto: data.asaas_formas_pagamento?.boleto === true
       })
 
-      // Carregar config de multa/juros por atraso (aplicada no portal)
+      // Carregar config de multa/juros por atraso (portal + baixa manual + mensagem de vencido)
       setMultaJuros({
         ativo: data.asaas_multa_juros?.ativo === true,
         multa_percent: Number(data.asaas_multa_juros?.multa_percent ?? 2),
@@ -3141,64 +3141,6 @@ function Configuracao() {
                 </label>
               </div>
 
-              {/* Multa e juros por atraso */}
-              <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #f0f0f0' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#344848', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Icon icon="mdi:alarm-light-outline" width="20" style={{ color: '#e65100' }} />
-                  Multa e juros por atraso
-                </h3>
-                <p style={{ fontSize: '13px', color: '#888', margin: '0 0 16px' }}>
-                  Quando o aluno pagar uma mensalidade vencida pelo portal, o valor já sai com multa e juros calculados.
-                </p>
-
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
-                  cursor: salvandoMultaJuros ? 'wait' : 'pointer',
-                  backgroundColor: multaJuros.ativo ? '#f0fdf4' : '#fff',
-                  opacity: salvandoMultaJuros ? 0.7 : 1
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={multaJuros.ativo}
-                    disabled={salvandoMultaJuros}
-                    onChange={e => salvarMultaJuros({ ...multaJuros, ativo: e.target.checked })}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Cobrar multa e juros</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>Aplicado só em mensalidade vencida, na hora do pagamento</div>
-                  </div>
-                </label>
-
-                {multaJuros.ativo && (
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Multa (%)</label>
-                      <input
-                        type="number" min="0" max="100" step="0.1"
-                        value={multaJuros.multa_percent}
-                        disabled={salvandoMultaJuros}
-                        onChange={e => setMultaJuros({ ...multaJuros, multa_percent: e.target.value })}
-                        onBlur={() => salvarMultaJuros(multaJuros)}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
-                      />
-                      <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Cobrada uma vez sobre o valor</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Juros ao mês (%)</label>
-                      <input
-                        type="number" min="0" max="100" step="0.1"
-                        value={multaJuros.juros_mes_percent}
-                        disabled={salvandoMultaJuros}
-                        onChange={e => setMultaJuros({ ...multaJuros, juros_mes_percent: e.target.value })}
-                        onBlur={() => salvarMultaJuros(multaJuros)}
-                        style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
-                      />
-                      <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Proporcional aos dias de atraso</div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -3462,6 +3404,74 @@ function Configuracao() {
           </div>
         </>
       )}
+
+      {/* Multa e juros por atraso — política de cobrança, vale para qualquer modo de integração */}
+      <div style={{
+        marginTop: '24px',
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        padding: isSmallScreen ? '20px' : '28px',
+        border: '1px solid #e5e7eb',
+        boxShadow: 'none'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#344848', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon icon="mdi:alarm-light-outline" width="18" style={{ color: '#e65100' }} />
+          </div>
+          Multa e juros por atraso
+        </h3>
+        <p style={{ fontSize: '13px', color: '#888', margin: '0 0 20px 42px' }}>
+          Aplicado em mensalidade vencida: no pagamento pelo portal, na baixa manual e na mensagem de cobrança vencida.
+        </p>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: '12px',
+          padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
+          cursor: salvandoMultaJuros ? 'wait' : 'pointer',
+          backgroundColor: multaJuros.ativo ? '#f0fdf4' : '#fff',
+          opacity: salvandoMultaJuros ? 0.7 : 1
+        }}>
+          <input
+            type="checkbox"
+            checked={multaJuros.ativo}
+            disabled={salvandoMultaJuros}
+            onChange={e => salvarMultaJuros({ ...multaJuros, ativo: e.target.checked })}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Cobrar multa e juros</div>
+            <div style={{ fontSize: '12px', color: '#999' }}>Aplicado só em mensalidade vencida</div>
+          </div>
+        </label>
+
+        {multaJuros.ativo && (
+          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Multa (%)</label>
+              <input
+                type="number" min="0" max="100" step="0.1"
+                value={multaJuros.multa_percent}
+                disabled={salvandoMultaJuros}
+                onChange={e => setMultaJuros({ ...multaJuros, multa_percent: e.target.value })}
+                onBlur={() => salvarMultaJuros(multaJuros)}
+                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+              <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Cobrada uma vez sobre o valor</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Juros ao mês (%)</label>
+              <input
+                type="number" min="0" max="100" step="0.1"
+                value={multaJuros.juros_mes_percent}
+                disabled={salvandoMultaJuros}
+                onChange={e => setMultaJuros({ ...multaJuros, juros_mes_percent: e.target.value })}
+                onBlur={() => salvarMultaJuros(multaJuros)}
+                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+              <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Proporcional aos dias de atraso</div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 
