@@ -8,6 +8,11 @@ import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { exportarCobrancasAvulsas } from './utils/exportUtils'
+import Button from './design-system/components/Button'
+import SearchInput from './design-system/components/SearchInput'
+import Input from './design-system/components/Input'
+import Select from './design-system/components/Select'
+import DateField from './components/DateField'
 
 const CATEGORIAS_PADRAO = [
   { value: 'uniforme', label: 'Uniforme', icon: 'mdi:tshirt-crew-outline', cor: '#E91E63' },
@@ -488,40 +493,23 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
 
   const buttonsBlock = (
     <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center', flexWrap: 'wrap' }}>
-      <button
-        onClick={handleExportarCSV}
+      <Button
+        variant="outline"
+        icon="ph:export-light"
+        iconOnly
+        aria-label="Exportar"
         title="Exportar CSV"
-        style={{
-          padding: isSmallScreen ? '10px 14px' : '10px 20px',
-          backgroundColor: 'white', color: '#333',
-          border: '1px solid #ddd', borderRadius: '6px',
-          cursor: 'pointer', fontSize: '14px', fontWeight: '500',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '8px', transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#344848'; e.currentTarget.style.color = '#344848' }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#333' }}
-      >
-        <Icon icon="ph:export-light" width="18" height="18" />
-      </button>
+        onClick={handleExportarCSV}
+        style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
+      />
 
-      <button
+      <Button
         className="btn-filtrar-avulsas"
+        variant={temFiltrosAtivos ? 'secondary' : 'outline'}
+        icon="mdi:filter-outline"
         onClick={() => setMostrarFiltros(!mostrarFiltros)}
-        style={{
-          padding: isSmallScreen ? '10px 14px' : '10px 20px',
-          backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
-          color: temFiltrosAtivos ? 'white' : '#333',
-          border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-          borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-          fontWeight: '500', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: '8px', position: 'relative',
-          transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
-        onMouseLeave={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = temFiltrosAtivos ? '#344848' : 'white' }}
+        style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
       >
-        <Icon icon="mdi:filter-outline" width="18" height="18" />
         {!isSmallScreen && 'Filtrar'}
         {temFiltrosAtivos && (
           <span style={{
@@ -532,24 +520,16 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             fontWeight: '700', border: '2px solid white'
           }}>!</span>
         )}
-      </button>
+      </Button>
 
-      <button
+      <Button
+        variant="secondary"
+        icon="mdi:plus"
         onClick={abrirModalNova}
-        style={{
-          padding: isSmallScreen ? '10px 14px' : '10px 20px',
-          backgroundColor: '#344848', color: 'white',
-          border: 'none', borderRadius: '6px',
-          cursor: 'pointer', fontSize: '14px', fontWeight: '500',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '8px', transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
+        style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
       >
-        <Icon icon="mdi:plus" width="18" height="18" />
         {!isSmallScreen && 'Nova Cobrança'}
-      </button>
+      </Button>
 
       {mostrarFiltros && (
         <div
@@ -577,101 +557,59 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
               backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1
             }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Filtros</h3>
-              <button onClick={() => setMostrarFiltros(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
-                <Icon icon="mdi:close" width="24" height="24" color="#666" />
-              </button>
+              <Button variant="ghost" icon="mdi:close" iconOnly aria-label="Fechar" onClick={() => setMostrarFiltros(false)} />
             </div>
           )}
 
           <div style={{ padding: '16px 20px' }}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Buscar</label>
-              <input
-                type="text"
+              <SearchInput
+                label="Buscar"
                 placeholder="Descrição ou nome do aluno..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Categoria</label>
-              <select
+              <Select
+                label="Categoria"
+                portal
+                options={[{ value: 'todos', label: 'Todas' }, ...todasCategorias.map(cat => ({ value: cat.value, label: cat.label, icon: cat.icon }))]}
                 value={filtroCategoria}
-                onChange={(e) => setFiltroCategoria(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  boxSizing: 'border-box', backgroundColor: 'white'
-                }}
-              >
-                <option value="todos">Todas</option>
-                {todasCategorias.map(cat => (
-                  <option key={cat.value} value={cat.value}>{cat.label}</option>
-                ))}
-              </select>
+                onChange={(v) => setFiltroCategoria(v)}
+              />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Status</label>
-              <select
+              <Select
+                label="Status"
+                portal
+                options={[
+                  { value: 'todos', label: 'Todos' },
+                  { value: 'pendente', label: 'Pendente' },
+                  { value: 'pago', label: 'Pago' },
+                  { value: 'atrasado', label: 'Atrasado' },
+                  { value: 'cancelado', label: 'Cancelado' }
+                ]}
                 value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  boxSizing: 'border-box', backgroundColor: 'white'
-                }}
-              >
-                <option value="todos">Todos</option>
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-                <option value="atrasado">Atrasado</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
+                onChange={(v) => setFiltroStatus(v)}
+              />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Período</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="date"
-                  value={filtroDataInicio}
-                  onChange={(e) => setFiltroDataInicio(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none'
-                  }}
-                />
-                <input
-                  type="date"
-                  value={filtroDataFim}
-                  onChange={(e) => setFiltroDataFim(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none'
-                  }}
-                />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <DateField value={filtroDataInicio} onChange={setFiltroDataInicio} />
+                <span style={{ color: '#999', fontSize: '12px', fontWeight: '500' }}>até</span>
+                <DateField value={filtroDataFim} onChange={setFiltroDataFim} />
               </div>
             </div>
 
             {temFiltrosAtivos && (
-              <button
-                onClick={limparFiltros}
-                style={{
-                  width: '100%', padding: '10px', backgroundColor: '#344848',
-                  color: 'white', border: 'none', borderRadius: '6px',
-                  fontSize: '14px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
-              >
+              <Button variant="secondary" fullWidth onClick={limparFiltros}>
                 Limpar filtros
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -800,7 +738,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 key={cobranca.id}
                 onClick={() => abrirModalEditar(cobranca)}
                 style={{
-                  backgroundColor: 'white', borderRadius: '8px', padding: '14px',
+                  backgroundColor: 'white', borderRadius: '8px', padding: '16px',
                   border: '1px solid #e5e7eb', boxShadow: 'none',
                   borderLeft: `4px solid ${catInfo.cor}`,
                   cursor: 'pointer'
@@ -872,26 +810,26 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
-                <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#666' }}>Descrição</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Aluno</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Categoria</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Valor</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Vencimento</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Status</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Ações</th>
+              <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#666' }}>Descrição</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Aluno</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Categoria</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Valor</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Vencimento</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {cobrancasPaginadas.map(cobranca => {
                 const catInfo = getCategoriaInfo(cobranca.categoria)
                 return (
-                  <tr key={cobranca.id} style={{ borderBottom: '1px solid #f5f5f5', transition: 'background-color 0.15s', cursor: 'pointer' }}
+                  <tr key={cobranca.id} style={{ borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s', cursor: 'pointer' }}
                     onClick={() => abrirModalEditar(cobranca)}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafafa'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                   >
-                    <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1a1a1a', fontWeight: '500' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#1a1a1a', fontWeight: '500' }}>
                       <div>{cobranca.descricao}</div>
                       {cobranca.observacoes && (
                         <div title={cobranca.observacoes} style={{
@@ -902,10 +840,10 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
                       {cobranca.devedores?.nome || <span style={{ color: '#ccc' }}>-</span>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', textAlign: 'center' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
                         backgroundColor: catInfo.cor + '15', color: catInfo.cor,
@@ -915,16 +853,16 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                         {catInfo.label}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#1a1a1a', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '14px', fontWeight: '600', color: '#1a1a1a', textAlign: 'center' }}>
                       {formatarMoeda(cobranca.valor)}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
                       {new Date(cobranca.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       {getStatusBadge(cobranca)}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMarcarPago(cobranca) }}
@@ -1039,144 +977,99 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>
                 {editando ? 'Editar Cobrança' : 'Nova Cobrança Avulsa'}
               </h3>
-              <button onClick={fecharModal} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                <Icon icon="mdi:close" width="24" height="24" color="#666" />
-              </button>
+              <Button variant="ghost" icon="mdi:close" iconOnly aria-label="Fechar" onClick={fecharModal} />
             </div>
 
             {/* Descrição */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Descrição *</label>
-              <input
-                type="text"
+              <Input
+                label="Descrição"
+                required
                 value={formDescricao}
                 onChange={(e) => setFormDescricao(e.target.value)}
                 placeholder="Ex: Uniforme GG, Luva de boxe..."
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
               />
             </div>
 
             {/* Valor + Categoria lado a lado */}
             <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Valor (R$) *</label>
-                <input
+                <Input
+                  label="Valor"
+                  required
                   type="number"
                   step="0.01"
                   min="0"
+                  prefix="R$"
                   value={formValor}
                   onChange={(e) => setFormValor(e.target.value)}
-                  placeholder="0.00"
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
+                  placeholder="0,00"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Categoria</label>
-                <select
+                <Select
+                  label="Categoria"
+                  portal
+                  options={todasCategorias.map(cat => ({ value: cat.value, label: cat.label, icon: cat.icon }))}
                   value={formCategoria}
-                  onChange={(e) => {
-                    if (e.target.value === '__nova__') {
-                      setMostrarModalCategoria(true)
-                    } else {
-                      setFormCategoria(e.target.value)
-                    }
-                  }}
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box'
-                  }}
-                >
-                  {todasCategorias.map(cat => (
-                    <option key={cat.value} value={cat.value}>{cat.label}</option>
-                  ))}
-                  <option value="__nova__">+ Nova categoria</option>
-                </select>
+                  onChange={(v) => setFormCategoria(v)}
+                  onCreate={() => setMostrarModalCategoria(true)}
+                  createLabel="Nova categoria"
+                />
               </div>
             </div>
 
             {/* Data vencimento */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Data de vencimento <span style={{ fontWeight: '400', color: '#999' }}>(opcional)</span></label>
-              <input
-                type="date"
+              <DateField
+                label="Data de vencimento (opcional)"
                 value={formDataVencimento}
-                onChange={(e) => setFormDataVencimento(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box',
-                  backgroundColor: 'white', WebkitAppearance: 'none', color: '#333'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
+                onChange={setFormDataVencimento}
               />
             </div>
 
             {/* Aluno (opcional) */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>
-                Aluno <span style={{ fontWeight: '400', color: '#999' }}>(opcional)</span>
-              </label>
-              <select
+              <Select
+                label="Aluno (opcional)"
+                portal
+                searchable
+                clearable
+                placeholder="Sem vínculo"
+                searchPlaceholder="Buscar aluno…"
+                options={alunos.map(a => ({ value: a.id, label: a.nome }))}
                 value={formDevedorId}
-                onChange={(e) => setFormDevedorId(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box'
-                }}
-              >
-                <option value="">Sem vínculo</option>
-                {alunos.map(a => (
-                  <option key={a.id} value={a.id}>{a.nome}</option>
-                ))}
-              </select>
+                onChange={(v) => setFormDevedorId(v || '')}
+              />
             </div>
 
             {/* Status */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Status</label>
-              <select
+              <Select
+                label="Status"
+                portal
+                options={[
+                  { value: 'pendente', label: 'Pendente' },
+                  { value: 'pago', label: 'Pago' },
+                  { value: 'cancelado', label: 'Cancelado' }
+                ]}
                 value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  boxSizing: 'border-box', backgroundColor: 'white'
-                }}
-              >
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
+                onChange={(v) => setFormStatus(v)}
+              />
             </div>
 
             {/* Forma de pagamento (só se pago) */}
             {formStatus === 'pago' && (
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Forma de pagamento</label>
-                <select
+                <Select
+                  label="Forma de pagamento"
+                  portal
+                  clearable
+                  placeholder="Não informado"
+                  options={FORMAS_PAGAMENTO.map(f => ({ value: f.value, label: f.label }))}
                   value={formFormaPagamento}
-                  onChange={(e) => setFormFormaPagamento(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none',
-                    boxSizing: 'border-box', backgroundColor: 'white'
-                  }}
-                >
-                  <option value="">Não informado</option>
-                  {FORMAS_PAGAMENTO.map(f => (
-                    <option key={f.value} value={f.value}>{f.label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setFormFormaPagamento(v || '')}
+                />
               </div>
             )}
 
@@ -1200,28 +1093,12 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
 
             {/* Botões */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={fecharModal}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: '1px solid #e0e0e0',
-                  backgroundColor: 'white', color: '#666', fontSize: '14px',
-                  fontWeight: '500', cursor: 'pointer', minWidth: '100px'
-                }}
-              >
+              <Button variant="outline" onClick={fecharModal} style={{ minWidth: '100px' }}>
                 Cancelar
-              </button>
-              <button
-                onClick={handleSalvar}
-                disabled={salvando}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: 'none',
-                  backgroundColor: '#344848', color: 'white', fontSize: '14px',
-                  fontWeight: '500', cursor: salvando ? 'default' : 'pointer',
-                  minWidth: '100px', opacity: salvando ? 0.7 : 1
-                }}
-              >
-                {salvando ? 'Salvando...' : (editando ? 'Salvar' : 'Criar')}
-              </button>
+              </Button>
+              <Button variant="primary" loading={salvando} onClick={handleSalvar} style={{ minWidth: '100px' }}>
+                {editando ? 'Salvar' : 'Criar'}
+              </Button>
             </div>
           </div>
         </div>
@@ -1249,16 +1126,11 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             </h3>
 
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Nome</label>
-              <input
-                type="text"
+              <Input
+                label="Nome"
                 value={novaCategoriaLabel}
                 onChange={(e) => setNovaCategoriaLabel(e.target.value)}
                 placeholder="Ex: Luvas, Quimono..."
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
               />
             </div>
 
@@ -1281,16 +1153,12 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setMostrarModalCategoria(false)}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: '1px solid #e0e0e0',
-                  backgroundColor: 'white', color: '#666', fontSize: '14px', cursor: 'pointer'
-                }}
-              >
+              <Button variant="outline" onClick={() => setMostrarModalCategoria(false)} style={{ minWidth: '100px' }}>
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                style={{ minWidth: '100px' }}
                 onClick={() => {
                   const nome = novaCategoriaLabel.trim()
                   if (!nome) { showToast('Informe o nome da categoria', 'warning'); return }
@@ -1307,14 +1175,9 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   setMostrarModalCategoria(false)
                   showToast('Categoria criada!', 'success')
                 }}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: 'none',
-                  backgroundColor: '#344848', color: 'white', fontSize: '14px',
-                  fontWeight: '500', cursor: 'pointer'
-                }}
               >
                 Criar
-              </button>
+              </Button>
             </div>
           </div>
         </div>
