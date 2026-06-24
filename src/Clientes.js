@@ -59,6 +59,7 @@ export default function Clientes() {
   const [mostrarModal, setMostrarModal] = useState(false)
   const [abaPerfil, setAbaPerfil] = useState('dados')
   const [mensalidadesCliente, setMensalidadesCliente] = useState([])
+  const [cobrancasAvulsasCliente, setCobrancasAvulsasCliente] = useState([])
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
   const [cpfEdit, setCpfEdit] = useState('')
@@ -623,6 +624,28 @@ export default function Clientes() {
 
       const parcelasPendentes = totalMensalidades - mensalidadesPagas
 
+      // Carregar vendas avulsas vinculadas a este aluno (seção separada na ficha)
+      const { data: avulsasData } = await supabase
+        .from('cobrancas_avulsas')
+        .select('*')
+        .eq('devedor_id', cliente.id)
+        .or('lixo.is.null,lixo.eq.false')
+        .order('created_at', { ascending: false })
+      const avulsas = avulsasData || []
+      setCobrancasAvulsasCliente(avulsas)
+
+      // Vendas avulsas entram nos totais financeiros do aluno (separadas das parcelas)
+      const avulsaEmAberto = (a) => a.status !== 'pago' && a.status !== 'cancelado'
+      const avulsaAtrasada = (a) => {
+        if (!avulsaEmAberto(a) || !a.data_vencimento) return false
+        const v = new Date(a.data_vencimento)
+        v.setHours(0, 0, 0, 0)
+        return v < hoje
+      }
+      const avulsasValorPago = avulsas.filter(a => a.status === 'pago').reduce((t, a) => t + parseFloat(a.valor || 0), 0)
+      const avulsasValorDevido = avulsas.filter(avulsaEmAberto).reduce((t, a) => t + parseFloat(a.valor || 0), 0)
+      const avulsasValorAtrasado = avulsas.filter(avulsaAtrasada).reduce((t, a) => t + parseFloat(a.valor || 0), 0)
+
       // Buscar logs de mensagens enviadas para este cliente
       const { data: logsData } = await supabase
         .from('logs_mensagens')
@@ -650,10 +673,10 @@ export default function Clientes() {
         ...cliente,
         totalMensalidades,
         mensalidadesPagas,
-        valorDevido,
-        valorPago,
+        valorDevido: valorDevido + avulsasValorDevido,
+        valorPago: valorPago + avulsasValorPago,
         mensalidadesAtrasadas,
-        valorAtrasado,
+        valorAtrasado: valorAtrasado + avulsasValorAtrasado,
         parcelasPendentes,
         totalMensagensEnviadas,
         ultimoContato,
@@ -1642,7 +1665,8 @@ Equipe ${nomeEmpresa}`
       pago: { bg: '#4CAF50', text: 'Pago' },
       aberto: { bg: '#2196F3', text: 'Em aberto' },
       atrasado: { bg: '#f44336', text: 'Em atraso' },
-      pendente: { bg: '#ff9800', text: 'Pendente' }
+      pendente: { bg: '#ff9800', text: 'Pendente' },
+      cancelado: { bg: '#9e9e9e', text: 'Cancelado' }
     }
 
     const config = configs[status] || configs.pendente
@@ -3616,6 +3640,57 @@ Equipe ${nomeEmpresa}`
                                   }} />
                                 </span>
                               </label>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Vendas avulsas vinculadas ao aluno */}
+              <div style={{ marginTop: '24px' }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#344848' }}>
+                  Vendas avulsas ({cobrancasAvulsasCliente.length})
+                </h3>
+                {cobrancasAvulsasCliente.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>
+                    Nenhuma venda avulsa vinculada
+                  </p>
+                ) : (
+                  <div style={{ maxHeight: isSmallScreen ? '200px' : '300px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                        <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '2px solid #e0e0e0' }}>
+                          <th style={{ padding: '10px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                            Descrição
+                          </th>
+                          <th style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                            Valor
+                          </th>
+                          <th style={{ padding: '10px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                            Status
+                          </th>
+                          <th style={{ padding: '10px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                            Data
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cobrancasAvulsasCliente.map((venda) => (
+                          <tr key={venda.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '12px', fontSize: '14px', color: '#333' }}>
+                              {venda.descricao || 'Venda'}
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600', color: '#333', textAlign: 'right' }}>
+                              R$ {formatCurrency(parseFloat(venda.valor || 0))}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              {getStatusBadge(venda)}
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '14px', color: '#333', textAlign: 'center' }}>
+                              {formatDate(venda.data_pagamento || venda.data_vencimento || venda.created_at)}
                             </td>
                           </tr>
                         ))}
