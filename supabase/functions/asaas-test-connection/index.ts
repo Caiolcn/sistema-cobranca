@@ -117,11 +117,13 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            name: 'Mensalli',
             url: WEBHOOK_URL,
             email: account.email, // Email para notificações de falha
             enabled: true,
             interrupted: false,
             apiVersion: 3,
+            sendType: 'SEQUENTIALLY', // Asaas passou a EXIGIR o tipo de envio; sem isso o POST falha
             authToken: null, // Sem autenticação extra por enquanto
             events: [
               'PAYMENT_CREATED',

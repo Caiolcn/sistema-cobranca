@@ -150,6 +150,48 @@ serve(async (req) => {
     const ambiente = usuario.asaas_ambiente || 'sandbox'
     const baseUrl = ASAAS_URLS[ambiente]
 
+    // Garante que o webhook de baixa automática existe na conta Asaas do gestor.
+    // Self-healing: o registro "oficial" é no asaas-test-connection, mas muitos gestores
+    // salvam a chave sem testar — sem webhook, o pagamento nunca dá baixa sozinho.
+    // Idempotente (GET-checa antes de criar) e best-effort (nunca bloqueia a cobrança).
+    const ensureWebhook = async () => {
+      try {
+        const webhookUrl = `${SUPABASE_URL}/functions/v1/asaas-webhook`
+        const listResp = await fetch(`${baseUrl}/webhooks`, { headers: { 'access_token': asaasApiKey } })
+        if (listResp.ok) {
+          const list = await listResp.json()
+          const jaExiste = (list.data || []).some((wh: any) => wh.url === webhookUrl && wh.enabled === true)
+          if (jaExiste) return
+        }
+        // Asaas EXIGE email no webhook (algumas contas recusam o POST sem ele). Pega da própria conta.
+        let email = ''
+        try {
+          const acc = await fetch(`${baseUrl}/myAccount`, { headers: { 'access_token': asaasApiKey } })
+          if (acc.ok) email = (await acc.json())?.email || ''
+        } catch (_) { /* segue sem email; contas que não exigem aceitam */ }
+        await fetch(`${baseUrl}/webhooks`, {
+          method: 'POST',
+          headers: { 'access_token': asaasApiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'Mensalli',
+            url: webhookUrl,
+            email,
+            enabled: true,
+            interrupted: false,
+            apiVersion: 3,
+            sendType: 'SEQUENTIALLY', // Asaas EXIGE o tipo de envio; sem isso o POST falha
+            events: [
+              'PAYMENT_CREATED', 'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED',
+              'PAYMENT_OVERDUE', 'PAYMENT_DELETED', 'PAYMENT_UPDATED', 'PAYMENT_REFUNDED'
+            ]
+          })
+        })
+        console.log('🔧 Webhook Asaas garantido para user', devedor.user_id)
+      } catch (e) {
+        console.error('⚠️ ensureWebhook falhou (não bloqueia pagamento):', e)
+      }
+    }
+
     // Helper: buscar QR Code PIX de um payment
     const fetchPixQrCode = async (paymentId: string) => {
       try {
@@ -165,6 +207,9 @@ serve(async (req) => {
       }
       return null
     }
+
+    // Garante o webhook antes de qualquer cobrança (nova ou reaproveitada), pra a baixa cair sozinha
+    await ensureWebhook()
 
     if (boletoExistente?.asaas_id) {
       console.log('🔗 Reusando cobrança existente:', boletoExistente.asaas_id, metodoEscolhido)
