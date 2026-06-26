@@ -62,13 +62,21 @@ serve(async (req) => {
     }
 
     // Processar webhook baseado no tipo
+    // ⚠️ O MP nomeia os eventos de assinatura como `subscription_preapproval`
+    // (mudança de status: pending→authorized→cancelled) e `subscription_authorized_payment`
+    // (a cobrança mensal do cartão). NÃO é `subscription` puro — por isso o cartão
+    // nunca ativava antes: caía no else "tipo não suportado".
     let result
+    const tipo = body.type || ''
 
-    if (body.type === 'subscription' || body.action?.includes('subscription')) {
-      // Webhook de assinatura (authorized, paused, cancelled)
+    if (tipo === 'subscription_preapproval' || tipo === 'subscription' || body.action?.includes('subscription')) {
+      // Status da assinatura (authorized → ativa usuário; cancelled/paused → desativa)
       result = await handleSubscriptionWebhook(supabase, body)
-    } else if (body.type === 'payment') {
-      // Webhook de pagamento (created, updated)
+    } else if (tipo === 'subscription_authorized_payment') {
+      // Cobrança recorrente do cartão (1ª e renovações mensais) → estende +30 dias
+      result = await handleAuthorizedPaymentWebhook(supabase, body)
+    } else if (tipo === 'payment') {
+      // Webhook de pagamento avulso (Pix)
       result = await handlePaymentWebhook(supabase, body)
     } else {
       console.warn('⚠️ Tipo de webhook não suportado:', body.type)
@@ -216,6 +224,104 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
 
   } catch (error) {
     console.error('❌ Erro ao processar subscription webhook:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// ============================================
+// Handler: Cobrança recorrente do cartão (subscription_authorized_payment)
+// ============================================
+// Cada cobrança mensal de uma assinatura de cartão dispara este evento.
+// data.id = id de um "authorized payment"; buscamos no MP pra achar a preapproval
+// (assinatura) e o status do pagamento. Aprovado → estende +30 dias (ativar_assinatura).
+
+async function handleAuthorizedPaymentWebhook(supabase: any, webhookData: any) {
+  try {
+    const authPaymentId = webhookData.data?.id
+    if (!authPaymentId) {
+      throw new Error('authorized_payment id não encontrado no webhook')
+    }
+
+    const mpResponse = await fetch(
+      `https://api.mercadopago.com/authorized_payments/${authPaymentId}`,
+      { headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` } }
+    )
+    if (!mpResponse.ok) {
+      throw new Error(`Erro ao buscar authorized_payment no MP: ${mpResponse.status}`)
+    }
+
+    const authPayment = await mpResponse.json()
+    const preapprovalId = authPayment.preapproval_id
+    const paymentStatus = authPayment.payment?.status || authPayment.status
+    const paymentId = authPayment.payment?.id
+
+    console.log(`🔁 Cobrança recorrente: preapproval=${preapprovalId} status=${paymentStatus}`)
+
+    if (!preapprovalId) {
+      throw new Error('preapproval_id não encontrado no authorized_payment')
+    }
+
+    // Localiza a assinatura (e o dono) pelo preapproval/subscription_id
+    const { data: assinatura } = await supabase
+      .from('assinaturas_mercadopago')
+      .select('id, user_id, plano, status')
+      .eq('subscription_id', preapprovalId)
+      .single()
+
+    if (!assinatura?.user_id) {
+      throw new Error(`Assinatura não encontrada para preapproval ${preapprovalId}`)
+    }
+
+    // Registra o pagamento (idempotente por payment_id quando houver)
+    if (paymentId) {
+      const { data: existing } = await supabase
+        .from('pagamentos_mercadopago')
+        .select('id')
+        .eq('payment_id', paymentId.toString())
+        .single()
+
+      const paymentData = {
+        user_id: assinatura.user_id,
+        assinatura_id: assinatura.id,
+        payment_id: paymentId.toString(),
+        subscription_id: preapprovalId,
+        valor: authPayment.payment?.transaction_amount ?? authPayment.transaction_amount,
+        status: paymentStatus,
+        payment_type_id: 'credit_card',
+        payment_method_id: authPayment.payment?.payment_method_id || 'credit_card',
+        data_pagamento: authPayment.date_created,
+        raw_webhook: { ...webhookData, authPayment },
+      }
+
+      if (existing) {
+        await supabase.from('pagamentos_mercadopago').update(paymentData).eq('id', existing.id)
+      } else {
+        await supabase.from('pagamentos_mercadopago').insert(paymentData)
+      }
+    }
+
+    if (paymentStatus === 'approved') {
+      // Estende +30 dias (ativar_assinatura_usuario seta plano_vencimento = NOW()+30)
+      await supabase.rpc('ativar_assinatura_usuario', {
+        p_user_id: assinatura.user_id,
+        p_plano: assinatura.plano,
+      })
+      console.log(`✅ Recorrência aprovada — usuário ${assinatura.user_id} renovado +30 dias`)
+    } else if (paymentStatus === 'rejected') {
+      await supabase
+        .from('usuarios')
+        .update({
+          grace_period_until: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', assinatura.user_id)
+      console.log(`⚠️ Recorrência rejeitada — grace period 3 dias para ${assinatura.user_id}`)
+    }
+
+    return { success: true, message: `Authorized payment ${paymentStatus} processado` }
+
+  } catch (error) {
+    console.error('❌ Erro ao processar authorized_payment webhook:', error)
     return { success: false, error: error.message }
   }
 }

@@ -85,27 +85,54 @@ export default function UpgradePage() {
     setAssinaturaAtiva(assinatura)
   }
 
-  const handleSelecionarPlano = async (planoId) => {
+  // Selecionar plano agora abre a escolha do método (Pix x Cartão) em vez de ir direto pro Pix
+  const handleSelecionarPlano = (planoId) => {
     setPlanoSelecionado(planoId)
-    setMetodoPagamento('pix') // Vai direto para Pix
+    setMetodoPagamento(null)
     setPixData(null)
     setErro(null)
+  }
 
-    // Gerar Pix automaticamente
+  const precos = { starter: 49.90, pro: 99.90, premium: 149.90 }
+
+  // Pix avulso (libera 30 dias, sem renovação automática)
+  const handlePagarPix = async () => {
+    if (!planoSelecionado) return
+    setMetodoPagamento('pix')
+    setErro(null)
     try {
       setLoading(true)
-      console.log('💠 Gerando Pix para plano:', planoId)
-      const data = await mercadoPagoService.criarPagamentoPix(planoId)
+      console.log('💠 Gerando Pix para plano:', planoSelecionado)
+      const data = await mercadoPagoService.criarPagamentoPix(planoSelecionado)
       console.log('✅ Pix gerado:', data.payment_id)
       setPixData(data)
-
-      // Meta Pixel: Início de checkout
-      const precos = { starter: 49.90, pro: 99.90, premium: 149.90 }
-      trackInitiateCheckout(precos[planoId] || 99.90, planoId)
+      trackInitiateCheckout(precos[planoSelecionado] || 99.90, planoSelecionado)
       setLoading(false)
     } catch (error) {
       console.error('❌ Erro ao gerar Pix:', error)
       setErro(error.message || 'Erro ao gerar Pix. Tente novamente.')
+      setLoading(false)
+    }
+  }
+
+  // Cartão de crédito = assinatura recorrente: redireciona pro checkout do Mercado Pago
+  const handlePagarCartao = async () => {
+    if (!planoSelecionado) return
+    setMetodoPagamento('cartao')
+    setErro(null)
+    try {
+      setLoading(true)
+      console.log('💳 Criando assinatura (cartão) para plano:', planoSelecionado)
+      const data = await mercadoPagoService.criarAssinatura(planoSelecionado)
+      trackInitiateCheckout(precos[planoSelecionado] || 99.90, planoSelecionado)
+      if (data?.init_point) {
+        window.location.href = data.init_point // checkout hospedado do MP
+      } else {
+        throw new Error('Não foi possível abrir o checkout do cartão. Tente novamente.')
+      }
+    } catch (error) {
+      console.error('❌ Erro ao criar assinatura:', error)
+      setErro(error.message || 'Erro ao iniciar pagamento por cartão. Tente novamente.')
       setLoading(false)
     }
   }
@@ -472,16 +499,14 @@ export default function UpgradePage() {
     )
   }
 
-  // Tela de seleção de método removida - vai direto para Pix
-
-  // Tela de loading quando veio do banner (auto-checkout)
-  if (loading && searchParams.get('plano')) {
-    const planoNome = (planoSelecionado || searchParams.get('plano'))
-    const planoNomeFormatado = planoNome ? planoNome.charAt(0).toUpperCase() + planoNome.slice(1) : ''
+  // Tela de escolha do método de pagamento (Pix avulso x Cartão recorrente)
+  if (planoSelecionado && !pixData) {
+    const planoNomeFormatado = planoSelecionado.charAt(0).toUpperCase() + planoSelecionado.slice(1)
+    const valorPlano = mercadoPagoService.formatarValor(precos[planoSelecionado] || 99.90)
     return (
       <div style={{
         padding: '40px 24px',
-        maxWidth: '500px',
+        maxWidth: '520px',
         margin: '0 auto',
         minHeight: '100vh',
         display: 'flex',
@@ -490,53 +515,89 @@ export default function UpgradePage() {
       }}>
         <div style={{
           backgroundColor: 'white',
-          padding: '60px 40px',
+          padding: '40px',
           borderRadius: '16px',
           border: '1px solid #e0e0e0',
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          textAlign: 'center',
           width: '100%'
         }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            backgroundColor: '#e3f2fd',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 24px',
-            position: 'relative'
-          }}>
-            <Icon icon="mdi:qrcode" width="40" style={{ color: '#00b894' }} />
-            <div style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              border: '3px solid #e0e0e0',
-              borderTop: '3px solid #00b894',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
+          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+            <h2 style={{ fontSize: '26px', fontWeight: '700', color: '#333', marginBottom: '4px' }}>
+              Como você quer pagar?
+            </h2>
+            <p style={{ fontSize: '15px', color: '#666' }}>
+              Plano {planoNomeFormatado} · <strong style={{ color: '#333' }}>{valorPlano}/mês</strong>
+            </p>
           </div>
 
-          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>
-            Gerando seu PIX...
-          </h2>
-          <p style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
-            Plano {planoNomeFormatado}
-          </p>
-          <p style={{ fontSize: '14px', color: '#999' }}>
-            Aguarde enquanto preparamos seu pagamento
-          </p>
-        </div>
+          {erro && (
+            <div style={{
+              backgroundColor: '#ffebee', color: '#c62828', padding: '12px 16px',
+              borderRadius: '8px', margin: '20px 0', textAlign: 'center', fontSize: '14px'
+            }}>
+              <Icon icon="mdi:alert-circle" width="18" style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+              {erro}
+            </div>
+          )}
 
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+          {/* Cartão — assinatura recorrente */}
+          <button
+            onClick={handlePagarCartao}
+            disabled={loading}
+            style={{
+              width: '100%', padding: '20px', marginTop: '24px', marginBottom: '16px',
+              backgroundColor: loading ? '#ccc' : '#25D366', color: 'white', border: 'none',
+              borderRadius: '12px', fontSize: '16px', fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: '16px'
+            }}
+          >
+            <Icon icon="mdi:credit-card-outline" width="32" />
+            <div>
+              <div style={{ fontSize: '17px' }}>
+                {loading && metodoPagamento === 'cartao' ? 'Abrindo checkout...' : 'Cartão de crédito'}
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: '400', opacity: 0.9 }}>
+                Renovação automática todo mês · cancele quando quiser
+              </div>
+            </div>
+          </button>
+
+          {/* Pix — avulso */}
+          <button
+            onClick={handlePagarPix}
+            disabled={loading}
+            style={{
+              width: '100%', padding: '20px',
+              backgroundColor: 'white', color: '#333', border: '1px solid #e0e0e0',
+              borderRadius: '12px', fontSize: '16px', fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: '16px', opacity: loading ? 0.6 : 1
+            }}
+          >
+            <Icon icon="mdi:qrcode" width="32" style={{ color: '#00b894' }} />
+            <div>
+              <div style={{ fontSize: '17px' }}>
+                {loading && metodoPagamento === 'pix' ? 'Gerando PIX...' : 'Pix'}
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: '400', color: '#888' }}>
+                Libera 30 dias · você renova manualmente no próximo mês
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => { setPlanoSelecionado(null); setMetodoPagamento(null); setErro(null) }}
+            disabled={loading}
+            style={{
+              width: '100%', marginTop: '24px', padding: '12px',
+              backgroundColor: 'transparent', color: '#666', border: 'none',
+              fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+          >
+            ← Escolher outro plano
+          </button>
+        </div>
       </div>
     )
   }

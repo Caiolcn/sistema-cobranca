@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { supabase } from './supabaseClient'
 import { showToast } from './Toast'
@@ -147,6 +147,7 @@ Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`
 
 function Configuracao() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'empresa')
   const [loading, setLoading] = useState(false)
@@ -2199,28 +2200,14 @@ function Configuracao() {
     }
   ]
 
-  const handleUpgrade = async (planoId) => {
+  const handleUpgrade = (planoId) => {
     if (planoId === planoAtual) {
       showToast('Você já está neste plano', 'info')
       return
     }
-
-    setProcessandoCheckout(true)
-    try {
-      // Aqui você pode integrar com Stripe, Mercado Pago, etc.
-      // Por enquanto, apenas mostra mensagem
-      showToast('Redirecionando para checkout...', 'info')
-
-      // Simular redirecionamento (substituir pela integração real)
-      setTimeout(() => {
-        showToast('Integração de pagamento em desenvolvimento', 'warning')
-        setProcessandoCheckout(false)
-      }, 1500)
-    } catch (error) {
-      console.error('Erro no checkout:', error)
-      showToast('Erro ao processar. Tente novamente.', 'error')
-      setProcessandoCheckout(false)
-    }
+    // Reaproveita o fluxo de pagamento do /app/upgrade (escolha PIX x Cartão).
+    // O deep-link ?plano= já cai direto na tela de escolha do método.
+    navigate(`/app/upgrade?plano=${planoId}`)
   }
 
   const handleSuporteWhatsApp = () => {

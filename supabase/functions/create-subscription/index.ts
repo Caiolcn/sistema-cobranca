@@ -88,12 +88,11 @@ serve(async (req) => {
         currency_id: 'BRL',
         start_date: startDateISO, // ✅ Campo obrigatório
       },
+      // Só cartão de crédito: é o único método que sustenta o débito recorrente
+      // automático. Débito/saldo MP não renovam de forma confiável e podem
+      // fazer o checkout do preapproval recusar.
       payment_methods_allowed: {
-        payment_types: [
-          { id: 'credit_card' },
-          { id: 'debit_card' },
-          { id: 'account_money' }
-        ]
+        payment_types: [{ id: 'credit_card' }]
       },
       back_url: backUrl,
       payer_email: usuario?.email || user.email,
@@ -136,6 +135,7 @@ serve(async (req) => {
         plano,
         status: 'pending',
         valor,
+        payer_email: usuario?.email || user.email,
         external_reference: user.id,
         metadata: subscription,
       })
