@@ -198,12 +198,6 @@ function Configuracao() {
   const [atualizarMensalidadesFuturas, setAtualizarMensalidadesFuturas] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState({ show: false, plano: null })
 
-  // Usage
-  const [usoSistema, setUsoSistema] = useState({
-    clientes: { usado: 0, limite: 100 },
-    mensagens: { usado: 0, limite: 100 }
-  })
-
   // Upgrade
   const [planoAtual, setPlanoAtual] = useState('starter')
   const [processandoCheckout, setProcessandoCheckout] = useState(false)
@@ -314,7 +308,7 @@ function Configuracao() {
   // Atualizar aba quando URL mudar (vindo do menu mobile)
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'planos', 'colaboradores', 'uso', 'upgrade', 'integracoes', 'agendamento', 'landing', 'anamnese', 'contratos'].includes(abaUrl)) {
+    if (abaUrl && ['empresa', 'planos', 'colaboradores', 'upgrade', 'integracoes', 'agendamento', 'landing', 'anamnese', 'contratos'].includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
   }, [searchParams])
@@ -950,12 +944,6 @@ function Configuracao() {
     } catch (error) {
       console.error('Erro ao carregar uso:', error)
     }
-  }
-
-  const calcularCor = (percentual) => {
-    if (percentual < 80) return '#4CAF50'
-    if (percentual < 95) return '#ff9800'
-    return '#f44336'
   }
 
   // ==========================================
@@ -2045,92 +2033,6 @@ function Configuracao() {
     </div>
   )
 
-  const renderUsoSistema = () => {
-    const percentualClientes = (usoSistema.clientes.usado / usoSistema.clientes.limite) * 100
-    const percentualMensagens = (usoSistema.mensagens.usado / usoSistema.mensagens.limite) * 100
-
-    return (
-      <div>
-        <h3 style={{ margin: '0 0 24px 0', fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
-          Uso do Sistema
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '20px' }}>
-          {/* Card Clientes */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                backgroundColor: '#e3f2fd',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:account-group" width="28" style={{ color: '#2196F3' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Alunos</div>
-                <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
-                  {usoSistema.clientes.usado} / {usoSistema.clientes.limite}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ width: '100%', height: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${Math.min(percentualClientes, 100)}%`,
-                height: '100%',
-                backgroundColor: calcularCor(percentualClientes),
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-
-            <div style={{ marginTop: '8px', fontSize: '13px', color: '#666', textAlign: 'right' }}>
-              {percentualClientes.toFixed(1)}% utilizado
-            </div>
-          </div>
-
-          {/* Card Mensagens */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                backgroundColor: '#f3e5f5',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:message-text" width="28" style={{ color: '#9c27b0' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Mensagens</div>
-                <div style={{ fontSize: '20px', fontWeight: '600', color: '#333' }}>
-                  {usoSistema.mensagens.usado} / {usoSistema.mensagens.limite}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ width: '100%', height: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${Math.min(percentualMensagens, 100)}%`,
-                height: '100%',
-                backgroundColor: calcularCor(percentualMensagens),
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-
-            <div style={{ marginTop: '8px', fontSize: '13px', color: '#666', textAlign: 'right' }}>
-              {percentualMensagens.toFixed(1)}% utilizado
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Carregar plano atual do usuário
   useEffect(() => {
@@ -5722,7 +5624,6 @@ function Configuracao() {
               {abaAtiva === 'empresa' && renderDadosEmpresa()}
               {abaAtiva === 'planos' && renderPlanos()}
               {abaAtiva === 'integracoes' && renderIntegracoes()}
-              {abaAtiva === 'uso' && renderUsoSistema()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
               {abaAtiva === 'agendamento' && renderAgendamento()}
               {abaAtiva === 'landing' && renderLanding()}

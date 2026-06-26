@@ -11,7 +11,6 @@ export const CONFIG_TABS = [
   { id: 'empresa', label: 'Dados da Empresa', icon: 'mdi:office-building-outline' },
   { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed' },
   { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection' },
-  { id: 'uso', label: 'Uso do Sistema', icon: 'mdi:chart-box-outline' },
   { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline' },
   { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor' },
   { id: 'colaboradores', label: 'Colaboradores', icon: 'mdi:account-tie-outline' },
