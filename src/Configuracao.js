@@ -16,7 +16,7 @@ import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
 import { SITE_TEMPLATES } from './data/siteTemplates'
 import { SITE_FONTS } from './data/siteFonts'
-import { CONFIG_TABS } from './configTabs'
+import { CONFIG_TABS, groupedConfigTabs, configTabIds } from './configTabs'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
@@ -145,11 +145,16 @@ A equipe {{nomeEmpresa}} deseja a você um dia incrível, cheio de saúde, alegr
 Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`
 }
 
-function Configuracao() {
+function Configuracao({ secao = 'config' }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
-  const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'empresa')
+  // Abas válidas desta seção (config = engrenagem; marketing = item lateral).
+  const idsSecao = configTabIds(secao)
+  const abaSolicitada = searchParams.get('aba')
+  const [abaAtiva, setAbaAtiva] = useState(
+    abaSolicitada && idsSecao.includes(abaSolicitada) ? abaSolicitada : idsSecao[0]
+  )
   const [loading, setLoading] = useState(false)
   const [anamneseCamposExtras, setAnamneseCamposExtras] = useState([])
   const [anamneseSalvando, setAnamneseSalvando] = useState(false)
@@ -305,13 +310,23 @@ function Configuracao() {
     carregarDados()
   }, [contextUserId])
 
-  // Atualizar aba quando URL mudar (vindo do menu mobile)
+  // Atualizar aba quando URL mudar (vindo do menu mobile).
+  // Só aceita abas que pertencem à seção atual (config x marketing).
   useEffect(() => {
     const abaUrl = searchParams.get('aba')
-    if (abaUrl && ['empresa', 'planos', 'colaboradores', 'upgrade', 'integracoes', 'agendamento', 'landing', 'anamnese', 'contratos'].includes(abaUrl)) {
+    if (abaUrl && configTabIds(secao).includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
-  }, [searchParams])
+  }, [searchParams, secao])
+
+  // As rotas /configuracao e /marketing usam o MESMO componente na mesma
+  // posição do Outlet, então o React reaproveita a instância (só a prop `secao`
+  // muda, abaAtiva não re-inicializa). Ao trocar de seção, recolocamos a aba
+  // ativa dentro da seção válida (ex.: 'empresa' -> 'landing' ao ir p/ marketing).
+  useEffect(() => {
+    const ids = configTabIds(secao)
+    setAbaAtiva((prev) => (ids.includes(prev) ? prev : ids[0]))
+  }, [secao])
 
   const carregarDados = async () => {
     setLoading(true)
@@ -322,7 +337,6 @@ function Configuracao() {
         carregarDadosEmpresa(contextUserId),
         carregarConfigCobranca(contextUserId),
         carregarPlanos(contextUserId),
-        carregarUsoSistema(contextUserId),
         carregarConfigAsaas()
       ])
     } catch (error) {
@@ -896,53 +910,6 @@ function Configuracao() {
     } catch (error) {
       console.error('Erro ao atualizar status:', error)
       showToast('Erro ao atualizar status: ' + error.message, 'error')
-    }
-  }
-
-  // ==========================================
-  // USAGE FUNCTIONS
-  // ==========================================
-
-  const carregarUsoSistema = async (userId) => {
-    try {
-      // Get clients (mesma lógica do Clientes.js)
-      const { data: clientesData } = await supabase
-        .from('devedores')
-        .select('id, assinatura_ativa')
-        .eq('user_id', userId)
-        .or('lixo.is.null,lixo.eq.false')
-
-      // Filtrar: apenas clientes com assinatura ativa (igual ao Clientes.js)
-      const clientesCount = (clientesData || []).filter(c => c.assinatura_ativa).length
-
-      // Get plan limits
-      const { data: controle } = await supabase
-        .from('controle_planos')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      // Buscar limite de clientes do plano
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('plano')
-        .eq('id', userId)
-        .single()
-
-      // Limites de clientes por plano
-      const limiteClientesPorPlano = {
-        'starter': 50,
-        'pro': 150,
-        'premium': 500
-      }
-      const limiteClientes = limiteClientesPorPlano[usuario?.plano] || 50
-
-      setUsoSistema({
-        clientes: { usado: clientesCount, limite: limiteClientes },
-        mensagens: { usado: controle?.usage_count || 0, limite: controle?.limite_mensal || 200 }
-      })
-    } catch (error) {
-      console.error('Erro ao carregar uso:', error)
     }
   }
 
@@ -4083,7 +4050,7 @@ function Configuracao() {
             Tenha um site pronto pra sua empresa com planos, horários, depoimentos e botão direto pro WhatsApp.
             Disponível no plano <strong>Pro</strong>.
           </p>
-          <button onClick={() => setAbaAtiva('upgrade')}
+          <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
             style={{
               padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
               border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
@@ -5093,7 +5060,7 @@ function Configuracao() {
             Permita que seus alunos agendem e cancelem aulas por um link público.
             Disponível no plano <strong>Premium</strong>.
           </p>
-          <button onClick={() => setAbaAtiva('upgrade')}
+          <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
             style={{
               padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
               border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
@@ -5374,7 +5341,7 @@ function Configuracao() {
             Cadastre fichas de avaliação física dos seus alunos com histórico de evolução.
             Disponível no plano <strong>Pro</strong> ou superior.
           </p>
-          <button onClick={() => setAbaAtiva('upgrade')}
+          <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
             style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
             Fazer Upgrade
           </button>
@@ -5568,8 +5535,12 @@ function Configuracao() {
               boxSizing: 'border-box'
             }}
           >
-            {tabs.map((tab) => (
-              <option key={tab.id} value={tab.id}>{tab.label}</option>
+            {groupedConfigTabs(secao).map((group) => (
+              <optgroup key={group.id} label={group.label}>
+                {group.items.map((tab) => (
+                  <option key={tab.id} value={tab.id}>{tab.label}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -5582,32 +5553,46 @@ function Configuracao() {
           padding: '4px',
           marginBottom: '25px'
         }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setAbaAtiva(tab.id)}
-              style={{
-                padding: '8px 20px',
-                backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
-                color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: abaAtiva === tab.id ? '600' : '400',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                opacity: abaAtiva === tab.id ? 1 : 0.75,
-                flexShrink: 0
-              }}
-            >
-              <Icon icon={tab.icon} width={18} />
-              {tab.label}
-            </button>
+          {groupedConfigTabs(secao).map((group, gi) => (
+            <div key={group.id} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {gi > 0 && (
+                <div style={{
+                  width: '1px',
+                  alignSelf: 'stretch',
+                  margin: '4px 4px',
+                  backgroundColor: '#e0e0e0',
+                  flexShrink: 0
+                }} />
+              )}
+              {group.items.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setAbaAtiva(tab.id)}
+                  title={group.label}
+                  style={{
+                    padding: '8px 20px',
+                    backgroundColor: abaAtiva === tab.id ? 'white' : 'transparent',
+                    color: abaAtiva === tab.id ? '#1a1a1a' : '#555',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: abaAtiva === tab.id ? '600' : '400',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                    boxShadow: abaAtiva === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    opacity: abaAtiva === tab.id ? 1 : 0.75,
+                    flexShrink: 0
+                  }}
+                >
+                  <Icon icon={tab.icon} width={18} />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

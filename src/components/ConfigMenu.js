@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react'
-import { CONFIG_TABS } from '../configTabs'
+import { groupedConfigTabs } from '../configTabs'
 
 // ============================================================
 // ConfigMenu — dropdown reutilizável das seções de Configuração.
@@ -29,36 +29,40 @@ export default function ConfigMenu({ open, onClose, onSelect, activeId, anchorSt
         border: '1px solid #eee', boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
         padding: '6px', ...anchorStyle
       }}>
-        <div style={{
-          fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase',
-          letterSpacing: '0.4px', padding: '8px 10px 6px'
-        }}>
-          Configurações
-        </div>
+        {groupedConfigTabs('config').map((group, gi) => (
+          <div key={group.id}>
+            <div style={{
+              fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase',
+              letterSpacing: '0.4px', padding: gi === 0 ? '8px 10px 6px' : '12px 10px 6px'
+            }}>
+              {group.label}
+            </div>
 
-        {CONFIG_TABS.map((item) => {
-          const ativo = item.id === activeId
-          return (
-            <button
-              key={item.id}
-              onClick={() => { onSelect(item.id); onClose() }}
-              style={{
-                width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left',
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '9px 10px', borderRadius: '8px', marginBottom: '1px',
-                fontSize: '13px', fontWeight: ativo ? '600' : '500',
-                color: ativo ? '#4338ca' : '#444',
-                backgroundColor: ativo ? '#eef2ff' : 'transparent',
-                transition: 'background-color 0.15s'
-              }}
-              onMouseEnter={(e) => { if (!ativo) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
-              onMouseLeave={(e) => { if (!ativo) e.currentTarget.style.backgroundColor = 'transparent' }}
-            >
-              <Icon icon={item.icon} width="18" height="18" style={{ flexShrink: 0 }} />
-              <span>{item.label}</span>
-            </button>
-          )
-        })}
+            {group.items.map((item) => {
+              const ativo = item.id === activeId
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { onSelect(item.id); onClose() }}
+                  style={{
+                    width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '9px 10px', borderRadius: '8px', marginBottom: '1px',
+                    fontSize: '13px', fontWeight: ativo ? '600' : '500',
+                    color: ativo ? '#4338ca' : '#444',
+                    backgroundColor: ativo ? '#eef2ff' : 'transparent',
+                    transition: 'background-color 0.15s'
+                  }}
+                  onMouseEnter={(e) => { if (!ativo) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
+                  onMouseLeave={(e) => { if (!ativo) e.currentTarget.style.backgroundColor = 'transparent' }}
+                >
+                  <Icon icon={item.icon} width="18" height="18" style={{ flexShrink: 0 }} />
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </>
   )

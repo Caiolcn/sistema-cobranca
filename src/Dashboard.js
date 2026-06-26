@@ -13,7 +13,7 @@ import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 import NotificacoesDropdown, { contarNaoLidas } from './components/NotificacoesDropdown'
 import ConfigMenu from './components/ConfigMenu'
-import { CONFIG_TABS } from './configTabs'
+import { groupedConfigTabs } from './configTabs'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -488,7 +488,7 @@ export default function Dashboard() {
               if (telaAtiva !== 'home') e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            <Icon icon="material-symbols-light:home-outline-rounded" width="22" height="22" />
+            <Icon icon="fluent:home-20-regular" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Início</span>}
           </div>
 
@@ -550,7 +550,7 @@ export default function Dashboard() {
               if (telaAtiva !== 'clientes') e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            <Icon icon="fluent:people-24-regular" width="22" height="22" />
+            <Icon icon="fluent:people-20-regular" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Alunos</span>}
           </div>
 
@@ -645,7 +645,7 @@ export default function Dashboard() {
             }}
           >
             <div style={{ position: 'relative' }}>
-              <Icon icon="mdi:whatsapp" width="22" height="22" />
+              <Icon icon="mdi:whatsapp" width="20" height="20" />
               {/* Indicador de status */}
               <div style={{
                 position: 'absolute',
@@ -694,6 +694,37 @@ export default function Dashboard() {
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>CRM</span>}
           </div>
 
+          {/* Marketing (Site + Agendamento online) */}
+          <div
+            className={!isMobile ? 'sidebar-tooltip' : ''}
+            data-tooltip="Marketing"
+            onClick={() => { navigate('/app/marketing'); if (isMobile) setMenuAberto(false) }}
+            style={{
+              width: isMobile ? '100%' : '40px',
+              height: '40px',
+              backgroundColor: telaAtiva === 'marketing' ? '#333' : 'transparent',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'flex-start' : 'center',
+              gap: isMobile ? '12px' : '0',
+              paddingLeft: isMobile ? '12px' : '0',
+              color: telaAtiva === 'marketing' ? 'white' : '#666',
+              fontSize: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (telaAtiva !== 'marketing') e.currentTarget.style.backgroundColor = '#f5f5f5'
+            }}
+            onMouseLeave={(e) => {
+              if (telaAtiva !== 'marketing') e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <Icon icon="fluent:megaphone-loud-20-regular" width="22" height="22" />
+            {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Marketing</span>}
+          </div>
+
           {/* Configuração (só no mobile — no desktop fica no ícone de engrenagem da top bar) */}
           {isMobile && (
             /* Mobile: Menu com submenu expansível */
@@ -735,31 +766,45 @@ export default function Dashboard() {
                   paddingLeft: '12px',
                   borderLeft: '2px solid #e0e0e0'
                 }}>
-                  {CONFIG_TABS.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        navigate(`/app/configuracao?aba=${item.id}`);
-                        setMenuAberto(false);
-                        setConfigSubmenuAberto(false);
-                      }}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        cursor: 'pointer',
-                        color: '#666',
-                        fontSize: '13px',
-                        marginBottom: '2px',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <Icon icon={item.icon} width="18" height="18" />
-                      <span>{item.label}</span>
+                  {groupedConfigTabs('config').map((group, gi) => (
+                    <div key={group.id}>
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: '700',
+                        color: '#9ca3af',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.4px',
+                        padding: gi === 0 ? '4px 12px 4px' : '10px 12px 4px'
+                      }}>
+                        {group.label}
+                      </div>
+                      {group.items.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            navigate(`/app/configuracao?aba=${item.id}`);
+                            setMenuAberto(false);
+                            setConfigSubmenuAberto(false);
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            cursor: 'pointer',
+                            color: '#666',
+                            fontSize: '13px',
+                            marginBottom: '2px',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <Icon icon={item.icon} width="18" height="18" />
+                          <span>{item.label}</span>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -839,7 +884,7 @@ export default function Dashboard() {
               onMouseEnter={(e) => { if (!perfilMenuAberto) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
               onMouseLeave={(e) => { if (!perfilMenuAberto) e.currentTarget.style.backgroundColor = 'transparent' }}
             >
-              <Icon icon="material-symbols-light:frame-person-outline-rounded" width="22" height="22" />
+              <Icon icon="fluent:person-20-regular" width="22" height="22" />
               {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Meu Perfil</span>}
             </div>
 

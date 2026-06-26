@@ -159,7 +159,8 @@ function App() {
                     <Route path="horarios" element={<AgendaNova />} />
                     <Route path="relatorios" element={<Relatorios />} />
                     <Route path="whatsapp" element={<WhatsAppConexao />} />
-                    <Route path="configuracao" element={<Configuracao />} />
+                    <Route path="configuracao" element={<Configuracao secao="config" />} />
+                    <Route path="marketing" element={<Configuracao secao="marketing" />} />
                     <Route path="ajuda" element={<Ajuda />} />
                     <Route path="avisos" element={<Avisos />} />
                     <Route path="crm" element={<CRM />} />
