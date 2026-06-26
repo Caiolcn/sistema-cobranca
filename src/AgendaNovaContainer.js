@@ -190,7 +190,15 @@ export default function AgendaNovaContainer() {
   const abrirAddFixo = (aula, data) => setFixoModal({ aula, data })
   const onAlunoAdicionado = (res) => {
     if (!res) return
-    if (res.tipo === 'fixo' && res.fixo) setFixos(prev => [...prev, res.fixo])
+    // `fixos` (plural, multi-turma) é o novo formato; mantemos `fixo` (single)
+    // como fallback caso algum caller antigo ainda use.
+    if (res.tipo === 'fixo') {
+      if (Array.isArray(res.fixos) && res.fixos.length > 0) {
+        setFixos(prev => [...prev, ...res.fixos])
+      } else if (res.fixo) {
+        setFixos(prev => [...prev, res.fixo])
+      }
+    }
     if (res.tipo === 'avulso') setVersao(v => v + 1)
   }
 
@@ -600,6 +608,8 @@ export default function AgendaNovaContainer() {
           clientes={clientes}
           fixosDaAula={fixos.filter(f => f.aula_id === fixoModal.aula.id)}
           vagasOcupadas={totalOcupado(fixoModal.aula.id)}
+          aulas={aulas}
+          fixos={fixos}
           onSaved={onAlunoAdicionado}
           onClose={() => setFixoModal(null)}
         />

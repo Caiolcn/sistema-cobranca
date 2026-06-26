@@ -173,7 +173,13 @@ export default function AgendaCalendario() {
   const abrirAddFixo = (aula, data) => setFixoModal({ aula, data })
   const onAlunoAdicionado = (res) => {
     if (!res) return
-    if (res.tipo === 'fixo' && res.fixo) setFixos(prev => [...prev, res.fixo])
+    if (res.tipo === 'fixo') {
+      if (Array.isArray(res.fixos) && res.fixos.length > 0) {
+        setFixos(prev => [...prev, ...res.fixos])
+      } else if (res.fixo) {
+        setFixos(prev => [...prev, res.fixo])
+      }
+    }
     if (res.tipo === 'avulso') setVersao(v => v + 1) // recarrega agendamentos da view
   }
 
@@ -333,6 +339,8 @@ export default function AgendaCalendario() {
           clientes={clientes}
           fixosDaAula={fixos.filter(f => f.aula_id === fixoModal.aula.id)}
           vagasOcupadas={totalOcupado(fixoModal.aula.id)}
+          aulas={aulas}
+          fixos={fixos}
           onSaved={onAlunoAdicionado}
           onClose={() => setFixoModal(null)}
         />
