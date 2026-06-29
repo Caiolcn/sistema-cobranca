@@ -5,6 +5,7 @@ import { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
 import PerfilUsuario from './PerfilUsuario'
 import TrialExpiredModal from './TrialExpiredModal'
 import PlanExpirationBanner from './PlanExpirationBanner'
+import WhatsAppDesconectadoBanner from './WhatsAppDesconectadoBanner'
 import { useTrialStatus } from './useTrialStatus'
 import { useUser } from './contexts/UserContext'
 import { usePaymentNotifications } from './hooks/usePaymentNotifications'
@@ -1424,6 +1425,7 @@ export default function Dashboard() {
           </div>
         )}
         <PlanExpirationBanner />
+        <WhatsAppDesconectadoBanner />
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'flex-start', backgroundColor: '#ffffff' }}>
           <Outlet />
         </div>

@@ -769,6 +769,30 @@ export default function Admin() {
             CRON
           </button>
           <button
+            onClick={() => navigate('/app/admin/whatsapp-saude')}
+            style={{
+              padding: '10px 16px', borderRadius: '8px', border: '1px solid #25D366',
+              backgroundColor: '#f0fdf4', color: '#15803d', fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <Icon icon="mdi:whatsapp" width="16" />
+            Saúde WhatsApp
+          </button>
+          <button
+            onClick={() => navigate('/app/admin/whatsapp-master')}
+            style={{
+              padding: '10px 16px', borderRadius: '8px', border: '1px solid #344848',
+              backgroundColor: '#f0fdfa', color: '#344848', fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <Icon icon="mdi:cellphone-link" width="16" />
+            WhatsApp Master
+          </button>
+          <button
             onClick={carregarDados}
             disabled={loading}
             style={{

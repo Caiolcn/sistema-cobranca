@@ -33,6 +33,8 @@ const CRM = lazy(() => import('./CRM'))
 const Admin = lazy(() => import('./Admin'))
 const AdminErrosMensagens = lazy(() => import('./AdminErrosMensagens'))
 const AdminCron = lazy(() => import('./AdminCron'))
+const AdminWhatsAppSaude = lazy(() => import('./AdminWhatsAppSaude'))
+const AdminWhatsAppMaster = lazy(() => import('./AdminWhatsAppMaster'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
@@ -167,6 +169,8 @@ function App() {
                     <Route path="admin" element={<Admin />} />
                     <Route path="admin/erros-mensagens" element={<AdminErrosMensagens />} />
                     <Route path="admin/cron" element={<AdminCron />} />
+                    <Route path="admin/whatsapp-saude" element={<AdminWhatsAppSaude />} />
+                    <Route path="admin/whatsapp-master" element={<AdminWhatsAppMaster />} />
                   </Route>
                 </>
               ) : (
