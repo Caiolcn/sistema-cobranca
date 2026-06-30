@@ -1548,12 +1548,14 @@ export default function Clientes() {
               mensagemFinal = mensagemBoasVindasCustom
                 .replace(/\[Nome\]/g, primeiroNome)
                 .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
+                .replace(/\{\{nomeAlunoReal\}\}/g, primeiroNomeAluno)
                 .replace(/\{\{nomeAluno\}\}/g, primeiroNome)
                 .replace(/\{\{nomeResponsavel\}\}/g, temResponsavel ? primeiroNomeResp : '')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
             } else if (templateWelcome?.mensagem) {
               mensagemFinal = templateWelcome.mensagem
                 .replace(/\{\{nomeCliente\}\}/g, primeiroNome)
+                .replace(/\{\{nomeAlunoReal\}\}/g, primeiroNomeAluno)
                 .replace(/\{\{nomeAluno\}\}/g, primeiroNome)
                 .replace(/\{\{nomeResponsavel\}\}/g, temResponsavel ? primeiroNomeResp : '')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)

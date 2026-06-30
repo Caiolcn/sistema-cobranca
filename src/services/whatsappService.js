@@ -162,6 +162,9 @@ class WhatsAppService {
     const substituicoes = {
       '{{nomeCliente}}': dados.nomeCliente || '',
       '{{nomeAluno}}': dados.nomeAluno || dados.nomeCliente || '',
+      // {{nomeAlunoReal}}: SEMPRE o nome do aluno (nunca o responsável).
+      // Use junto com {{nomeResponsavel}} p/ falar com o responsável citando o aluno.
+      '{{nomeAlunoReal}}': dados.nomeAlunoReal || dados.nomeAluno || '',
       '{{nomeResponsavel}}': dados.nomeResponsavel || '',
       '{{telefone}}': dados.telefone || '',
       '{{valorMensalidade}}': dados.valorMensalidade || '',
@@ -823,6 +826,7 @@ class WhatsAppService {
       const dadosSubstituicao = {
         nomeCliente: nomeContato,
         nomeAluno: nomeContato,
+        nomeAlunoReal: destinatario.primeiroNomeAluno || '',
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
         valorMensalidade: `R$ ${parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -1034,6 +1038,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const dadosSubstituicao = {
         nomeCliente: nomeContato,
         nomeAluno: nomeContato,
+        nomeAlunoReal: destinatario.primeiroNomeAluno || '',
         nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
         telefone: destinatario.telefone,
         valorMensalidade: fmtBRL(mensalidade.valor),
@@ -1336,6 +1341,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
       const nomeAluno = destinatario.primeiroNome || 'Cliente'
       const nomeCliente = nomeAluno
+      const nomeAlunoReal = destinatario.primeiroNomeAluno || ''
       const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
 
       // Usar template personalizado ou mensagem padrão
@@ -1343,6 +1349,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       if (template?.mensagem) {
         mensagemTexto = template.mensagem
           .replace(/\{\{nomeCliente\}\}/g, nomeCliente)
+          .replace(/\{\{nomeAlunoReal\}\}/g, nomeAlunoReal)
           .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
           .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
           .replace(/\{\{valorMensalidade\}\}/g, valorFormatado)
@@ -1437,11 +1444,13 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
       const nomeAluno = destinatario.primeiroNome || 'Cliente'
       const nomeCliente = nomeAluno
+      const nomeAlunoReal = destinatario.primeiroNomeAluno || ''
       const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
 
       const aplicarTags = (txt) => txt
         .replace(/\[Nome\]/g, nomeCliente)
         .replace(/\{\{nomeCliente\}\}/g, nomeCliente)
+        .replace(/\{\{nomeAlunoReal\}\}/g, nomeAlunoReal)
         .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
         .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)

@@ -207,6 +207,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
       const primeiroNomeRespDest = destInfo.ehResponsavel ? destInfo.primeiroNome : ''
       const msgFinal = mensagem
         .replace(/\{\{nomeCliente\}\}/g, nomeContatoDest)
+        .replace(/\{\{nomeAlunoReal\}\}/g, destInfo.primeiroNomeAluno || '')
         .replace(/\{\{nomeAluno\}\}/g, nomeContatoDest)
         .replace(/\{\{nomeResponsavel\}\}/g, primeiroNomeRespDest)
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
@@ -369,7 +370,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               placeholder="Escreva sua mensagem aqui..."
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-              {['{{nomeAluno}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}'].map(v => (
+              {['{{nomeAluno}}', '{{nomeAlunoReal}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}'].map(v => (
                 <button key={v} onClick={() => setMensagem(prev => prev + v)} style={{
                   padding: '3px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#eef2ff',
                   color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: 4, cursor: 'pointer'
@@ -377,7 +378,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               ))}
             </div>
             <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-              <strong>{`{{nomeAluno}}`}</strong> usa sempre o nome do aluno. A mensagem vai pro WhatsApp do responsável (quando cadastrado); pra falar com o responsável use <strong>{`{{nomeResponsavel}}`}</strong>.
+              A mensagem vai pro WhatsApp do responsável (quando cadastrado). Pra falar com o responsável citando o aluno, use <strong>{`{{nomeResponsavel}}`}</strong> + <strong>{`{{nomeAlunoReal}}`}</strong> {`(este sempre traz o nome do aluno, ex.: "Oi {{nomeResponsavel}}, sobre a mensalidade do {{nomeAlunoReal}}")`}.
             </div>
           </div>
 
@@ -428,6 +429,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               )}
               {mensagem
                 .replace(/\{\{nomeCliente\}\}/g, 'João')
+                .replace(/\{\{nomeAlunoReal\}\}/g, 'João')
                 .replace(/\{\{nomeAluno\}\}/g, 'João')
                 .replace(/\{\{nomeResponsavel\}\}/g, 'Maria')
                 .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa || 'Sua Empresa')}
@@ -3242,7 +3244,7 @@ export default function WhatsAppConexao() {
                 </h5>
                 {tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'class_reminder' && (
                   <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
-                    <strong>{`{{nomeAluno}}`}</strong> usa sempre o nome do aluno. A mensagem é enviada pro WhatsApp do responsável (quando cadastrado); pra falar com ele use <strong>{`{{nomeResponsavel}}`}</strong>.
+                    A mensagem é enviada pro WhatsApp do responsável (quando cadastrado). Pra falar com o responsável citando o aluno, use <strong>{`{{nomeResponsavel}}`}</strong> + <strong>{`{{nomeAlunoReal}}`}</strong> {`— este sempre traz o nome do aluno (ex.: "Oi {{nomeResponsavel}}, sobre a mensalidade do {{nomeAlunoReal}}")`}.
                   </p>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -3321,6 +3323,24 @@ export default function WhatsAppConexao() {
                         }}
                       >
                         {`{{nomeAluno}}`}
+                      </code>
+                      <code
+                        onClick={() => {
+                          navigator.clipboard.writeText('{{nomeAlunoReal}}')
+                          setFeedbackModal({ isOpen: true, type: 'success', title: 'Copiado!', message: '{{nomeAlunoReal}} copiado para a área de transferência' })
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#e3f2fd',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#8867A1',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {`{{nomeAlunoReal}}`}
                       </code>
                       <code
                         onClick={() => {
