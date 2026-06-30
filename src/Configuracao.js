@@ -4031,7 +4031,7 @@ function Configuracao({ secao = 'config' }) {
   }
 
   const renderLanding = () => {
-    if (isLocked('pro')) {
+    if (isLocked('premium')) {
       return (
         <div style={{
           backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px',
@@ -4048,7 +4048,7 @@ function Configuracao({ secao = 'config' }) {
           </h2>
           <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
             Tenha um site pronto pra sua empresa com planos, horários, depoimentos e botão direto pro WhatsApp.
-            Disponível no plano <strong>Pro</strong>.
+            Disponível no plano <strong>Premium</strong>.
           </p>
           <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
             style={{

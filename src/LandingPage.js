@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  MdCheck, MdCheckCircle, MdArrowForward, MdStar, MdFormatQuote,
-  MdChevronLeft, MdChevronRight, MdDashboardCustomize, MdMessage,
+  MdCheck, MdCheckCircle, MdArrowForward, MdStar,
+  MdDashboardCustomize, MdMessage,
   MdReceiptLong, MdPayments, MdTrendingUp, MdRule, MdLink,
-  MdShield, MdQrCode2, MdCreditCard, MdAccountBalanceWallet, MdLock,
+  MdShield, MdQrCode2, MdLock,
   MdVerifiedUser, MdFactCheck, MdVisibility, MdSupportAgent, MdAutorenew,
-  MdSwapHoriz, MdSchool, MdAdd, MdRemove, MdDoneAll, MdBolt, MdAutoAwesome
+  MdSwapHoriz, MdSchool, MdAdd, MdRemove, MdDoneAll, MdBolt, MdAutoAwesome,
+  MdLanguage, MdGroups, MdSmartToy, MdEventAvailable, MdCampaign,
+  MdSchedule, MdTrendingDown, MdNotificationsActive
 } from 'react-icons/md'
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
 import { useState, useMemo } from 'react'
@@ -30,7 +32,6 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const { isMobile, isSmallScreen } = useWindowSize()
   const [faqAberto, setFaqAberto] = useState(null)
-  const [depoIndex, setDepoIndex] = useState(0)
 
   // Calculadora de ROI
   const [roiClientes, setRoiClientes] = useState('50')
@@ -55,27 +56,27 @@ export default function LandingPage() {
     { icon: MdDashboardCustomize, titulo: 'Dashboard em tempo real', desc: 'Veja quem está devendo e por quanto tempo, em segundos.' },
     { icon: MdMessage, titulo: 'Templates com a sua cara', desc: 'Mensagens personalizadas que não parecem robô.' },
     { icon: MdRule, titulo: 'Régua de cobrança', desc: 'Antes, no dia e após o vencimento — você define as regras.' },
-    { icon: MdReceiptLong, titulo: 'Aging report', desc: 'Relatório de atrasos para agir antes da bola de neve.' },
+    { icon: MdReceiptLong, titulo: 'Relatório de atrasos', desc: 'Veja há quanto tempo cada cliente está devendo e aja antes da bola de neve.' },
     { icon: MdLink, titulo: 'Portal de pagamento', desc: 'O cliente paga por um link, sem você correr atrás.' },
     { icon: MdPayments, titulo: 'Pix, cartão e boleto', desc: 'O cliente escolhe como pagar. Você só recebe.' },
     { icon: MdTrendingUp, titulo: 'Indicadores do financeiro', desc: 'Recebido, a vencer e inadimplência num só lugar.' }
   ]
 
-  const integracoes = [
-    { icon: FaWhatsapp, label: 'WhatsApp' },
-    { icon: MdQrCode2, label: 'Pix' },
-    { icon: MdCreditCard, label: 'Cartão de crédito' },
-    { icon: MdReceiptLong, label: 'Boleto' },
-    { icon: MdAccountBalanceWallet, label: 'Asaas' }
+  const suite = [
+    { icon: MdLanguage, titulo: 'Criador de Sites', desc: 'Monte o site da sua empresa em minutos — com planos, horários e botão direto pro WhatsApp. Sem precisar de programador.' },
+    { icon: MdGroups, titulo: 'CRM completo', desc: 'Acompanhe cada lead e aluno num só lugar, do primeiro contato à matrícula. Ninguém escapa pelo caminho.' },
+    { icon: MdSmartToy, titulo: 'Bot de WhatsApp', desc: 'Um assistente que responde sozinho: o aluno consulta mensalidade, horários e agenda aula sem te interromper.' },
+    { icon: MdEventAvailable, titulo: 'Agendamento online', desc: 'Compartilhe um link e deixe seus alunos marcarem aula ou avaliação direto na sua agenda.' },
+    { icon: MdCampaign, titulo: 'Campanhas de WhatsApp', desc: 'Avisos, promoções e comunicados para toda a sua base de uma vez, em poucos cliques.' }
   ]
 
-  const depoimentos = [
-    { nome: 'Juliana M.', cargo: 'Studio de Pilates', texto: 'Gastava horas toda semana mandando mensagem pra cobrar. Agora o sistema faz tudo sozinho e minha inadimplência caiu pela metade.' },
-    { nome: 'Rafael S.', cargo: 'Academia de Natação', texto: 'Com mais de 50 alunos ficava impossível controlar quem pagou. O dashboard resolve isso em segundos.' },
-    { nome: 'Cláudia R.', cargo: 'Escola de Música', texto: 'A mensagem vai pelo meu WhatsApp, então parece que fui eu que mandei. Meus alunos respondem na hora.' },
-    { nome: 'Marcos A.', cargo: 'Personal Trainer', texto: 'O plano se paga no primeiro mês. Antes eu esquecia de cobrar e perdia dinheiro sem perceber.' },
-    { nome: 'Tatiane L.', cargo: 'Studio de Yoga', texto: 'Simples de usar e o suporte responde rápido. Montei tudo em uma tarde e já saiu cobrando sozinho.' },
-    { nome: 'Diego F.', cargo: 'Escola de Lutas', texto: 'Cobrar aluno era a parte que eu mais odiava. Agora não preciso mais pensar nisso.' }
+  const resultados = [
+    { icon: MdSchedule, titulo: 'Horas da sua semana de volta', desc: 'O sistema cobra sozinho pelo seu WhatsApp. Você para de mandar mensagem aluno por aluno.' },
+    { icon: MdTrendingDown, titulo: 'Menos inadimplência', desc: 'Lembrete certo, na hora certa. Quem esquecia de pagar passa a pagar em dia.' },
+    { icon: MdDashboardCustomize, titulo: 'Controle em segundos', desc: 'Num olhar você vê quem está em dia, quem atrasou e quanto tem a receber.' },
+    { icon: FaWhatsapp, titulo: 'A cobrança continua sendo sua', desc: 'As mensagens saem do seu próprio número, com o seu tom. O aluno responde como sempre.' },
+    { icon: MdNotificationsActive, titulo: 'Nunca mais esquece de cobrar', desc: 'A régua dispara antes, no dia e após o vencimento. Nenhuma mensalidade passa batido.' },
+    { icon: MdAutoAwesome, titulo: 'A parte chata, resolvida', desc: 'Aquela tarefa que ninguém gosta de fazer roda no automático, todo mês, sem você pensar nela.' }
   ]
 
   const lgpd = [
@@ -95,10 +96,10 @@ export default function LandingPage() {
   const planos = [
     { nome: 'Starter', eyebrow: 'Ideal para começar', preco: 49, perMsg: 'R$0,25 por mensagem', cta: 'Começar no Starter', destaque: false,
       features: ['Até 50 clientes ativos', '200 mensagens/mês', 'Mensagem automática no vencimento', '1 template personalizado', 'Dashboard básico'] },
-    { nome: 'Pro', eyebrow: 'Para negócios em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', destaque: true,
-      features: ['Até 150 clientes ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Suporte via WhatsApp', 'Aging Report'] },
-    { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: false,
-      features: ['Até 500 clientes ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
+    { nome: 'Pro', eyebrow: 'Para negócios em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', destaque: false,
+      features: ['Até 150 clientes ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
+    { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: true,
+      features: ['Até 500 clientes ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Criador de Sites', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online (link de agendamento)', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
   ]
 
   const faqs = [
@@ -108,7 +109,6 @@ export default function LandingPage() {
     { p: 'Posso cancelar quando quiser?', r: 'Sim, sem multa e sem burocracia. Cancele direto no painel e o sistema para de cobrar no próximo ciclo.' },
     { p: 'O WhatsApp pode banir meu número?', r: 'Não, se usar corretamente. O Mensalli envia apenas para clientes que você cadastrou, sem spam.' },
     { p: 'Quais formas de pagamento meus clientes podem usar?', r: 'Pix, cartão de crédito e boleto, via Asaas. O cliente escolhe e você só recebe.' },
-    { p: 'Tem inteligência artificial integrada?', r: 'As mensagens usam variáveis dinâmicas (nome, valor, data) e a régua decide quando enviar. O foco é automação confiável, não enrolação.' },
     { p: 'Está em conformidade com a LGPD?', r: 'Sim. Criptografia, consentimento, controle e histórico completo para auditorias.' }
   ]
 
@@ -160,10 +160,10 @@ export default function LandingPage() {
         <div style={{ maxWidth: '860px', margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={eyebrow}><FaWhatsapp size={14} /> Cobrança automática pelo WhatsApp</div>
           <h1 style={{ fontSize: isSmallScreen ? '38px' : '62px', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2.2px', margin: '0 0 22px' }}>
-            Tudo o que sua mensalidade precisa para <span style={gradText}>parar de atrasar</span>
+            Nunca mais cobre <span style={gradText}>aluno por aluno</span> no WhatsApp.
           </h1>
           <p style={{ ...sub, fontSize: isSmallScreen ? '17px' : '20px', marginBottom: '32px' }}>
-            O Mensalli cobra seus clientes automaticamente pelo WhatsApp — com o seu tom de voz, no horário certo. Menos inadimplência, sem constrangimento, sem planilha.
+            Enquanto você trabalha, o Mensalli cobra seus alunos automaticamente pelo WhatsApp. Feito para estúdios, academias e escolas que vivem de mensalidade.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: 'center' }}>
             <button onClick={() => navigate('/signup')} style={{ ...btnGrad('15px 30px', '16px'), width: isSmallScreen ? '100%' : 'auto' }}
@@ -176,7 +176,7 @@ export default function LandingPage() {
             </button>
           </div>
           <div style={{ display: 'flex', gap: isSmallScreen ? '14px' : '26px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '22px', fontSize: '13.5px', color: BODY }}>
-            {['Teste grátis por 3 dias', 'Sem cartão de crédito', 'Cancele quando quiser'].map((t, i) => (
+            {['Usa seu próprio WhatsApp', 'Sem cartão de crédito', 'Cancele quando quiser'].map((t, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><MdCheckCircle size={16} style={{ color: GREEN }} /> {t}</span>
             ))}
           </div>
@@ -270,7 +270,7 @@ export default function LandingPage() {
           <div style={{ textAlign: 'center', marginBottom: '52px' }}>
             <p style={eyebrow}><MdDashboardCustomize size={15} /> Tudo-em-um</p>
             <h2 style={h2}>Um sistema que resolve a <span style={gradText}>sua cobrança inteira</span></h2>
-            <p style={sub}>Da primeira mensagem ao dinheiro na conta, sem você correr atrás de ninguém.</p>
+            <p style={sub}>Da primeira mensagem ao dinheiro na conta, sem você correr atrás de ninguém. E isso é só o começo.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
             {features.map((f, i) => (
@@ -286,15 +286,22 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Funciona com */}
-      <section style={{ padding: isSmallScreen ? '52px 22px' : '80px 24px' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontSize: '14px', color: MUTED, fontWeight: '600', marginBottom: '22px' }}>Funciona com as ferramentas que você já usa</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px' }}>
-            {integracoes.map((t, i) => (
-              <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '9px', backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '100px', padding: '10px 18px', boxShadow: '0 1px 2px rgba(16,24,40,0.04)' }}>
-                <t.icon size={18} style={{ color: GREEN_DK }} />
-                <span style={{ fontSize: '14px', fontWeight: '600', color: INK }}>{t.label}</span>
+      {/* Muito além da cobrança — suíte Premium */}
+      <section style={{ padding: sectionPad }}>
+        <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
+            <p style={eyebrow}><MdAutoAwesome size={15} /> Exclusivo do Premium</p>
+            <h2 style={h2}>O Mensalli começa na cobrança. <span style={gradText}>Mas não para aí.</span></h2>
+            <p style={sub}>Quando seu negócio precisa de mais, a gente cuida do resto — site, relacionamento, atendimento e agenda, tudo no mesmo lugar.</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px' }}>
+            {suite.map((f, i) => (
+              <div key={i} className="lp-card" style={{ flex: '1 1 300px', maxWidth: isSmallScreen ? '100%' : '330px', backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '26px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN_SOFT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                  <f.icon size={22} style={{ color: GREEN_DK }} />
+                </div>
+                <h3 style={{ fontSize: '16.5px', fontWeight: '700', color: INK, margin: '0 0 7px' }}>{f.titulo}</h3>
+                <p style={{ fontSize: '14px', color: BODY, margin: 0, lineHeight: 1.55 }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -320,40 +327,22 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Depoimentos (sem rostos) */}
+      {/* O que muda no seu dia a dia */}
       <section style={{ padding: sectionPad, backgroundColor: BG_SOFT }}>
         <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <p style={eyebrow}><MdStar size={15} /> Depoimentos</p>
-            <h2 style={h2}>Quem usa <span style={gradText}>assina embaixo</span></h2>
+            <p style={eyebrow}><MdAutoAwesome size={15} /> No dia a dia</p>
+            <h2 style={h2}>O que muda quando o Mensalli <span style={gradText}>cobra por você</span></h2>
           </div>
-          <div style={{ position: 'relative' }}>
-            {!isSmallScreen && (
-              <button onClick={() => setDepoIndex(p => p === 0 ? Math.ceil(depoimentos.length / 3) - 1 : p - 1)} style={navArrow('left')}><MdChevronLeft size={24} style={{ color: INK }} /></button>
-            )}
-            <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)', gap: '20px' }}>
-              {depoimentos.slice(isSmallScreen ? depoIndex : depoIndex * 3, isSmallScreen ? depoIndex + 1 : depoIndex * 3 + 3).map((d, i) => (
-                <div key={i} className="lp-card" style={{ backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '28px', display: 'flex', flexDirection: 'column' }}>
-                  <MdFormatQuote size={32} style={{ color: GREEN, transform: 'scaleX(-1)', marginBottom: '6px' }} />
-                  <p style={{ fontSize: '15.5px', color: INK, lineHeight: 1.6, margin: '0 0 22px', flex: 1, fontWeight: '500' }}>{d.texto}</p>
-                  <div style={{ display: 'flex', gap: '2px', marginBottom: '14px' }}>{[1, 2, 3, 4, 5].map(s => <MdStar key={s} size={15} style={{ color: '#f5b800' }} />)}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: `1px solid ${BORDER}`, paddingTop: '14px' }}>
-                    <span style={{ width: '40px', height: '40px', borderRadius: '50%', background: GRAD, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '15px', flexShrink: 0 }}>{d.nome.charAt(0)}</span>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: INK }}>{d.nome}</p>
-                      <p style={{ margin: 0, fontSize: '13px', color: MUTED }}>{d.cargo}</p>
-                    </div>
-                  </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)', gap: '20px' }}>
+            {resultados.map((r, i) => (
+              <div key={i} className="lp-card" style={{ backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '28px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN_SOFT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                  <r.icon size={22} style={{ color: GREEN_DK }} />
                 </div>
-              ))}
-            </div>
-            {!isSmallScreen && (
-              <button onClick={() => setDepoIndex(p => p === Math.ceil(depoimentos.length / 3) - 1 ? 0 : p + 1)} style={navArrow('right')}><MdChevronRight size={24} style={{ color: INK }} /></button>
-            )}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '30px' }}>
-            {Array.from({ length: isSmallScreen ? depoimentos.length : Math.ceil(depoimentos.length / 3) }).map((_, i) => (
-              <button key={i} onClick={() => setDepoIndex(i)} style={{ width: depoIndex === i ? '24px' : '8px', height: '8px', borderRadius: '4px', backgroundColor: depoIndex === i ? GREEN : '#d7dae0', border: 'none', cursor: 'pointer', transition: 'all .3s', padding: 0 }} />
+                <h3 style={{ fontSize: '16.5px', fontWeight: '700', color: INK, margin: '0 0 7px' }}>{r.titulo}</h3>
+                <p style={{ fontSize: '14px', color: BODY, margin: 0, lineHeight: 1.55 }}>{r.desc}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -432,7 +421,7 @@ export default function LandingPage() {
               const d = pl.destaque
               return (
                 <div key={i} style={{ backgroundColor: 'white', padding: '34px', borderRadius: '22px', border: d ? `2px solid ${GREEN}` : `1px solid ${BORDER}`, position: 'relative', transform: (d && !isSmallScreen) ? 'scale(1.04)' : 'none', boxShadow: d ? '0 26px 60px rgba(22,163,74,0.18)' : '0 12px 30px rgba(16,24,40,0.05)' }}>
-                  {d && <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: GRAD, color: 'white', padding: '6px 16px', borderRadius: '100px', fontSize: '12px', fontWeight: '700' }}>Mais popular</div>}
+                  {d && <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: GRAD, color: 'white', padding: '6px 16px', borderRadius: '100px', fontSize: '12px', fontWeight: '700' }}>Melhor custo-benefício</div>}
                   <p style={{ fontSize: '12px', fontWeight: '700', color: MUTED, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>{pl.eyebrow}</p>
                   <h3 style={{ fontSize: '22px', fontWeight: '700', color: INK, margin: '0 0 16px' }}>{pl.nome}</h3>
                   <div style={{ marginBottom: '24px' }}>
@@ -673,6 +662,3 @@ function btnGhost(padding, width) {
   return { padding, width, fontSize: '15px', backgroundColor: 'white', color: INK, border: `1px solid ${BORDER}`, borderRadius: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }
 }
 function dot(c) { return { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: c } }
-function navArrow(side) {
-  return { position: 'absolute', [side]: '-20px', top: '38%', transform: 'translateY(-50%)', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'white', border: `1px solid ${BORDER}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16,24,40,0.1)', zIndex: 10 }
-}
