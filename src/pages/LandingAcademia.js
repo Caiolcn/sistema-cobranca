@@ -20,6 +20,16 @@ function formatarTelefoneWa(tel) {
   return t
 }
 
+// Garante esquema absoluto: sem http(s):// o navegador trata como caminho
+// relativo e prefixa o domínio do site (ex.: mensalli.com.br/instagram.com/...)
+function urlExterna(url) {
+  if (!url) return ''
+  const u = String(url).trim()
+  if (!u) return ''
+  if (/^https?:\/\//i.test(u)) return u
+  return 'https://' + u.replace(/^\/+/, '')
+}
+
 function setMeta(name, content, attr = 'name') {
   if (!content) return
   let el = document.querySelector(`meta[${attr}="${name}"]`)
@@ -707,19 +717,19 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
             </a>
           )}
           {empresa.instagram_url && (
-            <a href={empresa.instagram_url} target="_blank" rel="noreferrer" style={{ color: '#aaa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <a href={urlExterna(empresa.instagram_url)} target="_blank" rel="noreferrer" style={{ color: '#aaa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Icon icon="mdi:instagram" width="18" />
               Instagram
             </a>
           )}
           {empresa.facebook_url && (
-            <a href={empresa.facebook_url} target="_blank" rel="noreferrer" style={{ color: '#aaa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <a href={urlExterna(empresa.facebook_url)} target="_blank" rel="noreferrer" style={{ color: '#aaa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Icon icon="mdi:facebook" width="18" />
               Facebook
             </a>
           )}
           {empresa.tiktok_url && (
-            <a href={empresa.tiktok_url} target="_blank" rel="noreferrer" style={{ color: '#aaa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <a href={urlExterna(empresa.tiktok_url)} target="_blank" rel="noreferrer" style={{ color: '#aaa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Icon icon="simple-icons:tiktok" width="16" />
               TikTok
             </a>
