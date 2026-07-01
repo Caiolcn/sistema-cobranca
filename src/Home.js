@@ -622,7 +622,7 @@ function Home() {
       {/* KPIs financeiros */}
       <div className="home-cards-grid home-cards-3">
         {/* 1. MRR */}
-        <div className="home-card card-mrr">
+        <div className="home-card card-mrr" onClick={() => navigate('/app/clientes?status=ativo')}>
           <div className="card-header">
             <span className="card-label">Receita Mensal Recorrente</span>
             <div className="card-icon">
@@ -633,15 +633,10 @@ function Home() {
             <span className="card-value">{formatarMoeda(mrr)}</span>
             <span className="card-subtitle">{assinaturasAtivas} assinaturas ativas</span>
           </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/clientes?status=ativo')}>
-              Ver
-            </button>
-          </div>
         </div>
 
         {/* 2. Recebimentos do Mês */}
-        <div className="home-card card-recebimentos">
+        <div className="home-card card-recebimentos" onClick={() => navigate('/app/financeiro?status=pago')}>
           <div className="card-header">
             <span className="card-label">Recebimentos do Mês</span>
             <div className="card-icon">
@@ -661,15 +656,10 @@ function Home() {
               )}
             </span>
           </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/financeiro?status=pago')}>
-              Ver
-            </button>
-          </div>
         </div>
 
         {/* 3. Resultado do Mês (lucro = recebido - despesas pagas) */}
-        <div className="home-card card-lucro">
+        <div className="home-card card-lucro" onClick={() => navigate('/app/financeiro?aba=despesas')}>
           <div className="card-header">
             <span className="card-label">Resultado do Mês</span>
             <div className="card-icon">
@@ -684,11 +674,6 @@ function Home() {
               {formatarMoeda(recebimentosMes)} recebido − {formatarMoeda(despesasMes)} despesas
             </span>
           </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/financeiro?aba=despesas')}>
-              Ver
-            </button>
-          </div>
         </div>
 
       </div>
@@ -696,7 +681,7 @@ function Home() {
       {/* Indicadores de risco/inadimplência — prioridade máxima, logo abaixo dos financeiros */}
       <div className="home-cards-grid home-cards-3">
         {/* 1. Valor em Atraso */}
-        <div className="home-card card-atraso">
+        <div className="home-card card-atraso" onClick={() => navigate('/app/financeiro?status=atrasado')}>
           <div className="card-header">
             <span className="card-label">Valor em Atraso</span>
             <div className="card-icon">
@@ -709,15 +694,10 @@ function Home() {
             </span>
             <span className="card-subtitle">&nbsp;</span>
           </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/financeiro?status=atrasado')}>
-              Ver
-            </button>
-          </div>
         </div>
 
         {/* 2. Taxa de Inadimplência */}
-        <div className="home-card card-inadimplencia">
+        <div className="home-card card-inadimplencia" onClick={() => navigate('/app/financeiro?status=atrasado')}>
           <div className="card-header">
             <span className="card-label">Taxa de Inadimplência</span>
             <div className="card-icon">
@@ -732,15 +712,10 @@ function Home() {
               {qtdInadimplentes === 1 ? '1 mensalidade vencida em aberto' : `${qtdInadimplentes} mensalidades vencidas em aberto`}
             </span>
           </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/financeiro?status=atrasado')}>
-              Ver atrasadas
-            </button>
-          </div>
         </div>
 
         {/* 3. Alunos em Risco de Evasão */}
-        <div className="home-card card-radar">
+        <div className="home-card card-radar" onClick={() => navigate('/app/clientes?aba=radar')}>
           <div className="card-header">
             <span className="card-label">Alunos em Risco de Evasão</span>
             <div className="card-icon">
@@ -754,11 +729,6 @@ function Home() {
             <span className="card-subtitle">
               {alunosEmRisco === 1 ? 'aluno com risco alto/crítico' : 'alunos com risco alto/crítico'}
             </span>
-          </div>
-          <div className="card-footer">
-            <button className="btn-ver" onClick={() => navigate('/app/clientes?aba=radar')}>
-              Ver radar
-            </button>
           </div>
         </div>
       </div>

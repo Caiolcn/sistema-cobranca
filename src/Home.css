@@ -56,7 +56,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: white;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 /* Novas Atualizações */
@@ -334,8 +334,8 @@
 .home-cards-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 @media (max-width: 1400px) {
@@ -358,15 +358,16 @@
 
 .home-card {
   background: white;
-  padding: 20px;
+  padding: 14px 16px;
   border-radius: 12px;
   box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   transition: border-color 0.2s, box-shadow 0.2s;
   border: 1px solid #e5e7eb;
   position: relative;
+  cursor: pointer;
 }
 
 .home-card:hover {
@@ -381,9 +382,9 @@
 }
 
 .card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -391,19 +392,19 @@
 }
 
 .card-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.35;
   flex: 1;
 }
 
 .card-body {
-  padding: 8px 0;
+  padding: 0;
 }
 
 .card-value {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: #1a1a1a;
   line-height: 1;
@@ -419,11 +420,10 @@
 
 .card-subtitle {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   color: #999;
-  margin-top: 8px;
+  margin-top: 4px;
   font-weight: 400;
-  min-height: 18px;
 }
 
 .card-footer {
@@ -608,7 +608,7 @@
   border-radius: 12px;
   box-shadow: none;
   border: 1px solid #e5e7eb;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .section-header {
@@ -813,7 +813,13 @@
 .home-two-columns {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Sections dentro de 2 colunas não somam margem — o container já espaça */
+.home-two-columns .home-section {
+  margin-bottom: 0;
 }
 
 @media (max-width: 1024px) {
@@ -1139,7 +1145,7 @@
   .home-cards-grid,
   .home-cards-secondary,
   .home-cards-tertiary {
-    gap: 12px;
+    gap: 16px;
   }
 
   .section-header h2 {
@@ -1159,7 +1165,7 @@
 
   .home-header {
     padding: 14px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   .home-welcome h1 {
@@ -1763,7 +1769,7 @@
   border: 1px solid #e3d7f0;
   border-radius: 16px;
   padding: 16px 20px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
 }
@@ -1899,7 +1905,7 @@
 
 /* ===== Painéis: Fila de ação + Feed de vitórias ===== */
 .home-acao-vitoria {
-  margin-bottom: 0;
+  /* espaçamento herdado de .home-two-columns (margin-bottom: 16px) */
 }
 
 .home-painel {
