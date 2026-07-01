@@ -52,10 +52,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 24px;
+  padding: 18px 24px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: white;
+  margin-bottom: 18px;
 }
 
 /* Novas Atualizações */
@@ -603,24 +604,24 @@
 /* Sections */
 .home-section {
   background: white;
-  padding: 24px;
+  padding: 18px;
   border-radius: 12px;
   box-shadow: none;
   border: 1px solid #e5e7eb;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .section-header h2 {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   color: #333;
   margin: 0;
@@ -1043,8 +1044,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 48px 24px;
+  gap: 8px;
+  padding: 24px 16px;
   color: #999;
 }
 
@@ -1055,6 +1056,20 @@
 .empty-state p {
   font-size: 14px;
   margin: 0;
+}
+
+/* Variante condensada: para painéis vazios não ocuparem espaço à toa */
+.empty-state.compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.empty-state.compact p {
+  font-size: 13px;
 }
 
 /* Scrollbar Customizada */
@@ -1736,4 +1751,706 @@
     grid-template-columns: 1fr;
     gap: 12px;
   }
+}
+
+/* ===== Card-herói: Recuperado pela cobrança automática ===== */
+.home-hero-recuperado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: linear-gradient(120deg, #f3eefa 0%, #faf7fd 55%, #ffffff 100%);
+  border: 1px solid #e3d7f0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.home-hero-recuperado:hover {
+  border-color: #cdb6e6;
+  box-shadow: 0 6px 20px rgba(136, 103, 161, 0.14);
+  transform: translateY(-1px);
+}
+
+.hero-recuperado-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.hero-recuperado-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #8867A1 0%, #6a4d82 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(136, 103, 161, 0.3);
+}
+
+.hero-recuperado-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hero-recuperado-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8867A1;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.hero-recuperado-valor {
+  font-size: 28px;
+  font-weight: 800;
+  color: #4a2e63;
+  line-height: 1.1;
+}
+
+.hero-recuperado-sub {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.hero-recuperado-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  padding-left: 24px;
+  border-left: 1px solid #e3d7f0;
+  flex-shrink: 0;
+}
+
+.hero-recuperado-stat-valor {
+  font-size: 24px;
+  font-weight: 700;
+  color: #8867A1;
+  line-height: 1;
+}
+
+.hero-recuperado-stat-label {
+  font-size: 12px;
+  color: #9ca3af;
+  max-width: 150px;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .home-hero-recuperado {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .hero-recuperado-valor {
+    font-size: 30px;
+  }
+
+  .hero-recuperado-stat {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding-left: 0;
+    padding-top: 16px;
+    border-left: none;
+    border-top: 1px solid #e3d7f0;
+    width: 100%;
+    text-align: left;
+  }
+
+  .hero-recuperado-stat-label {
+    max-width: none;
+    margin-top: 0;
+  }
+}
+
+/* ===== Badge de tendência (momentum) no card ===== */
+.card-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card-trend.sobe {
+  color: #16a34a;
+}
+
+.card-trend.desce {
+  color: #f44336;
+}
+
+.card-trend.neutro {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ===== Painéis: Fila de ação + Feed de vitórias ===== */
+.home-acao-vitoria {
+  margin-bottom: 0;
+}
+
+.home-painel {
+  display: flex;
+  flex-direction: column;
+}
+
+.painel-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Fila de ação (atrasados) */
+.acao-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.acao-item:hover {
+  background: #fafafa;
+  border-color: #d1d5db;
+}
+
+.acao-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.acao-nome {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.acao-detalhe {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Botão X para remover da fila */
+.acao-dispensar {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.acao-dispensar:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.acao-acoes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Subtítulo dentro do cabeçalho de seção */
+.section-header-texto {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.section-header-texto h2 {
+  flex: none;
+}
+
+.section-header-sub {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.acao-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #25D366;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.acao-btn:hover {
+  background: #1fa855;
+  transform: scale(1.04);
+}
+
+/* Feed de vitórias (pagamentos) */
+.vitoria-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f3fbf5;
+  border: 1px solid #d6f0dd;
+}
+
+.vitoria-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vitoria-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.vitoria-nome {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.vitoria-data {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.vitoria-valor {
+  font-size: 15px;
+  font-weight: 700;
+  color: #16a34a;
+  flex-shrink: 0;
+}
+
+/* ===== Modal de cobrança rápida ===== */
+.modal-cobranca {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 24px;
+}
+
+.modal-cobranca-titulo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.modal-cobranca-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-cobranca-titulo h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.modal-cobranca-sub {
+  font-size: 13px;
+  color: #d97706;
+  font-weight: 500;
+}
+
+.modal-cobranca-fechar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.modal-cobranca-fechar:hover {
+  background: #e5e7eb;
+}
+
+.modal-cobranca-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-cobranca-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-cobranca-label-row label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.modal-cobranca-restaurar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #8867A1;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.modal-cobranca-restaurar:hover:not(:disabled) {
+  background: #f3eefa;
+}
+
+.modal-cobranca-restaurar:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.modal-cobranca-textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1f2937;
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-cobranca-textarea:focus {
+  outline: none;
+  border-color: #25D366;
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.12);
+}
+
+.modal-cobranca-textarea:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
+.modal-cobranca-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  color: #9ca3af;
+  font-size: 14px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 10px;
+}
+
+.modal-cobranca-dica {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.modal-cobranca-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-cobranca-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.modal-cobranca-btn.cancelar {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.modal-cobranca-btn.cancelar:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.modal-cobranca-btn.enviar {
+  background: #25D366;
+  color: white;
+}
+
+.modal-cobranca-btn.enviar:hover:not(:disabled) {
+  background: #1fa855;
+}
+
+.modal-cobranca-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.modal-cobranca .spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (max-width: 560px) {
+  .modal-cobranca {
+    max-width: 100%;
+  }
+}
+
+/* ===== Grid de 4 KPIs ===== */
+.home-cards-4 {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+
+@media (max-width: 1024px) {
+  .home-cards-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-cards-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ===== Link de rodapé dos painéis ===== */
+.painel-footer-link {
+  margin-top: 12px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #8867A1;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+  transition: gap 0.2s;
+}
+
+.painel-footer-link:hover {
+  gap: 8px;
+}
+
+/* ===== Agenda de hoje ===== */
+.agenda-hoje-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agenda-hoje-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.agenda-hoje-item.proxima {
+  background: #f3eefa;
+  border-color: #cdb6e6;
+}
+
+.agenda-hoje-hora {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8867A1;
+  border: 1.5px solid #cdb6e6;
+  border-radius: 7px;
+  padding: 3px 6px;
+  min-width: 46px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.agenda-hoje-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.agenda-hoje-titulo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-hoje-prof {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.agenda-hoje-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8867A1;
+  background: #ece2f6;
+  border-radius: 20px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+/* ===== Aniversariantes ===== */
+.aniversario-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: #fff7fb;
+  border: 1px solid #f6dced;
+}
+
+.aniversario-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.aniversario-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.aniversario-nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aniversario-data {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.aniversario-data.hoje {
+  color: #ec4899;
+  font-weight: 600;
+}
+
+.aniversario-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: none;
+  background: #25D366;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.aniversario-btn:hover:not(:disabled) {
+  background: #1fa855;
+  transform: scale(1.04);
+}
+
+.aniversario-btn.enviado {
+  background: #e6f7ec;
+  color: #16a34a;
+}
+
+.aniversario-btn:disabled {
+  cursor: default;
+  opacity: 0.9;
 }

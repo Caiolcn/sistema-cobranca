@@ -41,6 +41,7 @@ export default function FeatureLocked({
       className.includes('card-subtitle') ||
       className.includes('card-footer') ||
       className.includes('home-grafico') ||
+      className.includes('painel-lista') ||
       className.includes('aging-body') ||
       className.includes('aging-container')
 

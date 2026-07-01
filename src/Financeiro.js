@@ -57,9 +57,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [filtroNome, setFiltroNome] = useState('')
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
 
-  // Aba ativa do menu financeiro
+  // Aba ativa do menu financeiro (?aba=despesas abre a aba sem disparar o modal de nova despesa)
   const [abaAtiva, setAbaAtiva] = useState(
-    searchParams.get('novadespesa') === 'true' ? 'despesas' : 'mensalidades'
+    (searchParams.get('aba') === 'despesas' || searchParams.get('novadespesa') === 'true') ? 'despesas' : 'mensalidades'
   )
   const [autoAbrirNovaDespesa, setAutoAbrirNovaDespesa] = useState(
     searchParams.get('novadespesa') === 'true'

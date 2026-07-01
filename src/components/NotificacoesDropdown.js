@@ -10,7 +10,37 @@ const TIPOS = {
   vencendo: { icon: 'fluent:alert-20-regular', cor: '#f59e0b', bg: '#fffbeb' },
   atrasada: { icon: 'fluent:error-circle-20-regular', cor: '#ef4444', bg: '#fef2f2' },
   evasao: { icon: 'mdi:shield-alert-outline', cor: '#dc2626', bg: '#fef2f2' },
+  novidade: { icon: 'material-symbols:campaign-outline-rounded', cor: '#8867A1', bg: '#f3eefa' },
 }
+
+// 📢 Novas Atualizações (changelog do produto) exibidas no sino de notificações.
+// Para divulgar uma novidade, adicione um item NO TOPO desta lista com a data ISO.
+// Uma novidade com data recente acende o sino automaticamente (badge de não lidas).
+const NOVIDADES = [
+  {
+    data: '2026-06-03T12:00:00',
+    tag: 'Novo',
+    titulo: 'CRM de Alunos',
+    texto: 'O CRM ganhou uma aba de Alunos: acompanhe num quadro quem tem aula marcada, quem sumiu (sem retorno) e quem está com pagamento atrasado. E quem tem a assinatura ativada passa de Experimental pra Aluno automaticamente.',
+  },
+  {
+    data: '2026-06-01T12:00:00',
+    tag: 'Novo',
+    titulo: 'Dashboard repaginada',
+    texto: 'Reorganizamos a tela inicial pra deixar tudo mais direto, com os números que mais importam em destaque.',
+  },
+  {
+    data: '2026-05-28T12:00:00',
+    tag: 'Melhoria',
+    titulo: 'Busca de alunos mais rápida',
+    texto: 'Agora você encontra qualquer aluno por nome ou telefone direto na barra de busca do topo.',
+  },
+  {
+    data: '2026-05-20T12:00:00',
+    titulo: 'Agenda Nova no ar',
+    texto: 'A grade de horários ganhou visões por Dia e Semana, mais leve e prática no celular.',
+  },
+]
 
 const storageKey = (userId) => `mensalli_notif_last_read_${userId}`
 
@@ -150,6 +180,17 @@ export async function carregarNotificacoes(userId) {
     })
   }
 
+  NOVIDADES.forEach((n, i) => {
+    itens.push({
+      tipo: 'novidade',
+      id: `nov-${i}`,
+      titulo: n.titulo,
+      sub: n.texto,
+      tag: n.tag,
+      timestamp: n.data,
+    })
+  })
+
   return itens.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
 }
 
@@ -226,10 +267,12 @@ export default function NotificacoesDropdown({ userId, onClose, onMarcarLidos })
         {!loading &&
           itens.map((item) => {
             const tipo = TIPOS[item.tipo]
+            const isNovidade = item.tipo === 'novidade'
             return (
               <div
                 key={item.id}
                 onClick={() => {
+                  if (isNovidade) return
                   navigate(item.link)
                   onClose()
                 }}
@@ -238,10 +281,10 @@ export default function NotificacoesDropdown({ userId, onClose, onMarcarLidos })
                   gap: '12px',
                   padding: '10px 12px',
                   borderRadius: '8px',
-                  cursor: 'pointer',
+                  cursor: isNovidade ? 'default' : 'pointer',
                   transition: 'background-color 0.15s',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                onMouseEnter={(e) => { if (!isNovidade) e.currentTarget.style.backgroundColor = '#f9fafb' }}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <div
@@ -262,17 +305,45 @@ export default function NotificacoesDropdown({ userId, onClose, onMarcarLidos })
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
                       fontSize: '13px',
                       fontWeight: '600',
                       color: '#111',
                       overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      textOverflow: isNovidade ? 'clip' : 'ellipsis',
+                      whiteSpace: isNovidade ? 'normal' : 'nowrap',
                     }}
                   >
+                    {isNovidade && item.tag && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          color: '#8867A1',
+                          background: '#ece2f6',
+                          borderRadius: '20px',
+                          padding: '1px 8px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {item.tag}
+                      </span>
+                    )}
                     {item.titulo}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      marginTop: '1px',
+                      whiteSpace: isNovidade ? 'normal' : 'nowrap',
+                      overflow: isNovidade ? 'visible' : 'hidden',
+                      textOverflow: isNovidade ? 'clip' : 'ellipsis',
+                      lineHeight: isNovidade ? '1.4' : 'normal',
+                    }}
+                  >
                     {item.sub}
                   </div>
                 </div>
