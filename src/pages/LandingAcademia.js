@@ -13,6 +13,36 @@ function formatarValor(v) {
   return `R$ ${n.toFixed(2).replace('.', ',')}`
 }
 
+// Ordem "auto" das seções (sem 'agendamento', que só aparece quando adicionado à ordem).
+// Seções novas lançadas depois que o usuário salvou a landing são injetadas na posição certa.
+const ORDEM_SECOES_AUTO = ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'youtube', 'mapa']
+
+function mesclarOrdemSecoes(salva) {
+  const ordem = Array.isArray(salva) && salva.length > 0
+    ? [...salva]
+    : ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'youtube', 'mapa']
+  ORDEM_SECOES_AUTO.forEach((sec, i) => {
+    if (ordem.includes(sec)) return
+    // ancora após a seção anterior (na ordem auto) que já exista na lista salva
+    let pos = ordem.length
+    for (let j = i - 1; j >= 0; j--) {
+      const idx = ordem.indexOf(ORDEM_SECOES_AUTO[j])
+      if (idx !== -1) { pos = idx + 1; break }
+    }
+    ordem.splice(pos, 0, sec)
+  })
+  return ordem
+}
+
+// Extrai o ID de 11 caracteres de um link do YouTube (watch?v=, youtu.be/, embed/, shorts/)
+function getYoutubeVideoId(url) {
+  if (!url) return null
+  const match = String(url).match(
+    /(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
+  )
+  return match ? match[1] : null
+}
+
 function formatarTelefoneWa(tel) {
   if (!tel) return ''
   let t = String(tel).replace(/\D/g, '')
@@ -198,6 +228,11 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
     ? empresa.faq.filter(f => f && f.pergunta && f.resposta)
     : []
 
+  // Vídeo do YouTube
+  const youtubeId = getYoutubeVideoId(empresa.youtube_url)
+  const youtubeTitulo = empresa.youtube_titulo || null
+  const youtubeDescricao = empresa.youtube_descricao || null
+
   // Agrupar aulas por dia
   const aulasPorDia = {}
   for (const a of aulas) {
@@ -205,10 +240,10 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
     aulasPorDia[a.dia_semana].push(a)
   }
 
-  // Ordem das secoes (com fallback seguro)
-  const ordem = Array.isArray(empresa.ordem_secoes) && empresa.ordem_secoes.length > 0
-    ? empresa.ordem_secoes
-    : ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa']
+  // Ordem das secoes (com fallback seguro). Mescla seções novas (ex.: youtube)
+  // que ainda não estejam na ordem salva antes da feature — sem tocar em 'agendamento',
+  // que é opt-in pela própria presença na lista.
+  const ordem = mesclarOrdemSecoes(empresa.ordem_secoes)
 
   // Menu fixo do topo: links só das seções que realmente aparecem + um CTA
   const navLinks = [
@@ -233,6 +268,7 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
     agendamento: !!urlAgendar,
     depoimentos: !!empresa.mostrar_depoimentos && depoimentos.length > 0,
     faq: !!empresa.mostrar_faq && faq.length > 0,
+    youtube: empresa.mostrar_youtube !== false && !!youtubeId,
     mapa: !!mapaUrl
   }
   const secoesVisiveis = ordem.filter(s => secaoVisivel[s])
@@ -625,6 +661,40 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
                         </div>
                       )
                     })}
+                  </div>
+                </div>
+              </section>
+            )
+
+          case 'youtube':
+            if (empresa.mostrar_youtube === false || !youtubeId) return null
+            return (
+              <section key="youtube" id="youtube" style={{ padding: isMobile ? '48px 20px' : '72px 24px', backgroundColor: corFundoSecao('youtube') }}>
+                <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+                  {youtubeTitulo && (
+                    <SectionTitle cor={cor} icon="mdi:youtube">{youtubeTitulo}</SectionTitle>
+                  )}
+                  {youtubeDescricao && (
+                    <p style={{
+                      textAlign: 'center', color: '#666', fontSize: '15px', lineHeight: '1.6',
+                      marginTop: youtubeTitulo ? '8px' : '0', marginBottom: '24px',
+                      maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto'
+                    }}>
+                      {youtubeDescricao}
+                    </p>
+                  )}
+                  <div style={{
+                    position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden',
+                    borderRadius: '16px', boxShadow: '0 6px 24px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb'
+                  }}>
+                    <iframe
+                      title={youtubeTitulo || 'Vídeo'}
+                      src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
+                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
                   </div>
                 </div>
               </section>

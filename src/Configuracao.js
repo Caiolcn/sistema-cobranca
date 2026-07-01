@@ -30,6 +30,26 @@ const PREVIEW_DEVICES = [
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
 
+// Ordem "auto" das seções (sem 'agendamento', que só aparece quando adicionado à ordem).
+// Injeta seções novas (ex.: youtube) em quem salvou a landing antes da feature existir.
+const ORDEM_SECOES_AUTO = ['sobre', 'planos', 'galeria', 'horarios', 'depoimentos', 'faq', 'youtube', 'mapa']
+
+function mesclarOrdemSecoes(salva) {
+  const ordem = Array.isArray(salva) && salva.length > 0
+    ? [...salva]
+    : ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'youtube', 'mapa']
+  ORDEM_SECOES_AUTO.forEach((sec, i) => {
+    if (ordem.includes(sec)) return
+    let pos = ordem.length
+    for (let j = i - 1; j >= 0; j--) {
+      const idx = ordem.indexOf(ORDEM_SECOES_AUTO[j])
+      if (idx !== -1) { pos = idx + 1; break }
+    }
+    ordem.splice(pos, 0, sec)
+  })
+  return ordem
+}
+
 function mascararNomePreview(nome) {
   if (!nome) return 'Aluno(a)'
   const partes = String(nome).trim().split(/\s+/)
@@ -259,12 +279,16 @@ function Configuracao({ secao = 'config' }) {
     depoimentosManuais: [],
     corSecundaria: '',
     fonte: 'inter',
-    ordemSecoes: ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa'],
+    youtubeUrl: '',
+    youtubeTitulo: '',
+    youtubeDescricao: '',
+    ordemSecoes: ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'youtube', 'mapa'],
     mostrarDepoimentos: true,
     mostrarPlanos: true,
     mostrarHorarios: true,
     mostrarGaleria: true,
     mostrarFaq: true,
+    mostrarYoutube: true,
     mostrarCtaWhatsapp: true,
     mostrarCtaAgendar: true,
     mostrarCtaFinal: true,
@@ -296,6 +320,7 @@ function Configuracao({ secao = 'config' }) {
     galeria: false,
     depoimentos: false,
     faq: false,
+    youtube: false,
     ctaFinal: false,
     rodape: false,
     avancado: false
@@ -420,14 +445,16 @@ function Configuracao({ secao = 'config' }) {
         galeria: Array.isArray(data.landing_galeria) ? data.landing_galeria : [],
         faq: Array.isArray(data.landing_faq) ? data.landing_faq : [],
         depoimentosManuais: Array.isArray(data.landing_depoimentos_manuais) ? data.landing_depoimentos_manuais : [],
-        ordemSecoes: Array.isArray(data.landing_ordem_secoes) && data.landing_ordem_secoes.length > 0
-          ? data.landing_ordem_secoes
-          : ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa'],
+        youtubeUrl: data.landing_youtube_url || '',
+        youtubeTitulo: data.landing_youtube_titulo || '',
+        youtubeDescricao: data.landing_youtube_descricao || '',
+        ordemSecoes: mesclarOrdemSecoes(data.landing_ordem_secoes),
         mostrarDepoimentos: data.landing_mostrar_depoimentos !== false,
         mostrarPlanos: data.landing_mostrar_planos !== false,
         mostrarHorarios: data.landing_mostrar_horarios !== false,
         mostrarGaleria: data.landing_mostrar_galeria !== false,
         mostrarFaq: data.landing_mostrar_faq !== false,
+        mostrarYoutube: data.landing_mostrar_youtube !== false,
         mostrarCtaWhatsapp: data.landing_mostrar_cta_whatsapp !== false,
         mostrarCtaAgendar: data.landing_mostrar_cta_agendar !== false,
         mostrarCtaFinal: data.landing_mostrar_cta_final !== false,
@@ -3457,12 +3484,16 @@ function Configuracao({ secao = 'config' }) {
           landing_galeria: landingConfig.galeria || [],
           landing_faq: faqLimpo,
           landing_depoimentos_manuais: depoimentosLimpo,
+          landing_youtube_url: (landingConfig.youtubeUrl || '').trim() || null,
+          landing_youtube_titulo: (landingConfig.youtubeTitulo || '').trim() || null,
+          landing_youtube_descricao: (landingConfig.youtubeDescricao || '').trim() || null,
           landing_ordem_secoes: landingConfig.ordemSecoes,
           landing_mostrar_depoimentos: landingConfig.mostrarDepoimentos,
           landing_mostrar_planos: landingConfig.mostrarPlanos,
           landing_mostrar_horarios: landingConfig.mostrarHorarios,
           landing_mostrar_galeria: landingConfig.mostrarGaleria,
           landing_mostrar_faq: landingConfig.mostrarFaq,
+          landing_mostrar_youtube: landingConfig.mostrarYoutube,
           landing_mostrar_cta_whatsapp: landingConfig.mostrarCtaWhatsapp,
           landing_mostrar_cta_agendar: landingConfig.mostrarCtaAgendar,
           landing_mostrar_cta_final: landingConfig.mostrarCtaFinal,
@@ -3573,10 +3604,11 @@ function Configuracao({ secao = 'config' }) {
     agendamento: 'Agendar online',
     depoimentos: 'Depoimentos',
     faq: 'Perguntas frequentes',
+    youtube: 'Vídeo do YouTube',
     mapa: 'Como chegar (mapa)'
   }
 
-  const ORDEM_PADRAO = ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'mapa']
+  const ORDEM_PADRAO = ['sobre', 'planos', 'galeria', 'horarios', 'agendamento', 'depoimentos', 'faq', 'youtube', 'mapa']
 
   // Mostra/oculta a seção de agendamento adicionando/removendo 'agendamento' da ordem
   // das seções (persiste em landing_ordem_secoes, sem precisar de coluna nova).
@@ -3685,12 +3717,16 @@ function Configuracao({ secao = 'config' }) {
         cta_final_subtitulo: landingConfig.ctaFinalSubtitulo,
         galeria: landingConfig.galeria || [],
         faq: (landingConfig.faq || []).filter(f => f && (f.pergunta || '').trim() && (f.resposta || '').trim()),
+        youtube_url: landingConfig.youtubeUrl,
+        youtube_titulo: landingConfig.youtubeTitulo,
+        youtube_descricao: landingConfig.youtubeDescricao,
         ordem_secoes: landingConfig.ordemSecoes || ORDEM_PADRAO,
         mostrar_depoimentos: landingConfig.mostrarDepoimentos,
         mostrar_planos: landingConfig.mostrarPlanos,
         mostrar_horarios: landingConfig.mostrarHorarios,
         mostrar_galeria: landingConfig.mostrarGaleria,
         mostrar_faq: landingConfig.mostrarFaq,
+        mostrar_youtube: landingConfig.mostrarYoutube,
         mostrar_cta_whatsapp: landingConfig.mostrarCtaWhatsapp,
         mostrar_cta_agendar: landingConfig.mostrarCtaAgendar,
         mostrar_cta_final: landingConfig.mostrarCtaFinal,
@@ -4618,6 +4654,57 @@ function Configuracao({ secao = 'config' }) {
         </CollapseCard>
 
         <CollapseCard
+          open={landingSecoesAbertas.youtube}
+          onToggle={() => toggleLandingSecao('youtube')}
+          title="Vídeo do YouTube"
+          icon="mdi:youtube"
+          visivel={landingConfig.mostrarYoutube}
+          onToggleVisivel={() => setLandingConfig(prev => ({ ...prev, mostrarYoutube: !prev.mostrarYoutube }))}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+              Link do vídeo no YouTube
+            </label>
+            <input
+              type="text"
+              value={landingConfig.youtubeUrl || ''}
+              onChange={e => setLandingConfig(prev => ({ ...prev, youtubeUrl: e.target.value }))}
+              placeholder="https://www.youtube.com/watch?v=..."
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+            />
+            <p style={{ fontSize: '12px', color: '#888', margin: '6px 0 0' }}>
+              Cole o link normal do vídeo (aceita youtube.com/watch, youtu.be ou shorts).
+            </p>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+              Título <span style={{ color: '#aaa', fontWeight: '400' }}>(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={landingConfig.youtubeTitulo || ''}
+              onChange={e => setLandingConfig(prev => ({ ...prev, youtubeTitulo: e.target.value.slice(0, 120) }))}
+              placeholder="Ex.: Conheça nossa estrutura"
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+              Descrição breve <span style={{ color: '#aaa', fontWeight: '400' }}>(opcional)</span>
+            </label>
+            <textarea
+              value={landingConfig.youtubeDescricao || ''}
+              onChange={e => setLandingConfig(prev => ({ ...prev, youtubeDescricao: e.target.value.slice(0, 300) }))}
+              rows={2}
+              placeholder="Um resumo rápido do que a pessoa vai ver no vídeo."
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+
+        </CollapseCard>
+
+        <CollapseCard
           open={landingSecoesAbertas.ctaFinal}
           onToggle={() => toggleLandingSecao('ctaFinal')}
           title={'Seção "Bora começar?"'}
@@ -4866,7 +4953,8 @@ function Configuracao({ secao = 'config' }) {
               { key: 'mostrarGaleria', label: 'Mostrar galeria de fotos', icon: 'mdi:image-multiple' },
               { key: 'mostrarHorarios', label: 'Mostrar horários das aulas', icon: 'mdi:calendar-clock' },
               { key: 'mostrarDepoimentos', label: 'Mostrar depoimentos', icon: 'mdi:star' },
-              { key: 'mostrarFaq', label: 'Mostrar FAQ', icon: 'mdi:help-circle-outline' }
+              { key: 'mostrarFaq', label: 'Mostrar FAQ', icon: 'mdi:help-circle-outline' },
+              { key: 'mostrarYoutube', label: 'Mostrar vídeo do YouTube', icon: 'mdi:youtube' }
             ].map(opt => (
               <label key={opt.key} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
