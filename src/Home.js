@@ -101,6 +101,8 @@ function Home() {
 
       const hoje = new Date();
       const hojeStr = hoje.toISOString().split('T')[0];
+      // Data local (nunca UTC) para casar com a Agenda ao contar agendamentos do dia
+      const hojeLocalStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
       // Período: mês atual
       const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
@@ -108,6 +110,11 @@ function Home() {
 
       // Janela de 6 meses atrás (1º dia) para a série de tendência
       const inicio6m = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1).toISOString().split('T')[0];
+      // Lookback dos logs de cobrança: um pagamento no início do mês costuma ter sido
+      // disparado por um lembrete do fim do mês anterior — busca ~45 dias antes do 1º dia.
+      const inicioLogs = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      inicioLogs.setDate(inicioLogs.getDate() - 45);
+      const inicioLogsStr = inicioLogs.toISOString().split('T')[0];
       // Mês passado (para comparação de momentum)
       const inicioMesPassado = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().split('T')[0];
       const fimMesPassado = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().split('T')[0];
@@ -122,7 +129,8 @@ function Home() {
         { data: aulasHojeData },
         { data: logsCobranca },
         { data: despesasMesData },
-        { data: fixosData }
+        { data: fixosData },
+        { data: agendadosHojeData }
       ] = await Promise.all([
         // 1. Mensalidades - para KPIs
         supabase
@@ -174,7 +182,7 @@ function Home() {
           .select('mensalidade_id, tipo, status, enviado_em')
           .eq('user_id', userId)
           .eq('status', 'enviado')
-          .gte('enviado_em', `${inicio}T00:00:00`),
+          .gte('enviado_em', `${inicioLogsStr}T00:00:00`),
 
         // 8. Despesas pagas no mês - para o card "Resultado do mês" (lucro)
         supabase
@@ -188,8 +196,16 @@ function Home() {
         // 9. Roster das turmas (alunos fixos ativos) - para esconder turmas vazias da agenda
         supabase
           .from('aulas_fixos')
-          .select('aula_id, devedores!inner(lixo)')
+          .select('aula_id, devedor_id, devedores!inner(lixo)')
           .eq('user_id', userId)
+          .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedores' }),
+
+        // 10. Agendamentos avulsos de hoje - turmas cujos alunos vêm de agendamento (não do roster fixo)
+        supabase
+          .from('agendamentos')
+          .select('aula_id, devedor_id, devedores!inner(lixo)')
+          .eq('user_id', userId)
+          .eq('data', hojeLocalStr)
           .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedores' })
       ]);
 
@@ -223,11 +239,17 @@ function Home() {
       listaAniversariantes.sort((a, b) => a.diffDias - b.diffDias);
       setAniversariantes(listaAniversariantes);
 
-      // Quantos alunos ativos cada turma tem hoje (para esconder turmas vazias)
+      // Quantos alunos ativos cada turma tem hoje (para esconder turmas vazias).
+      // Roster = alunos fixos + agendados de hoje, sem duplicar (igual à Agenda/montarRoster).
+      const rosterPorAula = {}; // aula_id -> Set(devedor_id)
+      const addAoRoster = (aulaId, devedorId) => {
+        if (!aulaId || !devedorId) return;
+        (rosterPorAula[aulaId] || (rosterPorAula[aulaId] = new Set())).add(devedorId);
+      };
+      (fixosData || []).forEach(f => addAoRoster(f.aula_id, f.devedor_id));
+      (agendadosHojeData || []).forEach(ag => addAoRoster(ag.aula_id, ag.devedor_id));
       const fixosPorAula = {};
-      (fixosData || []).forEach(f => {
-        if (f.aula_id) fixosPorAula[f.aula_id] = (fixosPorAula[f.aula_id] || 0) + 1;
-      });
+      Object.keys(rosterPorAula).forEach(aulaId => { fixosPorAula[aulaId] = rosterPorAula[aulaId].size; });
 
       // Agenda de hoje: aulas individuais (aluno ativo) + turmas que têm ao menos 1 aluno
       const listaAulasHoje = (aulasHojeData || [])
@@ -256,16 +278,17 @@ function Home() {
       // Despesas pagas no mês → resultado (lucro) do mês
       const despesasMes = (despesasMesData || []).reduce((sum, d) => sum + parseFloat(d.valor || 0), 0);
 
-      // Conjunto de mensalidades que receberam uma cobrança/lembrete neste mês.
+      // Conjunto de mensalidades que receberam uma cobrança/lembrete (janela ampliada, ~45d
+      // antes do mês, p/ pegar lembrete do fim do mês passado que gerou pgto no início deste).
       // Guarda também a data do 1º envio para garantir que o lembrete veio ANTES do pagamento.
       const cobrancaPorMensalidade = {}; // mensalidade_id -> data (YYYY-MM-DD) do envio mais antigo
-      let cobrancasEnviadas = 0;
+      let cobrancasEnviadas = 0; // contador só do mês atual (o card diz "este mês")
       (logsCobranca || []).forEach(l => {
         if (!l.mensalidade_id) return;
         const ehCobranca = l.tipo == null || TIPOS_COBRANCA.has(l.tipo);
         if (!ehCobranca) return;
-        cobrancasEnviadas += 1;
         const dataEnvio = (l.enviado_em || '').split('T')[0];
+        if (dataEnvio >= inicio) cobrancasEnviadas += 1; // só conta envios do mês atual
         const atual = cobrancaPorMensalidade[l.mensalidade_id];
         if (!atual || (dataEnvio && dataEnvio < atual)) {
           cobrancaPorMensalidade[l.mensalidade_id] = dataEnvio;
@@ -316,9 +339,11 @@ function Home() {
 
         // Recuperação pela cobrança automática (pagas neste mês)
         if (p.status === 'pago' && dataPag && dataPag >= inicio && dataPag <= fim) {
-          // veio no dia do vencimento ou depois (precisou de empurrão) e teve lembrete antes do pgto
+          // teve lembrete/cobrança registrado antes do pagamento (o lembrete plausivelmente
+          // ajudou). Não exige mais pagar só no venc/depois — quem paga no dia após o venc_d3
+          // também conta, o que reflete melhor o valor do piloto automático.
           const primeiraCobranca = cobrancaPorMensalidade[p.id];
-          if (dataVenc && dataPag >= dataVenc && primeiraCobranca && primeiraCobranca <= dataPag) {
+          if (primeiraCobranca && primeiraCobranca <= dataPag) {
             recuperadoValor += valorRecebido;
             recuperadoQtd += 1;
           }
