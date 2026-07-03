@@ -31,6 +31,7 @@ export const CONFIG_TABS = [
   // Pagamentos
   { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection', group: 'pagamentos' },
   // Marketing
+  { id: 'artes', label: 'Artes', icon: 'mdi:palette-outline', group: 'marketing' },
   { id: 'landing', label: 'Site', icon: 'mdi:web', group: 'marketing' },
   { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor', group: 'marketing' },
   // Modelos & Documentos

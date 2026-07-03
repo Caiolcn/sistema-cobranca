@@ -29,6 +29,7 @@ const PREVIEW_DEVICES = [
 ]
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
+const Artes = lazy(() => import('./Artes'))
 
 // Ordem "auto" das seções (sem 'agendamento', que só aparece quando adicionado à ordem).
 // Injeta seções novas (ex.: youtube) em quem salvou a landing antes da feature existir.
@@ -5536,7 +5537,7 @@ function Configuracao({ secao = 'config' }) {
   const abaAtual = tabs.find(t => t.id === abaAtiva)
 
   return (
-    <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
+    <div style={{ flex: 1, minWidth: 0, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh' }}>
       {/* Tabs - dropdown no mobile, segmented control no desktop */}
       {isMobile ? (
         <div style={{
@@ -5640,6 +5641,11 @@ function Configuracao({ secao = 'config' }) {
               {abaAtiva === 'planos' && renderPlanos()}
               {abaAtiva === 'integracoes' && renderIntegracoes()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
+              {abaAtiva === 'artes' && (
+                <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
+                  <Artes />
+                </Suspense>
+              )}
               {abaAtiva === 'agendamento' && renderAgendamento()}
               {abaAtiva === 'landing' && renderLanding()}
               {abaAtiva === 'anamnese' && renderAnamnese()}
