@@ -137,6 +137,13 @@ export default function Signup() {
 
       if (configError) console.error('Erro ao criar config de cobrança:', configError)
 
+      // Pixel PRIMEIRO: a conta já foi criada, então dispara os eventos de conversão
+      // imediatamente — a campanha Meta paga por CompleteRegistration, não pode
+      // depender do await da boas-vindas (que pode travar/demorar).
+      trackLead()
+      trackCompleteRegistration()
+      trackStartTrial()
+
       // Boas-vindas via WhatsApp, enviada pelo número da plataforma (master).
       // Não bloqueia o cadastro: se falhar, a conta já está criada e a pessoa segue.
       try {
@@ -154,10 +161,6 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
       } catch (erroBoasVindas) {
         console.error('Falha ao enviar boas-vindas (não bloqueia cadastro):', erroBoasVindas)
       }
-
-      trackLead()
-      trackCompleteRegistration()
-      trackStartTrial()
 
       navigate('/app/onboarding')
 
