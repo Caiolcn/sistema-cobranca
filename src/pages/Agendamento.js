@@ -1082,11 +1082,16 @@ export default function Agendamento() {
                               Não vou
                             </div>
                           ) : agendado ? (
-                            <div style={{
-                              background: '#f0fdf4', padding: '4px 10px', borderRadius: 8,
-                              fontSize: 11, fontWeight: 700, color: '#22c55e'
-                            }}>
-                              Agendado
+                            <div>
+                              <div style={{
+                                background: '#f0fdf4', padding: '4px 10px', borderRadius: 8,
+                                fontSize: 11, fontWeight: 700, color: '#22c55e'
+                              }}>
+                                Agendado
+                              </div>
+                              <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                                {aula.capacidade - vagas}/{aula.capacidade} agendados
+                              </div>
                             </div>
                           ) : filaAtiva ? (
                             <div style={{
@@ -1113,7 +1118,7 @@ export default function Agendamento() {
                             <div style={{
                               fontSize: 12, color: vagas <= 3 ? '#f59e0b' : '#94a3b8', fontWeight: 600
                             }}>
-                              {vagas} vaga{vagas !== 1 ? 's' : ''}
+                              {aula.capacidade - vagas}/{aula.capacidade} agendados
                             </div>
                           )}
                         </div>
