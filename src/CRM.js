@@ -6,6 +6,7 @@ import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
 import whatsappService from './services/whatsappService'
 import { showToast } from './Toast'
+import ConfirmModal from './ConfirmModal'
 import Button from './design-system/components/Button'
 import Checkbox from './design-system/components/Checkbox'
 import Select from './design-system/components/Select'
@@ -104,6 +105,7 @@ export default function CRM() {
 
   // Modal de envio de WhatsApp
   const [modalMsg, setModalMsg] = useState({ aberto: false, lead: null, texto: '', enviando: false })
+  const [confirm, setConfirm] = useState(null) // { title, message, confirmText, type, onConfirm }
 
   useEffect(() => {
     if (userId && !crmLocked) carregarTudo()
@@ -313,7 +315,7 @@ export default function CRM() {
   }
 
   const salvarLead = async () => {
-    if (!leadEditando.nome) return alert('Nome é obrigatório')
+    if (!leadEditando.nome) return showToast('Nome é obrigatório', 'error')
     if (leadEditando.id) {
       const { id, created_at, updated_at, user_id, ...resto } = leadEditando
       await supabase.from('leads').update(resto).eq('id', id)
@@ -324,12 +326,20 @@ export default function CRM() {
     carregarTudo()
   }
 
-  const excluirLead = async () => {
+  const excluirLead = () => {
     if (!leadEditando.id) return
-    if (!window.confirm('Excluir este lead?')) return
-    await supabase.from('leads').delete().eq('id', leadEditando.id)
-    setModalAberto(false)
-    carregarTudo()
+    const id = leadEditando.id
+    setConfirm({
+      title: 'Excluir lead',
+      message: 'Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita.',
+      confirmText: 'Excluir',
+      type: 'danger',
+      onConfirm: async () => {
+        await supabase.from('leads').delete().eq('id', id)
+        setModalAberto(false)
+        carregarTudo()
+      }
+    })
   }
 
   // Drag no CRM Leads: atualiza leads.status
@@ -406,11 +416,11 @@ export default function CRM() {
 
   const abrirConverter = async (lead) => {
     if (!lead.convertido_em_devedor_id) {
-      return alert('Este lead não tem aluno vinculado. Cadastre-o como cliente manualmente.')
+      return showToast('Este lead não tem aluno vinculado. Cadastre-o como cliente manualmente.', 'error')
     }
     const { data: devedor } = await supabase
       .from('devedores').select('*').eq('id', lead.convertido_em_devedor_id).single()
-    if (!devedor) return alert('Aluno vinculado não encontrado')
+    if (!devedor) return showToast('Aluno vinculado não encontrado', 'error')
 
     setModalConverter({ lead, devedor })
     setConvEnviarBoasVindas(true)
@@ -435,10 +445,10 @@ export default function CRM() {
   }
 
   const confirmarConversao = async () => {
-    if (!convPlanoId) return alert('Selecione um plano')
-    if (!convDataVenc) return alert('Defina a data de vencimento')
+    if (!convPlanoId) return showToast('Selecione um plano', 'error')
+    if (!convDataVenc) return showToast('Defina a data de vencimento', 'error')
     const plano = planos.find(p => p.id === convPlanoId)
-    if (!plano) return alert('Plano inválido')
+    if (!plano) return showToast('Plano inválido', 'error')
 
     setConvertendo(true)
     try {
@@ -490,30 +500,37 @@ export default function CRM() {
 
       carregarTudo()
     } catch (err) {
-      alert('Erro ao converter: ' + err.message)
+      showToast('Erro ao converter: ' + err.message, 'error')
     } finally {
       setConvertendo(false)
     }
   }
 
-  const descartarLead = async (lead) => {
-    if (!window.confirm(`Descartar ${lead.nome}? O aluno experimental será arquivado.`)) return
-    await supabase.from('leads').update({ status: 'perdido' }).eq('id', lead.id)
-    if (lead.convertido_em_devedor_id) {
-      const devedorId = lead.convertido_em_devedor_id
-      await supabase.from('devedores').update({
-        lixo: true,
-        deletado_em: new Date().toISOString()
-      }).eq('id', devedorId)
-      // Limpa vínculos da Agenda — senão sobram órfãos apontando pro devedor em lixo
-      await Promise.all([
-        supabase.from('aulas_fixos').delete().eq('devedor_id', devedorId),
-        supabase.from('agendamentos').delete().eq('devedor_id', devedorId).eq('status', 'confirmado'),
-        supabase.from('aulas').update({ ativo: false }).eq('devedor_id', devedorId)
-      ])
-    }
-    setModalAberto(false)
-    carregarTudo()
+  const descartarLead = (lead) => {
+    setConfirm({
+      title: 'Descartar lead',
+      message: `Descartar ${lead.nome}? O aluno experimental será arquivado.`,
+      confirmText: 'Descartar',
+      type: 'warning',
+      onConfirm: async () => {
+        await supabase.from('leads').update({ status: 'perdido' }).eq('id', lead.id)
+        if (lead.convertido_em_devedor_id) {
+          const devedorId = lead.convertido_em_devedor_id
+          await supabase.from('devedores').update({
+            lixo: true,
+            deletado_em: new Date().toISOString()
+          }).eq('id', devedorId)
+          // Limpa vínculos da Agenda — senão sobram órfãos apontando pro devedor em lixo
+          await Promise.all([
+            supabase.from('aulas_fixos').delete().eq('devedor_id', devedorId),
+            supabase.from('agendamentos').delete().eq('devedor_id', devedorId).eq('status', 'confirmado'),
+            supabase.from('aulas').update({ ativo: false }).eq('devedor_id', devedorId)
+          ])
+        }
+        setModalAberto(false)
+        carregarTudo()
+      }
+    })
   }
 
   const filtrarPorBusca = (lista) => busca
@@ -945,6 +962,16 @@ export default function CRM() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirm}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => confirm?.onConfirm()}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmText={confirm?.confirmText}
+        type={confirm?.type}
+      />
     </div>
   )
 }
