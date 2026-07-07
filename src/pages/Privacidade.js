@@ -4,12 +4,11 @@ import { Link } from 'react-router-dom'
 // URL: /privacidade  → https://www.mensalli.com.br/privacidade
 // Usada também como URL de política de privacidade do app Meta.
 //
-// ⚠️ Revisar antes de considerar como documento legal definitivo:
-//   - Razão social + CNPJ do controlador (placeholders abaixo)
-//   - E-mail de contato do encarregado (DPO)
+// Quando formalizar (MEI/empresa), dá pra acrescentar razão social + CNPJ do
+// controlador na seção de identificação — não é obrigatório para funcionar.
 
 const ATUALIZADO_EM = '7 de julho de 2026'
-const EMAIL_CONTATO = 'privacidade@mensalli.com.br'
+const EMAIL_CONTATO = 'cttmensalli@gmail.com'
 const WHATSAPP = 'https://wa.me/5562981618862'
 
 const wrap = {
@@ -44,8 +43,8 @@ export default function Privacidade() {
           você concorda com as práticas aqui descritas.
         </p>
         <p style={p}>
-          <strong>Controlador dos dados:</strong> Mensalli — [Razão Social], inscrita no CNPJ sob o
-          nº [CNPJ]. Contato do encarregado (DPO): <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.
+          <strong>Controlador dos dados:</strong> Mensalli. Contato do encarregado (DPO):{' '}
+          <a href={`mailto:${EMAIL_CONTATO}`}>{EMAIL_CONTATO}</a>.
         </p>
 
         <h2 style={h2}>1. Quem usa o Mensalli</h2>
