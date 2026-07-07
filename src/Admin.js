@@ -793,6 +793,18 @@ export default function Admin() {
             WhatsApp Master
           </button>
           <button
+            onClick={() => navigate('/app/admin/cobranca-saas')}
+            style={{
+              padding: '10px 16px', borderRadius: '8px', border: '1px solid #f97316',
+              backgroundColor: '#fff7ed', color: '#ea580c', fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <Icon icon="mdi:cash-clock" width="16" />
+            Cobrança SaaS
+          </button>
+          <button
             onClick={carregarDados}
             disabled={loading}
             style={{
