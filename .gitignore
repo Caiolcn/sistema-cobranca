@@ -40,3 +40,8 @@ credentials.json
 /vercel-caio.pdf
 /sql-popular-demo-radar-evasao.sql
 /deno.lock
+
+# meta-ads-dashboard (sub-projeto) — nunca commitar tokens
+/meta-ads-dashboard/data/page_info.json
+/meta-ads-dashboard/.meta-token
+/meta-ads-dashboard/**/*.token

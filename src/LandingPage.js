@@ -561,7 +561,7 @@ export default function LandingPage() {
             {[
               { t: 'Produto', links: [{ l: 'Recursos', id: 'recursos' }, { l: 'Preços', id: 'precos' }, { l: 'Dúvidas', id: 'faq' }] },
               { t: 'Empresa', links: [{ l: 'Entrar', to: '/login' }, { l: 'Criar conta', to: '/signup' }, { l: 'Contato', href: 'https://wa.me/5562981618862' }] },
-              { t: 'Legal', links: [{ l: 'Termos de Uso', href: '#' }, { l: 'Privacidade', href: '#' }, { l: 'LGPD', href: '#' }] }
+              { t: 'Legal', links: [{ l: 'Termos de Uso', href: '#' }, { l: 'Privacidade', to: '/privacidade' }, { l: 'LGPD', to: '/privacidade' }] }
             ].map((col, ci) => (
               <div key={ci}>
                 <p style={{ fontSize: '12px', fontWeight: '700', color: 'white', textTransform: 'uppercase', letterSpacing: '.5px', margin: '0 0 16px' }}>{col.t}</p>

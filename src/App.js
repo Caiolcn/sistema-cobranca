@@ -11,6 +11,7 @@ import LandingPage from './LandingPage'
 import Login from './Login'
 import Signup from './Signup'
 import ResetPassword from './ResetPassword'
+import Privacidade from './pages/Privacidade'
 
 // Lazy loading para componentes do app (carregados sob demanda)
 // Economia estimada: ~339 KiB no carregamento inicial
@@ -121,6 +122,7 @@ function App() {
               <Route path="/agendar/:slug" element={<Agendamento />} />
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
               <Route path="/links" element={<LinkInBio />} />
+              <Route path="/privacidade" element={<Privacidade />} />
 
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (
