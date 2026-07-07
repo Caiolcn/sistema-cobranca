@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  MdArrowOutward, MdCardGiftcard, MdLanguage, MdArticle, MdFavorite,
+  MdArrowOutward, MdCardGiftcard, MdLanguage, MdFavorite,
   MdExpandMore
 } from 'react-icons/md'
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
@@ -50,7 +50,7 @@ const FAQ = [
 const LINKS = [
   {
     icon: MdCardGiftcard,
-    titulo: 'Teste 7 dias grátis',
+    titulo: 'Teste 3 dias grátis',
     sub: 'Sem cartão, sem compromisso',
     href: '/signup',
     destaque: true,
@@ -66,12 +66,6 @@ const LINKS = [
     titulo: 'Conheça o Mensalli',
     sub: 'Acesse nosso site',
     href: '/',
-  },
-  {
-    icon: MdArticle,
-    titulo: 'Blog',
-    sub: 'Dicas de gestão e cobrança',
-    href: '#',
   },
 ]
 

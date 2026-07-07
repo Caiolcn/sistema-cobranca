@@ -2308,6 +2308,9 @@
 
 .painel-footer-link:hover {
   gap: 8px;
+  /* neutraliza o button:hover global (App.css) que pintava um bloco azul */
+  background: transparent;
+  color: #6d4f87;
 }
 
 /* ===== Agenda de hoje ===== */
