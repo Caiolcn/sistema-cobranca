@@ -225,10 +225,12 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color 0.2s, background-color 0.2s;
 }
 
+/* Sobrescreve o button:hover global (App.css) que pintava um bloco azul */
 .onboarding-btn-skip:hover {
+  background: #f3f4f6;
   color: #6b7280;
 }
 

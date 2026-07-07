@@ -67,8 +67,12 @@ export default function Onboarding() {
   const finishOnboarding = async () => {
     try {
       setSaving(true)
+      // Só marca como concluído (some o checklist do Home) se a pessoa realmente
+      // cadastrou ao menos 1 aluno. Se pulou tudo, o checklist "Primeiros Passos"
+      // continua no Home como rede de segurança.
+      const cadastrouAluno = clientesCriados.length > 0
       await supabase.from('usuarios').update({
-        onboarding_completed: true,
+        onboarding_completed: cadastrouAluno,
         onboarding_step: 4
       }).eq('id', userId)
       await refreshUserData()

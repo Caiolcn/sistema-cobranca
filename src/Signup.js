@@ -2,6 +2,12 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import { trackLead, trackCompleteRegistration, trackStartTrial } from './utils/metaPixel'
+import whatsappService from './services/whatsappService'
+
+// Instância WhatsApp da própria plataforma (Mensalli → novo cliente).
+// Mesma usada pelos disparos do /admin. O novo usuário ainda não conectou
+// a instância dele, então a boas-vindas sai daqui.
+const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -131,11 +137,29 @@ export default function Signup() {
 
       if (configError) console.error('Erro ao criar config de cobrança:', configError)
 
+      // Boas-vindas via WhatsApp, enviada pelo número da plataforma (master).
+      // Não bloqueia o cadastro: se falhar, a conta já está criada e a pessoa segue.
+      try {
+        const primeiroNome = nomeCompleto.trim().split(' ')[0]
+        const mensagemBoasVindas =
+`Oi ${primeiroNome}! 👋
+
+Aqui é o Caio, da equipe do Mensalli. Vi que você acabou de criar sua conta de teste — seja muito bem-vindo(a)! 🎉
+
+Seu teste grátis de 3 dias já está liberado com tudo desbloqueado. Pra ver a mágica acontecer, é só cadastrar seus alunos e ativar a cobrança automática no WhatsApp.
+
+Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que eu te ajudo. 😊`
+
+        await whatsappService.enviarMensagem(telefoneLimpo, mensagemBoasVindas, INSTANCIA_MENSALLI)
+      } catch (erroBoasVindas) {
+        console.error('Falha ao enviar boas-vindas (não bloqueia cadastro):', erroBoasVindas)
+      }
+
       trackLead()
       trackCompleteRegistration()
       trackStartTrial()
 
-      navigate('/app/home')
+      navigate('/app/onboarding')
 
     } catch (error) {
       console.error('Erro ao cadastrar:', error)
