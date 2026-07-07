@@ -80,13 +80,18 @@ serve(async (req) => {
 
     const url = `${evolutionUrl}/webhook/set/${mz.instance_name}`
 
+    // CONNECTION_UPDATE fica SEMPRE registrado (rastreio de queda em tempo real),
+    // independente do bot. Desativar o bot só remove o MESSAGES_UPSERT — o webhook
+    // continua ligado pra não perder os eventos de conexão.
     const body =
       acao === 'desativar'
         ? {
             webhook: {
-              enabled: false,
-              url: '',
-              events: [],
+              enabled: true,
+              url: WEBHOOK_URL,
+              webhookByEvents: false,
+              webhookBase64: false,
+              events: ['CONNECTION_UPDATE'],
             },
           }
         : {
@@ -95,7 +100,7 @@ serve(async (req) => {
               url: WEBHOOK_URL,
               webhookByEvents: false,
               webhookBase64: false,
-              events: ['MESSAGES_UPSERT'],
+              events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
             },
           }
 

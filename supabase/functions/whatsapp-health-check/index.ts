@@ -44,6 +44,12 @@ const REAVISO_INTERVALO_MS = 3 * 24 * 60 * 60 * 1000
 // URL do app pro link de reconexão na mensagem
 const APP_URL = 'https://www.mensalli.com.br'
 
+// Receiver do webhook (a mesma edge function whatsapp-bot trata MESSAGES_UPSERT
+// E connection.update). O health-check (re)afirma esse webhook em cada cliente —
+// é o que liga o rastreio de queda em tempo real pra toda a base, sem ninguém
+// precisar reconectar.
+const WEBHOOK_BOT_URL = `${SUPABASE_URL}/functions/v1/whatsapp-bot`
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function fetchComTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
@@ -124,6 +130,33 @@ async function deslogar(apiUrl: string, apiKey: string, instance: string): Promi
     return res.ok
   } catch (_e) {
     return false
+  }
+}
+
+// (Re)afirma o webhook da instância apontando pro whatsapp-bot. Mantém
+// CONNECTION_UPDATE sempre; adiciona MESSAGES_UPSERT só se o bot estiver ativo
+// (o /webhook/set substitui a config inteira, então mandamos a lista completa).
+async function garantirWebhook(
+  apiUrl: string,
+  apiKey: string,
+  instance: string,
+  botAtivo: boolean,
+): Promise<void> {
+  const events = botAtivo ? ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'] : ['CONNECTION_UPDATE']
+  try {
+    await fetchComTimeout(
+      `${apiUrl}/webhook/set/${instance}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: apiKey },
+        body: JSON.stringify({
+          webhook: { enabled: true, url: WEBHOOK_BOT_URL, webhookByEvents: false, webhookBase64: false, events },
+        }),
+      },
+      PROBE_TIMEOUT_MS,
+    )
+  } catch (_e) {
+    // best-effort: se falhar, a próxima varredura tenta de novo
   }
 }
 
@@ -228,6 +261,14 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     })
   })
 
+  // bot_ativo por usuário — define se o webhook leva MESSAGES_UPSERT junto.
+  const { data: cfgs } = await admin
+    .from('configuracoes_cobranca')
+    .select('user_id, bot_ativo')
+    .in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000'])
+  const botPorUser = new Map<string, boolean>()
+  cfgs?.forEach((c: { user_id: string; bot_ativo: boolean }) => botPorUser.set(c.user_id, !!c.bot_ativo))
+
   const checadoEm = new Date().toISOString()
   const agora = Date.now()
   let total = 0
@@ -252,6 +293,11 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const numeroSonda = (zap?.whatsapp_numero || '').replace(/\D/g, '') || NUMERO_SONDA_FALLBACK
 
     const estado = await lerEstado(apiUrl, apiKey, instance)
+
+    // Self-heal: garante o webhook de connection.update enquanto a instância existir.
+    if (estado !== 'inexistente') {
+      await garantirWebhook(apiUrl, apiKey, instance, botPorUser.get(u.id) || false)
+    }
 
     let probeOk = false
     let probeErro: string | null = null

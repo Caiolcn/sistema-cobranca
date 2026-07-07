@@ -73,7 +73,9 @@ $$;
 
 GRANT EXECUTE ON FUNCTION admin_whatsapp_saude() TO authenticated;
 
--- 4. Agendamento diário via pg_cron — 6h BRT (9h UTC), antes das automações de envio.
+-- 4. Agendamento diário via pg_cron — 8h BRT (11h UTC), 1h antes das automações
+--    de envio (9h BRT). Folga pro gestor reconectar o QR após o aviso de queda,
+--    e perto o bastante das cobranças pra pegar a desconexão real.
 --    Requer pg_cron + pg_net habilitados e os secrets no vault:
 --      SELECT vault.create_secret('<SERVICE_ROLE_KEY>', 'service_role_key');
 --      SELECT vault.create_secret('https://<PROJETO>.supabase.co', 'project_url');
@@ -84,7 +86,7 @@ WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'whatsapp-health-check-diar
 
 SELECT cron.schedule(
   'whatsapp-health-check-diario',
-  '0 9 * * *',  -- 09:00 UTC = 06:00 BRT
+  '0 11 * * *',  -- 11:00 UTC = 08:00 BRT
   $$
   SELECT net.http_post(
     url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url') || '/functions/v1/whatsapp-health-check',

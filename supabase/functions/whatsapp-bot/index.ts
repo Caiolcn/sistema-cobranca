@@ -72,6 +72,120 @@ async function enviarMensagem(
   }
 }
 
+// ============================================================
+// connection.update — rastreio de queda/reconexão em TEMPO REAL
+// ------------------------------------------------------------
+// Complementa o health-check (cron 8h): o cron pega socket morto
+// "silencioso" (state "open" mas Connection Closed no envio); este
+// webhook pega o evento limpo de queda/logout no instante em que
+// acontece. Grava o timestamp exato em logs_conexao e, quando é
+// logout definitivo, libera o QR + avisa o gestor pelo master.
+// ============================================================
+const REAVISO_INTERVALO_MS = 3 * 24 * 60 * 60 * 1000 // anti-spam: 1 aviso / 3 dias
+
+function formatarTelefoneGestor(telefone: string): string | null {
+  let n = String(telefone || '').replace(/\D/g, '')
+  if (!n) return null
+  if (!n.startsWith('55')) n = '55' + n
+  return n
+}
+
+async function lerEstadoInstancia(apiUrl: string, apiKey: string, instance: string): Promise<string> {
+  try {
+    const res = await fetch(`${apiUrl}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } })
+    if (!res.ok) return 'erro'
+    const d = await res.json()
+    return d?.instance?.state || 'close'
+  } catch {
+    return 'erro'
+  }
+}
+
+async function tratarConnectionUpdate(supabase: any, instance: string, data: any): Promise<void> {
+  if (!instance) return
+  const estado = String(data?.state || data?.connection || '').toLowerCase()
+  const statusReason = Number(
+    data?.statusReason ?? data?.lastDisconnect?.error?.output?.statusCode ?? 0,
+  )
+  const agoraIso = new Date().toISOString()
+
+  const { data: zap } = await supabase
+    .from('mensallizap')
+    .select('user_id, ultimo_aviso_desconexao')
+    .eq('instance_name', instance)
+    .maybeSingle()
+  if (!zap?.user_id) return
+  const userId = zap.user_id
+
+  // ---- Reconectou ----
+  if (estado === 'open') {
+    await supabase
+      .from('mensallizap')
+      .update({ conectado: true, ultima_conexao: agoraIso, ultimo_aviso_desconexao: null, updated_at: agoraIso })
+      .eq('user_id', userId)
+    await supabase.from('logs_conexao').insert({ user_id: userId, instance_name: instance, status: 'conectado' })
+    console.log('✅ connection.update: reconectado', instance)
+    return
+  }
+
+  // ---- Caiu ----
+  if (estado === 'close') {
+    // Sempre registra a queda (timestamp exato) e reflete no banner in-app.
+    await supabase.from('logs_conexao').insert({ user_id: userId, instance_name: instance, status: 'desconectado' })
+    await supabase
+      .from('mensallizap')
+      .update({ conectado: false, ultima_desconexao: agoraIso, updated_at: agoraIso })
+      .eq('user_id', userId)
+    console.log(`⚠️ connection.update: caiu ${instance} (statusReason ${statusReason})`)
+
+    // 401 = DisconnectReason.loggedOut → saiu de vez, precisa re-escanear o QR.
+    // Outros códigos = queda transitória; o Baileys reconecta sozinho, não alarmamos.
+    if (statusReason !== 401) return
+
+    // Anti-spam (mesma janela do health-check, pra não avisar 2x pelos dois caminhos).
+    const ultimoAviso = zap.ultimo_aviso_desconexao ? Date.parse(zap.ultimo_aviso_desconexao) : 0
+    if (ultimoAviso && Date.now() - ultimoAviso < REAVISO_INTERVALO_MS) return
+
+    const { data: configRows } = await supabase
+      .from('config')
+      .select('chave, valor')
+      .in('chave', ['evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
+    const cm: Record<string, string> = {}
+    for (const r of configRows || []) cm[r.chave] = r.valor
+    const apiUrl = cm.evolution_api_url
+    const apiKey = cm.evolution_api_key
+    const masterInstance = cm.evolution_master_instance || 'mensalli_master'
+    if (!apiUrl || !apiKey) return
+
+    // Libera o QR (idempotente; em loggedOut a Evolution já derrubou a sessão).
+    try {
+      await fetch(`${apiUrl}/instance/logout/${instance}`, { method: 'DELETE', headers: { apikey: apiKey } })
+    } catch { /* noop */ }
+
+    const { data: u } = await supabase
+      .from('usuarios')
+      .select('telefone, nome_empresa')
+      .eq('id', userId)
+      .maybeSingle()
+    const numero = formatarTelefoneGestor(u?.telefone || '')
+    if (!numero) return
+
+    // Só avisa pelo master se ele estiver conectado.
+    if ((await lerEstadoInstancia(apiUrl, apiKey, masterInstance)) !== 'open') return
+
+    const nome = String(u?.nome_empresa || '').trim().split(' ')[0] || ''
+    const texto =
+      `⚠️ *MensalliZap — atenção*\n\n` +
+      `Olá${nome ? `, ${nome}` : ''}! Detectamos que o *WhatsApp da sua conta desconectou* ` +
+      `e suas mensagens automáticas (cobranças, lembretes) não estão saindo.\n\n` +
+      `👉 Reconecte agora escaneando o QR Code:\n${APP_URL}/app/whatsapp\n\n` +
+      `É rápido e leva menos de 1 minuto. Qualquer dúvida, é só chamar a gente por aqui!`
+    await enviarMensagem(apiUrl, apiKey, masterInstance, `${numero}@s.whatsapp.net`, texto)
+    await supabase.from('mensallizap').update({ ultimo_aviso_desconexao: agoraIso }).eq('user_id', userId)
+    console.log('📣 connection.update: aviso de queda enviado ao gestor', userId)
+  }
+}
+
 function substituirVars(texto: string, vars: Record<string, string>): string {
   let r = texto
   for (const [k, v] of Object.entries(vars)) {
@@ -411,6 +525,18 @@ serve(async (req) => {
 
     // Evolution API envia em formatos variados; tentamos cobrir os principais
     const eventName = payload.event || payload.eventType
+
+    // ====== connection.update: rastreio de queda/reconexão (antes do filtro de msg) ======
+    const evLower = String(eventName || '').toLowerCase()
+    if (evLower.includes('connection.update') || evLower.includes('connection_update')) {
+      const cdata = payload.data || payload
+      const cinstance = payload.instance || cdata.instance || cdata.instanceName
+      await tratarConnectionUpdate(supabase, cinstance, cdata)
+      return new Response(JSON.stringify({ ok: true, handled: 'connection.update' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     if (eventName && !String(eventName).includes('messages.upsert') && !String(eventName).includes('MESSAGES_UPSERT')) {
       return new Response(JSON.stringify({ ok: true, ignored: 'event' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
