@@ -2045,53 +2045,70 @@ function Configuracao({ secao = 'config' }) {
     carregarPlanoAtual()
   }, [contextUserId])
 
+  // Paleta e visual espelhados da seção de preços da LandingPage
+  const INK = '#0f1115'
+  const BODY = '#5b636e'
+  const MUTED = '#9aa1ab'
+  const BORDER = '#ececf0'
+  const GREEN = '#16a34a'
+  const GRAD = 'linear-gradient(135deg, #22c55e 0%, #0ea372 100%)'
+
   const planosDisponiveis = [
     {
       id: 'starter',
       nome: 'Starter',
-      preco: 49.90,
+      preco: 49,
       subtitulo: 'Ideal para começar',
-      features: [
-        'Lembretes automáticos 3 dias antes',
-        '1 template personalizável',
-        'Dashboard básico',
-        'Exportação CSV',
-        'Suporte'
-      ],
+      perMsg: 'R$0,25 por mensagem',
       destaque: false,
-      dica: 'Economize ~2h/semana em cobranças',
+      features: [
+        'Até 50 clientes ativos',
+        '200 mensagens/mês',
+        'Mensagem automática no vencimento',
+        '1 template personalizado',
+        'Dashboard básico'
+      ],
       cta: 'Começar no Starter'
     },
     {
       id: 'pro',
       nome: 'Pro',
-      preco: 99.90,
+      preco: 99,
       subtitulo: 'Para negócios em crescimento',
+      perMsg: 'R$0,17 por mensagem',
+      destaque: false,
       features: [
-        'Lembretes em 3 dias antes, no dia do vencimento e 3 dias depois',
-        '3 templates personalizáveis',
-        'Dashboard com gráficos completos',
-        'Aging Report + Receita Projetada',
-        'Mensagem de aniversário automática',
-        'Suporte WhatsApp'
+        'Até 150 clientes ativos',
+        '600 mensagens/mês',
+        '3 templates personalizados',
+        'Régua de cobrança completa',
+        'Dashboard com gráficos',
+        'Contratos com assinatura',
+        'Anamnese / Ficha do aluno',
+        'Suporte via WhatsApp'
       ],
-      destaque: true,
-      dica: 'Economize ~5h/semana + Reduza 70% inadimplência',
-      cta: 'Escolher mais popular'
+      cta: 'Escolher o Pro'
     },
     {
       id: 'premium',
       nome: 'Premium',
-      preco: 149.90,
+      preco: 149,
       subtitulo: 'Gestão profissional',
+      perMsg: 'R$0,05 por mensagem',
+      destaque: true,
       features: [
+        'Até 500 clientes ativos',
+        '3.000 mensagens/mês',
         'Tudo do plano Pro',
+        'Criador de Sites',
+        'CRM completo',
+        'Bot de WhatsApp',
+        'Agendamento online (link de agendamento)',
+        'Campanhas de WhatsApp',
+        'Templates ilimitados',
         'Consultoria inicial (1h)',
-        'Suporte prioritário (4h)',
-        'Acesso antecipado a features'
+        'Suporte prioritário'
       ],
-      destaque: false,
-      dica: 'Economize ~10h/semana + Suporte VIP',
       cta: 'Ativar Premium'
     }
   ]
@@ -2132,45 +2149,49 @@ function Configuracao({ secao = 'config' }) {
         </p>
       </div>
 
-      {/* Cards de Planos */}
+      {/* Cards de Planos — visual espelhado da LandingPage */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '24px',
-        marginBottom: '40px'
+        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+        gap: '20px',
+        alignItems: 'start',
+        maxWidth: '1080px',
+        margin: '0 auto 40px'
       }}>
         {planosDisponiveis.map((plano) => {
-          const isPro = plano.destaque
+          const d = plano.destaque
           const isAtual = plano.id === planoAtual
+          const bloqueado = isAtual || processandoCheckout
 
           return (
             <div
               key={plano.id}
               style={{
-                backgroundColor: isPro ? '#25D366' : '#fafafa',
-                padding: '32px',
-                borderRadius: '16px',
-                border: isPro ? 'none' : '1px solid #eee',
-                boxShadow: isPro ? '0 8px 32px rgba(37,211,102,0.3)' : 'none',
-                transform: isPro ? 'scale(1.02)' : 'scale(1)',
-                position: 'relative'
+                backgroundColor: 'white',
+                padding: '34px',
+                borderRadius: '22px',
+                border: d ? `2px solid ${GREEN}` : `1px solid ${BORDER}`,
+                position: 'relative',
+                transform: (d && !isSmallScreen) ? 'scale(1.04)' : 'none',
+                boxShadow: d ? '0 26px 60px rgba(22,163,74,0.18)' : '0 12px 30px rgba(16,24,40,0.05)'
               }}
             >
-              {/* Badge Mais popular */}
-              {isPro && (
+              {/* Badge Melhor custo-benefício */}
+              {d && (
                 <div style={{
                   position: 'absolute',
-                  top: '-12px',
+                  top: '-13px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  backgroundColor: '#1a1a1a',
+                  background: GRAD,
                   color: 'white',
                   padding: '6px 16px',
                   borderRadius: '100px',
                   fontSize: '12px',
-                  fontWeight: '600'
+                  fontWeight: '700',
+                  whiteSpace: 'nowrap'
                 }}>
-                  Mais popular
+                  Melhor custo-benefício
                 </div>
               )}
 
@@ -2178,140 +2199,61 @@ function Configuracao({ secao = 'config' }) {
               {isAtual && (
                 <div style={{
                   position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  backgroundColor: isPro ? 'rgba(255,255,255,0.2)' : '#e8f5e9',
-                  color: isPro ? 'white' : '#2e7d32',
+                  top: '14px',
+                  right: '14px',
+                  backgroundColor: '#e8f5e9',
+                  color: '#2e7d32',
                   padding: '4px 10px',
                   borderRadius: '12px',
                   fontSize: '11px',
-                  fontWeight: '600'
+                  fontWeight: '700'
                 }}>
                   SEU PLANO
                 </div>
               )}
 
-              {/* Subtítulo */}
-              <p style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: isPro ? 'rgba(255,255,255,0.7)' : '#888',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '4px',
-                marginTop: isPro ? '8px' : '0'
-              }}>
+              <p style={{ fontSize: '12px', fontWeight: '700', color: MUTED, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>
                 {plano.subtitulo}
               </p>
-
-              {/* Nome do plano */}
-              <h4 style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                marginBottom: '16px',
-                color: isPro ? 'white' : '#1a1a1a'
-              }}>
+              <h4 style={{ fontSize: '22px', fontWeight: '700', color: INK, margin: '0 0 16px' }}>
                 {plano.nome}
               </h4>
 
-              {/* Preço */}
               <div style={{ marginBottom: '24px' }}>
-                <span style={{ fontSize: '42px', fontWeight: '800', color: isPro ? 'white' : '#1a1a1a' }}>
-                  R${plano.id === 'starter' ? '49' : plano.id === 'pro' ? '99' : '149'}
-                </span>
-                <span style={{ fontSize: '16px', color: isPro ? 'rgba(255,255,255,0.7)' : '#999' }}>
-                  /mês
-                </span>
+                <span style={{ fontSize: '46px', fontWeight: '800', letterSpacing: '-1.5px', color: INK }}>R${plano.preco}</span>
+                <span style={{ fontSize: '16px', color: MUTED }}>/mês</span>
+                <p style={{ fontSize: '12px', color: MUTED, margin: '6px 0 0' }}>{plano.perMsg}</p>
               </div>
 
-              {/* Features */}
-              <ul style={{
-                listStyle: 'none',
-                padding: 0,
-                marginBottom: '32px'
-              }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px' }}>
                 {plano.features.map((feature, i) => (
-                  <li key={i} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    marginBottom: '12px',
-                    fontSize: '14px',
-                    color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
-                  }}>
-                    <Icon
-                      icon="mdi:check"
-                      width="18"
-                      style={{ color: isPro ? 'white' : '#16a34a', flexShrink: 0, marginTop: '2px' }}
-                    />
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px', fontSize: '14px', color: BODY }}>
+                    <Icon icon="mdi:check" width="18" style={{ color: GREEN, flexShrink: 0, marginTop: '2px' }} />
                     <span>{feature}</span>
                   </li>
                 ))}
-                {/* Dica de economia */}
-                <li style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                  marginBottom: '12px',
-                  fontSize: '14px',
-                  color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
-                }}>
-                  <span>💡 {plano.dica}</span>
-                </li>
               </ul>
 
-              {/* Botão */}
               <button
                 onClick={() => handleUpgrade(plano.id)}
-                disabled={isAtual || processandoCheckout}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: isAtual ? '#ccc' : (isPro ? 'white' : 'transparent'),
-                  color: isAtual ? 'white' : (isPro ? '#25D366' : '#1a1a1a'),
-                  border: isPro ? 'none' : '1px solid #1a1a1a',
-                  borderRadius: '10px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  textAlign: 'center',
-                  cursor: isAtual ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                  opacity: isAtual ? 0.6 : 1
-                }}
+                disabled={bloqueado}
+                style={d
+                  ? { width: '100%', padding: '14px', fontSize: '15px', background: GRAD, color: 'white', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: bloqueado ? 'not-allowed' : 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.28)', opacity: bloqueado ? 0.6 : 1, transition: 'all .2s' }
+                  : { width: '100%', padding: '14px', fontSize: '15px', backgroundColor: 'white', color: INK, border: `1px solid ${BORDER}`, borderRadius: '12px', fontWeight: '600', cursor: bloqueado ? 'not-allowed' : 'pointer', opacity: bloqueado ? 0.6 : 1, transition: 'all .2s' }
+                }
                 onMouseOver={(e) => {
-                  if (!isAtual && !isPro) {
-                    e.currentTarget.style.backgroundColor = '#1a1a1a'
-                    e.currentTarget.style.color = 'white'
-                  }
-                  if (!isAtual && isPro) {
-                    e.currentTarget.style.opacity = '0.9'
-                  }
+                  if (bloqueado) return
+                  if (d) e.currentTarget.style.opacity = '.9'
+                  else e.currentTarget.style.borderColor = '#cfd3da'
                 }}
                 onMouseOut={(e) => {
-                  if (!isAtual && !isPro) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.color = '#1a1a1a'
-                  }
-                  if (!isAtual && isPro) {
-                    e.currentTarget.style.opacity = '1'
-                  }
+                  if (bloqueado) return
+                  if (d) e.currentTarget.style.opacity = '1'
+                  else e.currentTarget.style.borderColor = BORDER
                 }}
               >
                 {processandoCheckout ? 'Processando...' : isAtual ? 'Plano Atual' : plano.cta}
               </button>
-
-              {/* Texto extra para Pro */}
-              {isPro && (
-                <p style={{
-                  textAlign: 'center',
-                  marginTop: '16px',
-                  fontSize: '13px',
-                  color: 'rgba(255,255,255,0.8)'
-                }}>
-                  Economize R$ 150/mês vs. sistemas tradicionais
-                </p>
-              )}
             </div>
           )
         })}

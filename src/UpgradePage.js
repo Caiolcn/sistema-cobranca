@@ -6,6 +6,14 @@ import { mercadoPagoService } from './services/mercadoPagoService'
 import { supabase } from './supabaseClient'
 import { trackInitiateCheckout, trackPurchase } from './utils/metaPixel'
 
+// Paleta e visual espelhados da seção de preços da LandingPage
+const INK = '#0f1115'
+const BODY = '#5b636e'
+const MUTED = '#9aa1ab'
+const BORDER = '#ececf0'
+const GREEN = '#16a34a'
+const GRAD = 'linear-gradient(135deg, #22c55e 0%, #0ea372 100%)'
+
 export default function UpgradePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -21,6 +29,13 @@ export default function UpgradePage() {
   const [verificandoPagamento, setVerificandoPagamento] = useState(false)
   const pollingRef = useRef(null)
   const autoCheckoutRef = useRef(false)
+  const [isSmallScreen, setIsSmallScreen] = useState(typeof window !== 'undefined' && window.innerWidth < 900)
+
+  useEffect(() => {
+    const onResize = () => setIsSmallScreen(window.innerWidth < 900)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Verificar se já tem assinatura ativa
   useEffect(() => {
@@ -183,48 +198,58 @@ export default function UpgradePage() {
     {
       id: 'starter',
       nome: 'Starter',
-      preco: 'R$ 49,90',
-      periodo: '/mês',
-      features: [
-        'Lembretes automáticos 3 dias antes',
-        '1 template personalizável',
-        'Dashboard básico',
-        'Exportação CSV',
-        'Suporte'
-      ],
+      eyebrow: 'Ideal para começar',
+      preco: 49,
+      perMsg: 'R$0,25 por mensagem',
       destaque: false,
-      dica: '💡 Economize ~2h/semana em cobranças',
+      features: [
+        'Até 50 clientes ativos',
+        '200 mensagens/mês',
+        'Mensagem automática no vencimento',
+        '1 template personalizado',
+        'Dashboard básico'
+      ],
       cta: 'Começar no Starter'
     },
     {
       id: 'pro',
       nome: 'Pro',
-      preco: 'R$ 99,90',
-      periodo: '/mês',
+      eyebrow: 'Para negócios em crescimento',
+      preco: 99,
+      perMsg: 'R$0,17 por mensagem',
+      destaque: false,
       features: [
-        'Lembretes em 3 dias antes, no dia do vencimento e 3 dias depois',
-        '3 templates personalizáveis',
-        'Dashboard com gráficos completos',
-        'Aging Report + Receita Projetada',
-        'Suporte WhatsApp'
+        'Até 150 clientes ativos',
+        '600 mensagens/mês',
+        '3 templates personalizados',
+        'Régua de cobrança completa',
+        'Dashboard com gráficos',
+        'Contratos com assinatura',
+        'Anamnese / Ficha do aluno',
+        'Suporte via WhatsApp'
       ],
-      destaque: true,
-      dica: '💡 Economize ~5h/semana + Reduza 70% inadimplência',
-      cta: 'Escolher mais popular'
+      cta: 'Escolher o Pro'
     },
     {
       id: 'premium',
       nome: 'Premium',
-      preco: 'R$ 149,90',
-      periodo: '/mês',
+      eyebrow: 'Gestão profissional',
+      preco: 149,
+      perMsg: 'R$0,05 por mensagem',
+      destaque: true,
       features: [
+        'Até 500 clientes ativos',
+        '3.000 mensagens/mês',
         'Tudo do plano Pro',
+        'Criador de Sites',
+        'CRM completo',
+        'Bot de WhatsApp',
+        'Agendamento online (link de agendamento)',
+        'Campanhas de WhatsApp',
+        'Templates ilimitados',
         'Consultoria inicial (1h)',
-        'Suporte prioritário (4h)',
-        'Acesso antecipado a features'
+        'Suporte prioritário'
       ],
-      destaque: false,
-      dica: '💡 Economize ~10h/semana + Suporte VIP',
       cta: 'Ativar Premium'
     }
   ]
@@ -711,162 +736,94 @@ export default function UpgradePage() {
         </div>
       )}
 
-      {/* Cards de Planos */}
+      {/* Cards de Planos — visual espelhado da LandingPage */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '24px',
-        marginBottom: '60px'
+        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
+        gap: '20px',
+        alignItems: 'start',
+        maxWidth: '1080px',
+        margin: '0 auto 60px'
       }}>
         {planos.map((plano, index) => {
-          const isPro = plano.destaque;
+          const d = plano.destaque
+          const bloqueado = loading || assinaturaAtiva
 
           return (
             <div
               key={index}
               style={{
-                backgroundColor: isPro ? '#25D366' : '#fafafa',
-                padding: '32px',
-                borderRadius: '16px',
-                border: isPro ? 'none' : '1px solid #eee',
-                boxShadow: isPro ? '0 8px 32px rgba(37,211,102,0.3)' : 'none',
-                transform: isPro ? 'scale(1.02)' : 'scale(1)',
-                position: 'relative'
+                backgroundColor: 'white',
+                padding: '34px',
+                borderRadius: '22px',
+                border: d ? `2px solid ${GREEN}` : `1px solid ${BORDER}`,
+                position: 'relative',
+                transform: (d && !isSmallScreen) ? 'scale(1.04)' : 'none',
+                boxShadow: d ? '0 26px 60px rgba(22,163,74,0.18)' : '0 12px 30px rgba(16,24,40,0.05)'
               }}
             >
-              {isPro && (
+              {d && (
                 <div style={{
                   position: 'absolute',
-                  top: '-12px',
+                  top: '-13px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  backgroundColor: '#1a1a1a',
+                  background: GRAD,
                   color: 'white',
                   padding: '6px 16px',
                   borderRadius: '100px',
                   fontSize: '12px',
-                  fontWeight: '600'
+                  fontWeight: '700',
+                  whiteSpace: 'nowrap'
                 }}>
-                  Mais popular
+                  Melhor custo-benefício
                 </div>
               )}
 
-              <p style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: isPro ? 'rgba(255,255,255,0.7)' : '#888',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '4px',
-                marginTop: isPro ? '8px' : '0'
-              }}>
-                {plano.id === 'starter' ? 'Ideal para começar' : plano.id === 'pro' ? 'Para negócios em crescimento' : 'Gestão profissional'}
+              <p style={{ fontSize: '12px', fontWeight: '700', color: MUTED, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                {plano.eyebrow}
               </p>
-
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                marginBottom: '16px',
-                color: isPro ? 'white' : '#1a1a1a'
-              }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '700', color: INK, margin: '0 0 16px' }}>
                 {plano.nome}
               </h3>
 
               <div style={{ marginBottom: '24px' }}>
-                <span style={{ fontSize: '42px', fontWeight: '800', color: isPro ? 'white' : '#1a1a1a' }}>
-                  R${plano.id === 'starter' ? '49' : plano.id === 'pro' ? '99' : '149'}
-                </span>
-                <span style={{ fontSize: '16px', color: isPro ? 'rgba(255,255,255,0.7)' : '#999' }}>
-                  /mês
-                </span>
+                <span style={{ fontSize: '46px', fontWeight: '800', letterSpacing: '-1.5px', color: INK }}>R${plano.preco}</span>
+                <span style={{ fontSize: '16px', color: MUTED }}>/mês</span>
+                <p style={{ fontSize: '12px', color: MUTED, margin: '6px 0 0' }}>{plano.perMsg}</p>
               </div>
 
-              <ul style={{
-                listStyle: 'none',
-                padding: 0,
-                marginBottom: '32px'
-              }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px' }}>
                 {plano.features.map((feature, i) => (
-                  <li key={i} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    marginBottom: '12px',
-                    fontSize: '14px',
-                    color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
-                  }}>
-                    <Icon
-                      icon="mdi:check"
-                      width="18"
-                      style={{ color: isPro ? 'white' : '#16a34a', flexShrink: 0, marginTop: '2px' }}
-                    />
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px', fontSize: '14px', color: BODY }}>
+                    <Icon icon="mdi:check" width="18" style={{ color: GREEN, flexShrink: 0, marginTop: '2px' }} />
                     <span>{feature}</span>
                   </li>
                 ))}
-                <li style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                  marginBottom: '12px',
-                  fontSize: '14px',
-                  color: isPro ? 'rgba(255,255,255,0.95)' : '#444'
-                }}>
-                  <span>{plano.dica}</span>
-                </li>
               </ul>
 
               <button
                 onClick={() => handleSelecionarPlano(plano.id)}
-                disabled={loading || assinaturaAtiva}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: (loading || assinaturaAtiva) ? '#ccc' : (isPro ? 'white' : 'transparent'),
-                  color: (loading || assinaturaAtiva) ? 'white' : (isPro ? '#25D366' : '#1a1a1a'),
-                  border: isPro ? 'none' : '1px solid #1a1a1a',
-                  borderRadius: '10px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  textAlign: 'center',
-                  cursor: (loading || assinaturaAtiva) ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                  opacity: (loading || assinaturaAtiva) ? 0.6 : 1
-                }}
+                disabled={bloqueado}
+                style={d
+                  ? { width: '100%', padding: '14px', fontSize: '15px', background: GRAD, color: 'white', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: bloqueado ? 'not-allowed' : 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.28)', opacity: bloqueado ? 0.6 : 1, transition: 'all .2s' }
+                  : { width: '100%', padding: '14px', fontSize: '15px', backgroundColor: 'white', color: INK, border: `1px solid ${BORDER}`, borderRadius: '12px', fontWeight: '600', cursor: bloqueado ? 'not-allowed' : 'pointer', opacity: bloqueado ? 0.6 : 1, transition: 'all .2s' }
+                }
                 onMouseOver={(e) => {
-                  if (!loading && !assinaturaAtiva && !isPro) {
-                    e.currentTarget.style.backgroundColor = '#1a1a1a'
-                    e.currentTarget.style.color = 'white'
-                  }
-                  if (!loading && !assinaturaAtiva && isPro) {
-                    e.currentTarget.style.opacity = '0.9'
-                  }
+                  if (bloqueado) return
+                  if (d) e.currentTarget.style.opacity = '.9'
+                  else e.currentTarget.style.borderColor = '#cfd3da'
                 }}
                 onMouseOut={(e) => {
-                  if (!loading && !assinaturaAtiva && !isPro) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.color = '#1a1a1a'
-                  }
-                  if (!loading && !assinaturaAtiva && isPro) {
-                    e.currentTarget.style.opacity = '1'
-                  }
+                  if (bloqueado) return
+                  if (d) e.currentTarget.style.opacity = '1'
+                  else e.currentTarget.style.borderColor = BORDER
                 }}
               >
                 {loading ? 'Processando...' : assinaturaAtiva ? 'Já Assinante' : plano.cta}
               </button>
-
-              {isPro && (
-                <p style={{
-                  textAlign: 'center',
-                  marginTop: '16px',
-                  fontSize: '13px',
-                  color: 'rgba(255,255,255,0.8)'
-                }}>
-                  Economize R$ 150/mês vs. sistemas tradicionais
-                </p>
-              )}
             </div>
-          );
+          )
         })}
       </div>
 
