@@ -144,7 +144,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [percentualAberto, setPercentualAberto] = useState(0)
 
   // Estados para exclusão e desfazer pagamento
-  const [confirmDeleteMensalidade, setConfirmDeleteMensalidade] = useState({ show: false, mensalidade: null })
   const [confirmDesfazerPagoMensalidade, setConfirmDesfazerPagoMensalidade] = useState({ show: false, mensalidade: null })
 
   useEffect(() => {
@@ -743,28 +742,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       showToast('Erro ao desfazer: ' + error.message, 'error')
     } finally {
       setConfirmDesfazerPagoMensalidade({ show: false, mensalidade: null })
-    }
-  }
-
-  // Confirmar exclusão de mensalidade (soft delete)
-  const confirmarExclusaoMensalidade = async () => {
-    const mensalidade = confirmDeleteMensalidade.mensalidade
-    if (!mensalidade) return
-
-    try {
-      const { error } = await supabase
-        .from('mensalidades')
-        .update({ lixo: true, deletado_em: new Date().toISOString() })
-        .eq('id', mensalidade.id)
-
-      if (error) throw error
-
-      showToast('Mensalidade excluída!', 'success')
-      carregarDados()
-    } catch (error) {
-      showToast('Erro ao excluir: ' + error.message, 'error')
-    } finally {
-      setConfirmDeleteMensalidade({ show: false, mensalidade: null })
     }
   }
 
@@ -1941,22 +1918,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     >
                       <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="16" height="16" />
                     </button>
-                    <button
-                      onClick={() => setConfirmDeleteMensalidade({ show: true, mensalidade })}
-                      title="Excluir"
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: '#ffebee',
-                        color: '#f44336',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <Icon icon="mdi:delete-outline" width="16" height="16" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -2045,23 +2006,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                           }}
                         >
                           <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="18" height="18" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteMensalidade({ show: true, mensalidade })}
-                          title="Excluir"
-                          style={{
-                            padding: '6px 8px',
-                            backgroundColor: '#ffebee',
-                            color: '#f44336',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          <Icon icon="mdi:delete-outline" width="18" height="18" />
                         </button>
                       </div>
                     </td>
@@ -3254,18 +3198,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
       )}
-
-      {/* Modal Confirmar Exclusão de Mensalidade */}
-      <ConfirmModal
-        isOpen={confirmDeleteMensalidade.show}
-        onClose={() => setConfirmDeleteMensalidade({ show: false, mensalidade: null })}
-        onConfirm={confirmarExclusaoMensalidade}
-        title="Excluir mensalidade"
-        message={`Tem certeza que deseja excluir a mensalidade de ${confirmDeleteMensalidade.mensalidade?.devedor?.nome || 'N/A'}?\n\nValor: R$ ${parseFloat(confirmDeleteMensalidade.mensalidade?.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nVencimento: ${confirmDeleteMensalidade.mensalidade?.data_vencimento ? new Date(confirmDeleteMensalidade.mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        type="danger"
-      />
 
       {/* Modal Desfazer Pagamento */}
       <ConfirmModal
