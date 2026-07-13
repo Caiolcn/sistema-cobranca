@@ -45,3 +45,18 @@ credentials.json
 /meta-ads-dashboard/data/page_info.json
 /meta-ads-dashboard/.meta-token
 /meta-ads-dashboard/**/*.token
+
+# DADO DE CLIENTE — este repo é público. Planilhas e extrações da base
+# (nome, telefone, e-mail de aluno) NUNCA entram no git.
+/docs/*.csv
+/docs/*.xlsx
+
+# Sub-projeto e material de trabalho local (fora do build do app)
+/meta-ads-dashboard/
+/Criativos - Campanhas Claude/
+/docs/krooa-pages/
+/docs/designsystem-krooa.txt
+/designsystem - krooa.pdf
+
+# Supabase CLI (project ref local)
+/supabase/.temp/
