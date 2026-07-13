@@ -765,6 +765,18 @@ export default function Admin() {
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
+            onClick={() => navigate('/app/admin/leads')}
+            style={{
+              padding: '10px 16px', borderRadius: '8px', border: '1px solid #8b5cf6',
+              backgroundColor: '#f5f3ff', color: '#6d28d9', fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <Icon icon="mdi:account-multiple-plus" width="16" />
+            Leads de campanha
+          </button>
+          <button
             onClick={() => navigate('/app/admin/erros-mensagens')}
             style={{
               padding: '10px 16px', borderRadius: '8px', border: '1px solid #f44336',

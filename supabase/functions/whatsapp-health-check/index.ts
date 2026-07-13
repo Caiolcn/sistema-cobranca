@@ -35,6 +35,12 @@ const corsHeaders = {
 // existência (onWhatsApp). Qualquer número em formato válido serve.
 const NUMERO_SONDA_FALLBACK = '5511999999999'
 
+// Instância do WhatsApp comercial do Mensalli. O bot de aluno fica DESLIGADO
+// nela, mas ela precisa do MESSAGES_UPSERT mesmo assim: é dele que sai o CRM de
+// leads de campanha (/app/admin/leads). Sem esta exceção, o self-heal abaixo
+// derrubaria a captura de leads todo dia às 8h.
+const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+
 // Timeout curto: socket vivo responde rápido; morto trava.
 const PROBE_TIMEOUT_MS = 12000
 
@@ -142,7 +148,8 @@ async function garantirWebhook(
   instance: string,
   botAtivo: boolean,
 ): Promise<void> {
-  const events = botAtivo ? ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'] : ['CONNECTION_UPDATE']
+  const precisaMensagens = botAtivo || instance === INSTANCIA_MENSALLI
+  const events = precisaMensagens ? ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'] : ['CONNECTION_UPDATE']
   try {
     await fetchComTimeout(
       `${apiUrl}/webhook/set/${instance}`,

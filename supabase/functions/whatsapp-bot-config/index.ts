@@ -17,6 +17,10 @@ const corsHeaders = {
 
 const WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/whatsapp-bot`
 
+// Instância comercial do Mensalli: mesmo com o bot de aluno desligado, ela
+// precisa do MESSAGES_UPSERT — é a fonte do CRM de leads (/app/admin/leads).
+const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -84,7 +88,7 @@ serve(async (req) => {
     // independente do bot. Desativar o bot só remove o MESSAGES_UPSERT — o webhook
     // continua ligado pra não perder os eventos de conexão.
     const body =
-      acao === 'desativar'
+      acao === 'desativar' && mz.instance_name !== INSTANCIA_MENSALLI
         ? {
             webhook: {
               enabled: true,

@@ -9,6 +9,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const APP_URL = Deno.env.get('APP_URL') || 'https://www.mensalli.com.br'
 
+// Instancia do WhatsApp COMERCIAL do Mensalli (o numero que recebe os leads das
+// campanhas). Mensagens dessa instancia NAO passam pelo bot de aluno: viram lead
+// no CRM de campanha (/app/admin/leads). Mesma constante de Signup.js e Admin.js.
+const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -509,6 +514,123 @@ const RESPOSTA_ATENDENTE = `👨‍💼 Tudo bem! Avisei nosso time, em breve al
 _Para falar comigo de novo, digite *menu*._`
 
 // ============================================================
+// CRM de leads de campanha (instancia comercial do Mensalli)
+// ============================================================
+
+// Grava a mensagem no CRM de leads.
+//
+// Duas regras que andam juntas:
+//  1. O card SO nasce de uma mensagem RECEBIDA. Prospeccao ativa, follow-up,
+//     boas-vindas de trial e cobranca SaaS saem por este mesmo numero — se
+//     outbound criasse lead, o board viraria a lista de todo mundo com quem a
+//     gente ja falou, em vez de quem procurou a gente.
+//  2. Em conversa que JA e lead, o que enviamos e gravado (direcao 'out'). E o
+//     que permite a coluna "Novo" significar, ao pe da letra, "ainda nao respondi".
+async function capturarLeadMensalli(
+  supabase: any,
+  args: {
+    remoteJid: string
+    pushName: string
+    fromMe: boolean
+    texto: string
+    tipo: string
+    waMessageId: string
+    enviadoEm: string
+  }
+) {
+  const { remoteJid, pushName, fromMe, texto, tipo, waMessageId, enviadoEm } = args
+  const direcao = fromMe ? 'out' : 'in'
+
+  // Contas migradas pro enderecamento LID nao expoem telefone no JID (@lid).
+  // Nesses casos o lead existe mesmo assim, so fica sem telefone (e sem match
+  // automatico com a tabela usuarios).
+  const ehLid = remoteJid.includes('@lid')
+  const telefone = ehLid ? null : normalizarTelefone(remoteJid.split('@')[0].split(':')[0])
+
+  const { data: lead } = await supabase
+    .from('mensalli_leads')
+    .select('id, status, nome, ultima_interacao, ignorado')
+    .eq('remote_jid', remoteJid)
+    .maybeSingle()
+
+  // Contato marcado como "não é lead" (o número também é usado pessoalmente):
+  // não volta pro board nem tem a conversa gravada.
+  if (lead?.ignorado) {
+    console.log('⏭️ Contato ignorado no CRM de leads:', remoteJid)
+    return
+  }
+
+  let leadId = lead?.id
+
+  // Fomos nos que puxamos a conversa e o contato ainda nao e lead => ignora.
+  // Se ele responder, o card nasce na hora (ja em 'conversando').
+  if (!leadId && fromMe) {
+    console.log('⏭️ Outbound pra quem nao e lead — nao cria card:', remoteJid)
+    return
+  }
+
+  if (!leadId) {
+    const { data: novo, error } = await supabase
+      .from('mensalli_leads')
+      .insert({
+        remote_jid: remoteJid,
+        telefone,
+        // pushName em mensagem fromMe e o NOSSO nome de perfil ("Mensalli"),
+        // nao o do contato — so aproveitamos o de quem escreve pra gente.
+        nome: pushName?.trim() || null,
+        status: 'novo',
+        origem: 'whatsapp',
+        ultima_mensagem: texto,
+        ultima_direcao: direcao,
+        ultima_interacao: enviadoEm,
+      })
+      .select('id')
+      .single()
+
+    if (error) {
+      console.error('❌ Erro ao criar lead Mensalli:', error.message)
+      return
+    }
+    leadId = novo.id
+    console.log('🆕 Lead Mensalli criado:', remoteJid, pushName)
+  } else {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+    // Reentrega de webhook ou backfill fora de ordem: nao deixa uma mensagem
+    // antiga sobrescrever o resumo da conversa.
+    const ehMaisRecente = !lead.ultima_interacao || enviadoEm >= lead.ultima_interacao
+    if (ehMaisRecente) {
+      patch.ultima_mensagem = texto
+      patch.ultima_direcao = direcao
+      patch.ultima_interacao = enviadoEm
+      // Respondi um lead novo => ele sai de "Novo" (que significa "sem resposta")
+      if (fromMe && lead.status === 'novo') patch.status = 'conversando'
+    }
+    // Só o pushName de quem escreve pra gente serve como nome do lead.
+    if (!lead.nome && !fromMe && pushName?.trim()) patch.nome = pushName.trim()
+
+    await supabase.from('mensalli_leads').update(patch).eq('id', leadId)
+  }
+
+  // wa_message_id e UNIQUE: reentrega do mesmo evento nao duplica a conversa
+  const { error: msgErr } = await supabase
+    .from('mensalli_lead_mensagens')
+    .upsert(
+      {
+        lead_id: leadId,
+        wa_message_id: waMessageId || null,
+        direcao,
+        texto,
+        tipo,
+        enviado_em: enviadoEm,
+      },
+      { onConflict: 'wa_message_id', ignoreDuplicates: true }
+    )
+
+  if (msgErr) console.error('❌ Erro ao gravar mensagem do lead:', msgErr.message)
+}
+
+// ============================================================
 // Handler principal
 // ============================================================
 
@@ -550,8 +672,12 @@ serve(async (req) => {
     const fromMe = key.fromMe === true
     const pushName = data.pushName || ''
 
+    // A instancia comercial do Mensalli grava os dois lados da conversa no CRM de
+    // leads (ver capturarLeadMensalli), entao aqui ela nao pula o fromMe.
+    const ehInstanciaMensalli = instanceName === INSTANCIA_MENSALLI
+
     // Ignora mensagens enviadas por nós mesmos
-    if (fromMe) {
+    if (fromMe && !ehInstanciaMensalli) {
       console.log('⏭️ Ignorado: fromMe=true')
       return new Response(JSON.stringify({ ok: true, ignored: 'fromMe' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -591,6 +717,50 @@ serve(async (req) => {
     if (!texto && !ehMidiaSemTexto) {
       console.log('⏭️ Ignorado: no_text | msg completa:', JSON.stringify(msg).slice(0, 500))
       return new Response(JSON.stringify({ ok: true, ignored: 'no_text' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // ====== Instância comercial do Mensalli → CRM de leads de campanha ======
+    // Sai por aqui de propósito: quem escreve pro número do Mensalli é um lead da
+    // campanha, não um aluno. Nunca deve receber o menu do bot nem virar linha na
+    // tabela `leads` (que é multi-tenant, dos clientes).
+    if (ehInstanciaMensalli) {
+      if (remoteJid === 'status@broadcast' || remoteJid.endsWith('@broadcast')) {
+        return new Response(JSON.stringify({ ok: true, ignored: 'broadcast' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      let tipoMsg = 'texto'
+      if (ehAudio) tipoMsg = 'audio'
+      else if (msg.imageMessage) tipoMsg = 'imagem'
+      else if (msg.videoMessage) tipoMsg = 'video'
+      else if (msg.documentMessage) tipoMsg = 'documento'
+      else if (msg.stickerMessage) tipoMsg = 'sticker'
+
+      const rotuloMidia: Record<string, string> = {
+        audio: '🎤 Áudio',
+        imagem: '📷 Imagem',
+        video: '🎬 Vídeo',
+        documento: '📎 Documento',
+        sticker: '💬 Figurinha',
+      }
+
+      const ts = Number(data.messageTimestamp) || 0
+      const enviadoEm = ts > 0 ? new Date(ts * 1000).toISOString() : new Date().toISOString()
+
+      await capturarLeadMensalli(supabase, {
+        remoteJid,
+        pushName,
+        fromMe,
+        texto: texto || rotuloMidia[tipoMsg] || '(sem texto)',
+        tipo: tipoMsg,
+        waMessageId: key.id || '',
+        enviadoEm,
+      })
+
+      return new Response(JSON.stringify({ ok: true, handled: 'mensalli_lead' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
