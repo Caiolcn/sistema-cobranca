@@ -13,6 +13,15 @@ const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
 // Intervalo entre envios no disparo direto (anti-bloqueio do WhatsApp)
 const INTERVALO_ENVIO_MS = 15000
 
+// Chance de converter, calculada por mensalli_engajamento() a partir do uso real
+// do sistema. No backtest da base, quem virou pagante tirou score médio 75 contra
+// 18 de quem não virou. Ver sql-criar-score-retencao.sql.
+const TEMPERATURAS = {
+  quente: { label: 'QUENTE', icon: 'mdi:fire',        cor: '#dc2626', bg: '#fef2f2', borda: '#fecaca' },
+  morno:  { label: 'MORNO',  icon: 'mdi:thermometer', cor: '#d97706', bg: '#fffbeb', borda: '#fde68a' },
+  frio:   { label: 'FRIO',   icon: 'mdi:snowflake',   cor: '#64748b', bg: '#f8fafc', borda: '#e2e8f0' }
+}
+
 // Templates dos lembretes de vencimento — editáveis no modal antes de disparar.
 // Variáveis: {{nome}} {{plano}} {{valor}} {{vencimento}} {{dias}} {{dias_atraso}} {{pix}}
 const TEMPLATES_LEMBRETE = {
@@ -108,7 +117,8 @@ export default function Admin() {
         { data: whatsappData },
         { data: pagamentosData },
         { data: assinaturasData },
-        { data: logsMensagensData }
+        { data: logsMensagensData },
+        { data: engajamentoData }
       ] = await Promise.all([
         supabase
           .from('usuarios')
@@ -135,7 +145,11 @@ export default function Admin() {
         supabase
           .from('logs_mensagens')
           .select('user_id, enviado_em')
-          .gte('enviado_em', `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`)
+          .gte('enviado_em', `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`),
+        // Chance de converter (quente/morno/frio) — ver sql-criar-score-retencao.sql
+        supabase
+          .from('vw_mensalli_engajamento')
+          .select('usuario_id, score, temperatura, motivos')
       ])
 
       // Merge por user_id
@@ -152,12 +166,18 @@ export default function Admin() {
         msgCountMap[l.user_id] = (msgCountMap[l.user_id] || 0) + 1
       })
 
+      const engMap = {}
+      ;(engajamentoData || []).forEach(e => { engMap[e.usuario_id] = e })
+
       const merged = (usuariosData || []).map(u => ({
         ...u,
         mz: mzMap[u.id] || null,
         mensagensReaisMes: msgCountMap[u.id] || 0,
         cp: cpMap[u.id] || null,
-        wc: wcMap[u.id] || null
+        wc: wcMap[u.id] || null,
+        score: engMap[u.id]?.score ?? 0,
+        temperatura: engMap[u.id]?.temperatura || 'frio',
+        motivos: engMap[u.id]?.motivos || []
       }))
 
       setClientes(merged)
@@ -1665,9 +1685,11 @@ export default function Admin() {
                         u.nome_completo?.toLowerCase().includes(q) ||
                         u.email?.toLowerCase().includes(q)
                       )
-                    })
+                    // Quem mais usou o sistema aparece primeiro — é quem tem chance real de converter.
+                    }).sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
                     const idsFiltrados = filtrados.map(u => u.id)
                     const todosFiltradosSelecionados = idsFiltrados.length > 0 && idsFiltrados.every(id => selecionados.has(id))
+                    const quentesEMornos = filtrados.filter(u => u.temperatura === 'quente' || u.temperatura === 'morno').length
 
                     const toggle = (id) => {
                       const novo = new Set(selecionados)
@@ -1704,6 +1726,24 @@ export default function Admin() {
                           />
                           <button
                             type="button"
+                            onClick={() => setSelecionados(new Set(
+                              filtrados.filter(u => u.temperatura === 'quente' || u.temperatura === 'morno').map(u => u.id)
+                            ))}
+                            disabled={quentesEMornos === 0}
+                            title="Marca só quem já usou o sistema de verdade (quente ou morno)"
+                            style={{
+                              padding: '8px 12px', borderRadius: '6px',
+                              border: '1px solid #fecaca', backgroundColor: '#fef2f2',
+                              fontSize: '12px', fontWeight: '600', color: '#dc2626',
+                              cursor: quentesEMornos === 0 ? 'not-allowed' : 'pointer',
+                              opacity: quentesEMornos === 0 ? 0.5 : 1, whiteSpace: 'nowrap',
+                              display: 'flex', alignItems: 'center', gap: '4px'
+                            }}
+                          >
+                            <Icon icon="mdi:fire" width="14" /> Só os quentes ({quentesEMornos})
+                          </button>
+                          <button
+                            type="button"
                             onClick={toggleTodos}
                             disabled={idsFiltrados.length === 0}
                             style={{
@@ -1727,6 +1767,7 @@ export default function Admin() {
                             const checked = selecionados.has(u.id)
                             const tel = u.telefone || u.mz?.telefone || u.mz?.whatsapp_numero
                             const semTel = !tel
+                            const temp = TEMPERATURAS[u.temperatura]
                             return (
                               <label
                                 key={u.id}
@@ -1746,14 +1787,34 @@ export default function Admin() {
                                   style={{ accentColor: corAcento, cursor: 'pointer', flexShrink: 0 }}
                                 />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {u.nome_empresa || u.nome_completo || 'Sem nome'}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {u.nome_empresa || u.nome_completo || 'Sem nome'}
+                                    </span>
+                                    {temp && (
+                                      <span
+                                        title={`Score ${u.score}/100 — ${(u.motivos || []).join(', ') || 'nunca saiu do zero'}`}
+                                        style={{
+                                          fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '4px',
+                                          backgroundColor: temp.bg, color: temp.cor, border: `1px solid ${temp.borda}`,
+                                          display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0
+                                        }}
+                                      >
+                                        <Icon icon={temp.icon} width="11" />
+                                        {u.score}
+                                      </span>
+                                    )}
                                   </div>
                                   <div style={{ fontSize: '11px', color: '#666', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {u.email}
                                     {tel && <span style={{ marginLeft: '8px' }}>· {tel}</span>}
                                     {semTel && <span style={{ marginLeft: '8px', color: '#dc2626', fontWeight: '500' }}>· sem telefone</span>}
                                   </div>
+                                  {(u.motivos || []).length > 0 && (
+                                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {u.motivos.join(' · ')}
+                                    </div>
+                                  )}
                                 </div>
                               </label>
                             )

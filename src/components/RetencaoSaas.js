@@ -3,6 +3,17 @@ import { supabase } from '../supabaseClient'
 import { useUser } from '../contexts/UserContext'
 import { Icon } from '@iconify/react'
 
+// Temperatura = chance de converter, calculada por mensalli_engajamento() a partir
+// do que a pessoa REALMENTE fez no sistema (alunos cadastrados, WhatsApp conectado,
+// grade montada, baixas, cobranças enviadas). Os pesos saíram da base real: no
+// backtest, os que viraram pagantes tiveram score médio 75 contra 18 dos que não
+// viraram. Ver sql-criar-score-retencao.sql.
+const TEMPERATURAS = {
+  quente: { label: 'QUENTE', icon: 'mdi:fire',          cor: '#dc2626', bg: '#fef2f2', borda: '#fecaca' },
+  morno:  { label: 'MORNO',  icon: 'mdi:thermometer',   cor: '#d97706', bg: '#fffbeb', borda: '#fde68a' },
+  frio:   { label: 'FRIO',   icon: 'mdi:snowflake',     cor: '#64748b', bg: '#f8fafc', borda: '#e2e8f0' }
+}
+
 // Cores e ícones por bucket
 const BUCKETS = {
   retencao_d: { label: 'Onboarding', icon: 'mdi:account-plus', cor: '#3b82f6', bg: '#eff6ff' },
@@ -32,9 +43,9 @@ export default function RetencaoSaas() {
     try {
       const [candResult, tmplResult] = await Promise.all([
         supabase
-          .from('vw_mensalli_retencao_saas')
+          .from('vw_mensalli_retencao_score')
           .select('*')
-          .order('data_cadastro', { ascending: false }),
+          .order('score', { ascending: false }),
         supabase
           .from('templates_admin')
           .select('*')
@@ -159,11 +170,12 @@ export default function RetencaoSaas() {
     ? [...candidatos]
     : candidatos.filter(c => c.bucket === bucketFiltro)
   ).sort((a, b) => {
-    // No bucket "Vence em breve", ordena pelos que vencem antes
+    // No bucket "Vence em breve", a urgência manda: quem vence antes vem antes.
     if (a.bucket === 'retencao_e' && b.bucket === 'retencao_e') {
       return (a.dias_para_plano_vencer ?? 999) - (b.dias_para_plano_vencer ?? 999)
     }
-    return 0
+    // Nos demais, quem mais usou o sistema vem primeiro (maior chance de converter).
+    return (b.score ?? 0) - (a.score ?? 0)
   })
 
   const contadores = {
@@ -186,7 +198,8 @@ export default function RetencaoSaas() {
             Retenção SaaS
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-            Clientes do Mensalli que precisam de um toque de retenção
+            Clientes do Mensalli que precisam de um toque de retenção — <strong>os de maior chance de
+            converter aparecem primeiro</strong>, com base no que já fizeram dentro do sistema
           </p>
         </div>
         <button
@@ -271,6 +284,7 @@ export default function RetencaoSaas() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {candidatosFiltrados.map(c => {
             const bucketInfo = BUCKETS[c.bucket] || { label: c.bucket, icon: 'mdi:account', cor: '#6b7280', bg: '#f3f4f6' }
+            const temp = TEMPERATURAS[c.temperatura]
             const msgPreview = montarMensagem(c.bucket, c).slice(0, 140)
             const dataCad = new Date(c.data_cadastro).toLocaleDateString('pt-BR')
 
@@ -318,10 +332,47 @@ export default function RetencaoSaas() {
                     }}>
                       {bucketInfo.label.toUpperCase()}
                     </span>
+                    {temp && (
+                      <span
+                        title={`Score ${c.score}/100 — calculado pelo uso real do sistema`}
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: '700',
+                          padding: '2px 7px',
+                          borderRadius: '4px',
+                          backgroundColor: temp.bg,
+                          color: temp.cor,
+                          border: `1px solid ${temp.borda}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                      >
+                        <Icon icon={temp.icon} width="12" />
+                        {temp.label} {c.score}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
                     📧 {c.email} · 📱 {c.telefone} · 📅 cadastro {dataCad}
                   </div>
+
+                  {/* Por que está quente/frio — o score nunca é caixa-preta */}
+                  {c.motivos?.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+                      {c.motivos.map((m, i) => (
+                        <span key={i} style={{
+                          fontSize: '11px',
+                          padding: '2px 7px',
+                          borderRadius: '10px',
+                          backgroundColor: '#f1f5f9',
+                          color: '#475569'
+                        }}>
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', lineHeight: '1.4' }}>
                     "{msgPreview}{msgPreview.length >= 140 ? '...' : ''}"
                   </div>
