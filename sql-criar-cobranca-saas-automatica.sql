@@ -59,7 +59,8 @@ CREATE VIEW vw_mensalli_cobranca_saas AS
 WITH base AS (
   SELECT
     u.id AS usuario_id,
-    COALESCE(NULLIF(TRIM(u.nome_empresa), ''), NULLIF(TRIM(u.nome_completo), ''), u.email) AS nome_cliente,
+    -- {{nome}} é a PESSOA, não a empresa: quem lê o WhatsApp é o Thiago, não o "Studio T.S".
+    COALESCE(NULLIF(TRIM(u.nome_completo), ''), NULLIF(TRIM(u.nome_empresa), ''), u.email) AS nome_cliente,
     u.telefone,
     u.plano,
     CASE lower(u.plano)
