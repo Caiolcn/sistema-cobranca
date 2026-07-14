@@ -9,7 +9,7 @@ import whatsappService from './services/whatsappService'
 // a instância dele, então a boas-vindas sai daqui.
 const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
 
-export default function Signup() {
+export default function Signup({ onCadastroIniciado }) {
   const navigate = useNavigate()
 
   const [nomeCompleto, setNomeCompleto] = useState('')
@@ -79,6 +79,10 @@ export default function Signup() {
 
       const planoSelecionado = 'pro'
 
+      // Daqui pra frente a sessão já existe: segura o redirect automático do
+      // /signup pro /app/home até este fluxo mandar a pessoa pro onboarding.
+      if (onCadastroIniciado) onCadastroIniciado()
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: senha,
@@ -145,10 +149,10 @@ export default function Signup() {
       trackStartTrial()
 
       // Boas-vindas via WhatsApp, enviada pelo número da plataforma (master).
-      // Não bloqueia o cadastro: se falhar, a conta já está criada e a pessoa segue.
-      try {
-        const primeiroNome = nomeCompleto.trim().split(' ')[0]
-        const mensagemBoasVindas =
+      // Sem await de propósito: o envio pode levar segundos e não pode atrasar a
+      // ida pro onboarding. Se falhar, a conta já está criada e a pessoa segue.
+      const primeiroNome = nomeCompleto.trim().split(' ')[0]
+      const mensagemBoasVindas =
 `Oi ${primeiroNome}! 👋
 
 Aqui é o Caio, da equipe do Mensalli. Vi que você acabou de criar sua conta de teste — seja muito bem-vindo(a)! 🎉
@@ -157,12 +161,13 @@ Seu teste grátis de 3 dias já está liberado com tudo desbloqueado. Pra ver a 
 
 Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que eu te ajudo. 😊`
 
-        await whatsappService.enviarMensagem(telefoneLimpo, mensagemBoasVindas, INSTANCIA_MENSALLI)
-      } catch (erroBoasVindas) {
-        console.error('Falha ao enviar boas-vindas (não bloqueia cadastro):', erroBoasVindas)
-      }
+      whatsappService
+        .enviarMensagem(telefoneLimpo, mensagemBoasVindas, INSTANCIA_MENSALLI)
+        .catch((erroBoasVindas) => {
+          console.error('Falha ao enviar boas-vindas (não bloqueia cadastro):', erroBoasVindas)
+        })
 
-      navigate('/app/onboarding')
+      navigate('/app/onboarding', { replace: true })
 
     } catch (error) {
       console.error('Erro ao cadastrar:', error)

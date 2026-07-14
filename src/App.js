@@ -86,6 +86,10 @@ const LoadingFallback = () => (
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  // O signUp autentica na hora, então a sessão existe antes do cadastro terminar.
+  // Sem esse flag o guard da rota /signup jogaria a pessoa no /app/home no meio
+  // do processo, e só depois o Signup a levaria pro /app/onboarding.
+  const [cadastroEmCurso, setCadastroEmCurso] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -114,7 +118,7 @@ function App() {
             <Routes>
               {/* Rotas públicas */}
               <Route path="/" element={session ? <Navigate to="/app/home" replace /> : <LandingPage />} />
-              <Route path="/signup" element={session ? <Navigate to="/app/home" replace /> : <Signup />} />
+              <Route path="/signup" element={session && !cadastroEmCurso ? <Navigate to="/app/home" replace /> : <Signup onCadastroIniciado={() => setCadastroEmCurso(true)} />} />
               <Route path="/login" element={session ? <Navigate to="/app/home" replace /> : <Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
