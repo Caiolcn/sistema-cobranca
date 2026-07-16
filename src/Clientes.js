@@ -13,6 +13,7 @@ import CsvImportModal from './components/CsvImportModal'
 import AnamneseSection from './components/AnamneseSection'
 import ContratosSection from './ContratosSection'
 import { validarTelefone, validarCPF } from './utils/validators'
+import { criarMatcherBusca } from './utils/busca'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
@@ -238,12 +239,11 @@ export default function Clientes() {
     // Filtrar clientes quando busca ou filtros mudarem
     let filtrados = [...clientes]
 
-    // Filtro de busca por nome ou telefone
+    // Filtro de busca por nome ou telefone (ignora acentos e máscara do telefone)
     if (busca.trim() !== '') {
-      const termo = busca.toLowerCase()
+      const casa = criarMatcherBusca(busca)
       filtrados = filtrados.filter(cliente =>
-        cliente.nome.toLowerCase().includes(termo) ||
-        cliente.telefone.toLowerCase().includes(termo)
+        casa(cliente.nome, cliente.telefone, cliente.responsavel_nome, cliente.responsavel_telefone)
       )
     }
 
