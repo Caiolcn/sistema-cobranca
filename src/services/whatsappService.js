@@ -1315,7 +1315,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const [{ data: usuario }, { data: template }] = await Promise.all([
         supabase
           .from('usuarios')
-          .select('nome_empresa')
+          .select('nome_empresa, asaas_multa_juros')
           .eq('id', mensalidade.user_id)
           .single(),
         supabase
@@ -1327,8 +1327,20 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           .maybeSingle()
       ])
 
+      const fmtBRL = (v) => parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       const valor = parseFloat(mensalidade.valor || 0)
-      const valorFormatado = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      const valorFormatado = fmtBRL(valor)
+
+      // Multa/juros por atraso: o comprovante deve refletir o valor REALMENTE pago.
+      // Referência é a data de pagamento (dia em que foi baixada), não "hoje".
+      const mj = calcularMultaJuros(
+        valor,
+        mensalidade.data_vencimento,
+        usuario?.asaas_multa_juros,
+        mensalidade.data_pagamento || undefined
+      )
+      const temAcrescimo = mj.total > valor + 0.005
+      const valorTotalFormatado = fmtBRL(mj.total)
 
       const dataVenc = mensalidade.data_vencimento
       const vencimentoFormatado = dataVenc
@@ -1353,10 +1365,17 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
           .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
           .replace(/\{\{valorMensalidade\}\}/g, valorFormatado)
+          .replace(/\{\{valorMulta\}\}/g, fmtBRL(mj.multa))
+          .replace(/\{\{valorJuros\}\}/g, fmtBRL(mj.juros))
+          .replace(/\{\{valorTotal\}\}/g, valorTotalFormatado)
           .replace(/\{\{dataVencimento\}\}/g, vencimentoFormatado)
           .replace(/\{\{nomeEmpresa\}\}/g, empresa)
       } else {
-        mensagemTexto = `Olá, ${nomeCliente}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${valorFormatado}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
+        // Com multa/juros, mostra o total pago e detalha o acréscimo; sem atraso, só o valor.
+        const linhaValor = temAcrescimo
+          ? `💰 Valor pago: ${valorTotalFormatado}\n   (mensalidade ${valorFormatado} + multa/juros ${fmtBRL(mj.multa + mj.juros)})`
+          : `💰 Valor: ${valorFormatado}`
+        mensagemTexto = `Olá, ${nomeCliente}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n${linhaValor}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
       }
 
       // Usar instância do dono da mensalidade (não do admin logado)
@@ -1382,6 +1401,119 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       return resultado
     } catch (error) {
       console.error('⚠️ Erro ao enviar confirmação de pagamento:', error)
+      return { sucesso: false, erro: error.message }
+    }
+  }
+
+  /**
+   * Confirma o pagamento de uma cobrança avulsa (ex: uniforme, material) ao aluno.
+   * Mesmas travas da confirmação de mensalidade (master switch + flag da automação).
+   * Sem multa/juros — cobrança avulsa não tem régua de atraso.
+   * @param {string} cobrancaAvulsaId - ID em cobrancas_avulsas
+   */
+  async enviarConfirmacaoPagamentoAvulsa(cobrancaAvulsaId) {
+    try {
+      await this.ensureInitialized()
+
+      const { data: cobranca } = await supabase
+        .from('cobrancas_avulsas')
+        .select('*, devedores(id, nome, telefone, responsavel_nome, responsavel_telefone, comunicacoes_ativas)')
+        .eq('id', cobrancaAvulsaId)
+        .single()
+
+      // Cobrança avulsa sem aluno vinculado não tem para quem enviar
+      if (!cobranca?.devedores) {
+        return { sucesso: false, erro: 'Cobrança sem aluno vinculado' }
+      }
+
+      // Master switch: aluno com comunicações desativadas não recebe nada
+      if (cobranca.devedores.comunicacoes_ativas === false) {
+        console.log('⏩ Confirmação avulsa WhatsApp: comunicações desativadas para este aluno')
+        return { sucesso: false, erro: 'Comunicações desativadas para este aluno' }
+      }
+
+      const destinatario = resolverDestinatario(cobranca.devedores)
+      if (!destinatario.telefone) {
+        console.log('⏩ Confirmação avulsa WhatsApp: cliente sem telefone')
+        return { sucesso: false, erro: 'Cliente sem telefone' }
+      }
+
+      // Mesma flag da confirmação de mensalidade
+      try {
+        const { data: configCobranca } = await supabase
+          .from('configuracoes_cobranca')
+          .select('enviar_confirmacao_pagamento')
+          .eq('user_id', cobranca.user_id)
+          .maybeSingle()
+
+        if (configCobranca?.enviar_confirmacao_pagamento === false) {
+          console.log('⏩ Confirmação avulsa WhatsApp: desativada pelo usuário')
+          return { sucesso: false, erro: 'Confirmação de pagamento desativada' }
+        }
+      } catch (e) {
+        // Coluna pode não existir ainda - continua com envio (padrão: ativo)
+      }
+
+      const [{ data: usuario }, { data: template }] = await Promise.all([
+        supabase
+          .from('usuarios')
+          .select('nome_empresa')
+          .eq('id', cobranca.user_id)
+          .single(),
+        supabase
+          .from('templates')
+          .select('mensagem')
+          .eq('user_id', cobranca.user_id)
+          .eq('tipo', 'payment_confirmed_avulsa')
+          .eq('ativo', true)
+          .maybeSingle()
+      ])
+
+      const fmtBRL = (v) => parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      const valorFormatado = fmtBRL(cobranca.valor)
+      const descricao = cobranca.descricao || 'compra'
+      const empresa = usuario?.nome_empresa || ''
+      const nomeAluno = destinatario.primeiroNome || 'Cliente'
+      const nomeCliente = nomeAluno
+      const nomeAlunoReal = destinatario.primeiroNomeAluno || ''
+      const nomeResponsavel = destinatario.ehResponsavel ? destinatario.primeiroNome : ''
+
+      let mensagemTexto
+      if (template?.mensagem) {
+        mensagemTexto = template.mensagem
+          .replace(/\{\{nomeCliente\}\}/g, nomeCliente)
+          .replace(/\{\{nomeAlunoReal\}\}/g, nomeAlunoReal)
+          .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
+          .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
+          .replace(/\{\{descricao\}\}/g, descricao)
+          .replace(/\{\{valor\}\}/g, valorFormatado)
+          .replace(/\{\{valorMensalidade\}\}/g, valorFormatado)
+          .replace(/\{\{nomeEmpresa\}\}/g, empresa)
+      } else {
+        mensagemTexto = `Olá, ${nomeCliente}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n🛒 Referente a: ${descricao}\n💰 Valor: ${valorFormatado}\n\nObrigado! - ${empresa}`
+      }
+
+      const ownerId = cobranca.user_id
+      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const resultado = await this.enviarMensagem(destinatario.telefone, mensagemTexto, ownerInstanceName)
+
+      await supabase.from('logs_mensagens').insert({
+        user_id: ownerId,
+        devedor_id: cobranca.devedores.id,
+        mensalidade_id: null,
+        tipo: 'payment_confirmed',
+        mensagem: mensagemTexto,
+        status: resultado.sucesso ? 'enviado' : 'falha',
+        telefone: destinatario.telefone,
+        erro: resultado.erro || null,
+        erro_codigo: resultado.erroCodigo || (resultado.sucesso ? null : 'unknown'),
+        http_status: resultado.httpStatus || null,
+        response_api: resultado.responseApi || null
+      })
+
+      return resultado
+    } catch (error) {
+      console.error('⚠️ Erro ao enviar confirmação de pagamento avulsa:', error)
       return { sucesso: false, erro: error.message }
     }
   }

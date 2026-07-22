@@ -8,6 +8,7 @@ import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
 import { exportarCobrancasAvulsas } from './utils/exportUtils'
+import whatsappService from './services/whatsappService'
 import Button from './design-system/components/Button'
 import SearchInput from './design-system/components/SearchInput'
 import Input from './design-system/components/Input'
@@ -337,6 +338,10 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         observacoes: formObservacoes.trim() || null
       }
 
+      // Só confirma no WhatsApp quando o status vira 'pago' agora (não em edição que já era pago)
+      const virouPago = formStatus === 'pago' && (!editando || editando.status !== 'pago')
+      let cobrancaId = editando?.id
+
       if (editando) {
         const { error } = await supabase
           .from('cobrancas_avulsas')
@@ -345,11 +350,19 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         if (error) throw error
         showToast('Cobrança atualizada!', 'success')
       } else {
-        const { error } = await supabase
+        const { data: inserida, error } = await supabase
           .from('cobrancas_avulsas')
           .insert(dados)
+          .select('id')
+          .single()
         if (error) throw error
+        cobrancaId = inserida?.id
         showToast('Cobrança criada!', 'success')
+      }
+
+      // Confirmação de pagamento ao aluno (só se houver aluno vinculado)
+      if (virouPago && cobrancaId && dados.devedor_id) {
+        whatsappService.enviarConfirmacaoPagamentoAvulsa(cobrancaId).catch(() => {})
       }
 
       fecharModal()
@@ -377,6 +390,10 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         .eq('id', cobranca.id)
       if (error) throw error
       showToast('Cobrança marcada como paga!', 'success')
+      // Confirmação de pagamento ao aluno (só se houver aluno vinculado)
+      if (cobranca.devedor_id) {
+        whatsappService.enviarConfirmacaoPagamentoAvulsa(cobranca.id).catch(() => {})
+      }
       carregarDados()
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
