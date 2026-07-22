@@ -85,13 +85,16 @@ function Home() {
   const [mostrarChecklist, setMostrarChecklist] = useState(false);
   const [onboardingSteps, setOnboardingSteps] = useState({ empresa: false, pix: false, whatsapp: false, cliente: false });
 
-  // Carregar dados quando userId mudar
+  // Carregar dados quando userId mudar.
+  // Espera o contexto do usuário terminar de carregar (loadingUser): user/userId
+  // chegam antes de userData, então nomeEmpresa/chavePix ainda vêm vazios e o
+  // onboarding travava mostrando empresa/PIX como pendentes mesmo preenchidos (race).
   useEffect(() => {
-    if (userId) {
+    if (userId && !loadingUser) {
       carregarDados();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, loadingUser]);
 
   const carregarDados = useCallback(async () => {
     if (!userId) return;
@@ -456,8 +459,10 @@ function Home() {
     } finally {
       setLoading(false);
     }
+  // nomeEmpresaContext/chavePix nas deps: recria o callback quando o contexto
+  // carrega, para os steps empresa/pix do onboarding usarem os valores reais.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, nomeEmpresaContext, chavePix]);
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
