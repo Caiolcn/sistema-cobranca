@@ -29,7 +29,7 @@ const PREVIEW_DEVICES = [
 ]
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
-const Artes = lazy(() => import('./Artes'))
+// const Artes = lazy(() => import('./Artes')) // aba Artes temporariamente escondida — descomentar p/ reativar
 
 // Ordem "auto" das seções (sem 'agendamento', que só aparece quando adicionado à ordem).
 // Injeta seções novas (ex.: youtube) em quem salvou a landing antes da feature existir.
@@ -5641,11 +5641,13 @@ function Configuracao({ secao = 'config' }) {
               {abaAtiva === 'planos' && renderPlanos()}
               {abaAtiva === 'integracoes' && renderIntegracoes()}
               {abaAtiva === 'upgrade' && renderUpgrade()}
+              {/* Aba "Artes" temporariamente escondida (feature em construção) — descomentar p/ reativar
               {abaAtiva === 'artes' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
                   <Artes />
                 </Suspense>
               )}
+              */}
               {abaAtiva === 'agendamento' && renderAgendamento()}
               {abaAtiva === 'landing' && renderLanding()}
               {abaAtiva === 'anamnese' && renderAnamnese()}
