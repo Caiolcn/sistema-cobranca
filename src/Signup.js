@@ -19,6 +19,7 @@ export default function Signup({ onCadastroIniciado }) {
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [focusField, setFocusField] = useState(null)
+  const [mostrarSenha, setMostrarSenha] = useState(false)
 
   const formatarTelefone = (valor) => {
     const nums = valor.replace(/\D/g, '').slice(0, 11)
@@ -83,12 +84,16 @@ export default function Signup({ onCadastroIniciado }) {
       // /signup pro /app/home até este fluxo mandar a pessoa pro onboarding.
       if (onCadastroIniciado) onCadastroIniciado()
 
+      // O telefone vai no metadata porque quem cria a conta agora é o trigger
+      // on_auth_user_created (handle_new_user) — ele lê daqui. Os upserts abaixo
+      // só complementam o que o banco já criou.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: senha,
         options: {
           data: {
             nome_completo: nomeCompleto,
+            telefone: telefoneLimpo,
             plano: planoSelecionado
           }
         }
@@ -98,6 +103,8 @@ export default function Signup({ onCadastroIniciado }) {
 
       const userId = authData.user.id
 
+      // Rede de segurança: se o trigger tiver falhado, o upsert cria a linha.
+      // Se o trigger funcionou (caso normal), isso só reescreve os mesmos dados.
       const { error: upsertError } = await supabase
         .from('usuarios')
         .upsert({
@@ -115,29 +122,31 @@ export default function Signup({ onCadastroIniciado }) {
 
       if (upsertError) throw new Error(`Database error: ${upsertError.message || upsertError.code}`)
 
+      // controle_planos e configuracoes_cobranca têm UNIQUE(user_id) e já nascem
+      // pelo trigger. Precisa ser upsert com ignoreDuplicates, nunca insert:
+      // um insert cru colidiria (23505) e derrubaria o cadastro inteiro.
       const mesReferencia = new Date().toISOString().slice(0, 7)
       const { error: controleError } = await supabase
         .from('controle_planos')
-        .insert({
+        .upsert({
           user_id: userId,
           plano: planoSelecionado,
           limite_mensal: getLimitePorPlano(planoSelecionado),
           usage_count: 0,
           mes_referencia: mesReferencia,
           status: 'ativo'
-        })
+        }, { onConflict: 'user_id', ignoreDuplicates: true })
 
-      if (controleError) throw controleError
+      if (controleError) console.error('Erro ao criar controle de plano:', controleError)
 
       const { error: configError } = await supabase
         .from('configuracoes_cobranca')
-        .insert({
+        .upsert({
           user_id: userId,
           enviar_no_dia: true,
           enviar_3_dias_antes: true,
-          enviar_3_dias_depois: true,
-          envio_habilitado: true
-        })
+          enviar_3_dias_depois: true
+        }, { onConflict: 'user_id', ignoreDuplicates: true })
 
       if (configError) console.error('Erro ao criar config de cobrança:', configError)
 
@@ -182,7 +191,8 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
     padding: '14px 16px',
     border: `2px solid ${focusField === field ? '#25D366' : '#e8e8e8'}`,
     borderRadius: '10px',
-    fontSize: '15px',
+    // 16px é o mínimo que impede o Safari do iOS de dar zoom ao focar o campo
+    fontSize: '16px',
     boxSizing: 'border-box',
     outline: 'none',
     transition: 'border-color 0.2s, box-shadow 0.2s',
@@ -192,7 +202,8 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
 
   return (
     <div style={{
-      minHeight: '100vh',
+      // dvh em vez de vh: no Safari do iOS o 100vh conta a barra de endereço
+      minHeight: '100dvh',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -211,7 +222,9 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
 
       <div style={{
         backgroundColor: 'white',
-        padding: '40px',
+        // clamp encolhe o respiro no celular: com 40px fixos o botão "Criar conta"
+        // nascia abaixo da dobra num iPhone SE
+        padding: 'clamp(24px, 7vw, 40px)',
         borderRadius: '16px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
         border: '1px solid #eee',
@@ -266,6 +279,7 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
               onChange={(e) => setNomeCompleto(e.target.value)}
               placeholder="Como seus clientes te conhecem"
               required
+              autoComplete="name"
               onFocus={() => setFocusField('nome')}
               onBlur={() => setFocusField(null)}
               style={inputStyle('nome')}
@@ -282,6 +296,8 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
               onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
               placeholder="(11) 99999-9999"
               required
+              autoComplete="tel-national"
+              inputMode="numeric"
               onFocus={() => setFocusField('telefone')}
               onBlur={() => setFocusField(null)}
               style={inputStyle('telefone')}
@@ -298,6 +314,10 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
               required
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
               onFocus={() => setFocusField('email')}
               onBlur={() => setFocusField(null)}
               style={inputStyle('email')}
@@ -308,16 +328,49 @@ Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que 
             <label style={{ display: 'block', marginBottom: '6px', color: '#444', fontSize: '13px', fontWeight: '600' }}>
               Senha
             </label>
-            <input
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
-              required
-              onFocus={() => setFocusField('senha')}
-              onBlur={() => setFocusField(null)}
-              style={inputStyle('senha')}
-            />
+            {/* Toggle de ver a senha: no celular, errar a senha aqui e só
+                descobrir no primeiro login é motivo comum de abandono. */}
+            <div style={{ position: 'relative' }}>
+              <input
+                type={mostrarSenha ? 'text' : 'password'}
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                required
+                autoComplete="new-password"
+                onFocus={() => setFocusField('senha')}
+                onBlur={() => setFocusField(null)}
+                style={{ ...inputStyle('senha'), paddingRight: '48px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarSenha(!mostrarSenha)}
+                aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: '#999',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                // App.css pinta todo button de azul no hover; neutraliza aqui
+                onMouseOver={(e) => { e.currentTarget.style.background = 'none' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  {mostrarSenha ? (
+                    <path d="M10 4C5 4 1.73 7.11 1 10c.73 2.89 4 6 9 6s8.27-3.11 9-6c-.73-2.89-4-6-9-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                  ) : (
+                    <path d="M10 4C5 4 1.73 7.11 1 10c.73 2.89 4 6 9 6s8.27-3.11 9-6c-.73-2.89-4-6-9-6zM2 10c.7-2.24 3.39-5 8-5s7.3 2.76 8 5c-.7 2.24-3.39 5-8 5s-7.3-2.76-8-5zm8 3c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
+                  )}
+                </svg>
+              </button>
+            </div>
           </div>
 
           <button

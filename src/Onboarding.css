@@ -1,5 +1,6 @@
 .onboarding-page {
-  min-height: 100vh;
+  /* dvh em vez de vh: no Safari do iOS o 100vh conta a barra de endereço */
+  min-height: 100dvh;
   background: #f0f4ff;
   display: flex;
   align-items: center;
@@ -11,7 +12,10 @@
   background: white;
   border-radius: 20px;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
-  max-width: 560px;
+  /* 600 e não 560: com 4 passos rotulados o stepper precisa de ~470px, e 560
+     deixava só 14px de folga — qualquer fonte um pouco mais larga estourava.
+     De quebra as linhas de dois campos (passos 3 e 4) ficam menos apertadas. */
+  max-width: 600px;
   width: 100%;
   padding: 40px;
 }
@@ -28,65 +32,51 @@
   letter-spacing: -0.5px;
 }
 
-/* Steps indicator */
-.onboarding-steps {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
+/* Progresso — WizardStepper do DS.
+   Duas instâncias: horizontal no desktop, compact no celular. O compact mostra
+   "2 de 4 · WhatsApp", resolvendo os 4 círculos anônimos do stepper antigo. */
+.onboarding-stepper {
   margin-bottom: 36px;
 }
 
-.onboarding-step-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
+/* No DS os passos são flex-shrink: 0 e os rótulos são nowrap — com 4 passos o
+   stepper fica mais largo que o card e o último ("Alunos") vazava pra fora.
+   Como quem não pode encolher é o passo, a folga sai das linhas conectoras. */
+.onboarding-stepper .ds-stepper__line {
+  margin: 0 8px;
+  min-width: 12px;
 }
 
-.onboarding-step-circle {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
+.onboarding-stepper-mobile {
+  display: none;
+  margin-bottom: 28px;
   justify-content: center;
-  background: #e5e7eb;
-  color: #9ca3af;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s;
 }
 
-.onboarding-step-item.active .onboarding-step-circle {
-  background: #344848;
-  color: white;
-}
+/* Troca pro compact ANTES do breakpoint de layout (720 e não 600): entre 600 e
+   720px o card já não comporta os 4 rótulos, e é melhor mostrar "3 de 4 ·
+   Cobrança" do que espremer/estourar o horizontal. */
+@media (max-width: 720px) {
+  .onboarding-stepper {
+    display: none;
+  }
 
-.onboarding-step-item.completed .onboarding-step-circle {
-  background: #16a34a;
-  color: white;
-}
-
-.onboarding-step-label {
-  font-size: 11px;
-  color: #9ca3af;
-  font-weight: 500;
-  text-align: center;
-}
-
-.onboarding-step-item.active .onboarding-step-label {
-  color: #344848;
-  font-weight: 600;
-}
-
-.onboarding-step-item.completed .onboarding-step-label {
-  color: #16a34a;
+  .onboarding-stepper-mobile {
+    display: flex;
+  }
 }
 
 /* Content */
 .onboarding-content {
-  min-height: 280px;
+  /* Era 280px fixos: os passos 1 e 2 têm 1 e 2 campos, então sobravam ~130px de
+     vazio empurrando o botão pra baixo à toa — no celular isso custa uma rolagem. */
+  min-height: 200px;
+}
+
+@media (max-width: 600px) {
+  .onboarding-content {
+    min-height: 0;
+  }
 }
 
 .onboarding-step-content {
@@ -115,46 +105,23 @@
   color: #6b7280;
 }
 
-/* Fields */
-.onboarding-field {
-  margin-bottom: 16px;
-}
-
-.onboarding-field label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 6px;
-}
-
-.onboarding-field input,
-.onboarding-field select {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.onboarding-field input:focus,
-.onboarding-field select:focus {
-  border-color: #344848;
-  box-shadow: 0 0 0 3px rgba(52, 72, 72, 0.1);
-}
-
+/* Campos: Input/Select vêm do design system (tokens, foco, erro e o 16px que
+   evita o zoom do iOS já são de lá). Aqui fica só o arranjo entre eles. */
 .onboarding-fields-row {
   display: flex;
   gap: 12px;
-  align-items: flex-end;
+  /* flex-start, não flex-end: quando um campo mostra erro ele cresce pra baixo, e
+     com flex-end o vizinho descia junto — os rótulos "Tipo da Chave" e "Chave PIX"
+     saíam de linha. Alinhando pelo topo, o erro empurra só o próprio campo. */
+  align-items: flex-start;
 }
 
-.onboarding-fields-row .onboarding-field {
-  margin-bottom: 0;
+/* min-width: 0 é obrigatório aqui. Item de flex nasce com min-width: auto, que
+   trava no min-content — e o min-content de um campo de texto é a largura
+   intrínseca do <input>. Sem isso os dois campos ficavam presos em 243px cada e
+   empurravam o botão "+" pra fora do card (550px de conteúdo numa linha de 494). */
+.onboarding-fields-row > * {
+  min-width: 0;
 }
 
 /* Actions */
@@ -167,134 +134,178 @@
   border-top: 1px solid #f3f4f6;
 }
 
-.onboarding-btn-primary {
-  padding: 12px 28px;
-  border: none;
-  border-radius: 10px;
-  background: #344848;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
+/* Botões vêm do design system (variants primary/secondary/outline/ghost/whatsapp).
+   Os estilos próprios de botão que existiam aqui foram removidos — inclusive a
+   gambiarra que sobrescrevia o button:hover azul do App.css, que o DS já trata. */
 
-.onboarding-btn-primary:hover {
-  background: #1f2d2d;
-}
-
-.onboarding-btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.onboarding-btn-finish {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-}
-
-.onboarding-btn-finish:hover {
-  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-}
-
-.onboarding-btn-secondary {
-  padding: 12px 20px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  background: white;
-  color: #374151;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.onboarding-btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.onboarding-btn-skip {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: #9ca3af;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s, background-color 0.2s;
-}
-
-/* Sobrescreve o button:hover global (App.css) que pintava um bloco azul */
-.onboarding-btn-skip:hover {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-/* Step 4: Option cards */
-.onboarding-option-cards {
+/* Step 2: WhatsApp */
+.onboarding-zap-box {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 16px;
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  background: #fafafa;
+  text-align: center;
 }
 
-.onboarding-option-card {
-  padding: 16px;
-  border: 1px solid #e5e7eb;
+.onboarding-zap-chamada {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.onboarding-zap-qr {
+  width: 220px;
+  height: 220px;
+  max-width: 70vw;
+  max-height: 70vw;
   border-radius: 12px;
   background: white;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.onboarding-zap-passos {
+  margin: 0;
+  padding-left: 18px;
   text-align: left;
-  width: 100%;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.7;
 }
 
-.onboarding-option-card-clickable {
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
+.onboarding-zap-timer {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
-.onboarding-option-card-clickable:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
+.onboarding-zap-erro {
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
 }
 
-.onboarding-option-card-header {
+.onboarding-zap-ok {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 14px;
+  padding: 20px 18px;
+  border-radius: 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.onboarding-zap-ok strong {
+  display: block;
+  font-size: 15px;
+  color: #166534;
+}
+
+.onboarding-zap-ok p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.onboarding-cliente-plano {
+  font-size: 11px;
   font-weight: 600;
-  color: #374151;
+  color: #3b5bdb;
+  background: #eef2ff;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Step 3: importar planilha como saída secundária, sem competir com o fluxo
+   principal de adicionar aluno (que é o que ensina o vínculo com o plano) */
+.onboarding-link-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Sobrescreve o button:hover global do App.css, que pintaria um bloco azul */
+.onboarding-link-csv:hover {
+  background: none;
+  color: #344848;
+}
+
+/* Step 4: prévia da cobrança */
+.onboarding-preview {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+
+.onboarding-preview-texto {
   margin-bottom: 12px;
 }
 
-.onboarding-btn-add {
-  width: 44px;
-  height: 44px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  background: white;
-  cursor: pointer;
+.onboarding-preview-texto strong {
+  font-size: 14px;
+  color: #166534;
+}
+
+.onboarding-preview-texto p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+/* Input do DS sobre fundo verde: fundo branco pra não sumir no bloco */
+.onboarding-preview .ds-input-row {
+  background: #ffffff;
+}
+
+.onboarding-preview-btn {
+  margin-top: 12px;
+}
+
+/* Nota de que os textos são editáveis */
+.onboarding-nota-templates {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #374151;
-  transition: all 0.2s;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.onboarding-nota-templates svg {
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.onboarding-btn-add:hover {
-  background: #344848;
-  color: white;
-  border-color: #344848;
+.onboarding-nota-templates strong {
+  color: #374151;
+  font-weight: 600;
 }
 
-.onboarding-btn-add:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Button iconOnly do DS; só impede de encolher ao lado dos dois inputs */
+.onboarding-btn-add {
+  flex-shrink: 0;
 }
 
 .onboarding-clientes-list {
@@ -346,11 +357,12 @@
 
   .onboarding-fields-row {
     flex-direction: column;
+    align-items: stretch;
   }
 
+  /* Empilhado, o botão de adicionar vira largura cheia */
   .onboarding-btn-add {
     width: 100%;
-    height: 40px;
   }
 
   .onboarding-actions {
@@ -358,17 +370,13 @@
     gap: 12px;
   }
 
-  .onboarding-actions > * {
+  .onboarding-actions > *,
+  .onboarding-actions .ds-btn {
     width: 100%;
   }
 
-  .onboarding-btn-primary,
-  .onboarding-btn-secondary {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .onboarding-step-label {
-    display: none;
+  /* Bloco com Pular + Continuar lado a lado vira coluna */
+  .onboarding-actions > div {
+    flex-direction: column-reverse;
   }
 }

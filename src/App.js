@@ -12,6 +12,7 @@ import Login from './Login'
 import Signup from './Signup'
 import ResetPassword from './ResetPassword'
 import Privacidade from './pages/Privacidade'
+import RequireOnboarding from './RequireOnboarding'
 
 // Lazy loading para componentes do app (carregados sob demanda)
 // Economia estimada: ~339 KiB no carregamento inicial
@@ -161,7 +162,9 @@ function App() {
                     <Route path="wizard-stepper" element={<PaginaWizardStepper />} />
                     <Route path=":slug" element={<PaginaPlaceholder />} />
                   </Route>
-                  <Route path="/app" element={<Dashboard />}>
+                  {/* RequireOnboarding fica só aqui: /app/onboarding é rota irmã
+                      (acima), então não há risco de loop de redirect. */}
+                  <Route path="/app" element={<RequireOnboarding><Dashboard /></RequireOnboarding>}>
                     <Route index element={<Navigate to="/app/home" replace />} />
                     <Route path="home" element={<Home />} />
                     <Route path="financeiro" element={<Financeiro />} />

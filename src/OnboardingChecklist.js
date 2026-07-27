@@ -18,7 +18,9 @@ const STEPS = [
     description: 'Adicione sua chave PIX para receber pagamentos',
     icon: 'mdi:qrcode',
     actionLabel: 'Configurar PIX',
-    route: '/app/whatsapp?aba=templates&config=abrir'
+    // Antes apontava pro acordeão "Configurações" dentro de WhatsApp > Templates,
+    // onde ninguém acha de novo. Integrações tem a seção "Configurar Chave PIX" aberta.
+    route: '/app/configuracao?aba=integracoes'
   },
   {
     key: 'whatsapp',
@@ -38,9 +40,30 @@ const STEPS = [
   }
 ]
 
+// O estado minimizado fica no navegador: antes o painel voltava aberto a cada
+// reload, mesmo depois da pessoa fechar — o "X" não valia de nada.
+const CHAVE_COLAPSADO = 'mensalli_checklist_colapsado'
+
+const lerColapsado = () => {
+  try {
+    return localStorage.getItem(CHAVE_COLAPSADO) === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function OnboardingChecklist({ completedSteps }) {
   const navigate = useNavigate()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(lerColapsado)
+
+  const alternarColapsado = (valor) => {
+    setCollapsed(valor)
+    try {
+      localStorage.setItem(CHAVE_COLAPSADO, valor ? '1' : '0')
+    } catch {
+      /* localStorage indisponível — o estado ainda vale para esta sessão */
+    }
+  }
 
   const completedCount = STEPS.filter(s => completedSteps[s.key]).length
   const allCompleted = completedCount === STEPS.length
@@ -52,7 +75,7 @@ export default function OnboardingChecklist({ completedSteps }) {
   // Botão flutuante minimizado
   if (collapsed) {
     return (
-      <button className="onboarding-fab" onClick={() => setCollapsed(false)}>
+      <button className="onboarding-fab" onClick={() => alternarColapsado(false)}>
         <span className="onboarding-fab-text">{completedCount}/{STEPS.length} concluído</span>
         <span className="onboarding-fab-badge">{percent}%</span>
       </button>
@@ -66,7 +89,7 @@ export default function OnboardingChecklist({ completedSteps }) {
       <div className="onboarding-panel-header">
         <div className="onboarding-panel-header-top">
           <h3 className="onboarding-panel-title">Primeiros Passos</h3>
-          <button className="onboarding-panel-close" onClick={() => setCollapsed(true)}>
+          <button className="onboarding-panel-close" onClick={() => alternarColapsado(true)}>
             <Icon icon="mdi:close" width="18" />
           </button>
         </div>

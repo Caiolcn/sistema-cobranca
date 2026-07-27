@@ -148,7 +148,13 @@
   font-size: 15px;
   font-weight: 600;
   color: #1a1f36;
-  line-height: 34px;
+  /* Era line-height: 34px pra alinhar com o círculo. Quando o título quebrava em
+     duas linhas no celular virava um buraco de 68px entre elas. Agora o
+     alinhamento é feito por min-height + flex, e a entrelinha fica normal. */
+  line-height: 1.35;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
 }
 
 .onboarding-panel-card-title.done {
@@ -238,6 +244,17 @@
     right: 12px;
     left: 12px;
     width: auto;
+    /* Sem teto o painel ocupava ~80% da tela do celular e escondia o Home
+       inteiro. Limita a metade da altura da janela e rola por dentro. */
+    max-height: 62dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .onboarding-panel-steps {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
   }
 
   .onboarding-fab {

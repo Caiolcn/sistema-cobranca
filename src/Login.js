@@ -9,7 +9,11 @@ export default function Login({ onLogin }) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
+  const [enviandoReset, setEnviandoReset] = useState(false)
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' }) // tipo: 'erro', 'sucesso'
+
+  // 16px é o mínimo que impede o Safari do iOS de dar zoom ao focar o campo.
+  const FONT_INPUT = '16px'
 
   // Validar se o formulário está completo
   const isFormValid = email.trim() !== '' && password.trim() !== ''
@@ -58,26 +62,39 @@ export default function Login({ onLogin }) {
   }
 
   const handleForgotPassword = async () => {
+    if (enviandoReset) return
     if (!email) {
       setMensagem({ texto: 'Por favor, digite seu e-mail primeiro', tipo: 'erro' })
       return
     }
 
+    setEnviandoReset(true)
     try {
+      // origin em vez de URL fixa: antes o link de recuperação sempre apontava
+      // pra produção, quebrando o fluxo em preview e em desenvolvimento.
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://www.mensalli.com.br/reset-password'
+        redirectTo: `${window.location.origin}/reset-password`
       })
 
       if (error) throw error
       setMensagem({ texto: 'Email de recuperação enviado! Verifique sua caixa de entrada.', tipo: 'sucesso' })
     } catch (error) {
-      setMensagem({ texto: 'Erro ao enviar email: ' + error.message, tipo: 'erro' })
+      const muitasTentativas = /rate|too many|seconds/i.test(error.message || '')
+      setMensagem({
+        texto: muitasTentativas
+          ? 'Você já pediu a recuperação há pouco. Aguarde um minuto e tente de novo.'
+          : 'Erro ao enviar email: ' + error.message,
+        tipo: 'erro'
+      })
+    } finally {
+      setEnviandoReset(false)
     }
   }
 
   return (
     <div style={{
-      minHeight: '100vh',
+      // dvh em vez de vh: no Safari do iOS o 100vh conta a barra de endereço
+      minHeight: '100dvh',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -94,7 +111,8 @@ export default function Login({ onLogin }) {
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
-        padding: '40px',
+        // clamp encolhe o respiro no celular sem precisar de media query
+        padding: 'clamp(24px, 7vw, 40px)',
         width: '100%',
         maxWidth: '400px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
@@ -128,10 +146,14 @@ export default function Login({ onLogin }) {
               onFocus={() => setFocusedField('email')}
               onBlur={() => setFocusedField(null)}
               required
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
               style={{
                 width: '100%',
                 padding: '12px 14px',
-                fontSize: '14px',
+                fontSize: FONT_INPUT,
                 border: focusedField === 'email' ? '1px solid #333' : '1px solid #e0e0e0',
                 borderRadius: '6px',
                 outline: 'none',
@@ -161,11 +183,12 @@ export default function Login({ onLogin }) {
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField(null)}
                 required
+                autoComplete="current-password"
                 style={{
                   width: '100%',
                   padding: '12px 14px',
                   paddingRight: '45px',
-                  fontSize: '14px',
+                  fontSize: FONT_INPUT,
                   border: focusedField === 'password' ? '1px solid #333' : '1px solid #e0e0e0',
                   borderRadius: '6px',
                   outline: 'none',
@@ -210,12 +233,13 @@ export default function Login({ onLogin }) {
             <button
               type="button"
               onClick={handleForgotPassword}
+              disabled={enviandoReset}
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#666',
+                color: enviandoReset ? '#aaa' : '#666',
                 fontSize: '13px',
-                cursor: 'pointer',
+                cursor: enviandoReset ? 'wait' : 'pointer',
                 padding: 0,
                 textDecoration: 'none',
                 display: 'inline-flex',
@@ -223,10 +247,12 @@ export default function Login({ onLogin }) {
                 gap: '4px'
               }}
             >
-              Esqueci minha senha
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 3l7 7-7 7-1.41-1.41L13.17 11H3V9h10.17L8.59 4.41z"/>
-              </svg>
+              {enviandoReset ? 'Enviando...' : 'Esqueci minha senha'}
+              {!enviandoReset && (
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 3l7 7-7 7-1.41-1.41L13.17 11H3V9h10.17L8.59 4.41z"/>
+                </svg>
+              )}
             </button>
           </div>
 
