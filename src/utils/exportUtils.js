@@ -46,7 +46,11 @@ export const exportToCSV = (data, filename) => {
  */
 export const formatarDataExport = (data) => {
   if (!data) return '';
-  const d = new Date(data);
+  // Coluna `date` do Postgres chega como 'YYYY-MM-DD', que o new Date() lê como
+  // meia-noite UTC — no fuso de Brasília isso volta pro dia anterior. O T00:00:00
+  // força horário local. Timestamp completo já traz fuso e é parseado direto.
+  const soData = typeof data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data);
+  const d = soData ? new Date(`${data}T00:00:00`) : new Date(data);
   return d.toLocaleDateString('pt-BR');
 };
 
