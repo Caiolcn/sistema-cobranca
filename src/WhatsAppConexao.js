@@ -9,6 +9,9 @@ import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import whatsappService from './services/whatsappService'
 import { resolverDestinatario } from './utils/destinatario'
+// Textos vivem em src/data pra o wizard de onboarding poder semear os mesmos
+// templates ao conectar, sem importar este componente inteiro
+import { TEMPLATES_PADRAO, TEMPLATES_SEED } from './data/templatesPadrao'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 
@@ -630,123 +633,6 @@ const updateGlobalStatus = (newStatus) => {
 
 export const getWhatsAppStatus = () => globalStatus
 
-// Templates padrão bonitos com emojis
-const TEMPLATES_PADRAO = {
-  pre_due_3days: `Olá, {{nomeCliente}}! 👋
-
-Passando para te ajudar na organização da semana: sua mensalidade vence em 3 dias. 😃
-
-💰 Valor: {{valorMensalidade}}
-📆 Vencimento: {{dataVencimento}}
-
-🔑 Chave Pix: {{chavePix}}
-
-Adiantar o pagamento garante sua tranquilidade e a continuidade dos seus planos sem correria! 💪`,
-
-  due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃
-
-Hoje é o dia do vencimento da sua mensalidade.
-
-💰 Valor: {{valorMensalidade}}
-💳 Pix para pagamento: {{chavePix}}
-
-Manter seu plano em dia garante que você continue aproveitando todos os nossos benefícios sem interrupções! 🚀
-
-Qualquer dúvida, estou à disposição.`,
-
-  overdue: `Olá, {{nomeCliente}}, como vai?
-
-Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
-
-Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:
-
-💰 Valor: {{valorMensalidade}}
-🔑 Chave Pix: {{chavePix}}
-
-Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`,
-
-  class_reminder: `Olá, {{nomeCliente}}!
-
-Lembrete: sua aula de {{descricaoAula}} começa em 1 hora! 🕐
-
-⏰ Horário: {{horarioAula}}
-📍 Local: {{nomeEmpresa}}
-
-Até já! 💪`,
-
-  birthday: `Feliz aniversário, {{nomeCliente}}! 🎂🎉
-
-A equipe {{nomeEmpresa}} deseja a você um dia incrível, cheio de saúde, alegria e conquistas!
-
-Obrigado por fazer parte da nossa família. Conte sempre com a gente! 💪🎈`,
-
-  payment_confirmed: `Olá, {{nomeCliente}}! ✅
-
-Confirmamos o recebimento do seu pagamento.
-
-💰 Valor: {{valorMensalidade}}
-📅 Vencimento: {{dataVencimento}}
-
-Obrigado pela pontualidade! - {{nomeEmpresa}}`,
-
-  welcome: `Olá, {{nomeCliente}}! 👋
-
-Seja muito bem-vindo(a) à {{nomeEmpresa}}!
-
-Este é nosso canal oficial de comunicação pelo WhatsApp. Por aqui você receberá:
-
-✅ Lembretes de vencimento
-✅ Confirmações de pagamento
-✅ Comunicados importantes
-
-*Salve nosso número* para não perder nenhuma mensagem!
-
-Qualquer dúvida, estamos à disposição.`,
-
-  recuperacao_15: `Oi, {{nomeCliente}}! 👋
-
-Sentimos sua falta aqui na *{{nomeEmpresa}}* 💛
-Tá tudo bem por aí? Já faz {{diasSemAparecer}} dias que não te vemos em aula.
-
-Qualquer coisa, me chama aqui que a gente te ajuda! 💪`,
-
-  recuperacao_30: `Oi, {{nomeCliente}}, tudo bem? 😊
-
-Estamos com saudades na *{{nomeEmpresa}}*!
-Já faz {{diasSemAparecer}} dias desde sua última aula. Que tal voltar essa semana? Sua vaga ainda tá aqui! 🙌
-
-Se precisar reagendar ou tiver alguma dificuldade, me conta que a gente ajuda a resolver.`,
-
-  recuperacao_45: `{{nomeCliente}}, tudo bem? 💛
-
-Tá fazendo {{diasSemAparecer}} dias que você não aparece e queremos saber como você está.
-
-Se quiser voltar, a gente te ajuda a remarcar sua rotina. Se tá com alguma dificuldade, me conta — a gente pode achar uma solução juntos. 🤝
-
-Qualquer coisa é só responder aqui!
-
-_{{nomeEmpresa}}_`,
-
-  nps_experimental: `Oi, {{nomeCliente}}! 👋
-
-Vi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que tenha curtido! 💛
-
-*Como foi sua experiência?*
-Me manda uma nota de 0 a 10:
-0 = péssimo   10 = excelente
-
-Se quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏`,
-
-  despesa_vencendo: `💸 *Alerta de Despesa — {{nomeEmpresa}}*
-
-{{descricao}}
-💰 Valor: {{valor}}
-📆 Vencimento: {{dataVencimento}} ({{diasRestantesTexto}})
-🏷️ Categoria: {{categoria}}
-
-Não esqueça de quitar pra evitar juros/multa!`
-}
-
 // Mensagem padrão do template (fallback para compatibilidade)
 const MENSAGEM_PADRAO = TEMPLATES_PADRAO.overdue
 
@@ -933,18 +819,7 @@ export default function WhatsAppConexao() {
 
         // 4.1 Criar templates que não existem automaticamente
         // Todos os 3 tipos são criados para garantir que o n8n encontre templates
-        const templatesParaCriar = [
-          { tipo: 'due_day', titulo: 'Lembrete - Vencimento Hoje', mensagem: TEMPLATES_PADRAO.due_day },
-          { tipo: 'pre_due_3days', titulo: 'Lembrete - 3 Dias Antes do Vencimento', mensagem: TEMPLATES_PADRAO.pre_due_3days },
-          { tipo: 'overdue', titulo: 'Cobrança - 3 Dias Após o Vencimento', mensagem: TEMPLATES_PADRAO.overdue },
-          { tipo: 'payment_confirmed', titulo: 'Confirmação de Pagamento', mensagem: TEMPLATES_PADRAO.payment_confirmed },
-          { tipo: 'welcome', titulo: 'Boas-vindas', mensagem: TEMPLATES_PADRAO.welcome },
-          { tipo: 'recuperacao_15', titulo: 'Recuperação - 15 dias', mensagem: 'Oi {{nomeCliente}}! 👋\n\nSentimos sua falta aqui na *{{nomeEmpresa}}* 💛\nTá tudo bem por aí? Já faz {{diasSemAparecer}} dias que não te vemos em aula.\n\nQualquer coisa, me chama aqui!' },
-          { tipo: 'recuperacao_30', titulo: 'Recuperação - 30 dias', mensagem: 'Oi {{nomeCliente}}, tudo bem? 😊\n\nEstamos com saudades na *{{nomeEmpresa}}*!\nJá faz {{diasSemAparecer}} dias desde sua última aula. Que tal voltar essa semana? Sua vaga ainda tá aqui!\n\nSe precisar reagendar ou tiver alguma dificuldade, me conta que a gente ajuda 🙌' },
-          { tipo: 'recuperacao_45', titulo: 'Recuperação - 45 dias', mensagem: '{{nomeCliente}}, tudo bem? 💛\n\nTá fazendo {{diasSemAparecer}} dias que você não aparece e queremos saber como você está.\n\nSe quiser voltar, a gente te ajuda a remarcar. Se tá com alguma dificuldade, me conta, a gente pode achar uma solução juntos.\n\nFalar com atendente é só responder aqui! 🤝\n\n_{{nomeEmpresa}}_' },
-          { tipo: 'nps_experimental', titulo: 'NPS - Pós-Experimental', mensagem: 'Oi {{nomeCliente}}! 👋\n\nVi que você teve sua primeira aula aqui na *{{nomeEmpresa}}* — espero que tenha curtido! 💛\n\n*Como foi sua experiência?*\nMe manda uma nota de 0 a 10:\n0 = péssimo   10 = excelente\n\nSe quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar — sua opinião é ouro pra nós! 🙏' },
-          { tipo: 'despesa_vencendo', titulo: 'Alerta de Despesa Vencendo', mensagem: TEMPLATES_PADRAO.despesa_vencendo }
-        ]
+        const templatesParaCriar = TEMPLATES_SEED
 
         for (const tmpl of templatesParaCriar) {
           if (!agrupados[tmpl.tipo]) {

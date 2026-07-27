@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { TEMPLATES_SEED } from '../data/templatesPadrao'
 
 /**
  * Primitivas de conexão com a Evolution API.
@@ -99,11 +100,59 @@ export async function gerarQrCode(config) {
 }
 
 /**
+ * Cria os templates que faltam na conta. Idempotente: consulta o que já existe e
+ * insere só o resto, então reconectar não duplica nada.
+ *
+ * Precisa acontecer junto da conexão. As views da régua (vw_parcelas_*) fazem
+ * `JOIN mensallizap ON conectado = true` + `LEFT JOIN templates` com
+ * `COALESCE(t.mensagem, '')` — conta conectada e sem template entra na fila de
+ * cobrança com a mensagem VAZIA. Até aqui isso nunca ocorreu porque conectar
+ * exigia abrir /app/whatsapp, que semeia no mount; com o WhatsApp dentro do
+ * wizard as duas ações se separaram.
+ */
+export async function garantirTemplatesPadrao(userId) {
+  const { data: existentes, error } = await supabase
+    .from('templates')
+    .select('tipo')
+    .eq('user_id', userId)
+
+  // Na dúvida não insere: duplicar template é pior que não semear, porque o
+  // findBestTemplate da tela de WhatsApp passaria a ter que desempatar.
+  if (error) throw error
+
+  const jaTem = new Set((existentes || []).map((t) => t.tipo))
+  const faltando = TEMPLATES_SEED.filter((t) => !jaTem.has(t.tipo))
+  if (faltando.length === 0) return 0
+
+  const { error: erroInsert } = await supabase.from('templates').insert(
+    faltando.map((t) => ({
+      user_id: userId,
+      titulo: t.titulo,
+      mensagem: t.mensagem,
+      tipo: t.tipo,
+      ativo: true,
+      is_padrao: true
+    }))
+  )
+
+  if (erroInsert) throw erroInsert
+  return faltando.length
+}
+
+/**
  * Grava a conexão nos dois lugares que o resto do sistema lê:
  * `config` (flags por usuário) e `mensallizap` (fonte do status/health-check).
  */
 export async function salvarConexao(userId, config) {
   const agora = new Date().toISOString()
+
+  // Antes de marcar conectado = true: é esse flag que faz a conta entrar na
+  // régua, então os templates têm que existir antes dela ficar elegível.
+  try {
+    await garantirTemplatesPadrao(userId)
+  } catch (erro) {
+    console.error('Falha ao semear templates padrão:', erro)
+  }
 
   await supabase.from('config').upsert([
     {
