@@ -143,8 +143,14 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
       .eq('user_id', userId)
     console.log(`⚠️ connection.update: caiu ${instance} (statusReason ${statusReason})`)
 
-    // 401 = DisconnectReason.loggedOut → saiu de vez, precisa re-escanear o QR.
-    // Outros códigos = queda transitória; o Baileys reconecta sozinho, não alarmamos.
+    // 401 = DisconnectReason.loggedOut → saiu de vez: avisa na hora, aqui mesmo.
+    //
+    // Outros códigos = o Baileys diz que reconecta sozinho — só que nem sempre
+    // reconecta: a instância fica presa em "connecting" indefinidamente e as
+    // automações param sem ninguém saber. Não alarmamos daqui (seria um aviso a
+    // cada blip de rede), mas a queda JÁ ficou registrada acima (conectado=false
+    // + ultima_desconexao + logs_conexao) e o health-check, que roda de 30 em 30
+    // min, avisa e libera o QR se ainda estiver fora na rodada seguinte.
     if (statusReason !== 401) return
 
     // Anti-spam (mesma janela do health-check, pra não avisar 2x pelos dois caminhos).

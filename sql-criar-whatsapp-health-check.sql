@@ -86,7 +86,12 @@ WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'whatsapp-health-check-diar
 
 SELECT cron.schedule(
   'whatsapp-health-check-diario',
-  '0 11 * * *',  -- 11:00 UTC = 08:00 BRT
+  -- De 30 em 30 min. Era 1x/dia ('0 11 * * *'), o que deixava uma queda no meio
+  -- da manhã invisível por até 24h — tempo de o cliente perder um dia inteiro de
+  -- lembretes de aula e cobranças sem ninguém ser avisado.
+  -- A edge function confirma em duas rodadas antes de deslogar/avisar, então a
+  -- cadência curta não gera logout nem alarme por blip (ver index.ts).
+  '*/30 * * * *',
   $$
   SELECT net.http_post(
     url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url') || '/functions/v1/whatsapp-health-check',

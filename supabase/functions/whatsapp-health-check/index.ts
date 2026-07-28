@@ -14,8 +14,14 @@
 // enquanto a Evolution achar que está conectado, o cliente não
 // consegue gerar QR novo).
 //
+// CONFIRMAÇÃO EM DUAS RODADAS: logout e aviso só acontecem quando a
+// rodada ANTERIOR também viu a instância caída. Rodando de 30 em 30
+// min, um blip isolado não desloga ninguém — o cliente só é derrubado
+// depois de ~30 min consecutivos fora. Sem isso, 48 varreduras/dia dão
+// 48 chances/dia de matar uma sessão viva por um timeout à toa.
+//
 // Grava um relatório (1 linha por cliente) em whatsapp_health_checks.
-// Disparada diariamente pelo pg_cron (ver sql-criar-whatsapp-health-check.sql).
+// Disparada de 30 em 30 min pelo pg_cron (ver sql-criar-whatsapp-health-check.sql).
 // ============================================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -46,6 +52,19 @@ const PROBE_TIMEOUT_MS = 12000
 
 // Anti-spam do aviso de desconexão (Canal C): re-avisa no máximo a cada 3 dias.
 const REAVISO_INTERVALO_MS = 3 * 24 * 60 * 60 * 1000
+
+// Janela pra buscar o veredito da rodada anterior (cadência de 30 min + folga).
+const JANELA_STRIKE_MS = 90 * 60 * 1000
+
+// Estados em que a Evolution respondeu e sabemos o que está acontecendo.
+// "timeout"/"erro" significam que NÃO conseguimos falar com a API — nesse caso
+// não dá pra concluir nada sobre o socket do cliente, então nunca deslogamos
+// nem avisamos (senão uma instabilidade da Evolution derruba a base inteira).
+const ESTADOS_CONCLUSIVOS = ['open', 'close', 'connecting']
+
+// Quantos dias de relatório manter. A 48 varreduras/dia a tabela cresce ~50x
+// mais rápido que antes; o painel só lê a última rodada.
+const RETENCAO_RELATORIO_DIAS = 7
 
 // URL do app pro link de reconexão na mensagem
 const APP_URL = 'https://www.mensalli.com.br'
@@ -276,6 +295,26 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   const botPorUser = new Map<string, boolean>()
   cfgs?.forEach((c: { user_id: string; bot_ativo: boolean }) => botPorUser.set(c.user_id, !!c.bot_ativo))
 
+  // Veredito da rodada anterior (última linha de cada cliente dentro da janela).
+  // É o que autoriza as ações destrutivas: só mexemos em quem já estava caído
+  // na varredura passada. Na primeira execução após um deploy o mapa vem vazio,
+  // então ninguém é deslogado/avisado — a rodada seguinte é que decide.
+  const { data: anteriores } = await admin
+    .from('whatsapp_health_checks')
+    .select('user_id, saudavel, checado_em')
+    .gte('checado_em', new Date(Date.now() - JANELA_STRIKE_MS).toISOString())
+    .order('checado_em', { ascending: false })
+
+  const caidoNaRodadaAnterior = new Map<string, boolean>()
+  anteriores?.forEach((r: { user_id: string; saudavel: boolean }) => {
+    // A lista vem do mais recente pro mais antigo: o primeiro de cada user vence.
+    if (!caidoNaRodadaAnterior.has(r.user_id)) caidoNaRodadaAnterior.set(r.user_id, !r.saudavel)
+  })
+
+  // O self-heal do webhook não precisa rodar 48x/dia — 1x/dia resolve e evita
+  // martelar a Evolution. Roda na varredura das 8h BRT (11h UTC).
+  const rodadaProfunda = new Date().getUTCHours() === 11
+
   const checadoEm = new Date().toISOString()
   const agora = Date.now()
   let total = 0
@@ -302,7 +341,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const estado = await lerEstado(apiUrl, apiKey, instance)
 
     // Self-heal: garante o webhook de connection.update enquanto a instância existir.
-    if (estado !== 'inexistente') {
+    if (estado !== 'inexistente' && rodadaProfunda) {
       await garantirWebhook(apiUrl, apiKey, instance, botPorUser.get(u.id) || false)
     }
 
@@ -325,11 +364,24 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     }
 
     let acao = 'nenhuma'
-    // Derruba quando o painel diz "open" mas a sonda provou que está morto.
-    if (!saudavel && estado === 'open') {
+
+    // Só agimos sobre estado conclusivo: se a Evolution deu timeout/erro não
+    // sabemos nada sobre o cliente, e uma instabilidade da API não pode virar
+    // logout em massa. O masterOk funciona como canário do mesmo problema.
+    const estadoConclusivo = ESTADOS_CONCLUSIVOS.includes(estado)
+    const confirmado = !saudavel && estadoConclusivo && caidoNaRodadaAnterior.get(u.id) === true
+
+    // Derruba a sessão pra liberar o QR Code. Dois casos:
+    //  - painel "open" mas a sonda provou socket morto (o painel mente);
+    //  - painel "close"/"connecting" travado, que é a queda NÃO-401: a Evolution
+    //    fica em loop de reconexão e o cliente não consegue reparear sem isso.
+    // Em ambos, só depois de confirmado em duas rodadas seguidas.
+    if (confirmado && masterOk) {
       const ok = await deslogar(apiUrl, apiKey, instance)
       acao = ok ? 'logout' : 'logout_falhou'
       if (ok) deslogados++
+    } else if (!saudavel && estadoConclusivo) {
+      acao = 'aguardando_confirmacao'
     }
 
     // ============ AVISO DE DESCONEXÃO (Canais A + C) ============
@@ -345,14 +397,18 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
           .update({ conectado: true, ultimo_aviso_desconexao: null, updated_at: checadoEm })
           .eq('user_id', u.id)
       }
-    } else if (estado !== 'inexistente' && jaConectouAlgumDia) {
-      // Canal A: reflete a queda no mensallizap (o banner in-app lê isso)
+    } else if (estadoConclusivo && jaConectouAlgumDia) {
+      // Canal A: reflete a queda no mensallizap (o banner in-app lê isso) já na
+      // PRIMEIRA rodada — é ação não-destrutiva e, além do banner, tira a conta
+      // das views de automação na hora, evitando disparo contra socket morto.
       const ultimoAviso = zap?.ultimo_aviso_desconexao ? Date.parse(zap.ultimo_aviso_desconexao) : 0
       const podeReavisar = !ultimoAviso || (agora - ultimoAviso) >= REAVISO_INTERVALO_MS
 
-      // Canal C: WhatsApp da plataforma → telefone do gestor (anti-spam 3 dias)
+      // Canal C: WhatsApp da plataforma → telefone do gestor (anti-spam 3 dias).
+      // Exige confirmação em duas rodadas: uma queda de segundos que já se
+      // resolveu sozinha não vira mensagem de alarme pro gestor.
       let avisouAgora = false
-      if (masterOk && podeReavisar && u.telefone) {
+      if (confirmado && masterOk && podeReavisar && u.telefone) {
         const nome = (u.nome_empresa || '').trim().split(' ')[0] || 'tudo bem'
         const texto =
           `⚠️ *MensalliZap — atenção*\n\n` +
@@ -364,12 +420,17 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
         if (avisouAgora) avisados++
       }
 
+      // ultima_desconexao marca QUANDO caiu, não quando foi checado: só grava na
+      // primeira rodada em que vimos a queda. Reescrever a cada 30 min apagaria
+      // há quanto tempo o cliente está fora (e o timestamp exato que o webhook
+      // connection.update já tinha registrado).
+      const quedaNova = caidoNaRodadaAnterior.get(u.id) !== true
       await admin
         .from('mensallizap')
         .update({
           conectado: false,
-          ultima_desconexao: checadoEm,
           updated_at: checadoEm,
+          ...(quedaNova ? { ultima_desconexao: checadoEm } : {}),
           ...(avisouAgora ? { ultimo_aviso_desconexao: checadoEm } : {}),
         })
         .eq('user_id', u.id)
@@ -402,6 +463,14 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   }
 
   await flush()
+
+  // Retenção: a 48 varreduras/dia o relatório cresce rápido e o painel só lê a
+  // rodada mais recente. Limpa na varredura profunda pra não pagar isso 48x.
+  if (rodadaProfunda) {
+    const corte = new Date(Date.now() - RETENCAO_RELATORIO_DIAS * 24 * 60 * 60 * 1000).toISOString()
+    const { error: delErr } = await admin.from('whatsapp_health_checks').delete().lt('checado_em', corte)
+    if (delErr) console.error('Erro na limpeza do relatório:', delErr.message)
+  }
 
   const resumo = { total, saudaveis, mortos_detectados: mortos, deslogados, avisados, checado_em: checadoEm }
   console.log('✅ Health check concluído:', JSON.stringify(resumo))
