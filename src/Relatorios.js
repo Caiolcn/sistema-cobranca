@@ -14,6 +14,9 @@ import { showToast } from './Toast';
 import './Home.css';
 import './Relatorios.css';
 
+// YYYY-MM-DD no fuso local: toISOString() usa UTC e depois das 21h ja aponta pro dia seguinte
+const paraISOLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 function Relatorios() {
   const navigate = useNavigate();
   const { userId } = useUser();
@@ -102,11 +105,11 @@ function Relatorios() {
       setLoading(true);
 
       const { inicio, fim } = obterDatasPeriodo();
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = paraISOLocal(new Date());
 
       const seteDiasFrente = new Date();
       seteDiasFrente.setDate(seteDiasFrente.getDate() + 7);
-      const seteDiasFrenteStr = seteDiasFrente.toISOString().split('T')[0];
+      const seteDiasFrenteStr = paraISOLocal(seteDiasFrente);
 
       const tresMesesAtras = new Date();
       tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
@@ -123,7 +126,7 @@ function Relatorios() {
       ] = await Promise.all([
         supabase
           .from('mensalidades')
-          .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at')
+          .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at, data_pagamento')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
@@ -214,7 +217,9 @@ function Relatorios() {
           aVencer++;
         }
 
-        if (p.status === 'pago' && p.updated_at?.substring(0, 10) === hoje) {
+        // Conta pela data da baixa (data_pagamento), não por updated_at: qualquer
+        // edicao posterior numa mensalidade ja paga a traria de volta como "paga hoje"
+        if (p.status === 'pago' && p.data_pagamento?.substring(0, 10) === hoje) {
           pagamentosHojeCount++;
           valorPagamentosHojeTotal += valor;
         }
@@ -705,6 +710,17 @@ function Relatorios() {
           <div className="card-body">
             <span className="card-value positive">{formatarMoeda(valorPagamentosHoje)}</span>
             <span className="card-subtitle">{pagamentosHoje} pagamento{pagamentosHoje !== 1 ? 's' : ''} confirmado{pagamentosHoje !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="card-footer">
+            <button
+              className="btn-ver"
+              onClick={() => {
+                const hoje = paraISOLocal(new Date());
+                navigate(`/app/financeiro?status=pago&tipoData=pagamento&dataInicio=${hoje}&dataFim=${hoje}`);
+              }}
+            >
+              Ver
+            </button>
           </div>
         </div>
 

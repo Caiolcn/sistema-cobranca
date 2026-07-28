@@ -52,8 +52,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const statusFromUrl = searchParams.get('status')
   const [filtroStatus, setFiltroStatus] = useState(statusFromUrl ? [statusFromUrl] : [])
   const [filtroVencimento, setFiltroVencimento] = useState(null)
-  const [filtroDataInicio, setFiltroDataInicio] = useState('')
-  const [filtroDataFim, setFiltroDataFim] = useState('')
+  const [filtroDataInicio, setFiltroDataInicio] = useState(searchParams.get('dataInicio') || '')
+  const [filtroDataFim, setFiltroDataFim] = useState(searchParams.get('dataFim') || '')
+  // Eixo de data do período personalizado: 'vencimento' (quando vence) ou 'pagamento' (quando a baixa foi dada)
+  const [filtroTipoData, setFiltroTipoData] = useState(
+    searchParams.get('tipoData') === 'pagamento' ? 'pagamento' : 'vencimento'
+  )
   const [filtroNome, setFiltroNome] = useState('')
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
 
@@ -174,11 +178,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     if (statusFromUrl) {
       setFiltroStatus([statusFromUrl])
     }
+    const tipoDataFromUrl = searchParams.get('tipoData')
+    if (tipoDataFromUrl) {
+      setFiltroTipoData(tipoDataFromUrl === 'pagamento' ? 'pagamento' : 'vencimento')
+    }
+    const inicioFromUrl = searchParams.get('dataInicio')
+    if (inicioFromUrl) setFiltroDataInicio(inicioFromUrl)
+    const fimFromUrl = searchParams.get('dataFim')
+    if (fimFromUrl) setFiltroDataFim(fimFromUrl)
   }, [searchParams])
 
   useEffect(() => {
     aplicarFiltros()
-  }, [mensalidades, vendas, filtroStatus, filtroVencimento, filtroDataInicio, filtroDataFim, filtroNomeDebounced])
+  }, [mensalidades, vendas, filtroStatus, filtroVencimento, filtroTipoData, filtroDataInicio, filtroDataFim, filtroNomeDebounced])
 
   // OTIMIZAÇÃO: Consolidar carregarMensalidades, carregarClientes e calcularMRR em uma única função
   const carregarDados = useCallback(async () => {
@@ -339,6 +351,20 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setTotalProximosVencimentos(totalProx)
   }
 
+  // Período personalizado: olha o vencimento (padrão) ou a data da baixa, conforme filtroTipoData.
+  // Usa T12:00:00 porque `new Date('2026-07-30')` é lido como UTC e volta um dia no fuso de Brasília.
+  const dentroDoPeriodo = (item) => {
+    const dataRef = filtroTipoData === 'pagamento' ? item.data_pagamento : item.data_vencimento
+    if (!dataRef) return false
+
+    const data = new Date(String(dataRef).slice(0, 10) + 'T12:00:00')
+    data.setHours(0, 0, 0, 0)
+
+    if (filtroDataInicio && data < new Date(filtroDataInicio + 'T00:00:00')) return false
+    if (filtroDataFim && data > new Date(filtroDataFim + 'T00:00:00')) return false
+    return true
+  }
+
   const aplicarFiltros = () => {
     let resultado = [...mensalidades]
 
@@ -361,7 +387,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       hoje.setHours(0, 0, 0, 0)
 
       resultado = resultado.filter(p => {
-        const venc = new Date(p.data_vencimento)
+        const venc = new Date(p.data_vencimento + 'T12:00:00')
         venc.setHours(0, 0, 0, 0)
         const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
 
@@ -372,25 +398,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       })
     }
 
-    // Filtro por período personalizado
+    // Filtro por período personalizado (vencimento ou data da baixa)
     if (filtroDataInicio || filtroDataFim) {
-      resultado = resultado.filter(p => {
-        const venc = new Date(p.data_vencimento)
-        venc.setHours(0, 0, 0, 0)
-
-        if (filtroDataInicio && filtroDataFim) {
-          const inicio = new Date(filtroDataInicio + 'T00:00:00')
-          const fim = new Date(filtroDataFim + 'T00:00:00')
-          return venc >= inicio && venc <= fim
-        } else if (filtroDataInicio) {
-          const inicio = new Date(filtroDataInicio + 'T00:00:00')
-          return venc >= inicio
-        } else if (filtroDataFim) {
-          const fim = new Date(filtroDataFim + 'T00:00:00')
-          return venc <= fim
-        }
-        return true
-      })
+      resultado = resultado.filter(dentroDoPeriodo)
     }
 
     // Ordenar: atrasado > aberto > pago
@@ -442,7 +452,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     // Filtro por vencimento
     if (filtroVencimento) {
       resultado = resultado.filter(v => {
-        const venc = new Date(v.data_vencimento)
+        const venc = new Date(v.data_vencimento + 'T12:00:00')
         venc.setHours(0, 0, 0, 0)
         const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24))
 
@@ -453,25 +463,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       })
     }
 
-    // Filtro por período personalizado
+    // Filtro por período personalizado (vencimento ou data da baixa)
     if (filtroDataInicio || filtroDataFim) {
-      resultado = resultado.filter(v => {
-        const venc = new Date(v.data_vencimento)
-        venc.setHours(0, 0, 0, 0)
-
-        if (filtroDataInicio && filtroDataFim) {
-          const inicio = new Date(filtroDataInicio + 'T00:00:00')
-          const fim = new Date(filtroDataFim + 'T00:00:00')
-          return venc >= inicio && venc <= fim
-        } else if (filtroDataInicio) {
-          const inicio = new Date(filtroDataInicio + 'T00:00:00')
-          return venc >= inicio
-        } else if (filtroDataFim) {
-          const fim = new Date(filtroDataFim + 'T00:00:00')
-          return venc <= fim
-        }
-        return true
-      })
+      resultado = resultado.filter(dentroDoPeriodo)
     }
 
     return resultado
@@ -1293,6 +1287,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const limparFiltros = () => {
     setFiltroStatus([])
     setFiltroVencimento(null)
+    setFiltroTipoData('vencimento')
     setFiltroDataInicio('')
     setFiltroDataFim('')
     setFiltroNome('')
@@ -1468,7 +1463,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   fontWeight: '700',
                   border: '2px solid white'
                 }}>
-                  {filtroStatus.length + (filtroVencimento ? 1 : 0)}
+                  {filtroStatus.length + (filtroVencimento ? 1 : 0) + ((filtroDataInicio || filtroDataFim) ? 1 : 0)}
                 </span>
               )}
             </Button>
@@ -1574,6 +1569,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     <label className="ds-input-label" style={{ display: 'block', marginBottom: '10px' }}>
                       Período Personalizado
                     </label>
+                    <div style={{ marginBottom: '10px' }}>
+                      <Select
+                        portal
+                        value={filtroTipoData}
+                        onChange={(v) => setFiltroTipoData(v || 'vencimento')}
+                        options={[
+                          { value: 'vencimento', label: 'Por data de vencimento' },
+                          { value: 'pagamento', label: 'Por data de pagamento' },
+                        ]}
+                      />
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <DateField value={filtroDataInicio} onChange={setFiltroDataInicio} />
                       <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
