@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient'
 import { resolverDestinatario } from '../utils/destinatario'
 import { calcularMultaJuros } from '../utils/multaJuros'
+import { modoEspelhoAtivo, ERRO_ESPELHO } from '../utils/modoEspelho'
 
 /**
  * Serviço para integração com Evolution API
@@ -32,8 +33,22 @@ class WhatsAppService {
 
   /**
    * Fetch com timeout para evitar requisições que travam
+   *
+   * Ponto único de saída pra Evolution API — por isso a trava do modo espelho
+   * mora aqui. Em espelho, GET passa (ler status da conexão é o que a gente
+   * quer ver) e o resto não: enviar mensagem, reiniciar ou desconectar a
+   * instância do cliente sairia no WhatsApp real dele.
    */
   async fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const metodo = (options.method || 'GET').toUpperCase()
+    if (metodo !== 'GET' && modoEspelhoAtivo()) {
+      console.warn('[modo espelho] chamada bloqueada:', metodo, url)
+      return new Response(
+        JSON.stringify({ error: ERRO_ESPELHO.message, code: ERRO_ESPELHO.code }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 

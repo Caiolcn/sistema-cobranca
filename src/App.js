@@ -13,6 +13,7 @@ import Signup from './Signup'
 import ResetPassword from './ResetPassword'
 import Privacidade from './pages/Privacidade'
 import RequireOnboarding from './RequireOnboarding'
+import BarraModoEspelho from './components/BarraModoEspelho'
 
 // Lazy loading para componentes do app (carregados sob demanda)
 // Economia estimada: ~339 KiB no carregamento inicial
@@ -44,6 +45,7 @@ const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 const LinkInBio = lazy(() => import('./pages/LinkInBio'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
+const VerComo = lazy(() => import('./pages/VerComo'))
 
 // Design System (rota interna /app/design-system/*)
 const DSLayout = lazy(() => import('./design-system/DSLayout'))
@@ -115,6 +117,7 @@ function App() {
     <Router>
       <UserProvider>
         <div className="App">
+          <BarraModoEspelho />
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Rotas públicas */}
@@ -127,6 +130,8 @@ function App() {
               <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
+              {/* Ver como cliente: resgata o token e abre a sessão dele (modo espelho) */}
+              <Route path="/ver-como/:token" element={<VerComo />} />
               <Route path="/links" element={<LinkInBio />} />
               <Route path="/privacidade" element={<Privacidade />} />
 

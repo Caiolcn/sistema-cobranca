@@ -42,6 +42,39 @@ export default function Dashboard() {
   // Admin: lista de clientes para o dropdown
   const [adminClientes, setAdminClientes] = useState([])
   const [adminBarVisivel, setAdminBarVisivel] = useState(true)
+  const [gerandoEspelho, setGerandoEspelho] = useState(false)
+  const [linkEspelho, setLinkEspelho] = useState(null)
+
+  // Admin: gera o link "ver como cliente" (modo espelho).
+  // O seletor ao lado troca só o user_id das queries — segue com o SEU JWT, e
+  // some com o que a policy da tabela não liberar pra admin. Este link abre a
+  // sessão real do cliente, então mostra a conta como ela é de fato.
+  const gerarLinkEspelho = async () => {
+    if (!adminViewingAs || gerandoEspelho) return
+
+    setGerandoEspelho(true)
+    setLinkEspelho(null)
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-impersonar', {
+        body: { targetUserId: adminViewingAs },
+      })
+
+      if (error || data?.error) {
+        alert(`Não foi possível gerar o link: ${data?.error || error.message}`)
+        return
+      }
+
+      setLinkEspelho(data.url)
+      try {
+        await navigator.clipboard.writeText(data.url)
+      } catch {
+        // Sem permissão de clipboard: o link fica visível na barra pra copiar na mão.
+      }
+    } finally {
+      setGerandoEspelho(false)
+    }
+  }
 
   // Notificacoes em tempo real de pagamentos e agendamentos
   usePaymentNotifications(realUserId || userId)
@@ -1383,6 +1416,49 @@ export default function Dashboard() {
                 onClick={() => { navigator.clipboard.writeText(adminViewingAs) }}
               >
                 ID: {adminViewingAs.substring(0, 8)}... (clique p/ copiar)
+              </span>
+            )}
+            {adminViewingAs && !isMobile && (
+              <button
+                onClick={gerarLinkEspelho}
+                disabled={gerandoEspelho}
+                title="Gera um link de 15 min, uso único, pra abrir a conta no navegador anônimo e ver exatamente o que o cliente vê"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 10px',
+                  backgroundColor: '#16213e',
+                  color: '#fff',
+                  border: '1px solid #2a2a4a',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: gerandoEspelho ? 'default' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+                // App.css pinta todo button de azul no hover — sobrescreve na mão.
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#22305a' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#16213e' }}
+              >
+                <Icon icon="mdi:eye-outline" width="14" height="14" />
+                {gerandoEspelho ? 'Gerando…' : 'Ver como cliente'}
+              </button>
+            )}
+            {linkEspelho && !isMobile && (
+              <span
+                onClick={() => navigator.clipboard.writeText(linkEspelho)}
+                title={linkEspelho}
+                style={{
+                  color: '#7ee787',
+                  fontSize: '12px',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                ✓ link copiado — abra no anônimo (vale 15 min)
               </span>
             )}
             <div
