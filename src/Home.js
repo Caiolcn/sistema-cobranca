@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Icon } from '@iconify/react';
@@ -81,9 +81,9 @@ function Home() {
   // Modal de cobrança rápida (mensagem editável + envio direto pelo WhatsApp)
   const [modalCobranca, setModalCobranca] = useState(null); // { item, mensagem, carregando, enviando }
 
-  // Onboarding checklist
-  const [mostrarChecklist, setMostrarChecklist] = useState(false);
-  const [onboardingSteps, setOnboardingSteps] = useState({ empresa: false, pix: false, whatsapp: false, cliente: false });
+  // Onboarding checklist: só os sinais que vêm das queries do dashboard.
+  // empresa/PIX entram no useMemo abaixo, direto do contexto.
+  const [sinaisOnboarding, setSinaisOnboarding] = useState({ whatsapp: false, cliente: false });
 
   // Carregar dados quando userId mudar.
   // Espera o contexto do usuário terminar de carregar (loadingUser): user/userId
@@ -409,33 +409,13 @@ function Home() {
       const ativas = assinaturasAtivasList.length;
       const mrrCalculado = assinaturasAtivasList.reduce((sum, assin) => sum + (parseFloat(assin.plano?.valor) || 0), 0);
 
-      // Onboarding checklist
-      const steps = {
-        empresa: !!(nomeEmpresaContext && nomeEmpresaContext.trim()),
-        pix: !!(chavePix && chavePix.trim()),
+      // Onboarding: guarda só o que depende destas queries. Empresa e PIX saem
+      // do contexto e são derivados por useMemo lá embaixo — se calculássemos
+      // aqui, um contexto que chega atrasado congelaria o checklist errado.
+      setSinaisOnboarding({
         whatsapp: !!whatsappConectado,
         cliente: (todosClientes?.length || 0) > 0
-      };
-      setOnboardingSteps(steps);
-
-      const todasCompletas = steps.empresa && steps.pix && steps.whatsapp && steps.cliente;
-
-      // Se já completou onboarding antes, nunca mais mostrar
-      if (!isAdmin && userData?.onboarding_completed === true) {
-        setMostrarChecklist(false);
-      } else if (isAdmin && adminViewingAs) {
-        // Admin vendo cliente: mostrar se não completou
-        setMostrarChecklist(!todasCompletas);
-      } else if (!isAdmin && !todasCompletas) {
-        setMostrarChecklist(true);
-      } else {
-        setMostrarChecklist(false);
-      }
-
-      // Marcar como completado quando todas as etapas forem concluídas
-      if (todasCompletas && !isAdmin && userData?.onboarding_completed !== true) {
-        supabase.from('usuarios').update({ onboarding_completed: true, onboarding_step: 4 }).eq('id', userId);
-      }
+      });
 
       setDashboardData({
         mrr: mrrCalculado,
@@ -459,10 +439,52 @@ function Home() {
     } finally {
       setLoading(false);
     }
-  // nomeEmpresaContext/chavePix nas deps: recria o callback quando o contexto
-  // carrega, para os steps empresa/pix do onboarding usarem os valores reais.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, nomeEmpresaContext, chavePix]);
+  }, [userId]);
+
+  /* ----------------------------------------------------------------
+     Onboarding derivado — nunca um retrato do instante da query.
+
+     O checklist já travou duas vezes mostrando empresa/PIX pendentes com
+     tudo preenchido, porque era calculado dentro de carregarDados: o
+     UserContext faz setUser(authUser) ANTES de buscar a linha de `usuarios`,
+     então existe um render com userId preenchido e nomeEmpresa/chavePix ainda
+     vazios. O efeito disparava nessa fresta e nada recalculava depois.
+
+     Gate por `loading` do contexto não resolve o caso em que o app montou sem
+     sessão (link de "ver como", aba aberta no /login): ali o loading já
+     terminou em false com userData null, e o usuário chega depois pelo
+     onAuthStateChange. Derivando por useMemo, quando o contexto chega o
+     checklist se corrige sozinho.
+  ---------------------------------------------------------------- */
+  const onboardingSteps = useMemo(() => ({
+    empresa: !!(nomeEmpresaContext && nomeEmpresaContext.trim()),
+    pix: !!(chavePix && chavePix.trim()),
+    whatsapp: sinaisOnboarding.whatsapp,
+    cliente: sinaisOnboarding.cliente
+  }), [nomeEmpresaContext, chavePix, sinaisOnboarding]);
+
+  const todasEtapasCompletas =
+    onboardingSteps.empresa && onboardingSteps.pix && onboardingSteps.whatsapp && onboardingSteps.cliente;
+
+  const mostrarChecklist = useMemo(() => {
+    // Enquanto o contexto não chegou, não dá pra afirmar que falta alguma
+    // coisa — mostrar aqui é justamente o que fazia o painel piscar errado.
+    if (loadingUser || !userData) return false;
+    // Quem já completou uma vez não vê mais.
+    if (!isAdmin && userData.onboarding_completed === true) return false;
+    if (isAdmin && adminViewingAs) return !todasEtapasCompletas;
+    return !isAdmin && !todasEtapasCompletas;
+  }, [loadingUser, userData, isAdmin, adminViewingAs, todasEtapasCompletas]);
+
+  // Marca como completo assim que as 4 etapas fecham (no modo espelho a trava
+  // de escrita barra o update, e tudo bem: é a conta do cliente).
+  useEffect(() => {
+    if (!userId || !userData) return;
+    if (todasEtapasCompletas && !isAdmin && userData.onboarding_completed !== true) {
+      supabase.from('usuarios').update({ onboarding_completed: true, onboarding_step: 4 }).eq('id', userId);
+    }
+  }, [todasEtapasCompletas, isAdmin, userData, userId]);
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
