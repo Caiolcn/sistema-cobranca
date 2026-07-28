@@ -11,7 +11,7 @@ import whatsappService from './services/whatsappService'
 import { resolverDestinatario } from './utils/destinatario'
 // Textos vivem em src/data pra o wizard de onboarding poder semear os mesmos
 // templates ao conectar, sem importar este componente inteiro
-import { TEMPLATES_PADRAO, TEMPLATES_SEED } from './data/templatesPadrao'
+import { TEMPLATES_PADRAO, TEMPLATES_SEED, TITULOS_PADRAO } from './data/templatesPadrao'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 
@@ -1364,16 +1364,7 @@ export default function WhatsAppConexao() {
         return false
       }
 
-      // Criar template padrão
-      const titulos = {
-        pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
-        due_day: 'Lembrete - Vencimento Hoje',
-        overdue: 'Cobrança - 3 Dias Após o Vencimento',
-        class_reminder: 'Lembrete de Aula',
-        birthday: 'Mensagem de Aniversário',
-        payment_confirmed: 'Confirmação de Pagamento',
-        welcome: 'Boas-vindas'
-      }
+      const titulos = TITULOS_PADRAO
 
       // Se já existe, verificar se precisa atualizar
       if (existente) {
@@ -2139,19 +2130,7 @@ export default function WhatsAppConexao() {
       .replace(/\{\{linkPagamento\}\}/g, 'https://app.mensallizap.com.br/pagar/abc123')
   }
 
-  const getTituloDefault = (tipo) => {
-    const titulos = {
-      pre_due_3days: 'Lembrete - 3 Dias Antes do Vencimento',
-      due_day: 'Lembrete - Vencimento Hoje',
-      overdue: 'Cobrança - 3 Dias Após o Vencimento',
-      class_reminder: 'Lembrete de Aula',
-      birthday: 'Mensagem de Aniversário',
-      payment_confirmed: 'Confirmação de Pagamento',
-      welcome: 'Boas-vindas',
-      despesa_vencendo: 'Alerta de Despesa Vencendo'
-    }
-    return titulos[tipo] || ''
-  }
+  const getTituloDefault = (tipo) => TITULOS_PADRAO[tipo] || ''
 
   const getMensagemDefault = (tipo) => {
     let mensagem = TEMPLATES_PADRAO[tipo] || TEMPLATES_PADRAO.overdue
@@ -2232,15 +2211,11 @@ export default function WhatsAppConexao() {
         if (customizado) return customizado
         return templates?.find(t => t.tipo === tipo) || null
       }
-      const agrupados = {
-        pre_due_3days: findBestTemplate('pre_due_3days'),
-        due_day: findBestTemplate('due_day'),
-        overdue: findBestTemplate('overdue'),
-        class_reminder: findBestTemplate('class_reminder'),
-        birthday: findBestTemplate('birthday'),
-        payment_confirmed: findBestTemplate('payment_confirmed'),
-        welcome: findBestTemplate('welcome')
-      }
+      // Todos os tipos conhecidos — tipo de fora daqui nunca acha o template salvo,
+      // e o salvar vira INSERT duplicado em vez de UPDATE
+      const agrupados = Object.fromEntries(
+        Object.keys(TITULOS_PADRAO).map(tipo => [tipo, findBestTemplate(tipo)])
+      )
 
       setTemplatesAgrupados(agrupados)
 
