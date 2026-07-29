@@ -197,7 +197,6 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
   const linkWaHero = (linkWaBase && empresa.mostrar_cta_whatsapp !== false) ? linkWaBase : null
   // CTA final: secao renderiza pelo mostrar_cta_final; botao dentro pelo cta_final_mostrar_botao
   const mostrarSecaoFinal = empresa.mostrar_cta_final !== false
-  const linkWaFinal = (linkWaBase && empresa.cta_final_mostrar_botao !== false) ? linkWaBase : null
   // Footer: sempre mostra se tem telefone (eh contato, nao CTA)
   const linkWaFooter = linkWaBase
   const linkAgendar = (empresa.agendamento_ativo && empresa.agendamento_slug && empresa.mostrar_cta_agendar !== false)
@@ -221,6 +220,21 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
   const heroSubtitulo = empresa.hero_subtitulo
     || [empresa.cidade, empresa.estado].filter(Boolean).join(' — ')
   const ctaTexto = empresa.cta_texto || 'Agendar experimental'
+
+  // Botao do CTA final: destino escolhido pelo dono (whatsapp | agendamento | custom).
+  // Cada destino traz o proprio icone — WhatsApp fixo mentia quando o link ia pra outro lugar.
+  // Se o destino escolhido nao tem link valido (ex.: agendamento desativado), o botao some
+  // em vez de cair no WhatsApp por baixo dos panos.
+  const ctaFinalDestino = empresa.cta_final_destino || 'whatsapp'
+  const ctaFinalUrlCustom = urlExterna(empresa.cta_final_url)
+  const alvoFinal =
+    ctaFinalDestino === 'agendamento'
+      ? (urlAgendar ? { href: urlAgendar, externo: false, icone: 'mdi:calendar-check' } : null)
+      : ctaFinalDestino === 'custom'
+        ? (ctaFinalUrlCustom ? { href: ctaFinalUrlCustom, externo: true, icone: 'mdi:arrow-right' } : null)
+        : (linkWaBase ? { href: linkWaBase, externo: true, icone: 'mdi:whatsapp' } : null)
+  const botaoFinal = empresa.cta_final_mostrar_botao !== false ? alvoFinal : null
+  const ctaFinalTexto = empresa.cta_final_texto || ctaTexto
 
   // Galeria e FAQ
   const galeria = Array.isArray(empresa.galeria) ? empresa.galeria.filter(Boolean) : []
@@ -745,12 +759,14 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
           </h2>
           <p style={{
             fontSize: '16px', opacity: 0.9, whiteSpace: 'pre-wrap',
-            margin: linkWaFinal ? '0 0 28px' : 0
+            margin: botaoFinal ? '0 0 28px' : 0
           }}>
             {ctaFinalSubtitulo}
           </p>
-          {linkWaFinal && (
-            <a href={linkWaFinal} target="_blank" rel="noreferrer"
+          {botaoFinal && (
+            <a href={botaoFinal.href}
+              target={botaoFinal.externo ? '_blank' : undefined}
+              rel={botaoFinal.externo ? 'noreferrer' : undefined}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -764,8 +780,8 @@ export default function LandingAcademia({ previewData = null, viewportWidth = nu
                 fontSize: '17px',
                 boxShadow: '0 10px 28px rgba(0,0,0,0.25)'
               }}>
-              <Icon icon="mdi:whatsapp" width="24" />
-              {ctaTexto}
+              <Icon icon={botaoFinal.icone} width="24" />
+              {ctaFinalTexto}
             </a>
           )}
         </section>

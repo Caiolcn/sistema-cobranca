@@ -293,7 +293,10 @@ function Configuracao({ secao = 'config' }) {
     mostrarCtaWhatsapp: true,
     mostrarCtaAgendar: true,
     mostrarCtaFinal: true,
-    ctaFinalMostrarBotao: true
+    ctaFinalMostrarBotao: true,
+    ctaFinalDestino: 'whatsapp',
+    ctaFinalUrl: '',
+    ctaFinalTexto: ''
   })
   const [salvandoLanding, setSalvandoLanding] = useState(false)
   const [uploadingCapa, setUploadingCapa] = useState(false)
@@ -459,7 +462,10 @@ function Configuracao({ secao = 'config' }) {
         mostrarCtaWhatsapp: data.landing_mostrar_cta_whatsapp !== false,
         mostrarCtaAgendar: data.landing_mostrar_cta_agendar !== false,
         mostrarCtaFinal: data.landing_mostrar_cta_final !== false,
-        ctaFinalMostrarBotao: data.landing_cta_final_mostrar_botao !== false
+        ctaFinalMostrarBotao: data.landing_cta_final_mostrar_botao !== false,
+        ctaFinalDestino: data.landing_cta_final_destino || 'whatsapp',
+        ctaFinalUrl: data.landing_cta_final_url || '',
+        ctaFinalTexto: data.landing_cta_final_texto || ''
       })
 
       // Carregar campos extras da anamnese
@@ -3440,7 +3446,10 @@ function Configuracao({ secao = 'config' }) {
           landing_mostrar_cta_whatsapp: landingConfig.mostrarCtaWhatsapp,
           landing_mostrar_cta_agendar: landingConfig.mostrarCtaAgendar,
           landing_mostrar_cta_final: landingConfig.mostrarCtaFinal,
-          landing_cta_final_mostrar_botao: landingConfig.ctaFinalMostrarBotao
+          landing_cta_final_mostrar_botao: landingConfig.ctaFinalMostrarBotao,
+          landing_cta_final_destino: landingConfig.ctaFinalDestino || 'whatsapp',
+          landing_cta_final_url: (landingConfig.ctaFinalUrl || '').trim() || null,
+          landing_cta_final_texto: (landingConfig.ctaFinalTexto || '').trim() || null
         })
         .eq('id', contextUserId)
 
@@ -3673,7 +3682,10 @@ function Configuracao({ secao = 'config' }) {
         mostrar_cta_whatsapp: landingConfig.mostrarCtaWhatsapp,
         mostrar_cta_agendar: landingConfig.mostrarCtaAgendar,
         mostrar_cta_final: landingConfig.mostrarCtaFinal,
-        cta_final_mostrar_botao: landingConfig.ctaFinalMostrarBotao
+        cta_final_mostrar_botao: landingConfig.ctaFinalMostrarBotao,
+        cta_final_destino: landingConfig.ctaFinalDestino || 'whatsapp',
+        cta_final_url: landingConfig.ctaFinalUrl,
+        cta_final_texto: landingConfig.ctaFinalTexto
       },
       planos: previewPlanos,
       aulas: previewAulas,
@@ -4655,7 +4667,7 @@ function Configuracao({ secao = 'config' }) {
           visivel={landingConfig.mostrarCtaFinal}
           onToggleVisivel={() => setLandingConfig(prev => ({ ...prev, mostrarCtaFinal: !prev.mostrarCtaFinal }))}>
         <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#888' }}>
-          O bloco grande colorido com chamada final. O texto do botão é o mesmo do hero.
+          O bloco grande colorido com chamada final. Você escolhe pra onde o botão leva e o texto dele.
         </p>
 
           {/* Toggles de visibilidade */}
@@ -4691,13 +4703,124 @@ function Configuracao({ secao = 'config' }) {
                 checked={landingConfig.ctaFinalMostrarBotao}
                 onChange={e => setLandingConfig(prev => ({ ...prev, ctaFinalMostrarBotao: e.target.checked }))}
               />
-              <Icon icon="mdi:whatsapp" width="18" style={{ color: '#25d366' }} />
+              <Icon
+                icon={landingConfig.ctaFinalDestino === 'agendamento'
+                  ? 'mdi:calendar-check'
+                  : landingConfig.ctaFinalDestino === 'custom' ? 'mdi:link-variant' : 'mdi:whatsapp'}
+                width="18"
+                style={{ color: landingConfig.ctaFinalDestino === 'whatsapp' ? '#25d366' : '#666' }}
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>Mostrar botão WhatsApp nessa seção</div>
+                <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>Mostrar botão nessa seção</div>
                 <div style={{ fontSize: '11px', color: '#999' }}>Desmarque se quer só o texto (sem CTA clicável)</div>
               </div>
             </label>
           </div>
+
+          {/* Destino do botao */}
+          {landingConfig.mostrarCtaFinal && landingConfig.ctaFinalMostrarBotao && (
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px', marginBottom: '14px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+                Para onde esse botão leva
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  {
+                    id: 'whatsapp',
+                    icone: 'mdi:whatsapp',
+                    cor: '#25d366',
+                    titulo: 'WhatsApp',
+                    desc: 'Abre a conversa no número cadastrado na sua empresa'
+                  },
+                  {
+                    id: 'agendamento',
+                    icone: 'mdi:calendar-check',
+                    cor: '#2563eb',
+                    titulo: 'Agendamento online',
+                    desc: (agendamentoConfig.ativo && agendamentoConfig.slug)
+                      ? `${window.location.origin}/agendar/${agendamentoConfig.slug}`
+                      : 'Ative o agendamento online primeiro (aba Agendamento)'
+                  },
+                  {
+                    id: 'custom',
+                    icone: 'mdi:link-variant',
+                    cor: '#666',
+                    titulo: 'Outro link',
+                    desc: 'Formulário, Calendly, Instagram — qualquer endereço'
+                  }
+                ].map(opt => {
+                  const bloqueada = opt.id === 'agendamento' && !(agendamentoConfig.ativo && agendamentoConfig.slug)
+                  const marcada = landingConfig.ctaFinalDestino === opt.id
+                  return (
+                    <label key={opt.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '10px 12px', border: `1px solid ${marcada ? '#c7e7d3' : '#eee'}`,
+                      borderRadius: '8px',
+                      cursor: bloqueada ? 'not-allowed' : 'pointer',
+                      opacity: bloqueada ? 0.5 : 1,
+                      backgroundColor: marcada ? '#f0fdf4' : '#fff'
+                    }}>
+                      <input
+                        type="radio"
+                        name="ctaFinalDestino"
+                        disabled={bloqueada}
+                        checked={marcada}
+                        onChange={() => setLandingConfig(prev => ({ ...prev, ctaFinalDestino: opt.id }))}
+                      />
+                      <Icon icon={opt.icone} width="18" style={{ color: opt.cor }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>{opt.titulo}</div>
+                        <div style={{
+                          fontSize: '11px', color: '#999',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }}>
+                          {opt.desc}
+                        </div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+
+              {landingConfig.ctaFinalDestino === 'custom' && (
+                <div style={{ marginTop: '10px' }}>
+                  <input
+                    type="text"
+                    value={landingConfig.ctaFinalUrl || ''}
+                    onChange={e => setLandingConfig(prev => ({ ...prev, ctaFinalUrl: e.target.value }))}
+                    placeholder="https://..."
+                    style={{
+                      width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                      borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box'
+                    }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                    Sem link preenchido o botão não aparece na página.
+                  </div>
+                </div>
+              )}
+
+              {/* Texto proprio do botao (senao herda o do hero) */}
+              <div style={{ marginTop: '12px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>
+                  Texto do botão <span style={{ color: '#aaa', fontWeight: '400' }}>(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={landingConfig.ctaFinalTexto || ''}
+                  onChange={e => setLandingConfig(prev => ({ ...prev, ctaFinalTexto: e.target.value.slice(0, 40) }))}
+                  placeholder={landingConfig.ctaTexto || 'Agendar experimental'}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1px solid #ddd',
+                    borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box'
+                  }}
+                />
+                <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                  Em branco, usa o mesmo texto do botão do topo.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Título */}
           <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#555', marginBottom: '6px' }}>

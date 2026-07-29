@@ -59,6 +59,7 @@ serve(async (req) => {
         landing_mostrar_galeria, landing_mostrar_faq, landing_mostrar_youtube,
         landing_mostrar_cta_whatsapp, landing_mostrar_cta_agendar, landing_mostrar_cta_final,
         landing_cta_final_mostrar_botao,
+        landing_cta_final_destino, landing_cta_final_url, landing_cta_final_texto,
         agendamento_slug, agendamento_ativo
       `)
       .eq('landing_slug', slug)
@@ -210,6 +211,9 @@ serve(async (req) => {
           mostrar_cta_agendar: empresa.landing_mostrar_cta_agendar !== false,
           mostrar_cta_final: empresa.landing_mostrar_cta_final !== false,
           cta_final_mostrar_botao: empresa.landing_cta_final_mostrar_botao !== false,
+          cta_final_destino: empresa.landing_cta_final_destino || 'whatsapp',
+          cta_final_url: empresa.landing_cta_final_url || null,
+          cta_final_texto: empresa.landing_cta_final_texto || null,
         },
         planos,
         aulas,
