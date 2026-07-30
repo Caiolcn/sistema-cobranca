@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
@@ -14,6 +14,7 @@ import AnamneseSection from './components/AnamneseSection'
 import ContratosSection from './ContratosSection'
 import { validarTelefone, validarCPF } from './utils/validators'
 import { criarMatcherBusca } from './utils/busca'
+import { valorEfetivoMensalidade } from './utils/multaJuros'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
@@ -52,6 +53,7 @@ export default function Clientes() {
   const { limiteClientes, plano, isLocked } = useUserPlan()
   const { userId, nomeEmpresa, loading: loadingUser } = useUser()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [abaAtiva, setAbaAtiva] = useState(searchParams.get('aba') || 'alunos')
   const [clientes, setClientes] = useState([])
   const [clientesFiltrados, setClientesFiltrados] = useState([])
@@ -60,6 +62,7 @@ export default function Clientes() {
   const [mostrarModal, setMostrarModal] = useState(false)
   const [abaPerfil, setAbaPerfil] = useState('dados')
   const [mensalidadesCliente, setMensalidadesCliente] = useState([])
+  const [multaJurosConfig, setMultaJurosConfig] = useState({ ativo: false, multa_percent: 0, juros_mes_percent: 0 })
   const [cobrancasAvulsasCliente, setCobrancasAvulsasCliente] = useState([])
   const [nomeEdit, setNomeEdit] = useState('')
   const [telefoneEdit, setTelefoneEdit] = useState('')
@@ -132,7 +135,6 @@ export default function Clientes() {
   const [mensagemBoasVindasCustom, setMensagemBoasVindasCustom] = useState('')
 
   // Estados para modais de confirmação
-  const [confirmPagamento, setConfirmPagamento] = useState({ show: false, mensalidade: null, novoPago: false })
   const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
   const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState({ show: false, clienteId: null })
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
@@ -163,6 +165,15 @@ export default function Clientes() {
       carregarClientes()
       carregarPlanos()
       carregarTags()
+      // Config de multa/juros: só pra exibir o valor com acréscimo no histórico
+      supabase
+        .from('usuarios')
+        .select('asaas_multa_juros')
+        .eq('id', userId)
+        .single()
+        .then(({ data }) => {
+          if (data?.asaas_multa_juros) setMultaJurosConfig(data.asaas_multa_juros)
+        })
     }
   }, [userId])
 
@@ -846,117 +857,8 @@ export default function Clientes() {
     }
   }
 
-  // Criar próxima mensalidade automaticamente ao marcar como pago
-  const criarProximaMensalidade = async (mensalidadeAtual) => {
-    try {
-      const devedor = mensalidadeAtual.devedores
-      if (!devedor || !devedor.assinatura_ativa) return
-
-      // Não criar próxima mensalidade para planos tipo pacote
-      if (devedor.plano?.tipo === 'pacote') return
-
-      const isRecorrente = mensalidadeAtual.is_mensalidade === true ||
-                           (mensalidadeAtual.is_mensalidade == null && devedor.assinatura_ativa)
-      if (!isRecorrente) return
-
-      const dataVencimentoAtual = new Date(mensalidadeAtual.data_vencimento + 'T00:00:00')
-      const proximoVencimento = new Date(dataVencimentoAtual)
-
-      let mesesParaAdicionar = 1
-      if (devedor.plano?.ciclo_cobranca === 'trimestral') mesesParaAdicionar = 3
-      else if (devedor.plano?.ciclo_cobranca === 'semestral') mesesParaAdicionar = 6
-      else if (devedor.plano?.ciclo_cobranca === 'anual') mesesParaAdicionar = 12
-
-      proximoVencimento.setMonth(proximoVencimento.getMonth() + mesesParaAdicionar)
-      if (proximoVencimento.getDate() !== dataVencimentoAtual.getDate()) {
-        proximoVencimento.setDate(0)
-      }
-
-      const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
-
-      // Verificar se já existe (ignorar lixo)
-      const { data: jaExiste } = await queryMensalidadesAtivas('id')
-        .eq('devedor_id', mensalidadeAtual.devedor_id)
-        .eq('data_vencimento', proximoVencimentoStr)
-        .maybeSingle()
-
-      if (jaExiste) return
-
-      const { error: errorInsert } = await supabase
-        .from('mensalidades')
-        .insert({
-          user_id: mensalidadeAtual.user_id,
-          devedor_id: mensalidadeAtual.devedor_id,
-          valor: devedor.plano?.valor || mensalidadeAtual.valor,
-          data_vencimento: proximoVencimentoStr,
-          status: 'pendente',
-          is_mensalidade: true,
-          numero_mensalidade: (mensalidadeAtual.numero_mensalidade || 0) + 1,
-          enviado_hoje: false,
-          total_mensagens_enviadas: 0
-        })
-
-      if (errorInsert) {
-        console.error('Erro ao criar próxima mensalidade:', errorInsert)
-        return
-      }
-
-      const dataFormatada = new Date(proximoVencimentoStr).toLocaleDateString('pt-BR')
-      showToast(`Próxima mensalidade criada para ${dataFormatada}`, 'success')
-    } catch (error) {
-      console.error('Erro na criação automática:', error)
-    }
-  }
-
-  const handleAlterarStatusMensalidade = (mensalidade, novoPago) => {
-    setConfirmPagamento({ show: true, mensalidade, novoPago })
-  }
-
-  const confirmarAlteracaoPagamento = async () => {
-    const { mensalidade, novoPago } = confirmPagamento
-    if (!mensalidade) return
-
-    try {
-      const updateData = {
-        status: novoPago ? 'pago' : 'pendente',
-        forma_pagamento: novoPago ? (confirmPagamento.formaPagamento || 'pix') : null,
-        data_pagamento: novoPago ? new Date().toISOString().split('T')[0] : null
-      }
-
-      const { data: mensalidadeAtualizada, error } = await supabase
-        .from('mensalidades')
-        .update(updateData)
-        .eq('id', mensalidade.id)
-        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca, tipo))')
-        .single()
-
-      if (error) throw error
-
-      showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
-
-      // Enviar confirmação via WhatsApp ao cliente (fire-and-forget)
-      if (novoPago) {
-        whatsappService.enviarConfirmacaoPagamento(mensalidade.id)
-          .then(r => { if (r.sucesso) showToast('Confirmação enviada via WhatsApp', 'success') })
-          .catch(() => {})
-
-        // Criar próxima mensalidade automaticamente (não para pacotes)
-        if (mensalidadeAtualizada) {
-          await criarProximaMensalidade(mensalidadeAtualizada)
-        }
-      }
-
-      // Atualizar mensalidades do cliente no modal
-      await carregarMensalidadesCliente(clienteSelecionado.id)
-
-      // Recarregar lista de clientes para atualizar valores
-      carregarClientes()
-    } catch (error) {
-      showToast('Erro ao atualizar: ' + error.message, 'error')
-    } finally {
-      setConfirmPagamento({ show: false, mensalidade: null, novoPago: false })
-    }
-  }
+  // Baixa de mensalidade não acontece mais aqui: o histórico da ficha é só leitura
+  // e as baixas são dadas no /financeiro (uma porta só, sem replicar ação).
 
   const handleExcluirCliente = (cliente, event) => {
     event.stopPropagation()
@@ -1287,48 +1189,6 @@ export default function Clientes() {
     } catch (error) {
       console.error('Erro ao carregar mensalidade:', error)
       showToast('Erro ao carregar detalhes da mensalidade', 'error')
-    }
-  }
-
-  const handleMarcarMensalidadePaga = async () => {
-    if (!mensalidadeSelecionada) return
-
-    const novoPago = mensalidadeSelecionada.status !== 'pago'
-    const confirmar = window.confirm(
-      novoPago
-        ? `Confirmar pagamento de R$ ${parseFloat(mensalidadeSelecionada.valor).toFixed(2)}?`
-        : 'Desfazer o pagamento desta mensalidade?'
-    )
-
-    if (!confirmar) return
-
-    try {
-      const updateData = {
-        status: novoPago ? 'pago' : 'pendente',
-        forma_pagamento: novoPago ? 'pix' : null,
-        data_pagamento: novoPago ? new Date().toISOString().split('T')[0] : null
-      }
-
-      const { data: mensalidadeAtualizada, error } = await supabase
-        .from('mensalidades')
-        .update(updateData)
-        .eq('id', mensalidadeSelecionada.id)
-        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca, tipo))')
-        .single()
-
-      if (error) throw error
-
-      // Criar próxima mensalidade automaticamente (não para pacotes)
-      if (novoPago && mensalidadeAtualizada) {
-        await criarProximaMensalidade(mensalidadeAtualizada)
-      }
-
-      showToast(novoPago ? 'Pagamento confirmado!' : 'Pagamento desfeito!', 'success')
-      setMostrarModalMensalidade(false)
-      setMensalidadeSelecionada(null)
-      carregarClientes()
-    } catch (error) {
-      showToast('Erro ao atualizar: ' + error.message, 'error')
     }
   }
 
@@ -3594,57 +3454,48 @@ Equipe ${nomeEmpresa}`
                             Status
                           </th>
                           <th style={{ padding: '10px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                            Pagou
+                            Pagamento
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {mensalidadesCliente.map((mensalidade) => (
+                        {mensalidadesCliente.map((mensalidade) => {
+                          // Só leitura: a baixa é dada no /financeiro. Mesmo valor efetivo
+                          // de lá (com multa/juros) pra as duas telas não divergirem.
+                          const efetivo = valorEfetivoMensalidade(mensalidade, multaJurosConfig)
+                          return (
                           <tr key={mensalidade.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '12px', fontSize: '14px', color: '#333' }}>
                               {formatDate(mensalidade.data_vencimento)}
                             </td>
                             <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600', color: '#333', textAlign: 'right' }}>
-                              R$ {formatCurrency(parseFloat(mensalidade.valor))}
+                              R$ {formatCurrency(efetivo.projetado ? efetivo.base : efetivo.total)}
+                              {efetivo.temAcrescimo && (
+                                <div style={{ fontSize: '11px', fontWeight: '500', color: '#b45309' }}>
+                                  {efetivo.projetado
+                                    ? `+ R$ ${formatCurrency(efetivo.acrescimo)} se pagar hoje`
+                                    : `R$ ${formatCurrency(efetivo.base)} + R$ ${formatCurrency(efetivo.acrescimo)} multa/juros`}
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'center' }}>
                               {getStatusBadge(mensalidade)}
                             </td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                              <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={mensalidade.status === 'pago'}
-                                  onChange={(e) => handleAlterarStatusMensalidade(mensalidade, e.target.checked)}
-                                  style={{ opacity: 0, width: 0, height: 0 }}
-                                />
-                                <span style={{
-                                  position: 'absolute',
-                                  cursor: 'pointer',
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  backgroundColor: mensalidade.status === 'pago' ? '#4CAF50' : '#ccc',
-                                  transition: '0.3s',
-                                  borderRadius: '22px'
-                                }}>
-                                  <span style={{
-                                    position: 'absolute',
-                                    content: '',
-                                    height: '16px',
-                                    width: '16px',
-                                    left: mensalidade.status === 'pago' ? '25px' : '3px',
-                                    bottom: '3px',
-                                    backgroundColor: 'white',
-                                    transition: '0.3s',
-                                    borderRadius: '50%'
-                                  }} />
-                                </span>
-                              </label>
+                            <td style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: '#666' }}>
+                              {mensalidade.data_pagamento ? (
+                                <>
+                                  {formatDate(mensalidade.data_pagamento)}
+                                  {mensalidade.forma_pagamento && (
+                                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                      {mensalidade.forma_pagamento}
+                                    </div>
+                                  )}
+                                </>
+                              ) : '—'}
                             </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -3778,22 +3629,6 @@ Equipe ${nomeEmpresa}`
         checkboxLabel={`Também excluir as ${confirmDelete.cliente?.totalMensalidades || 0} mensalidades`}
         checkboxChecked={excluirMensalidades}
         onCheckboxChange={setExcluirMensalidades}
-      />
-
-      {/* Modal de confirmação de pagamento */}
-      <ConfirmModal
-        isOpen={confirmPagamento.show}
-        onClose={() => setConfirmPagamento({ show: false, mensalidade: null, novoPago: false })}
-        onConfirm={confirmarAlteracaoPagamento}
-        title={confirmPagamento.novoPago ? 'Confirmar Pagamento' : 'Desfazer Pagamento'}
-        message={
-          confirmPagamento.novoPago
-            ? `Confirmar pagamento de R$ ${confirmPagamento.mensalidade ? parseFloat(confirmPagamento.mensalidade.valor).toFixed(2) : '0.00'}?`
-            : 'Deseja desfazer o pagamento desta mensalidade?'
-        }
-        confirmText={confirmPagamento.novoPago ? 'Confirmar' : 'Desfazer'}
-        cancelText="Cancelar"
-        type={confirmPagamento.novoPago ? 'success' : 'warning'}
       />
 
       {/* Modal de confirmação de assinatura */}
@@ -4591,38 +4426,15 @@ Equipe ${nomeEmpresa}`
               )}
             </div>
 
-            {/* Botão de Ação */}
-            <button
-              onClick={handleMarcarMensalidadePaga}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: mensalidadeSelecionada.status === 'pago' ? '#ff9800' : '#4CAF50',
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = mensalidadeSelecionada.status === 'pago' ? '#f57c00' : '#43a047'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = mensalidadeSelecionada.status === 'pago' ? '#ff9800' : '#4CAF50'
-              }}
+            {/* Baixa é dada só no Financeiro — aqui é consulta */}
+            <Button
+              variant="outline"
+              icon="mdi:cash-register"
+              onClick={() => navigate('/app/financeiro')}
+              style={{ width: '100%' }}
             >
-              <Icon
-                icon={mensalidadeSelecionada.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle'}
-                width="20"
-              />
-              {mensalidadeSelecionada.status === 'pago' ? 'Desfazer Pagamento' : 'Marcar como Pago'}
-            </button>
+              Dar baixa no Financeiro
+            </Button>
           </div>
         </div>
       )}
