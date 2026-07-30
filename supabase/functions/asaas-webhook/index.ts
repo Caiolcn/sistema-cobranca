@@ -103,7 +103,10 @@ serve(async (req) => {
             .update({
               status: 'pago',
               data_pagamento: payment.paymentDate || new Date().toISOString(),
-              forma_pagamento: payment.billingType === 'PIX' ? 'PIX' : 'Boleto'
+              forma_pagamento: payment.billingType === 'PIX' ? 'PIX' : 'Boleto',
+              // O portal cobra base + multa/juros (portal-pagar). Sem gravar o que entrou,
+              // o Financeiro e o recibo mostrariam so o valor da mensalidade.
+              valor_pago: payment.value || boleto.valor
             })
             .eq('id', boleto.mensalidade_id)
 

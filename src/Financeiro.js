@@ -11,7 +11,7 @@ import { useUser } from './contexts/UserContext'
 import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
 import { baixarRecibo, imprimirRecibo, gerarReciboBlob } from './utils/pdfGenerator'
 import { resolverDestinatario } from './utils/destinatario'
-import { calcularMultaJuros } from './utils/multaJuros'
+import { calcularMultaJuros, valorEfetivoMensalidade } from './utils/multaJuros'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
@@ -24,6 +24,9 @@ import Button from './design-system/components/Button'
 import Select from './design-system/components/Select'
 import Checkbox from './design-system/components/Checkbox'
 import DateField from './components/DateField'
+
+const formatarMoeda = (valor) =>
+  `R$ ${(parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 // Linha "rótulo → valor" pra resumos/detalhes
 function InfoRow({ label, value, valueColor, isFirst, big }) {
@@ -310,7 +313,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           qtd7Dias++
         }
       } else if (status === 'pago') {
-        recebido += valor
+        // Recebido = dinheiro que entrou de fato (com multa/juros da baixa), não o valor base
+        recebido += valorEfetivoMensalidade(p, multaJurosConfig).total
         qtdRecebido++
       }
     })
@@ -646,7 +650,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             ...p,
             status: novoStatusPagamento ? 'pago' : 'pendente',
             forma_pagamento: novoStatusPagamento ? formaPagamento : null,
-            data_pagamento: novoStatusPagamento ? updateData.data_pagamento : null
+            data_pagamento: novoStatusPagamento ? updateData.data_pagamento : null,
+            valor_multa: updateData.valor_multa,
+            valor_juros: updateData.valor_juros,
+            valor_pago: updateData.valor_pago
           }
           atualizada.statusCalculado = calcularStatus(atualizada)
           return atualizada
@@ -1895,14 +1902,26 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
                 {/* Info do card */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontSize: '20px', fontWeight: '700', color: '#333', margin: '0 0 4px 0' }}>
-                      R$ {parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
-                      Venc: {new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
+                  {(() => {
+                    const efetivo = valorEfetivoMensalidade(mensalidade, multaJurosConfig)
+                    return (
+                      <div>
+                        <p style={{ fontSize: '20px', fontWeight: '700', color: '#333', margin: '0 0 4px 0' }}>
+                          {formatarMoeda(efetivo.projetado ? efetivo.base : efetivo.total)}
+                        </p>
+                        {efetivo.temAcrescimo && (
+                          <p style={{ fontSize: '12px', fontWeight: '500', color: '#b45309', margin: '0 0 4px 0' }}>
+                            {efetivo.projetado
+                              ? `+ ${formatarMoeda(efetivo.acrescimo)} se pagar hoje`
+                              : `${formatarMoeda(efetivo.base)} + ${formatarMoeda(efetivo.acrescimo)} multa/juros`}
+                          </p>
+                        )}
+                        <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
+                          Venc: {new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    )
+                  })()}
 
                   {/* Ações rápidas */}
                   <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '8px' }}>
@@ -1977,7 +1996,23 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       {new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: '16px', fontWeight: '700', color: '#333', textAlign: 'center' }}>
-                      R$ {parseFloat(mensalidade.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {(() => {
+                        // Paga: mostra o que entrou de fato. Em atraso: base + projeção do acréscimo.
+                        const efetivo = valorEfetivoMensalidade(mensalidade, multaJurosConfig)
+                        const destaque = efetivo.projetado ? efetivo.base : efetivo.total
+                        return (
+                          <>
+                            R$ {destaque.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {efetivo.temAcrescimo && (
+                              <div style={{ fontSize: '11px', fontWeight: '500', color: '#b45309', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                                {efetivo.projetado
+                                  ? `+ ${formatarMoeda(efetivo.acrescimo)} se pagar hoje`
+                                  : `${formatarMoeda(efetivo.base)} + ${formatarMoeda(efetivo.acrescimo)} multa/juros`}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
                       {mensalidade.devedor?.plano?.nome || '-'}
@@ -2189,7 +2224,29 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
                 {/* Detalhes em linhas */}
                 <div style={{ padding: '4px 18px 10px' }}>
-                  <InfoRow isFirst big label="Valor" value={`R$ ${parseFloat(mensalidadeDetalhes.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                  {(() => {
+                    const efetivo = valorEfetivoMensalidade(mensalidadeDetalhes, multaJurosConfig)
+                    return (
+                      <>
+                        <InfoRow isFirst big label="Valor" value={formatarMoeda(efetivo.base)} />
+                        {efetivo.temAcrescimo && (
+                          <>
+                            {efetivo.multa > 0 && <InfoRow label="Multa por atraso" valueColor="#b45309" value={`+ ${formatarMoeda(efetivo.multa)}`} />}
+                            {efetivo.juros > 0 && <InfoRow label="Juros por atraso" valueColor="#b45309" value={`+ ${formatarMoeda(efetivo.juros)}`} />}
+                            {efetivo.multa === 0 && efetivo.juros === 0 && (
+                              <InfoRow label="Multa/juros" valueColor="#b45309" value={`+ ${formatarMoeda(efetivo.acrescimo)}`} />
+                            )}
+                            <InfoRow
+                              big
+                              label={efetivo.projetado ? 'Total se pagar hoje' : 'Total pago'}
+                              valueColor={efetivo.projetado ? '#b45309' : '#16a34a'}
+                              value={formatarMoeda(efetivo.total)}
+                            />
+                          </>
+                        )}
+                      </>
+                    )
+                  })()}
                   <InfoRow label="Vencimento" value={new Date(mensalidadeDetalhes.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')} />
                   <InfoRow label="Plano" value={mensalidadeDetalhes.devedor?.plano?.nome || '—'} />
 

@@ -192,6 +192,10 @@ export const exportarMensalidades = (mensalidades) => {
   const dados = mensalidades.map(m => ({
     'Cliente': m.devedor_nome || m.devedores?.nome,
     'Valor': formatarMoedaExport(m.valor),
+    'Multa': formatarMoedaExport(m.valor_multa || 0),
+    'Juros': formatarMoedaExport(m.valor_juros || 0),
+    // Valor efetivamente recebido (base + multa/juros); só existe em mensalidade baixada
+    'Valor Recebido': m.valor_pago != null ? formatarMoedaExport(m.valor_pago) : '',
     'Status': m.status === 'pago' ? 'Pago' : m.status === 'pendente' ? 'Pendente' : 'Cancelado',
     'Data Vencimento': formatarDataExport(m.data_vencimento),
     'Forma Pagamento': m.forma_pagamento || '',

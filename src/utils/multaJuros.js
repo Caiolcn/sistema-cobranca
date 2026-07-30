@@ -40,3 +40,61 @@ export function calcularMultaJuros(valorBase, dataVencimento, config, hoje) {
 
   return { diasAtraso, multa, juros, total }
 }
+
+/**
+ * Valor que a mensalidade realmente representa hoje, já com multa/juros.
+ *
+ * Fonte da verdade por estado:
+ *   - PAGA com valor_pago gravado → o que foi recebido de fato (baixa manual ou webhook
+ *             do Asaas). O gestor pode ter editado os valores na baixa, então recalcular
+ *             pela config mentiria sobre o recibo. Pagamento pelo portal grava só o total:
+ *             sem quebra multa×juros, o acréscimo vem inteiro em `acrescimo`.
+ *   - PAGA sem valor_pago → nada foi registrado; estima pela config na data da baixa.
+ *   - ABERTA/ATRASADA → projeção pela config (é o que o portal vai cobrar se pagar hoje).
+ *
+ * @param {object} mensalidade - linha de `mensalidades`
+ * @param {object} config - usuarios.asaas_multa_juros
+ * @param {string|Date} [hoje] - data de referência da projeção
+ * @returns {{ base:number, multa:number, juros:number, acrescimo:number, total:number, temAcrescimo:boolean, projetado:boolean }}
+ */
+export function valorEfetivoMensalidade(mensalidade, config, hoje) {
+  const base = parseFloat(String(mensalidade?.valor)) || 0
+
+  // Paga sem NADA gravado (baixa antiga, baixa pela tela de Clientes, webhook do Asaas):
+  // não dá pra saber o que entrou, então projeta pela config na data da baixa.
+  const paga = mensalidade?.status === 'pago'
+  const semRegistro = paga && mensalidade.valor_pago == null
+  const referencia = semRegistro ? (mensalidade.data_pagamento || hoje) : hoje
+
+  if (paga && !semRegistro) {
+    const multa = parseFloat(String(mensalidade.valor_multa)) || 0
+    const juros = parseFloat(String(mensalidade.valor_juros)) || 0
+    const pago = parseFloat(String(mensalidade.valor_pago))
+    const total = Number.isFinite(pago) && pago > 0
+      ? Math.round(pago * 100) / 100
+      : Math.round((base + multa + juros) * 100) / 100
+    const acrescimo = Math.round((total - base) * 100) / 100
+    return {
+      base,
+      multa,
+      juros,
+      acrescimo,
+      total,
+      temAcrescimo: acrescimo > 0.005,
+      projetado: false
+    }
+  }
+
+  const mj = calcularMultaJuros(base, mensalidade?.data_vencimento, config, referencia)
+  const acrescimo = Math.round((mj.multa + mj.juros) * 100) / 100
+  return {
+    base,
+    multa: mj.multa,
+    juros: mj.juros,
+    acrescimo,
+    total: mj.total,
+    temAcrescimo: acrescimo > 0.005,
+    // Já paga = valor fechado (estimado pela config), não "cresce mais"
+    projetado: !paga
+  }
+}

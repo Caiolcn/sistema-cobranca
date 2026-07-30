@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient'
 import { resolverDestinatario } from '../utils/destinatario'
-import { calcularMultaJuros } from '../utils/multaJuros'
+import { calcularMultaJuros, valorEfetivoMensalidade } from '../utils/multaJuros'
 import { modoEspelhoAtivo, ERRO_ESPELHO } from '../utils/modoEspelho'
 
 /**
@@ -1347,15 +1347,20 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       const valorFormatado = fmtBRL(valor)
 
       // Multa/juros por atraso: o comprovante deve refletir o valor REALMENTE pago.
-      // Referência é a data de pagamento (dia em que foi baixada), não "hoje".
-      const mj = calcularMultaJuros(
-        valor,
-        mensalidade.data_vencimento,
+      // Fonte da verdade são os valores gravados na baixa (o gestor pode ter editado);
+      // só quando a linha não tem nada gravado é que projetamos pela config, usando a
+      // data de pagamento como referência (dia em que foi baixada), não "hoje".
+      const mj = valorEfetivoMensalidade(
+        mensalidade,
         usuario?.asaas_multa_juros,
         mensalidade.data_pagamento || undefined
       )
-      const temAcrescimo = mj.total > valor + 0.005
+      const temAcrescimo = mj.temAcrescimo
       const valorTotalFormatado = fmtBRL(mj.total)
+      // Numa confirmação de pagamento, "o valor" é o que o aluno pagou de fato.
+      // O template padrão (semeado em toda conta) só tem {{valorMensalidade}}, então
+      // é ele que precisa carregar o total — senão a confirmação mente sobre o recibo.
+      const valorPrincipalFormatado = temAcrescimo ? valorTotalFormatado : valorFormatado
 
       const dataVenc = mensalidade.data_vencimento
       const vencimentoFormatado = dataVenc
@@ -1379,16 +1384,24 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           .replace(/\{\{nomeAlunoReal\}\}/g, nomeAlunoReal)
           .replace(/\{\{nomeAluno\}\}/g, nomeAluno)
           .replace(/\{\{nomeResponsavel\}\}/g, nomeResponsavel)
-          .replace(/\{\{valorMensalidade\}\}/g, valorFormatado)
+          .replace(/\{\{valorMensalidade\}\}/g, valorPrincipalFormatado)
+          .replace(/\{\{valorBase\}\}/g, valorFormatado)
           .replace(/\{\{valorMulta\}\}/g, fmtBRL(mj.multa))
           .replace(/\{\{valorJuros\}\}/g, fmtBRL(mj.juros))
           .replace(/\{\{valorTotal\}\}/g, valorTotalFormatado)
           .replace(/\{\{dataVencimento\}\}/g, vencimentoFormatado)
           .replace(/\{\{nomeEmpresa\}\}/g, empresa)
+
+        // O template mostrou o total sem explicar de onde veio o acréscimo: detalha embaixo.
+        // Se ele já usa as variáveis da quebra, respeita o texto do gestor.
+        const detalhaAcrescimo = /\{\{(valorMulta|valorJuros|valorTotal|valorBase)\}\}/.test(template.mensagem)
+        if (temAcrescimo && !detalhaAcrescimo) {
+          mensagemTexto += `\n\n_(mensalidade ${valorFormatado} + ${fmtBRL(mj.acrescimo)} de multa/juros por atraso)_`
+        }
       } else {
         // Com multa/juros, mostra o total pago e detalha o acréscimo; sem atraso, só o valor.
         const linhaValor = temAcrescimo
-          ? `💰 Valor pago: ${valorTotalFormatado}\n   (mensalidade ${valorFormatado} + multa/juros ${fmtBRL(mj.multa + mj.juros)})`
+          ? `💰 Valor pago: ${valorTotalFormatado}\n   (mensalidade ${valorFormatado} + multa/juros ${fmtBRL(mj.acrescimo)})`
           : `💰 Valor: ${valorFormatado}`
         mensagemTexto = `Olá, ${nomeCliente}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n${linhaValor}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
       }

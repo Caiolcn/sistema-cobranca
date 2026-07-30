@@ -323,14 +323,15 @@ function Home() {
         const dataVenc = p.data_vencimento;
         const dataPag = p.data_pagamento || (p.status === 'pago' ? (p.updated_at || '').split('T')[0] : null);
 
-        // Recebimentos do mês (status pago, updated_at no mês atual)
+        // Recebimentos do mês (status pago, updated_at no mês atual).
+        // Usa valor_pago: com multa/juros por atraso, o que entrou no caixa é maior que a mensalidade.
         if (p.status === 'pago' && p.updated_at >= `${inicio}T00:00:00` && p.updated_at <= `${fim}T23:59:59`) {
-          recebidoMes += valor;
+          recebidoMes += valorRecebido;
         }
 
         // Recebimentos do mês passado (momentum) - mesma base (updated_at)
         if (p.status === 'pago' && p.updated_at >= `${inicioMesPassado}T00:00:00` && p.updated_at <= `${fimMesPassado}T23:59:59`) {
-          recebidoMesPassado += valor;
+          recebidoMesPassado += valorRecebido;
         }
 
         // Série de tendência (últimos 6 meses) por data de pagamento
