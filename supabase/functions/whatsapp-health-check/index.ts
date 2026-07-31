@@ -223,9 +223,9 @@ async function avisarPeloMaster(
   masterInstance: string,
   telefoneGestor: string,
   texto: string,
-): Promise<boolean> {
+): Promise<{ ok: boolean; detalhe: string | null }> {
   const numero = formatarTelefone(telefoneGestor)
-  if (!numero) return false
+  if (!numero) return { ok: false, detalhe: 'aviso: telefone do gestor vazio' }
   try {
     const res = await fetchComTimeout(
       `${apiUrl}/message/sendText/${masterInstance}`,
@@ -236,9 +236,15 @@ async function avisarPeloMaster(
       },
       PROBE_TIMEOUT_MS,
     )
-    return res.ok
-  } catch (_e) {
-    return false
+    if (res.ok) return { ok: true, detalhe: null }
+    // Por que o aviso não saiu: em 31/07/26 contas na MESMA rodada, com o
+    // mesmo master vivo e telefones de formato idêntico, umas receberam e
+    // outras não — sem o corpo da resposta não dá pra saber o motivo.
+    const texto400 = await res.text().catch(() => '')
+    return { ok: false, detalhe: `aviso HTTP ${res.status}: ${texto400.slice(0, 150)}` }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return { ok: false, detalhe: `aviso falhou: ${msg}` }
   }
 }
 
@@ -443,7 +449,9 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
           `e suas mensagens automáticas (cobranças, lembretes) não estão saindo.\n\n` +
           `👉 Reconecte agora escaneando o QR Code:\n${APP_URL}/app/whatsapp\n\n` +
           `É rápido e leva menos de 1 minuto. Qualquer dúvida, é só chamar a gente por aqui!`
-        avisouAgora = await avisarPeloMaster(apiUrl, apiKey, masterInstance, u.telefone, texto)
+        const envio = await avisarPeloMaster(apiUrl, apiKey, masterInstance, u.telefone, texto)
+        avisouAgora = envio.ok
+        if (envio.detalhe) detalheAcao = [detalheAcao, envio.detalhe].filter(Boolean).join(' | ')
         if (avisouAgora) avisados++
       }
 
