@@ -22,6 +22,7 @@ import DateInput from './components/DateInput'
 import SearchInput from './design-system/components/SearchInput'
 import Button from './design-system/components/Button'
 import Select from './design-system/components/Select'
+import Dropdown from './design-system/components/Dropdown'
 import Checkbox from './design-system/components/Checkbox'
 import DateField from './components/DateField'
 
@@ -175,6 +176,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   // Estados para exclusão e desfazer pagamento
   const [confirmDesfazerPagoMensalidade, setConfirmDesfazerPagoMensalidade] = useState({ show: false, mensalidade: null })
   const [confirmPularMes, setConfirmPularMes] = useState({ show: false, mensalidade: null })
+  const [confirmExcluirMensalidade, setConfirmExcluirMensalidade] = useState({ show: false, mensalidade: null })
 
   useEffect(() => {
     if (userId) {
@@ -896,6 +898,108 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setConfirmPularMes({ show: false, mensalidade: null })
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Excluir mensalidade (lançamento errado / duplicata)
+  //
+  // Volta ao menu, mas com a trava que faltava: excluir a ÚLTIMA mensalidade
+  // válida de um aluno ativo tira ele do cron para sempre (foi assim que 150
+  // alunos travaram). Nesse caso a ação é bloqueada e o modal aponta a saída
+  // certa — "Pular mês" ou desativar a assinatura.
+  // ---------------------------------------------------------------------------
+  const exclusaoBloqueada = (mensalidade) => {
+    if (!mensalidade) return false
+    if (mensalidade.devedor?.assinatura_ativa !== true) return false
+    // `mensalidades` é a lista completa da conta (só não-lixo), não a filtrada
+    const outras = mensalidades.filter(m => m.id !== mensalidade.id && m.devedor_id === mensalidade.devedor_id)
+    return outras.length === 0
+  }
+
+  const confirmarExclusaoMensalidade = async () => {
+    const mensalidade = confirmExcluirMensalidade.mensalidade
+    if (!mensalidade) return
+
+    if (exclusaoBloqueada(mensalidade)) {
+      setConfirmExcluirMensalidade({ show: false, mensalidade: null })
+      return
+    }
+
+    try {
+      // Cobrança viva no Asaas some junto — senão fica link pagável de uma
+      // mensalidade que não existe mais
+      const boletoAtivo = boletoAtivoDaMensalidade(mensalidade)
+      if (boletoAtivo) {
+        try {
+          await asaasService.cancelarBoleto(boletoAtivo.id)
+        } catch (erroAsaas) {
+          showToast(`Não foi possível cancelar a cobrança no Asaas (${erroAsaas.message}). Nada foi alterado.`, 'error')
+          setConfirmExcluirMensalidade({ show: false, mensalidade: null })
+          return
+        }
+      }
+
+      const { error } = await supabase
+        .from('mensalidades')
+        .update({ lixo: true, deletado_em: new Date().toISOString() })
+        .eq('id', mensalidade.id)
+
+      if (error) throw error
+
+      supabase.from('log_auditoria').insert({
+        user_id: mensalidade.user_id,
+        devedor_id: mensalidade.devedor_id,
+        acao: 'mensalidade_excluida',
+        campo: 'lixo',
+        valor_anterior: 'false',
+        valor_novo: 'true',
+        detalhes: `Mensalidade de ${formatarData(mensalidade.data_vencimento)} (${formatarMoeda(mensalidade.valor)}, ${mensalidade.status}) excluída`
+      }).then(() => {}, e => console.error('Erro log auditoria:', e))
+
+      showToast('Mensalidade excluída!', 'success')
+      carregarDados()
+    } catch (error) {
+      showToast('Erro ao excluir: ' + error.message, 'error')
+    } finally {
+      setConfirmExcluirMensalidade({ show: false, mensalidade: null })
+    }
+  }
+
+  // Menu "..." de ações da linha/card — compartilhado pelas duas listagens.
+  // Função (e não componente) de propósito: componente declarado aqui dentro
+  // muda de identidade a cada render e o menu fecharia sozinho.
+  const renderMenuAcoes = (mensalidade, abrirParaCima = false) => (
+    <Dropdown
+      align="end"
+      className={abrirParaCima ? 'menu-acoes-acima' : ''}
+      trigger={<Button variant="ghost" size="sm" iconOnly icon="mdi:dots-vertical" aria-label="Ações" />}
+    >
+      <Dropdown.Item
+        icon={mensalidade.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle-outline'}
+        onClick={() => handleMarcarPagoRapido(mensalidade)}
+      >
+        {mensalidade.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+      </Dropdown.Item>
+
+      {podePularMes(mensalidade) && (
+        <Dropdown.Item
+          icon="mdi:calendar-remove-outline"
+          onClick={() => setConfirmPularMes({ show: true, mensalidade })}
+        >
+          Pular mês
+        </Dropdown.Item>
+      )}
+
+      <Dropdown.Divider />
+
+      <Dropdown.Item
+        icon="mdi:trash-can-outline"
+        danger
+        onClick={() => setConfirmExcluirMensalidade({ show: true, mensalidade })}
+      >
+        Excluir
+      </Dropdown.Item>
+    </Dropdown>
+  )
 
   const handleGerarRecibo = async (tipo, mensalidade = mensalidadePaga) => {
     if (!mensalidade) return
@@ -2074,46 +2178,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     )
                   })()}
 
-                  {/* Ações rápidas */}
-                  <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => handleMarcarPagoRapido(mensalidade)}
-                      title={mensalidade.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: mensalidade.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
-                        color: mensalidade.status === 'pago' ? '#4CAF50' : '#666',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="16" height="16" />
-                    </button>
-                    {podePularMes(mensalidade) && (
-                      <button
-                        onClick={() => setConfirmPularMes({ show: true, mensalidade })}
-                        title="Pular mês"
-                        style={{
-                          padding: '6px 10px',
-                          backgroundColor: '#fff8e1',
-                          color: '#b45309',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Icon icon="mdi:calendar-remove-outline" width="16" height="16" />
-                      </button>
-                    )}
+                  {/* Ações */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    {renderMenuAcoes(mensalidade)}
                   </div>
                 </div>
               </div>
@@ -2152,7 +2219,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 </tr>
               </thead>
               <tbody>
-                {mensalidadesPaginadas.map(mensalidade => (
+                {mensalidadesPaginadas.map((mensalidade, indice) => (
                   <tr
                     key={mensalidade.id}
                     onClick={() => abrirDetalhesMensalidade(mensalidade)}
@@ -2201,42 +2268,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       }
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => handleMarcarPagoRapido(mensalidade)}
-                          title={mensalidade.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
-                          style={{
-                            padding: '6px 8px',
-                            backgroundColor: mensalidade.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
-                            color: mensalidade.status === 'pago' ? '#4CAF50' : '#666',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="18" height="18" />
-                        </button>
-                        {podePularMes(mensalidade) && (
-                          <button
-                            onClick={() => setConfirmPularMes({ show: true, mensalidade })}
-                            title="Pular mês (aluno não treina neste mês)"
-                            style={{
-                              padding: '6px 8px',
-                              backgroundColor: '#fff8e1',
-                              color: '#b45309',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <Icon icon="mdi:calendar-remove-outline" width="18" height="18" />
-                          </button>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        {/* últimas linhas abrem pra cima: o wrapper da tabela tem overflow e cortaria o menu */}
+                        {renderMenuAcoes(
+                          mensalidade,
+                          indice >= mensalidadesPaginadas.length - 2 && mensalidadesPaginadas.length > 2
                         )}
                       </div>
                     </td>
@@ -2542,6 +2578,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   Pular Mês
                 </Button>
               )}
+
+              {/* Excluir — lançamento errado/duplicado */}
+              <Button
+                variant="danger-soft"
+                icon="mdi:trash-can-outline"
+                fullWidth
+                onClick={() => {
+                  setMostrarModalDetalhes(false)
+                  setConfirmExcluirMensalidade({ show: true, mensalidade: mensalidadeDetalhes })
+                }}
+              >
+                Excluir Mensalidade
+              </Button>
 
               {/* Fechar — discreto */}
               <Button variant="ghost" fullWidth onClick={() => setMostrarModalDetalhes(false)}>
@@ -3466,6 +3515,41 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
       )}
+
+      {/* Menu de ações das últimas linhas abre pra cima (wrapper da tabela corta) */}
+      <style>{`
+        .ds-dropdown-panel.menu-acoes-acima {
+          top: auto;
+          bottom: calc(100% + 6px);
+        }
+      `}</style>
+
+      {/* Modal Excluir Mensalidade */}
+      {(() => {
+        const m = confirmExcluirMensalidade.mensalidade
+        const bloqueado = exclusaoBloqueada(m)
+        return (
+          <ConfirmModal
+            isOpen={confirmExcluirMensalidade.show}
+            onClose={() => setConfirmExcluirMensalidade({ show: false, mensalidade: null })}
+            onConfirm={confirmarExclusaoMensalidade}
+            title={bloqueado ? 'Não dá pra excluir esta mensalidade' : 'Excluir mensalidade'}
+            message={bloqueado
+              ? `${m?.devedor?.nome || 'O aluno'} tem assinatura ativa e esta é a única mensalidade dele.\n\n` +
+                `Excluindo, ele sai da geração automática e nunca mais é cobrado sozinho.\n\n` +
+                `Se ele não treina neste mês, use "Pular mês" (tira o mês e já cria o seguinte). ` +
+                `Se ele saiu de vez, desative a assinatura na ficha do aluno.`
+              : `Excluir a mensalidade de ${m?.devedor?.nome || 'N/A'}?\n\n` +
+                `Valor: ${formatarMoeda(m?.valor)}\nVencimento: ${formatarData(m?.data_vencimento)}\n\n` +
+                `Use só para lançamento errado ou duplicado — a cobrança deste mês deixa de existir.` +
+                (boletoAtivoDaMensalidade(m) ? `\n\n⚠️ A cobrança gerada no Asaas será cancelada.` : '')
+            }
+            confirmText={bloqueado ? 'Entendi' : 'Excluir'}
+            cancelText={bloqueado ? '' : 'Cancelar'}
+            type={bloqueado ? 'info' : 'danger'}
+          />
+        )
+      })()}
 
       {/* Modal Pular Mês */}
       <ConfirmModal
