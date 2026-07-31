@@ -28,6 +28,28 @@ import DateField from './components/DateField'
 const formatarMoeda = (valor) =>
   `R$ ${(parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+const formatarData = (data) =>
+  data ? new Date(data + 'T00:00:00').toLocaleDateString('pt-BR') : '-'
+
+const formatarMesAno = (data) =>
+  data ? new Date(data + 'T00:00:00').toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' }) : '-'
+
+/**
+ * Próximo vencimento a partir de uma data, respeitando o ciclo do plano.
+ * Se o dia não existir no mês alvo (31/01 → fevereiro), cai no último dia do mês.
+ */
+const calcularProximoVencimento = (dataVencimento, cicloCobranca) => {
+  const meses = { trimestral: 3, semestral: 6, anual: 12 }[cicloCobranca] || 1
+  const atual = new Date(dataVencimento + 'T00:00:00')
+  const proximo = new Date(atual)
+  proximo.setMonth(proximo.getMonth() + meses)
+  if (proximo.getDate() !== atual.getDate()) proximo.setDate(0)
+  // Formatação manual: toISOString() converte pra UTC e pode voltar um dia
+  const mes = String(proximo.getMonth() + 1).padStart(2, '0')
+  const dia = String(proximo.getDate()).padStart(2, '0')
+  return `${proximo.getFullYear()}-${mes}-${dia}`
+}
+
 // Linha "rótulo → valor" pra resumos/detalhes
 function InfoRow({ label, value, valueColor, isFirst, big }) {
   return (
@@ -152,6 +174,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   // Estados para exclusão e desfazer pagamento
   const [confirmDesfazerPagoMensalidade, setConfirmDesfazerPagoMensalidade] = useState({ show: false, mensalidade: null })
+  const [confirmPularMes, setConfirmPularMes] = useState({ show: false, mensalidade: null })
 
   useEffect(() => {
     if (userId) {
@@ -215,7 +238,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               nome,
               telefone,
               cpf,
-              plano:planos(nome)
+              assinatura_ativa,
+              plano:planos(nome, tipo, valor, ciclo_cobranca)
             ),
             boletos(
               id,
@@ -513,23 +537,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }
 
       // 4. Calcular próximo vencimento baseado no ciclo do plano
-      const dataVencimentoAtual = new Date(mensalidadeAtual.data_vencimento + 'T00:00:00')
-      const proximoVencimento = new Date(dataVencimentoAtual)
-
-      // Buscar ciclo do plano do devedor
-      let mesesParaAdicionar = 1 // padrão mensal
-      if (devedor.plano?.ciclo_cobranca === 'trimestral') mesesParaAdicionar = 3
-      else if (devedor.plano?.ciclo_cobranca === 'semestral') mesesParaAdicionar = 6
-      else if (devedor.plano?.ciclo_cobranca === 'anual') mesesParaAdicionar = 12
-
-      proximoVencimento.setMonth(proximoVencimento.getMonth() + mesesParaAdicionar)
-
-      // Ajustar caso o dia não exista no próximo mês (ex: 31 de jan → 28/29 de fev)
-      if (proximoVencimento.getDate() !== dataVencimentoAtual.getDate()) {
-        proximoVencimento.setDate(0) // Vai para o último dia do mês anterior
-      }
-
-      const proximoVencimentoStr = proximoVencimento.toISOString().split('T')[0]
+      const proximoVencimentoStr = calcularProximoVencimento(
+        mensalidadeAtual.data_vencimento,
+        devedor.plano?.ciclo_cobranca
+      )
 
       // 5. Verificar se já existe mensalidade para esta data (ignorar lixo)
       const { data: jaExiste } = await supabase
@@ -575,7 +586,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       console.log('✅ Próxima mensalidade criada:', novaMensalidade)
 
       // Mostrar notificação de sucesso
-      const dataFormatada = new Date(proximoVencimentoStr).toLocaleDateString('pt-BR')
+      const dataFormatada = formatarData(proximoVencimentoStr)
       showToast(`Próxima mensalidade criada automaticamente para ${dataFormatada}`, 'success')
 
       return novaMensalidade
@@ -743,6 +754,146 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       showToast('Erro ao desfazer: ' + error.message, 'error')
     } finally {
       setConfirmDesfazerPagoMensalidade({ show: false, mensalidade: null })
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pular mês (aluno não treina neste mês)
+  //
+  // Remove a mensalidade do mês e JÁ CRIA a do mês seguinte. O simples "excluir"
+  // foi removido de propósito (commit a0fb0a2): apagar a última mensalidade
+  // válida tirava o aluno do cron gerar_proximas_mensalidades PARA SEMPRE, já que
+  // ele projeta a próxima a partir da última mensalidade não-lixo. Gerando a
+  // seguinte no mesmo ato, sempre sobra âncora de data.
+  // ---------------------------------------------------------------------------
+
+  // Só faz sentido pular mensalidade recorrente, em aberto, de aluno ativo.
+  // Plano 'pacote' fica de fora: não tem "próximo mês" a projetar.
+  const podePularMes = (mensalidade) => (
+    mensalidade?.status !== 'pago' &&
+    mensalidade?.is_mensalidade !== false &&
+    mensalidade?.devedor?.assinatura_ativa === true &&
+    mensalidade?.devedor?.plano?.tipo !== 'pacote'
+  )
+
+  // Cobrança do Asaas que o aluno ainda consegue pagar
+  const boletoAtivoDaMensalidade = (mensalidade) =>
+    (mensalidade?.boletos || []).find(b => b.asaas_id && ['PENDING', 'OVERDUE'].includes(b.status)) || null
+
+  const confirmarPularMes = async () => {
+    const mensalidade = confirmPularMes.mensalidade
+    if (!mensalidade) return
+
+    if (!podePularMes(mensalidade)) {
+      showToast('Esta mensalidade não pode ser pulada', 'warning')
+      setConfirmPularMes({ show: false, mensalidade: null })
+      return
+    }
+
+    try {
+      // 1. Cobrança viva no Asaas precisa ser cancelada ANTES — senão o aluno
+      //    continua conseguindo pagar um mês que deixou de existir aqui.
+      const boletoAtivo = boletoAtivoDaMensalidade(mensalidade)
+      if (boletoAtivo) {
+        try {
+          await asaasService.cancelarBoleto(boletoAtivo.id)
+        } catch (erroAsaas) {
+          showToast(`Não foi possível cancelar a cobrança no Asaas (${erroAsaas.message}). Nada foi alterado.`, 'error')
+          setConfirmPularMes({ show: false, mensalidade: null })
+          return
+        }
+      }
+
+      // 2. Já existe mensalidade futura? Então não gera outra (evita duplicata e
+      //    o índice único uniq_mensalidade_devedor_data_valor).
+      const { data: futuras, error: erroFuturas } = await supabase
+        .from('mensalidades')
+        .select('id, data_vencimento')
+        .eq('devedor_id', mensalidade.devedor_id)
+        .neq('id', mensalidade.id)
+        .gt('data_vencimento', mensalidade.data_vencimento)
+        .or('lixo.is.null,lixo.eq.false')
+        .order('data_vencimento', { ascending: true })
+        .limit(1)
+
+      if (erroFuturas) throw erroFuturas
+      const jaTemFutura = futuras?.[0] || null
+
+      // 3. Cria a próxima ANTES de apagar a atual: se algo falhar no meio, sobra
+      //    uma mensalidade a mais (visível e corrigível) em vez de um aluno órfão.
+      let novaData = null
+      if (!jaTemFutura) {
+        const proximaData = calcularProximoVencimento(
+          mensalidade.data_vencimento,
+          mensalidade.devedor?.plano?.ciclo_cobranca
+        )
+
+        const { data: nova, error: erroInsert } = await supabase
+          .from('mensalidades')
+          .insert({
+            user_id: mensalidade.user_id,
+            devedor_id: mensalidade.devedor_id,
+            valor: mensalidade.devedor?.plano?.valor || mensalidade.valor,
+            data_vencimento: proximaData,
+            status: 'pendente',
+            is_mensalidade: true,
+            numero_mensalidade: (mensalidade.numero_mensalidade || 0) + 1,
+            recorrencia: mensalidade.recorrencia || {
+              isRecurring: true,
+              recurrenceType: 'monthly',
+              startDate: mensalidade.data_vencimento
+            },
+            observacao: `Gerada ao pular ${formatarMesAno(mensalidade.data_vencimento)}`,
+            enviado_hoje: false,
+            total_mensagens_enviadas: 0
+          })
+          .select('id, data_vencimento')
+          .single()
+
+        // 23505 = índice único: já existe mensalidade igual, o objetivo está cumprido
+        if (erroInsert && erroInsert.code !== '23505') throw erroInsert
+        novaData = nova?.data_vencimento || proximaData
+      }
+
+      // 4. Soft delete do mês pulado (a linha continua no banco, com carimbo)
+      const carimbo = `[mês pulado em ${new Date().toLocaleDateString('pt-BR')}]`
+      const { error: erroDelete } = await supabase
+        .from('mensalidades')
+        .update({
+          lixo: true,
+          deletado_em: new Date().toISOString(),
+          observacao: [mensalidade.observacao, carimbo].filter(Boolean).join(' ')
+        })
+        .eq('id', mensalidade.id)
+
+      if (erroDelete) throw erroDelete
+
+      // 5. Rastro de autoria — delete de mensalidade nunca deixou rastro, e foi
+      //    por isso que não deu pra atribuir os alunos travados a ninguém.
+      supabase.from('log_auditoria').insert({
+        user_id: mensalidade.user_id,
+        devedor_id: mensalidade.devedor_id,
+        acao: 'mensalidade_pulada',
+        campo: 'lixo',
+        valor_anterior: 'false',
+        valor_novo: 'true',
+        detalhes: `Mês ${formatarMesAno(mensalidade.data_vencimento)} pulado (${formatarMoeda(mensalidade.valor)}, venc. ${formatarData(mensalidade.data_vencimento)}). ` +
+          (jaTemFutura
+            ? `Já existia mensalidade em ${formatarData(jaTemFutura.data_vencimento)}, nenhuma nova criada.`
+            : `Próxima gerada para ${formatarData(novaData)}.`)
+      }).then(() => {}, e => console.error('Erro log auditoria:', e))
+
+      showToast(
+        jaTemFutura
+          ? `Mês pulado! Já havia mensalidade em ${formatarData(jaTemFutura.data_vencimento)} — nenhuma nova foi criada.`
+          : `Mês pulado! Próxima mensalidade criada para ${formatarData(novaData)}.`,
+        'success'
+      )
+      carregarDados()
+    } catch (error) {
+      showToast('Erro ao pular mês: ' + error.message, 'error')
+    } finally {
+      setConfirmPularMes({ show: false, mensalidade: null })
     }
   }
 
@@ -1943,6 +2094,26 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     >
                       <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="16" height="16" />
                     </button>
+                    {podePularMes(mensalidade) && (
+                      <button
+                        onClick={() => setConfirmPularMes({ show: true, mensalidade })}
+                        title="Pular mês"
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: '#fff8e1',
+                          color: '#b45309',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Icon icon="mdi:calendar-remove-outline" width="16" height="16" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2048,6 +2219,25 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                         >
                           <Icon icon={mensalidade.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="18" height="18" />
                         </button>
+                        {podePularMes(mensalidade) && (
+                          <button
+                            onClick={() => setConfirmPularMes({ show: true, mensalidade })}
+                            title="Pular mês (aluno não treina neste mês)"
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: '#fff8e1',
+                              color: '#b45309',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Icon icon="mdi:calendar-remove-outline" width="18" height="18" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -2337,6 +2527,21 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               >
                 {mensalidadeDetalhes.status === 'pago' ? 'Desfazer Pagamento' : 'Marcar como Pago'}
               </Button>
+
+              {/* Pular mês — remove a do mês e já cria a do mês seguinte */}
+              {podePularMes(mensalidadeDetalhes) && (
+                <Button
+                  variant="outline"
+                  icon="mdi:calendar-remove-outline"
+                  fullWidth
+                  onClick={() => {
+                    setMostrarModalDetalhes(false)
+                    setConfirmPularMes({ show: true, mensalidade: mensalidadeDetalhes })
+                  }}
+                >
+                  Pular Mês
+                </Button>
+              )}
 
               {/* Fechar — discreto */}
               <Button variant="ghost" fullWidth onClick={() => setMostrarModalDetalhes(false)}>
@@ -3261,6 +3466,28 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
       )}
+
+      {/* Modal Pular Mês */}
+      <ConfirmModal
+        isOpen={confirmPularMes.show}
+        onClose={() => setConfirmPularMes({ show: false, mensalidade: null })}
+        onConfirm={confirmarPularMes}
+        title="Pular mês"
+        message={(() => {
+          const m = confirmPularMes.mensalidade
+          if (!m) return ''
+          const proxima = calcularProximoVencimento(m.data_vencimento, m.devedor?.plano?.ciclo_cobranca)
+          const temBoleto = !!boletoAtivoDaMensalidade(m)
+          return `Aluno: ${m.devedor?.nome || 'N/A'}\n\n` +
+            `A mensalidade de ${formatarMesAno(m.data_vencimento)} (${formatarMoeda(m.valor)}, venc. ${formatarData(m.data_vencimento)}) será removida ` +
+            `e a próxima será criada para ${formatarData(proxima)}.\n\n` +
+            `Use quando o aluno não treina neste mês: a cobrança deste mês para de ser enviada e o aluno continua na régua nos meses seguintes.` +
+            (temBoleto ? `\n\n⚠️ Já existe cobrança gerada no Asaas para este mês — ela será cancelada.` : '')
+        })()}
+        confirmText="Pular mês"
+        cancelText="Cancelar"
+        type="warning"
+      />
 
       {/* Modal Desfazer Pagamento */}
       <ConfirmModal
