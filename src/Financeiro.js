@@ -23,6 +23,8 @@ import SearchInput from './design-system/components/SearchInput'
 import Button from './design-system/components/Button'
 import Select from './design-system/components/Select'
 import Dropdown from './design-system/components/Dropdown'
+import Table from './design-system/components/Table'
+import Card from './design-system/components/Card'
 import Checkbox from './design-system/components/Checkbox'
 import DateField from './components/DateField'
 
@@ -967,11 +969,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   // Menu "..." de ações da linha/card — compartilhado pelas duas listagens.
   // Função (e não componente) de propósito: componente declarado aqui dentro
   // muda de identidade a cada render e o menu fecharia sozinho.
-  const renderMenuAcoes = (mensalidade, abrirParaCima = false) => (
+  const renderMenuAcoes = (mensalidade) => (
     <Dropdown
       align="end"
-      className={abrirParaCima ? 'menu-acoes-acima' : ''}
-      trigger={<Button variant="ghost" size="sm" iconOnly icon="mdi:dots-vertical" aria-label="Ações" />}
+      trigger={<Button variant="gray" size="sm" iconOnly icon="mdi:dots-vertical" aria-label="Ações" />}
     >
       <Dropdown.Item
         icon={mensalidade.status === 'pago' ? 'mdi:undo' : 'mdi:check-circle-outline'}
@@ -2104,17 +2105,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
 
-      {/* Tabela/Cards de Mensalidades */}
-      <div style={{
-        backgroundColor: isSmallScreen ? 'transparent' : 'white',
-        borderRadius: isSmallScreen ? 0 : '8px',
-        border: isSmallScreen ? 'none' : '1px solid #e5e7eb',
-        boxShadow: 'none',
-        overflow: 'hidden',
-        marginBottom: '40px'
-      }}>
+      {/* Tabela/Cards de Mensalidades — a moldura vem do Table do DS (desktop)
+          e dos cards (mobile), então o wrapper não desenha nada por cima */}
+      <div style={{ marginBottom: '40px' }}>
         {mensalidadesFiltradas.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '8px' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <Icon icon="mdi:receipt-text-outline" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
             <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
               Nenhuma mensalidade encontrada
@@ -2127,20 +2122,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           /* Cards para Mobile/Tablet */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {mensalidadesPaginadas.map(mensalidade => (
-              <div
+              <Card
                 key={mensalidade.id}
+                accent={
+                  mensalidade.statusCalculado === 'atrasado' ? 'danger' :
+                  mensalidade.statusCalculado === 'pago' ? 'success' : 'info'
+                }
                 onClick={() => abrirDetalhesMensalidade(mensalidade)}
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  boxShadow: 'none',
-                  cursor: 'pointer',
-                  borderLeft: `4px solid ${
-                    mensalidade.statusCalculado === 'atrasado' ? '#f44336' :
-                    mensalidade.statusCalculado === 'pago' ? '#4CAF50' : '#2196F3'
-                  }`
-                }}
+                style={{ cursor: 'pointer' }}
               >
                 {/* Header do card */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -2183,104 +2172,93 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     {renderMenuAcoes(mensalidade)}
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         ) : (
-          /* Tabela para Desktop */
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Aluno
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Vencimento
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Valor
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Plano
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Status
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>
-                    Forma Pagamento
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', whiteSpace: 'nowrap' }}>
-                    Data Pagamento
-                  </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666' }}>
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {mensalidadesPaginadas.map((mensalidade, indice) => (
-                  <tr
-                    key={mensalidade.id}
-                    onClick={() => abrirDetalhesMensalidade(mensalidade)}
-                    style={{ borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                  >
-                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#333', fontWeight: '500', textAlign: 'left' }}>
-                      {mensalidade.devedor?.nome || 'N/A'}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
-                      {new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '16px', fontWeight: '700', color: '#333', textAlign: 'center' }}>
-                      {(() => {
-                        // Paga: mostra o que entrou de fato. Em atraso: base + projeção do acréscimo.
-                        const efetivo = valorEfetivoMensalidade(mensalidade, multaJurosConfig)
-                        const destaque = efetivo.projetado ? efetivo.base : efetivo.total
-                        return (
-                          <>
-                            R$ {destaque.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            {efetivo.temAcrescimo && (
-                              <div style={{ fontSize: '11px', fontWeight: '500', color: '#b45309', marginTop: '2px', whiteSpace: 'nowrap' }}>
-                                {efetivo.projetado
-                                  ? `+ ${formatarMoeda(efetivo.acrescimo)} se pagar hoje`
-                                  : `${formatarMoeda(efetivo.base)} + ${formatarMoeda(efetivo.acrescimo)} multa/juros`}
-                              </div>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {mensalidade.devedor?.plano?.nome || '-'}
-                    </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                      {getStatusBadge(mensalidade.statusCalculado)}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {mensalidade.forma_pagamento || '-'}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {mensalidade.data_pagamento
-                        ? new Date(mensalidade.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR')
-                        : '-'
-                      }
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        {/* últimas linhas abrem pra cima: o wrapper da tabela tem overflow e cortaria o menu */}
-                        {renderMenuAcoes(
-                          mensalidade,
-                          indice >= mensalidadesPaginadas.length - 2 && mensalidadesPaginadas.length > 2
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          /* Tabela para Desktop — Table do DS */
+          <Table
+            data={mensalidadesPaginadas}
+            rowKey="id"
+            onRowClick={(mensalidade) => abrirDetalhesMensalidade(mensalidade)}
+            emptyTitle="Nenhuma mensalidade"
+            emptyMessage="Nenhuma mensalidade encontrada com os filtros atuais."
+            emptyIcon="solar:wallet-money-linear"
+            columns={[
+              {
+                key: 'aluno',
+                label: 'Aluno',
+                render: (m) => (
+                  <span style={{ fontWeight: 600, color: '#1e293b' }}>{m.devedor?.nome || 'N/A'}</span>
+                )
+              },
+              {
+                key: 'vencimento',
+                label: 'Vencimento',
+                align: 'center',
+                render: (m) => formatarData(m.data_vencimento)
+              },
+              {
+                key: 'valor',
+                label: 'Valor',
+                align: 'center',
+                render: (m) => {
+                  // Paga: mostra o que entrou de fato. Em atraso: base + projeção do acréscimo.
+                  const efetivo = valorEfetivoMensalidade(m, multaJurosConfig)
+                  const destaque = efetivo.projetado ? efetivo.base : efetivo.total
+                  return (
+                    <>
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
+                        {formatarMoeda(destaque)}
+                      </span>
+                      {efetivo.temAcrescimo && (
+                        <div style={{ fontSize: '11px', fontWeight: 500, color: '#b45309', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                          {efetivo.projetado
+                            ? `+ ${formatarMoeda(efetivo.acrescimo)} se pagar hoje`
+                            : `${formatarMoeda(efetivo.base)} + ${formatarMoeda(efetivo.acrescimo)} multa/juros`}
+                        </div>
+                      )}
+                    </>
+                  )
+                }
+              },
+              {
+                key: 'plano',
+                label: 'Plano',
+                align: 'center',
+                render: (m) => m.devedor?.plano?.nome || '-'
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                align: 'center',
+                render: (m) => getStatusBadge(m.statusCalculado)
+              },
+              {
+                key: 'forma_pagamento',
+                label: 'Forma Pagamento',
+                align: 'center',
+                render: (m) => m.forma_pagamento || '-'
+              },
+              {
+                key: 'data_pagamento',
+                label: 'Data Pagamento',
+                align: 'center',
+                render: (m) => formatarData(m.data_pagamento)
+              },
+              {
+                key: 'acoes',
+                label: 'Ações',
+                align: 'center',
+                width: 80,
+                render: (m) => (
+                  <div data-no-row-click style={{ display: 'flex', justifyContent: 'center' }}>
+                    {renderMenuAcoes(m)}
+                  </div>
+                )
+              }
+            ]}
+          />
         )}
 
         {/* Paginação */}
@@ -3515,14 +3493,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           </div>
         </div>
       )}
-
-      {/* Menu de ações das últimas linhas abre pra cima (wrapper da tabela corta) */}
-      <style>{`
-        .ds-dropdown-panel.menu-acoes-acima {
-          top: auto;
-          bottom: calc(100% + 6px);
-        }
-      `}</style>
 
       {/* Modal Excluir Mensalidade */}
       {(() => {
