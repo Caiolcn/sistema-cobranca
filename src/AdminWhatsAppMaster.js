@@ -12,6 +12,14 @@ import { Icon } from '@iconify/react'
 
 const MASTER_INSTANCE_FALLBACK = 'mensalli_master'
 
+// A Evolution 2.3.7 devolve o fetchInstances ACHATADO ({ name, connectionStatus,
+// ownerJid }); versões antigas aninhavam tudo em .instance. Procurar só pela
+// forma antiga fazia a tela concluir que a instância não existia — daí ela
+// tentava criar+parear uma instância JÁ conectada e terminava em "QR Code não
+// foi gerado pela API" com status "Desconectado", tudo mentira.
+const acharInstancia = (arr, nome) =>
+  (Array.isArray(arr) ? arr : []).find(i => (i.name || i.instance?.instanceName) === nome) || null
+
 export default function AdminWhatsAppMaster() {
   const { isAdmin, loading: userLoading } = useUser()
   const navigate = useNavigate()
@@ -60,8 +68,9 @@ export default function AdminWhatsAppMaster() {
               const pr = await fetch(`${url}/instance/fetchInstances`, { headers: { apikey: key } })
               if (pr.ok) {
                 const arr = await pr.json()
-                const minha = arr.find(i => i.instance?.instanceName === inst)
-                setNumero(minha?.instance?.owner || minha?.instance?.profileName || null)
+                const minha = acharInstancia(arr, inst)
+                const dono = minha?.ownerJid || minha?.instance?.owner || ''
+                setNumero(dono.split('@')[0] || minha?.profileName || minha?.instance?.profileName || null)
               }
             } catch (_e) { /* ignore */ }
           }
@@ -81,9 +90,9 @@ export default function AdminWhatsAppMaster() {
       const r = await fetch(`${apiUrl}/instance/fetchInstances`, { headers: { apikey: apiKey } })
       if (r.ok) {
         const arr = await r.json()
-        const minha = arr.find(i => i.instance?.instanceName === instance)
+        const minha = acharInstancia(arr, instance)
         existe = !!minha
-        estado = minha?.instance?.state || null
+        estado = minha?.connectionStatus || minha?.instance?.state || null
       }
 
       if (existe && estado === 'open') {
@@ -113,7 +122,18 @@ export default function AdminWhatsAppMaster() {
       }
       const data = await cn.json()
       const qr = data.base64 || data.qrcode?.base64 || data.code || data.qr
-      if (!qr) throw new Error('QR Code não foi gerado pela API.')
+      if (!qr) {
+        // Sem QR + state "open" = a Evolution considera a instância conectada;
+        // não é erro. (Se o socket estiver morto por baixo, quem acusa é o
+        // health-check, que sonda de verdade — o painel /admin mostra isso.)
+        if ((data.instance?.state || estado) === 'open') {
+          setStatus('connected'); setQrCode(null)
+          await carregar()
+          setLoading(false)
+          return
+        }
+        throw new Error('QR Code não foi gerado pela API.')
+      }
 
       setQrCode(qr); setStatus('connecting'); setTempoRestante(120)
     } catch (e) {

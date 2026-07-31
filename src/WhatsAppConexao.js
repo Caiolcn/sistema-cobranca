@@ -1918,9 +1918,15 @@ export default function WhatsAppConexao() {
       let estadoInstancia = null
       if (response.ok) {
         const data = await response.json()
-        const minhaInstancia = data.find(inst => inst.instance?.instanceName === config.instanceName)
+        // Evolution 2.3.7 devolve a lista achatada ({ name, connectionStatus });
+        // versões antigas aninhavam em .instance. Aceitar as duas — procurar só
+        // pela antiga fazia o fluxo achar que a instância não existia e tentar
+        // recriá-la a cada reconexão.
+        const minhaInstancia = (Array.isArray(data) ? data : []).find(
+          inst => (inst.name || inst.instance?.instanceName) === config.instanceName
+        )
         instanciaExiste = !!minhaInstancia
-        estadoInstancia = minhaInstancia?.instance?.state || null
+        estadoInstancia = minhaInstancia?.connectionStatus || minhaInstancia?.instance?.state || null
       }
 
       console.log(`ℹ️ Instância existe: ${instanciaExiste}`)
