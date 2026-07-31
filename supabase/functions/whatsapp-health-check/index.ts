@@ -10,9 +10,21 @@
 // 500 / timeout, mesmo com state === "open".
 //
 // Saudável = state "open" E a sonda respondeu sem erro.
-// Não-saudável => DELETE /instance/logout (libera o QR Code:
-// enquanto a Evolution achar que está conectado, o cliente não
-// consegue gerar QR novo).
+//
+// O QUE FAZER COM O NÃO-SAUDÁVEL depende do estado (medido na Evolution
+// 2.3.7 em 31/07/2026, ver tabela abaixo):
+//  - "close"/"connecting": NÃO há sessão pra derrubar e o QR JÁ está livre.
+//    O logout aqui volta 400 "instance is not connected" — foram 711
+//    tentativas inúteis em 7 dias. O cliente consegue reconectar sozinho,
+//    só precisa SABER que caiu.
+//  - "open" + sonda morta (zumbi): é o único caso em que derrubar adianta,
+//    e é justamente onde nada funciona —
+//      DELETE /instance/logout  -> 500 "Connection Closed"
+//      POST  /instance/restart  -> 200 mas no-op (socket segue morto)
+//      GET   /instance/connect  -> 200 "open", SEM QR
+//    A tela do cliente diz "conectado" e ele não tem como parear. Só sai
+//    disso com DELETE /instance/delete + recriar, que exige o cliente
+//    escanear QR de novo — por isso é ação humana, não automática.
 //
 // CONFIRMAÇÃO EM DUAS RODADAS: logout e aviso só acontecem quando a
 // rodada ANTERIOR também viu a instância caída. Rodando de 30 em 30
@@ -144,17 +156,26 @@ async function sondarSocket(
   }
 }
 
-// Desloga a instância => libera o QR Code pro cliente reconectar.
-async function deslogar(apiUrl: string, apiKey: string, instance: string): Promise<boolean> {
+// Tenta derrubar a sessão. Devolve o detalhe do erro junto: sem isso o
+// relatório só dizia "logout_falhou" e o diagnóstico exigia ir na mão na
+// Evolution descobrir por quê.
+async function deslogar(
+  apiUrl: string,
+  apiKey: string,
+  instance: string,
+): Promise<{ ok: boolean; detalhe: string | null }> {
   try {
     const res = await fetchComTimeout(
       `${apiUrl}/instance/logout/${instance}`,
       { method: 'DELETE', headers: { apikey: apiKey } },
       PROBE_TIMEOUT_MS,
     )
-    return res.ok
-  } catch (_e) {
-    return false
+    if (res.ok) return { ok: true, detalhe: null }
+    const texto = await res.text().catch(() => '')
+    return { ok: false, detalhe: `logout HTTP ${res.status}: ${texto.slice(0, 150)}` }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return { ok: false, detalhe: `logout falhou: ${msg}` }
   }
 }
 
@@ -364,6 +385,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     }
 
     let acao = 'nenhuma'
+    let detalheAcao: string | null = null
 
     // Só agimos sobre estado conclusivo: se a Evolution deu timeout/erro não
     // sabemos nada sobre o cliente, e uma instabilidade da API não pode virar
@@ -371,15 +393,20 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const estadoConclusivo = ESTADOS_CONCLUSIVOS.includes(estado)
     const confirmado = !saudavel && estadoConclusivo && caidoNaRodadaAnterior.get(u.id) === true
 
-    // Derruba a sessão pra liberar o QR Code. Dois casos:
-    //  - painel "open" mas a sonda provou socket morto (o painel mente);
-    //  - painel "close"/"connecting" travado, que é a queda NÃO-401: a Evolution
-    //    fica em loop de reconexão e o cliente não consegue reparear sem isso.
-    // Em ambos, só depois de confirmado em duas rodadas seguidas.
-    if (confirmado && masterOk) {
-      const ok = await deslogar(apiUrl, apiKey, instance)
-      acao = ok ? 'logout' : 'logout_falhou'
-      if (ok) deslogados++
+    if (confirmado && estado !== 'open') {
+      // close/connecting: a Evolution recusa logout ("instance is not
+      // connected") e não há o que liberar — o QR já está disponível.
+      // Não depende do master: é diagnóstico, não ação.
+      acao = 'qr_ja_livre'
+    } else if (confirmado && masterOk) {
+      // open + sonda morta = zumbi. Tentar o logout continua valendo (é barato
+      // e funciona nas janelas em que o socket dá sinal de vida — aconteceu
+      // 1x em 243), mas quando falha marcamos 'zumbi_travado': esse cliente
+      // NÃO consegue reconectar sozinho e precisa de delete+recriar.
+      const r = await deslogar(apiUrl, apiKey, instance)
+      acao = r.ok ? 'logout' : 'zumbi_travado'
+      detalheAcao = r.detalhe
+      if (r.ok) deslogados++
     } else if (!saudavel && estadoConclusivo) {
       acao = 'aguardando_confirmacao'
     }
@@ -451,7 +478,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       probe_ok: probeOk,
       saudavel,
       acao,
-      erro: probeErro,
+      erro: [probeErro, detalheAcao].filter(Boolean).join(' | ') || null,
       checado_em: checadoEm,
     })
 

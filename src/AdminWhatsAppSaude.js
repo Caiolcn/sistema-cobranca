@@ -185,6 +185,16 @@ export default function AdminWhatsAppSaude() {
                         <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fff8e1', color: '#a16207' }}>
                           Deslogado
                         </span>
+                      ) : l.acao === 'zumbi_travado' ? (
+                        <span title="Painel diz 'open' mas o socket está morto: logout dá 500, restart é no-op e o connect não devolve QR. O cliente NÃO consegue reconectar sozinho — precisa de delete + recriar instância."
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fef2f2', color: '#c62828' }}>
+                          Travado (ação manual)
+                        </span>
+                      ) : l.acao === 'qr_ja_livre' ? (
+                        <span title="Sem sessão pra derrubar e QR já disponível: o cliente consegue reconectar sozinho, só precisa saber que caiu."
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#eff6ff', color: '#1d4ed8' }}>
+                          Pode reconectar
+                        </span>
                       ) : l.acao === 'logout_falhou' ? (
                         <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fef2f2', color: '#c62828' }}>
                           Logout falhou
