@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTrialStatus } from './useTrialStatus'
 import { mercadoPagoService } from './services/mercadoPagoService'
 import { supabase } from './supabaseClient'
-import { trackInitiateCheckout, trackPurchase } from './utils/metaPixel'
+import { trackInitiateCheckout } from './utils/metaPixel'
 
 // Paleta e visual espelhados da seção de preços da LandingPage
 const INK = '#0f1115'
@@ -71,9 +71,10 @@ export default function UpgradePage() {
             setVerificandoPagamento(false)
             setPagamentoConfirmado(true)
 
-            // Meta Pixel: Compra confirmada
-            const precos = { starter: 49.90, pro: 99.90, premium: 149.90 }
-            trackPurchase(precos[pixData.plano] || 99.90, pixData.plano)
+            // Purchase NÃO sai daqui. Quem dispara é o banco, quando plano_pago
+            // vira true (trigger meta_capi_purchase) — assim cobre cartão,
+            // renovação e venda fechada na mão, não só quem ficou parado
+            // nesta tela olhando o QR. Disparar aqui também contaria em dobro.
           }
         } catch (error) {
           console.error('Erro ao verificar pagamento:', error)

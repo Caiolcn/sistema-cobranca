@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useNavigate } from 'react-router-dom'
-import { trackLead, trackCompleteRegistration, trackStartTrial } from './utils/metaPixel'
+import { trackLead, trackCompleteRegistration, trackStartTrial, enviarEventoCapi } from './utils/metaPixel'
+import { obterAtribuicao, gerarEventId } from './utils/metaAttribution'
 import whatsappService from './services/whatsappService'
 
 // Instância WhatsApp da própria plataforma (Mensalli → novo cliente).
@@ -150,12 +151,42 @@ export default function Signup({ onCadastroIniciado }) {
 
       if (configError) console.error('Erro ao criar config de cobrança:', configError)
 
+      // Atribuição: grava o clique que trouxe essa pessoa (fbp/fbc/UTM). É o que
+      // permite ao Purchase — que só acontece dias depois, pelo webhook, sem
+      // navegador nenhum aberto — ser creditado à campanha certa lá na frente.
+      const atribuicao = obterAtribuicao()
+      if (atribuicao) {
+        const { error: atribError } = await supabase
+          .from('meta_atribuicao')
+          .upsert({
+            user_id: userId,
+            fbp: atribuicao.fbp,
+            fbc: atribuicao.fbc,
+            fbclid: atribuicao.fbclid,
+            utm_source: atribuicao.utm_source,
+            utm_medium: atribuicao.utm_medium,
+            utm_campaign: atribuicao.utm_campaign,
+            utm_content: atribuicao.utm_content,
+            utm_term: atribuicao.utm_term,
+            landing_url: atribuicao.landing_url,
+            user_agent: atribuicao.user_agent
+          }, { onConflict: 'user_id' })
+
+        if (atribError) console.error('Erro ao gravar atribuição Meta:', atribError)
+      }
+
       // Pixel PRIMEIRO: a conta já foi criada, então dispara os eventos de conversão
       // imediatamente — a campanha Meta paga por CompleteRegistration, não pode
       // depender do await da boas-vindas (que pode travar/demorar).
+      // O mesmo eventId vai pelo navegador e pelo servidor: o Meta deduplica.
+      const eventIdCadastro = gerarEventId('cadastro')
       trackLead()
-      trackCompleteRegistration()
+      trackCompleteRegistration(eventIdCadastro)
       trackStartTrial()
+
+      // Cópia server-side, sem await: recupera os ~20-30% de cadastros que o
+      // navegador perde (adblock, ITP do Safari, aba fechada cedo demais).
+      enviarEventoCapi('CompleteRegistration', { eventId: eventIdCadastro })
 
       // Boas-vindas via WhatsApp, enviada pelo número da plataforma (master).
       // Sem await de propósito: o envio pode levar segundos e não pode atrasar a

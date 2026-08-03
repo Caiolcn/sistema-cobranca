@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { UserProvider } from './contexts/UserContext'
+import { capturarAtribuicao } from './utils/metaAttribution'
 import Toast from './Toast'
 import './App.css'
 import './design-system/tokens.css'
@@ -95,6 +96,10 @@ function App() {
   const [cadastroEmCurso, setCadastroEmCurso] = useState(false)
 
   useEffect(() => {
+    // Guarda fbclid/UTMs do primeiro toque antes que a navegação limpe a URL.
+    // Só é lido lá no cadastro, que pode acontecer dias depois.
+    capturarAtribuicao()
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
