@@ -57,7 +57,8 @@ const NUMERO_SONDA_FALLBACK = '5511999999999'
 // nela, mas ela precisa do MESSAGES_UPSERT mesmo assim: é dele que sai o CRM de
 // leads de campanha (/app/admin/leads). Sem esta exceção, o self-heal abaixo
 // derrubaria a captura de leads todo dia às 8h.
-const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+// Mesmo fallback de config.evolution_master_instance usado no resto do sistema.
+const INSTANCIA_MENSALLI = 'mensalli_master'
 
 // Timeout curto: socket vivo responde rápido; morto trava.
 const PROBE_TIMEOUT_MS = 12000

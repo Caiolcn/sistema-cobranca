@@ -8,7 +8,10 @@ import whatsappService from './services/whatsappService'
 // Instância WhatsApp da própria plataforma (Mensalli → novo cliente).
 // Mesma usada pelos disparos do /admin. O novo usuário ainda não conectou
 // a instância dele, então a boas-vindas sai daqui.
-const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+// Fonte de verdade é config.evolution_master_instance; aqui fica só o mesmo
+// fallback do resto do sistema, porque o cadastro não pode pagar uma query a
+// mais no caminho crítico. Se trocar a master, trocar lá E aqui.
+const INSTANCIA_MENSALLI = 'mensalli_master'
 
 export default function Signup({ onCadastroIniciado }) {
   const navigate = useNavigate()

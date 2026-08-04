@@ -17,7 +17,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 // Instância master do Mensalli (mesma usada nos disparos manuais do /admin).
-const INSTANCIA_MASTER = 'instance_c93b3e8d'
+// O nome vem de config.evolution_master_instance — NÃO fixar aqui. A master já
+// trocou de instância uma vez (instance_c93b3e8d → mensalli_master) e esta
+// função ficou pra trás apontando pra uma sessão morta: 3 dias de cobrança
+// falhando com "undefined (reading 'sendMessage')" sem ninguém ver.
+const INSTANCIA_MASTER_FALLBACK = 'mensalli_master'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -121,11 +125,12 @@ serve(async (req) => {
 
   // ---- Credenciais da Evolution (usadas por teste e envio real) ----
   const { data: cfgEvo } = await supabase
-    .from('config').select('chave, valor').in('chave', ['evolution_api_key', 'evolution_api_url'])
+    .from('config').select('chave, valor').in('chave', ['evolution_api_key', 'evolution_api_url', 'evolution_master_instance'])
   const evoMap: Record<string, string> = {}
   ;(cfgEvo || []).forEach((c: { chave: string; valor: string }) => { evoMap[c.chave] = c.valor })
   const apiKeyEvo = evoMap.evolution_api_key
   const apiUrlEvo = evoMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
+  const instanciaMaster = evoMap.evolution_master_instance || INSTANCIA_MASTER_FALLBACK
 
   // ---- Modo TESTE: envia os 3 modelos pra um número avulso, sem tocar em clientes nem logar ----
   if (body.testTo) {
@@ -152,7 +157,7 @@ serve(async (req) => {
       const tmpl = tmap[tipo]
       if (!tmpl) { falhas.push({ tipo, motivo: 'template ausente' }); continue }
       const msg = `🧪 [TESTE — ${tipo}]\n\n` + interpolar(tmpl, exemplo)
-      const resp = await fetch(`${apiUrlEvo}/message/sendText/${INSTANCIA_MASTER}`, {
+      const resp = await fetch(`${apiUrlEvo}/message/sendText/${instanciaMaster}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': apiKeyEvo },
         body: JSON.stringify({ number: numeroTeste, text: msg })
@@ -230,7 +235,7 @@ serve(async (req) => {
         continue
       }
 
-      const resp = await fetch(`${apiUrl}/message/sendText/${INSTANCIA_MASTER}`, {
+      const resp = await fetch(`${apiUrl}/message/sendText/${instanciaMaster}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
         body: JSON.stringify({ number: numero, text: mensagem })

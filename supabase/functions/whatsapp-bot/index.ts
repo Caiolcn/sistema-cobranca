@@ -12,7 +12,8 @@ const APP_URL = Deno.env.get('APP_URL') || 'https://www.mensalli.com.br'
 // Instancia do WhatsApp COMERCIAL do Mensalli (o numero que recebe os leads das
 // campanhas). Mensagens dessa instancia NAO passam pelo bot de aluno: viram lead
 // no CRM de campanha (/app/admin/leads). Mesma constante de Signup.js e Admin.js.
-const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+// Fallback de config.evolution_master_instance.
+const INSTANCIA_MENSALLI = 'mensalli_master'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

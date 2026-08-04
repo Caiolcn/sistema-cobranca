@@ -8,8 +8,10 @@ import RetencaoSaas from './components/RetencaoSaas'
 import whatsappService from './services/whatsappService'
 
 // Instância do WhatsApp do Mensalli que dispara os lembretes de vencimento
-// (mesma que o n8n usava — ver n8n-recuperar-trials.json)
-const INSTANCIA_MENSALLI = 'instance_c93b3e8d'
+// (mesma que o n8n usava — ver n8n-recuperar-trials.json).
+// Fonte de verdade é config.evolution_master_instance; este é o mesmo fallback
+// usado pelo health-check e pelo bot.
+const INSTANCIA_MENSALLI = 'mensalli_master'
 // Intervalo entre envios no disparo direto (anti-bloqueio do WhatsApp)
 const INTERVALO_ENVIO_MS = 15000
 
