@@ -334,12 +334,17 @@ export default function PortalCliente() {
   }
 
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-  const pendentes = dados.mensalidades.filter(m => {
-    if (m.status === 'pago') return false
+  const diasAteVencer = (m) => {
     const vencimento = new Date(m.data_vencimento + 'T00:00:00')
-    const diffDias = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24))
-    return diffDias <= 3
-  })
+    return Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24))
+  }
+  // Pendente = o que ja e cobravel (vencido, vence hoje ou nos proximos 3 dias).
+  // E o que alimenta os contadores/badges de pendencia, entao nao entra fatura futura aqui.
+  const pendentes = dados.mensalidades.filter(m => m.status !== 'pago' && diasAteVencer(m) <= 3)
+  // Futuras = ainda longe do vencimento, mas pagaveis por antecipacao numa secao separada
+  const futuras = dados.mensalidades
+    .filter(m => m.status !== 'pago' && diasAteVencer(m) > 3)
+    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
   const pagas = dados.mensalidades.filter(m => m.status === 'pago')
   const temAtrasadas = pendentes.some(m => new Date(m.data_vencimento + 'T00:00:00') < hoje)
   const inicialEmpresa = (dados.empresa.nome || 'E').charAt(0).toUpperCase()
@@ -1080,19 +1085,46 @@ export default function PortalCliente() {
               </div>
             ) : (
             <>
-            {/* Pendentes */}
-            {pendentes.length > 0 ? (
+            {/* Nada cobravel agora: as futuras aparecem logo abaixo, em "Proximas faturas" */}
+            {pendentes.length === 0 && (
               <div style={{
+                background: '#fff', borderRadius: 16, padding: '32px 20px', marginBottom: 12,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)', textAlign: 'center',
+                border: '1px solid rgba(0,0,0,0.04)'
+              }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: '50%', background: '#f0fdf4',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px'
+                }}>
+                  <Icon icon="mdi:check-circle" width="32" style={{ color: '#22c55e' }} />
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#166534' }}>Nenhuma pendencia!</div>
+                <div style={{ fontSize: 13, color: '#4ade80', marginTop: 4 }}>Voce esta em dia</div>
+              </div>
+            )}
+
+            {/* Pendentes (cobravel agora) + Proximas faturas (pagamento antecipado) */}
+            {[
+              { chave: 'pendentes', titulo: 'Pendentes', icone: 'mdi:clock-outline', cor: '#f59e0b', lista: pendentes, antecipado: false },
+              { chave: 'futuras', titulo: 'Proximas faturas', icone: 'mdi:calendar-clock', cor: '#3b82f6', lista: futuras, antecipado: true }
+            ].filter(secao => secao.lista.length > 0).map(secao => (
+              <div key={secao.chave} style={{
                 background: '#fff', borderRadius: 16, padding: '20px', marginBottom: 12,
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
                 border: '1px solid rgba(0,0,0,0.04)'
               }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Icon icon="mdi:clock-outline" width="20" style={{ color: '#f59e0b' }} />
-                  Pendentes
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: secao.antecipado ? 4 : 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon icon={secao.icone} width="20" style={{ color: secao.cor }} />
+                  {secao.titulo}
                 </div>
-                {pendentes.map(m => {
+                {secao.antecipado && (
+                  <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+                    Quer adiantar? Da pra pagar antes do vencimento, sem multa nem juros.
+                  </div>
+                )}
+                {secao.lista.map(m => {
                   const info = getStatusInfo(m)
+                  const diasParaVencer = diasAteVencer(m)
                   const isExpanded = expandedId === m.id
                   const formasPg = dados.formas_pagamento || { pix: true }
                   const multiMetodo = dados.asaas_configurado && dados.metodo_pagamento === 'asaas_link' && (formasPg.cartao || formasPg.boleto)
@@ -1121,6 +1153,11 @@ export default function PortalCliente() {
                             {info.diasAtraso} dia{info.diasAtraso !== 1 ? 's' : ''} de atraso
                           </div>
                         )}
+                        {secao.antecipado && (
+                          <div style={{ fontSize: 12, color: '#3b82f6', fontWeight: 600, marginTop: 4 }}>
+                            Vence em {diasParaVencer} dia{diasParaVencer !== 1 ? 's' : ''}
+                          </div>
+                        )}
                         <button
                           onClick={() => handlePagar(m)}
                           disabled={pagandoId === m.id}
@@ -1142,7 +1179,7 @@ export default function PortalCliente() {
                           ) : isExpanded ? (
                             <><Icon icon="mdi:chevron-up" width="18" /> Fechar</>
                           ) : (
-                            <><Icon icon={multiMetodo ? 'mdi:wallet-outline' : 'mdi:qrcode'} width="18" /> Pagar agora</>
+                            <><Icon icon={multiMetodo ? 'mdi:wallet-outline' : 'mdi:qrcode'} width="18" /> {secao.antecipado ? 'Pagar antecipado' : 'Pagar agora'}</>
                           )}
                         </button>
                       </div>
@@ -1312,22 +1349,7 @@ export default function PortalCliente() {
                   )
                 })}
               </div>
-            ) : (
-              <div style={{
-                background: '#fff', borderRadius: 16, padding: '32px 20px', marginBottom: 12,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)', textAlign: 'center',
-                border: '1px solid rgba(0,0,0,0.04)'
-              }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: '50%', background: '#f0fdf4',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px'
-                }}>
-                  <Icon icon="mdi:check-circle" width="32" style={{ color: '#22c55e' }} />
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#166534' }}>Nenhuma pendencia!</div>
-                <div style={{ fontSize: 13, color: '#4ade80', marginTop: 4 }}>Voce esta em dia</div>
-              </div>
-            )}
+            ))}
 
             {/* Historico */}
             {pagas.length > 0 && (
