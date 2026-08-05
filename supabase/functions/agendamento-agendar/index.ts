@@ -61,6 +61,23 @@ serve(async (req) => {
       )
     }
 
+    // Bloquear se houver mensalidade vencida (status pendente + data_vencimento < hoje)
+    const hojeStr = new Date().toISOString().split('T')[0]
+    const { data: vencidas } = await supabase
+      .from('mensalidades')
+      .select('id')
+      .eq('devedor_id', devedor.id)
+      .eq('status', 'pendente')
+      .lt('data_vencimento', hojeStr)
+      .limit(1)
+
+    if (vencidas && vencidas.length > 0) {
+      return new Response(
+        JSON.stringify({ error: 'Você possui mensalidade(s) vencida(s). Regularize para agendar aulas.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // 3. Validar que a aula existe e pertence a empresa
     const { data: aula } = await supabase
       .from('aulas')

@@ -1,7 +1,3 @@
-// Edge Function: Agendamento Online - Dados da Empresa
-// Retorna dados da empresa + aulas disponiveis + vagas por slug
-// Acesso PUBLICO (sem autenticacao)
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -32,7 +28,6 @@ serve(async (req) => {
       )
     }
 
-    // 1. Buscar empresa pelo slug
     const { data: empresa, error: empresaError } = await supabase
       .from('usuarios')
       .select('id, nome_empresa, logo_url, telefone, agendamento_ativo, agendamento_antecedencia_horas')
@@ -53,7 +48,6 @@ serve(async (req) => {
       )
     }
 
-    // 2. Buscar aulas ativas da empresa
     const { data: aulas } = await supabase
       .from('aulas')
       .select('id, dia_semana, horario, descricao, capacidade')
@@ -62,7 +56,6 @@ serve(async (req) => {
       .order('dia_semana', { ascending: true })
       .order('horario', { ascending: true })
 
-    // 3. Buscar agendamentos confirmados das proximas 2 semanas
     const hoje = new Date().toISOString().split('T')[0]
     const daqui14dias = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
@@ -74,13 +67,43 @@ serve(async (req) => {
       .gte('data', hoje)
       .lte('data', daqui14dias)
 
-    // 4. Calcular vagas por aula/data
     const contagemPorAulaData: Record<string, number> = {}
     if (agendamentos) {
       for (const ag of agendamentos) {
         const chave = `${ag.aula_id}_${ag.data}`
         contagemPorAulaData[chave] = (contagemPorAulaData[chave] || 0) + 1
       }
+    }
+
+    const { data: fixosData } = await supabase
+      .from('aulas_fixos')
+      .select('aula_id')
+      .eq('user_id', empresa.id)
+
+    const fixos_contagem: Record<string, number> = {}
+    if (fixosData) {
+      for (const f of fixosData) {
+        fixos_contagem[f.aula_id] = (fixos_contagem[f.aula_id] || 0) + 1
+      }
+    }
+
+    // Buscar lista de espera
+    let fila_contagem: Record<string, number> = {}
+    try {
+      const { data: filaData } = await supabase
+        .from('lista_espera')
+        .select('aula_id, data')
+        .eq('user_id', empresa.id)
+        .in('status', ['aguardando', 'notificado'])
+
+      if (filaData) {
+        for (const f of filaData) {
+          const chave = `${f.aula_id}_${f.data}`
+          fila_contagem[chave] = (fila_contagem[chave] || 0) + 1
+        }
+      }
+    } catch (e) {
+      // Se tabela lista_espera nao existe ainda, ignora
     }
 
     return new Response(
@@ -93,6 +116,8 @@ serve(async (req) => {
         },
         aulas: aulas || [],
         agendamentos_contagem: contagemPorAulaData,
+        fixos_contagem,
+        fila_contagem,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

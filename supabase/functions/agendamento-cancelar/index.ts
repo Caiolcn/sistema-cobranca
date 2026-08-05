@@ -1,7 +1,3 @@
-// Edge Function: Agendamento Online - Cancelar Agendamento
-// Aluno cancela aula com regra de antecedencia
-// Acesso PUBLICO (sem autenticacao)
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -35,7 +31,6 @@ serve(async (req) => {
       )
     }
 
-    // 1. Buscar empresa pelo slug
     const { data: empresa } = await supabase
       .from('usuarios')
       .select('id, nome_empresa, agendamento_ativo, agendamento_antecedencia_horas')
@@ -49,7 +44,6 @@ serve(async (req) => {
       )
     }
 
-    // 2. Buscar agendamento
     const { data: agendamento } = await supabase
       .from('agendamentos')
       .select('id, aula_id, devedor_id, data, status, user_id')
@@ -72,7 +66,6 @@ serve(async (req) => {
       )
     }
 
-    // 3. Buscar horario da aula pra calcular antecedencia
     const { data: aula } = await supabase
       .from('aulas')
       .select('horario, descricao')
@@ -86,9 +79,8 @@ serve(async (req) => {
       )
     }
 
-    // 4. Verificar regra de antecedencia
     const antecedenciaHoras = empresa.agendamento_antecedencia_horas || 2
-    const dataHoraAula = new Date(`${agendamento.data}T${aula.horario}`)
+    const dataHoraAula = new Date(`${agendamento.data}T${aula.horario}-03:00`)
     const agora = new Date()
     const diferencaMs = dataHoraAula.getTime() - agora.getTime()
     const diferencaHoras = diferencaMs / (1000 * 60 * 60)
@@ -104,18 +96,13 @@ serve(async (req) => {
       )
     }
 
-    // 5. Cancelar agendamento
     const { error: updateError } = await supabase
       .from('agendamentos')
-      .update({
-        status: 'cancelado',
-        cancelado_em: new Date().toISOString(),
-      })
+      .update({ status: 'cancelado', cancelado_em: new Date().toISOString() })
       .eq('id', agendamento_id)
 
     if (updateError) throw updateError
 
-    // 6. Devolver credito se for pacote
     const { data: devedor } = await supabase
       .from('devedores')
       .select('aulas_restantes')
@@ -131,14 +118,19 @@ serve(async (req) => {
         .eq('id', devedor_id)
     }
 
-    // 7. Notificar admin via WhatsApp
+    let conexao: any = null
+    let apiUrl = ''
+    let apiKey = ''
+
     try {
-      const { data: conexao } = await supabase
+      const { data: conn } = await supabase
         .from('mensallizap')
         .select('instance_name, conectado')
         .eq('user_id', empresa.id)
         .eq('conectado', true)
         .maybeSingle()
+
+      conexao = conn
 
       if (conexao) {
         const { data: configs } = await supabase
@@ -149,8 +141,8 @@ serve(async (req) => {
         const configMap: Record<string, string> = {}
         if (configs) configs.forEach((c: any) => { configMap[c.chave] = c.valor })
 
-        const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
-        const apiKey = configMap.evolution_api_key
+        apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
+        apiKey = configMap.evolution_api_key
 
         if (apiKey) {
           const { data: adminUser } = await supabase
@@ -177,14 +169,8 @@ serve(async (req) => {
 
             await fetch(`${apiUrl}/message/sendText/${conexao.instance_name}`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': apiKey,
-              },
-              body: JSON.stringify({
-                number: `55${telAdmin}`,
-                text: msg,
-              }),
+              headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+              body: JSON.stringify({ number: `55${telAdmin}`, text: msg }),
             })
           }
         }
@@ -193,11 +179,42 @@ serve(async (req) => {
       console.error('Erro ao notificar admin:', notifErr)
     }
 
+    try {
+      const { data: proximoFila } = await supabase
+        .from('lista_espera')
+        .select('id, devedor_id')
+        .eq('aula_id', agendamento.aula_id)
+        .eq('data', agendamento.data)
+        .eq('status', 'aguardando')
+        .order('posicao', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      if (proximoFila && conexao && apiKey) {
+        const expiraEm = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+        await supabase.from('lista_espera').update({
+          status: 'notificado',
+          notificado_em: new Date().toISOString(),
+          expira_em: expiraEm
+        }).eq('id', proximoFila.id)
+
+        const { data: alunoFila } = await supabase.from('devedores').select('nome, telefone').eq('id', proximoFila.devedor_id).single()
+        if (alunoFila?.telefone) {
+          const linkConfirmacao = `https://www.mensalli.com.br/agendar/${slug}?confirmar=${proximoFila.id}`
+          const msgFila = `🎉 *Vaga disponivel!*\n\nUma vaga abriu na aula que voce esta esperando:\n\n📚 ${aula.descricao || 'Aula'}\n📅 ${new Date(agendamento.data + 'T12:00:00').toLocaleDateString('pt-BR')}\n🕐 ${aula.horario}\n\nConfirme sua vaga em ate 1 hora:\n${linkConfirmacao}\n\nSe nao confirmar a tempo, a vaga passa para o proximo da fila.`
+          await fetch(`${apiUrl}/message/sendText/${conexao.instance_name}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+            body: JSON.stringify({ number: `55${alunoFila.telefone.replace(/\D/g, '')}`, text: msgFila }),
+          })
+        }
+      }
+    } catch (filaErr) {
+      console.error('Erro ao processar fila:', filaErr)
+    }
+
     return new Response(
-      JSON.stringify({
-        sucesso: true,
-        aulas_restantes: aulasRestantes,
-      }),
+      JSON.stringify({ sucesso: true, aulas_restantes: aulasRestantes }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
