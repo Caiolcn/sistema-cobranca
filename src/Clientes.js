@@ -50,7 +50,10 @@ function calcularIdade(dataNascimento) {
 
 export default function Clientes() {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
-  const { limiteClientes, plano, isLocked } = useUserPlan()
+  const { limiteClientes, plano, isLocked, loading: loadingPlano } = useUserPlan()
+  // Só dá pra aplicar o limite quando o plano realmente carregou — enquanto isso o
+  // hook devolve o padrão starter (50) e bloquearia uma conta pro/premium à toa
+  const planoConhecido = !loadingPlano && !!plano
   const { userId, nomeEmpresa, loading: loadingUser } = useUser()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -1277,7 +1280,7 @@ export default function Clientes() {
 
     // Verificar limite de clientes do plano (apenas clientes com assinatura ativa contam)
     const clientesAtivos = clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length
-    if (clientesAtivos >= limiteClientes) {
+    if (planoConhecido && clientesAtivos >= limiteClientes) {
       setErroModalNovoCliente(`Limite de ${limiteClientes} alunos ativos atingido no plano ${plano?.toUpperCase() || 'atual'}. Faça upgrade para adicionar mais alunos.`)
       return
     }
@@ -4661,7 +4664,7 @@ Equipe ${nomeEmpresa}`
         userId={userId}
         existingClients={clientes}
         planos={planos}
-        limiteClientes={limiteClientes}
+        limiteClientes={planoConhecido ? limiteClientes : null}
         clientesAtivos={clientes.filter(c => c.assinatura_ativa && !c.deleted_at && !c.lixo).length}
       />
 

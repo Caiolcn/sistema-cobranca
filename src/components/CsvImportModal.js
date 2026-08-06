@@ -184,8 +184,11 @@ export default function CsvImportModal({
     setImporting(true)
     setImportProgress(0)
 
-    const availableSlots = limiteClientes - clientesAtivos
-    const toImport = validationResults.valid.slice(0, availableSlots)
+    // limiteClientes null = plano ainda não carregou; não trunca a importação por engano
+    const availableSlots = limiteClientes == null ? Infinity : limiteClientes - clientesAtivos
+    const toImport = availableSlots === Infinity
+      ? validationResults.valid
+      : validationResults.valid.slice(0, availableSlots)
     let imported = 0
     const batchSize = 50
 
@@ -256,7 +259,7 @@ export default function CsvImportModal({
   })
 
   const hasRequiredMapping = columnMapping.nome !== undefined && columnMapping.telefone !== undefined
-  const availableSlots = limiteClientes - clientesAtivos
+  const availableSlots = limiteClientes == null ? Infinity : limiteClientes - clientesAtivos
   const wouldExceedLimit = validationResults.valid.length > availableSlots
 
   return (

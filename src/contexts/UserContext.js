@@ -34,16 +34,20 @@ export function UserProvider({ children }) {
         .maybeSingle()
 
       // Fallback: se colunas de onboarding ainda nao existem no banco
+      let falhouBuscar = false
       if (error && !usuarioData) {
-        const { data: fallback } = await supabase
+        const { data: fallback, error: fallbackError } = await supabase
           .from('usuarios')
           .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim, role')
           .eq('id', authUser.id)
           .maybeSingle()
         usuarioData = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
+        falhouBuscar = !fallback && !!fallbackError
       }
 
-      setUserData(usuarioData)
+      // Se a busca falhou (rede/RLS), mantém os dados anteriores: zerar userData
+      // rebaixa a conta pro/premium para os padrões de starter em toda a UI
+      setUserData(prev => (falhouBuscar ? prev : usuarioData))
     } catch (error) {
       console.error('Erro ao carregar usuário:', error)
     } finally {
@@ -78,16 +82,19 @@ export function UserProvider({ children }) {
       .maybeSingle()
 
     // Fallback: se colunas de onboarding ainda nao existem no banco
+    let falhouBuscar = false
     if (error && !data) {
-      const { data: fallback } = await supabase
+      const { data: fallback, error: fallbackError } = await supabase
         .from('usuarios')
         .select('id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, trial_fim, role')
         .eq('id', user.id)
         .maybeSingle()
       data = fallback ? { ...fallback, onboarding_completed: true, onboarding_step: 4 } : null
+      falhouBuscar = !fallback && !!fallbackError
     }
 
-    setUserData(data)
+    // Falha de rede não pode zerar userData (rebaixaria o plano na UI)
+    setUserData(prev => (falhouBuscar ? prev : data))
   }, [user])
 
   // Admin: verificar se é admin
