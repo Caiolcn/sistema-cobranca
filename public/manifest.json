@@ -1,6 +1,10 @@
 {
+  "id": "/",
   "short_name": "Mensalli",
   "name": "Mensalli - Sistema de Cobranças",
+  "description": "Cobre mensalidades pelo WhatsApp no automático: PIX, links de pagamento e controle de inadimplência.",
+  "lang": "pt-BR",
+  "dir": "ltr",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,8 +24,40 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "screenshots": [
+    {
+      "src": "dashboard.png",
+      "type": "image/png",
+      "sizes": "900x450",
+      "form_factor": "wide",
+      "label": "Painel com o resumo de cobranças do mês"
+    },
+    {
+      "src": "mensalidades.png",
+      "type": "image/png",
+      "sizes": "900x450",
+      "form_factor": "wide",
+      "label": "Controle de mensalidades e inadimplência"
+    },
+    {
+      "src": "fila-whatsapp.png",
+      "type": "image/png",
+      "sizes": "900x450",
+      "form_factor": "wide",
+      "label": "Fila de cobranças enviadas pelo WhatsApp"
+    },
+    {
+      "src": "templates.png",
+      "type": "image/png",
+      "sizes": "900x450",
+      "form_factor": "wide",
+      "label": "Modelos de mensagem de cobrança"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "theme_color": "#344848",
   "background_color": "#f5f5f5"
 }

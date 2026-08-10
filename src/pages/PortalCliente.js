@@ -63,53 +63,8 @@ export default function PortalCliente() {
   const [agendamentoCarregado, setAgendamentoCarregado] = useState(false)
   const [agendamentoBloqueado, setAgendamentoBloqueado] = useState(false)
 
-  // PWA Install
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const [mostrarBannerPWA, setMostrarBannerPWA] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
-
-  useEffect(() => {
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
-    setIsIOS(ios)
-
-    if (isStandalone) return
-
-    const dispensou = localStorage.getItem('pwa_banner_dispensado')
-    if (dispensou) {
-      const dataDispensa = new Date(dispensou)
-      const agora = new Date()
-      if ((agora - dataDispensa) < 7 * 24 * 60 * 60 * 1000) return
-    }
-
-    if (ios) {
-      setMostrarBannerPWA(true)
-      return
-    }
-
-    const handler = (e) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-      setMostrarBannerPWA(true)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  const instalarPWA = async () => {
-    if (!deferredPrompt) return
-    deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') {
-      setMostrarBannerPWA(false)
-      setDeferredPrompt(null)
-    }
-  }
-
-  const dispensarBannerPWA = () => {
-    setMostrarBannerPWA(false)
-    localStorage.setItem('pwa_banner_dispensado', new Date().toISOString())
-  }
+  // O convite de instalacao do PWA saiu daqui: virou o InstalarAppPrompt
+  // global (montado no App.js), que ja cobre /portal alem do /app.
 
   useEffect(() => {
     carregarDados()
@@ -1013,55 +968,6 @@ export default function PortalCliente() {
 
             {/* Card separado removido - próxima aula agora está dentro do card de frequência */}
 
-            {/* PWA Banner */}
-            {mostrarBannerPWA && (
-              <div style={{
-                background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-                borderRadius: 16, padding: '18px',
-                border: '1px solid rgba(255,255,255,0.08)',
-                position: 'relative', marginBottom: 12
-              }}>
-                <button onClick={dispensarBannerPWA} style={{
-                  position: 'absolute', top: 10, right: 10, background: 'none', border: 'none',
-                  cursor: 'pointer', padding: 4
-                }}>
-                  <Icon icon="mdi:close" width={16} style={{ color: 'rgba(255,255,255,0.3)' }} />
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: 'rgba(34,197,94,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                  }}>
-                    <Icon icon="mdi:cellphone-arrow-down" width={24} style={{ color: '#4ade80' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Instale o app</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>
-                      Acesso rapido pela tela inicial
-                    </div>
-                  </div>
-                </div>
-                {isIOS ? (
-                  <div style={{
-                    marginTop: 12, padding: '10px 12px', background: 'rgba(255,255,255,0.06)',
-                    borderRadius: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6
-                  }}>
-                    Toque em <Icon icon="mdi:export-variant" width={14} style={{ color: '#3b82f6', verticalAlign: 'middle' }} /> e depois em <strong>"Adicionar a Tela de Inicio"</strong>
-                  </div>
-                ) : (
-                  <button onClick={instalarPWA} style={{
-                    width: '100%', marginTop: 12, padding: '10px', borderRadius: 10,
-                    border: 'none', background: '#22c55e', color: '#fff',
-                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-                  }}>
-                    <Icon icon="mdi:download" width={16} />
-                    Instalar agora
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         )}
 

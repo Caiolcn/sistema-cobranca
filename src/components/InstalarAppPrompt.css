@@ -1,0 +1,139 @@
+/* Convite de instalacao do PWA — ver InstalarAppPrompt.js */
+
+.pwa-prompt {
+  position: fixed;
+  z-index: 1200; /* acima do conteudo, abaixo dos modais do DS */
+  right: 24px;
+  bottom: 24px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  gap: 14px;
+  padding: 18px 40px 18px 18px;
+  background: var(--color-bg-surface, #fff);
+  border: 1px solid var(--color-border-subtle, #e2e8f0);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.06);
+  animation: pwa-prompt-entra 260ms ease-out;
+}
+
+@keyframes pwa-prompt-entra {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-prompt { animation: none; }
+}
+
+/* No celular vira uma barra colada no rodape, respeitando a home bar do iPhone */
+@media (max-width: 640px) {
+  .pwa-prompt {
+    right: 12px;
+    left: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+  }
+}
+
+.pwa-prompt__icone {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mensalli-green-50, #e8f5e9);
+  color: var(--color-brand, #4caf50);
+}
+
+.pwa-prompt__corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwa-prompt__titulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary, #1e293b);
+  line-height: 1.3;
+}
+
+.pwa-prompt__texto {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #475569);
+  line-height: 1.45;
+}
+
+.pwa-prompt__acao {
+  margin-top: 12px;
+}
+
+.pwa-prompt__fechar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 120ms ease;
+}
+
+.pwa-prompt__fechar:hover {
+  opacity: 1;
+  /* App.css pinta todo button de azul no hover — precisa sobrescrever */
+  background: var(--neutral-100, #f1f5f9);
+  color: var(--color-text-primary, #1e293b);
+}
+
+/* ---- Passo a passo do iOS (nao existe instalacao por clique no iPhone) ---- */
+
+.pwa-prompt__passos {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pwa-prompt__passo {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #475569);
+}
+
+.pwa-prompt__passo-num {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--mensalli-green-50, #e8f5e9);
+  color: var(--color-brand, #4caf50);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pwa-prompt__passo strong {
+  color: var(--color-text-primary, #1e293b);
+  font-weight: 600;
+}
+
+.pwa-prompt__passo-icone {
+  vertical-align: -3px;
+  color: var(--info-500, #2196f3);
+}

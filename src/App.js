@@ -15,6 +15,7 @@ import ResetPassword from './ResetPassword'
 import Privacidade from './pages/Privacidade'
 import RequireOnboarding from './RequireOnboarding'
 import BarraModoEspelho from './components/BarraModoEspelho'
+import InstalarAppPrompt from './components/InstalarAppPrompt'
 
 // Lazy loading para componentes do app (carregados sob demanda)
 // Economia estimada: ~339 KiB no carregamento inicial
@@ -206,6 +207,10 @@ function App() {
               <Route path="/:slug" element={<LandingAcademia />} />
             </Routes>
           </Suspense>
+          {/* Fica fora do Suspense de proposito: o convite de instalacao nao
+              depende de nenhuma rota carregar, e ele mesmo filtra onde aparece
+              (so /app e /portal — na landing a pessoa nem sabe o que e isso) */}
+          <InstalarAppPrompt />
           <Toast />
         </div>
       </UserProvider>
