@@ -336,6 +336,136 @@ async function avisarPeloMaster(
   }
 }
 
+/** Estado de UMA instância. 'inexistente' quando o fetch por nome dá 404. */
+async function lerEstadoInstancia(apiUrl: string, apiKey: string, instance: string): Promise<string> {
+  try {
+    const res = await fetchComTimeout(
+      `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instance)}`,
+      { headers: { apikey: apiKey } },
+      PROBE_TIMEOUT_MS,
+    )
+    if (res.status === 404) return 'inexistente'
+    if (!res.ok) return 'erro'
+    const d = await res.json()
+    const i = (Array.isArray(d) ? d : [d])[0]
+    return i?.connectionStatus || 'erro'
+  } catch (_e) {
+    return 'erro'
+  }
+}
+
+/**
+ * Reconecta SEM novo pareamento, reusando a credencial salva.
+ *
+ * É a primeira tentativa de tudo porque é a única não-destrutiva: numa queda
+ * transitória (428/408/515) a credencial continua válida e o cliente nem fica
+ * sabendo que caiu. Só quando isto falha é que vale destruir a sessão.
+ *
+ * POST — o PUT devolve 404 nesta versão (medido em 11/08/26), e era por isso que
+ * o restartInstance() do whatsappService nunca funcionou.
+ */
+async function tentarRestart(apiUrl: string, apiKey: string, instance: string): Promise<boolean> {
+  try {
+    const res = await fetchComTimeout(
+      `${apiUrl}/instance/restart/${instance}`,
+      { method: 'POST', headers: { apikey: apiKey } },
+      PROBE_TIMEOUT_MS,
+    )
+    if (!res.ok) return false
+  } catch (_e) {
+    return false
+  }
+
+  // Reconectar leva alguns segundos; sondamos até ~15s antes de desistir.
+  for (let i = 0; i < 6; i++) {
+    await sleep(2500)
+    if ((await lerEstadoInstancia(apiUrl, apiKey, instance)) === 'open') return true
+  }
+  return false
+}
+
+/**
+ * A instância ainda consegue emitir QR?
+ *
+ * É o teste que importa, e o único conclusivo: 'connecting' NÃO prova travamento
+ * (medido em 11/08 — instância em 'connecting' devolveu QR normalmente, com o
+ * contador em 3). O travamento de verdade é o /instance/connect responder 200
+ * SEM o base64, depois que a Evolution esgotou o QRCODE_LIMIT repareando sozinha.
+ *
+ * CUIDADO: cada chamada CONSOME uma tentativa do balde. Chamar isto a cada
+ * varredura esgotaria o limite sozinho — ou seja, nós criaríamos o travamento
+ * que estamos tentando consertar. Por isso a escada de recuperação roda no
+ * máximo 1x por dia por instância (ver o ledger em whatsapp_recovery_log).
+ */
+async function temQrDisponivel(apiUrl: string, apiKey: string, instance: string): Promise<boolean> {
+  try {
+    const res = await fetchComTimeout(
+      `${apiUrl}/instance/connect/${instance}`,
+      { headers: { apikey: apiKey } },
+      PROBE_TIMEOUT_MS,
+    )
+    if (!res.ok) return false
+    const d = await res.json()
+    return !!(d?.base64 || d?.qrcode?.base64 || d?.code)
+  } catch (_e) {
+    return false
+  }
+}
+
+/**
+ * Apaga e recria a instância limpa. IRREVERSÍVEL — destrói a credencial.
+ *
+ * Só faz sentido quando a credencial já morreu e a instância está presa em
+ * 'connecting': aí a Evolution esgotou o QRCODE_LIMIT tentando reparear sozinha
+ * e o /instance/connect responde 200 SEM QR, deixando o cliente sem saída.
+ *
+ * `qrcode: false` na recriação é o detalhe que faz isso valer a pena: a
+ * instância nasce em 'close' e NÃO começa a queimar QR sozinha (verificado ao
+ * vivo — 13 min depois seguia em 'close'). Assim o balde está cheio quando o
+ * cliente abrir a tela, e o QR sai de primeira.
+ */
+async function recriarInstancia(
+  apiUrl: string, apiKey: string, instance: string, botAtivo: boolean,
+): Promise<{ ok: boolean; detalhe: string }> {
+  // logout é best-effort: numa instância já caída devolve 400 "is not connected".
+  await fetchComTimeout(`${apiUrl}/instance/logout/${instance}`, {
+    method: 'DELETE', headers: { apikey: apiKey },
+  }, PROBE_TIMEOUT_MS).catch(() => {})
+
+  try {
+    await fetchComTimeout(`${apiUrl}/instance/delete/${instance}`, {
+      method: 'DELETE', headers: { apikey: apiKey },
+    }, PROBE_TIMEOUT_MS)
+  } catch (_e) {
+    return { ok: false, detalhe: 'delete não respondeu' }
+  }
+
+  // Confirmar o sumiço antes de recriar: o delete não é instantâneo e recriar
+  // cedo demais ressuscita a instância presa.
+  let sumiu = false
+  for (let i = 0; i < 4; i++) {
+    await sleep(1000)
+    if ((await lerEstadoInstancia(apiUrl, apiKey, instance)) === 'inexistente') { sumiu = true; break }
+  }
+  if (!sumiu) return { ok: false, detalhe: 'instância não sumiu após o delete' }
+
+  const criar = await fetchComTimeout(`${apiUrl}/instance/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: apiKey },
+    body: JSON.stringify({ instanceName: instance, qrcode: false, integration: 'WHATSAPP-BAILEYS' }),
+  }, PROBE_TIMEOUT_MS)
+
+  if (!criar.ok && ![403, 409].includes(criar.status)) {
+    return { ok: false, detalhe: `create HTTP ${criar.status} — instância ficou apagada!` }
+  }
+
+  // Sem isto a instância nova nasce sem webhook e o cliente some do rastreio
+  // de queda em tempo real.
+  await garantirWebhook(apiUrl, apiKey, instance, botAtivo)
+
+  return { ok: true, detalhe: 'recriada limpa (qrcode:false), QR disponível' }
+}
+
 /**
  * Descobre para qual JID mandar o aviso de queda, e cacheia.
  *
@@ -451,7 +581,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   const userIds = (usuarios || []).map((u: { id: string }) => u.id)
   const { data: zaps } = await admin
     .from('mensallizap')
-    .select('user_id, instance_name, whatsapp_numero, gestor_jid, conectado, ultima_conexao, ultimo_aviso_desconexao')
+    .select('user_id, instance_name, whatsapp_numero, gestor_jid, conectado, ultima_conexao, ultimo_aviso_desconexao, pareamento_ate')
     .in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000'])
 
   type ZapInfo = {
@@ -461,6 +591,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     conectado: boolean | null
     ultima_conexao: string | null
     ultimo_aviso_desconexao: string | null
+    pareamento_ate: string | null
   }
   const zapPorUser = new Map<string, ZapInfo>()
   zaps?.forEach((z: ZapInfo & { user_id: string }) => {
@@ -471,6 +602,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       conectado: z.conectado,
       ultima_conexao: z.ultima_conexao,
       ultimo_aviso_desconexao: z.ultimo_aviso_desconexao,
+      pareamento_ate: z.pareamento_ate,
     })
   })
 
@@ -502,6 +634,35 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   // martelar a Evolution. Roda na varredura das 8h BRT (11h UTC).
   const rodadaProfunda = new Date().getUTCHours() === 11
 
+  // ---- Recuperação automática: configuração e tetos ----
+  // Tudo em dado, não em código: dá pra desligar ou apertar com um UPDATE, sem
+  // deploy. O recriar é irreversível (destrói credencial e pode migrar a conta
+  // pro LID), então os tetos existem pra que um diagnóstico errado não vire
+  // re-pareamento em massa — o pior cenário possível aqui.
+  const { data: cfgRec } = await admin
+    .from('whatsapp_recovery_cfg')
+    .select('ativo, restart_ativo, recriar_ativo, max_recriacoes_dia, max_recuperacoes_rodada')
+    .eq('id', true)
+    .maybeSingle()
+
+  const recuperacaoLigada = !!cfgRec?.ativo
+  const maxRodada = cfgRec?.max_recuperacoes_rodada ?? 5
+
+  // Quantas recriações já houve nas últimas 24h (teto global) e em quais
+  // instâncias (teto de 1 por instância por dia — sem isso, uma instância que
+  // não volta viraria um laço de delete/create a cada 30 min).
+  const { data: tentativas24h } = await admin
+    .from('whatsapp_recovery_log')
+    .select('instance_name, acao')
+    .gte('criado_em', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+
+  // 1 escada por instância por dia. Além de evitar laço de delete/create numa
+  // conta que não volta, isso é o que impede o teste de QR de esgotar o balde
+  // sozinho — ele consome uma tentativa a cada chamada.
+  const jaTentadasHoje = new Set((tentativas24h || []).map((r: { instance_name: string }) => r.instance_name))
+  const totalRecriacoes24h = (tentativas24h || []).filter((r: { acao: string }) => r.acao === 'recriar').length
+  let recuperacoesNestaRodada = 0
+
   const checadoEm = new Date().toISOString()
   const agora = Date.now()
   let total = 0
@@ -525,7 +686,9 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const instance = zap?.instance_name || `instance_${u.id.substring(0, 8)}`
 
     const info = frota.get(instance)
-    const estado = info ? info.estado : 'inexistente'
+    // let: a recuperação automática mais abaixo pode mudar o estado (restart que
+    // deu certo, instância recriada), e o relatório tem que refletir o resultado.
+    let estado = info ? info.estado : 'inexistente'
 
     // ownerJid é o JID canônico do cliente — a fonte certa do número, que o
     // salvarConexao nunca conseguiu preencher porque lia /instance/fetchProfile
@@ -593,6 +756,100 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       if (r.ok) deslogados++
     } else if (!saudavel && estadoConclusivo) {
       acao = 'aguardando_confirmacao'
+    }
+
+    // ============ RECUPERAÇÃO AUTOMÁTICA ============
+    // Ordem: reconectar sem QR primeiro, destruir credencial por último.
+    //
+    // Guardas, todas necessárias:
+    //  - confirmado em 2 rodadas (um blip não dispara nada)
+    //  - nunca a master: o CRM de leads e o próprio canal de aviso dependem dela
+    //  - nunca com o cliente na tela do QR: recriar ali invalidaria o QR que ele
+    //    está olhando e o polling morreria em "Tempo expirado"
+    //  - tetos por rodada, por dia e 1 recriação por instância a cada 24h
+    const emPareamento = !!zap?.pareamento_ate && Date.parse(zap.pareamento_ate) > agora
+    const podeRecuperar =
+      recuperacaoLigada &&
+      confirmado &&
+      !saudavel &&
+      instance !== masterInstance &&
+      !emPareamento &&
+      !jaTentadasHoje.has(instance) &&
+      recuperacoesNestaRodada < maxRodada
+
+    if (podeRecuperar) {
+      recuperacoesNestaRodada++
+      jaTentadasHoje.add(instance)
+      const motivo = info?.motivoQueda ?? null
+
+      // 1) Restart — devolve a conta sem o cliente perceber, quando a credencial
+      // ainda vale. Em 401 (loggedOut) ela morreu: o restart só reiniciaria o
+      // socket sem credencial, que é justamente o que queima o QRCODE_LIMIT.
+      let voltou = false
+      if (cfgRec?.restart_ativo && motivo !== 401) {
+        voltou = await tentarRestart(apiUrl, apiKey, instance)
+        await admin.from('whatsapp_recovery_log').insert({
+          user_id: u.id, instance_name: instance, acao: 'restart',
+          sucesso: voltou, motivo_queda: motivo,
+          detalhe: voltou ? 'reconectou sem novo pareamento' : 'não voltou em ~15s',
+        })
+      }
+
+      if (voltou) {
+        // Recuperado de verdade: nada de aviso, o cliente nem fica sabendo.
+        saudavel = true
+        estado = 'open'
+        acao = acao === 'nenhuma' ? 'restart_ok' : `${acao}+restart_ok`
+      } else {
+        // 2) O QR ainda sai? É o teste que decide se precisamos destruir.
+        //
+        // Não dá pra inferir isso do estado: instância em 'connecting' devolveu
+        // QR normalmente no teste de 11/08. Destruir baseado no estado seria
+        // re-parear à toa — e re-parear é o gatilho da migração LID, que não tem
+        // volta. Só quando o QR realmente não vem é que vale apagar.
+        // DUAS leituras antes de condenar. O sinal oscila: a Studio Renovar
+        // respondeu "sem QR" às 18:32 e "com QR" às 18:49 do mesmo dia (11/08).
+        // Uma leitura só condenaria à destruição uma instância que ia voltar
+        // sozinha — e o recriar não tem desfazer.
+        let qrSai = await temQrDisponivel(apiUrl, apiKey, instance)
+        let leituras = 1
+        if (!qrSai) {
+          await sleep(10000)
+          qrSai = await temQrDisponivel(apiUrl, apiKey, instance)
+          leituras = 2
+        }
+
+        await admin.from('whatsapp_recovery_log').insert({
+          user_id: u.id, instance_name: instance, acao: 'verificar_qr',
+          sucesso: qrSai, motivo_queda: motivo,
+          detalhe: qrSai
+            ? `QR disponível na leitura ${leituras} — basta o cliente escanear`
+            : 'connect respondeu sem QR em 2 leituras: travada',
+        })
+
+        if (qrSai) {
+          // Sobrepõe o 'travado_sem_qr' que o diagnóstico por estado tinha
+          // chutado: aqui temos prova positiva de que o QR sai.
+          acao = 'qr_ja_livre'
+        } else if (
+          cfgRec?.recriar_ativo &&
+          totalRecriacoes24h < (cfgRec?.max_recriacoes_dia ?? 5)
+        ) {
+          // 3) Recriar — última saída, irreversível. Sem isso o cliente abre a
+          // tela e vê "QR Code não foi gerado pela API", sem nada que possa fazer.
+          const r = await recriarInstancia(apiUrl, apiKey, instance, botPorUser.get(u.id) || false)
+          await admin.from('whatsapp_recovery_log').insert({
+            user_id: u.id, instance_name: instance, acao: 'recriar',
+            sucesso: r.ok, motivo_queda: motivo, detalhe: r.detalhe,
+          })
+          acao = r.ok ? 'recriada_qr_liberado' : 'recriar_falhou'
+          detalheAcao = [detalheAcao, r.detalhe].filter(Boolean).join(' | ')
+          // Recriada nasce em 'close' (qrcode:false não inicia pareamento).
+          if (r.ok) estado = 'close'
+        } else {
+          acao = 'travado_sem_qr'
+        }
+      }
     }
 
     // ============ AVISO DE DESCONEXÃO (Canais A + C) ============

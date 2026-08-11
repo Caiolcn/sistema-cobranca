@@ -80,3 +80,16 @@ set search_path to 'public'
 as $function$
   select m.estado, m.checado_em from whatsapp_master_estado m where is_admin();
 $function$;
+
+-- ============================================================
+-- Etapa 3 — recuperação automática (11/08/26). Aplicado em produção.
+-- Ver a migration whatsapp_recuperacao_automatica para o DDL completo:
+--   whatsapp_recovery_cfg   (kill switch + tetos, tudo em dado)
+--   whatsapp_recovery_log   (auditoria E limitador do teto diário)
+--   mensallizap.pareamento_ate (janela em que o cliente está com o QR na tela)
+--   admin_whatsapp_recovery_log(dias)  -- leitura pelo painel
+--
+-- Ligar/desligar sem deploy:
+--   update whatsapp_recovery_cfg set ativo = false where id = true;          -- para tudo
+--   update whatsapp_recovery_cfg set recriar_ativo = false where id = true;  -- só o destrutivo
+-- ============================================================

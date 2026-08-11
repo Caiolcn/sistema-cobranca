@@ -288,6 +288,26 @@ async function criarEConectar(config, userId) {
 }
 
 /**
+ * Marca que o cliente está com o QR aberto na tela, por `segundos`.
+ *
+ * A recuperação automática do servidor apaga e recria instância travada. Se isso
+ * cair no meio de um pareamento, o QR que o cliente está olhando vira inválido e
+ * o polling morre em "Tempo expirado" — o tipo de erro que não pode mais
+ * aparecer. O backend respeita esta janela e não toca na instância.
+ */
+async function marcarPareamento(userId, segundos) {
+  if (!userId) return
+  try {
+    await supabase
+      .from('mensallizap')
+      .update({ pareamento_ate: new Date(Date.now() + segundos * 1000).toISOString() })
+      .eq('user_id', userId)
+  } catch {
+    /* não impede o pareamento */
+  }
+}
+
+/**
  * Garante que a instância existe e devolve o QR em base64.
  * Se já estiver conectada, devolve { jaConectado: true } e não gera QR.
  *
@@ -308,6 +328,11 @@ export async function gerarQrCode(config, { forcar = false, userId = null } = {}
 
   const estado = await verificarEstado(config)
   if (!forcar && estado === 'open') return { jaConectado: true, qr: null }
+
+  // Reserva a instância enquanto este pareamento acontece. Generoso de propósito
+  // (o reset abaixo pode levar ~10s antes de o QR aparecer, e o cliente ainda
+  // tem 2 min pra escanear).
+  await marcarPareamento(userId, 240)
 
   if (forcar) {
     if (await tentarRestart(config)) return { jaConectado: true, qr: null }

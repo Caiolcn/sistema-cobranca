@@ -228,7 +228,24 @@ export default function AdminWhatsAppSaude() {
                       )}
                     </td>
                     <td style={{ padding: '8px' }}>
-                      {l.acao === 'logout' ? (
+                      {/* Ações da recuperação automática vêm primeiro: são o que
+                          mais interessa saber ao bater o olho na tabela. */}
+                      {l.acao?.includes('restart_ok') ? (
+                        <span title="A credencial ainda era válida: o sistema reiniciou a instância e ela voltou sozinha, sem QR e sem o cliente perceber."
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#f0fdf4', color: '#15803d' }}>
+                          Reconectou sozinho
+                        </span>
+                      ) : l.acao === 'recriada_qr_liberado' ? (
+                        <span title="Estava travada sem gerar QR. O sistema apagou e recriou a instância limpa (sem queimar QR), então o cliente consegue escanear de primeira. O aviso foi enviado a ele."
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fffbeb', color: '#a16207' }}>
+                          Recriada (QR liberado)
+                        </span>
+                      ) : l.acao === 'recriar_falhou' ? (
+                        <span title="A recuperação automática tentou recriar a instância e não conseguiu. Precisa de olhada manual no servidor."
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fef2f2', color: '#c62828' }}>
+                          Falha ao recriar
+                        </span>
+                      ) : l.acao === 'logout' ? (
                         <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fff8e1', color: '#a16207' }}>
                           Deslogado
                         </span>
