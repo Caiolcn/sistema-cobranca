@@ -52,18 +52,119 @@ export async function verificarEstado(config) {
   }
 }
 
+// Número de descarte só pra exercitar o socket. Não recebe nada — é consulta de
+// existência (onWhatsApp). Mesmo fallback usado pelo whatsapp-health-check.
+const NUMERO_SONDA = '5511999999999'
+
 /**
- * Garante que a instância existe e devolve o QR em base64.
- * Se já estiver conectada, devolve { jaConectado: true } e não gera QR.
+ * Sonda profunda: força um round-trip até o servidor do WhatsApp.
+ *
+ * O connectionState MENTE — fica "open" com o socket Baileys morto por baixo
+ * ("zumbi"). Foi assim que a Escolinha Napoli passou 2 dias com a tela verde,
+ * o banner vermelho e nenhuma cobrança saindo. Só o round-trip distingue os dois.
+ *
+ * Socket morto responde 400/500 "Connection Closed" (Boom 428) ou trava até o timeout.
  */
-export async function gerarQrCode(config) {
-  if (!config?.apiKey) {
-    throw new Error('Integração do WhatsApp não configurada. Fale com o suporte.')
+export async function sondarSocket(config, timeoutMs = 12000) {
+  if (!config?.apiKey) return false
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${config.apiUrl}/chat/whatsappNumbers/${config.instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
+      body: JSON.stringify({ numbers: [NUMERO_SONDA] }),
+      signal: controller.signal
+    })
+    // 200 = o Baileys conseguiu falar com o WhatsApp. Se o número existe é irrelevante.
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(id)
   }
+}
 
+/**
+ * Veredito honesto da conexão, para a UI e para o que se grava no banco.
+ *
+ *  'conectado'    — open + socket vivo. Único caso em que vale gravar conectado = true.
+ *  'zumbi'        — open + socket morto. A conta NÃO envia; precisa reparear.
+ *  'desconectado' — close/connecting: o QR já está livre.
+ *
+ * Nunca devolve 'conectado' só porque o painel disse "open".
+ */
+export async function verificarSaude(config) {
   const estado = await verificarEstado(config)
-  if (estado === 'open') return { jaConectado: true, qr: null }
+  if (estado !== 'open') return { estado, veredito: 'desconectado' }
+  const vivo = await sondarSocket(config)
+  return { estado, veredito: vivo ? 'conectado' : 'zumbi' }
+}
 
+const pausa = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+export const MENSAGEM_TRAVADA =
+  'Não conseguimos liberar sua conexão para gerar um novo QR Code. ' +
+  'Isso é um travamento no servidor do WhatsApp, não é nada que você fez errado — ' +
+  'fale com o suporte que destravamos manualmente.'
+
+/**
+ * true quando a instância não existe mais na Evolution (404 no fetch por nome).
+ *
+ * Não dá para usar o connectionState aqui: ele responde `close` para uma
+ * instância que o fetchInstances mostra presa em `connecting` (visto ao vivo na
+ * conta do Projeto Jiu-Jitsu). Confiar nele faria o reset achar que limpou sem
+ * ter limpado, e o create logo depois voltaria 403 sobre a instância travada.
+ */
+async function instanciaSumiu(config) {
+  try {
+    const res = await fetch(
+      `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
+      { headers: { apikey: config.apiKey } }
+    )
+    if (res.status === 404) return true
+    if (!res.ok) return false
+    const data = await res.json()
+    const lista = Array.isArray(data) ? data : [data]
+    return !lista.some((i) => (i?.name || i?.instance?.instanceName) === config.instanceName)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Derruba a sessão na Evolution e espera o nome da instância ficar livre.
+ *
+ * É o "desentupidor" do pareamento: recriar do zero é o que reseta o ciclo de QR
+ * da instância. Enquanto o nome segue preso, /instance/connect responde 200 SEM
+ * o base64 — que é o "QR Code não foi gerado pela API" que o cliente via, sem
+ * nenhuma saída pela tela.
+ *
+ * logout e delete são best-effort de propósito: numa instância caída o logout
+ * responde 400 "is not connected" (confirmado na conta do Projeto Jiu-Jitsu) e
+ * num zumbi dá 500. Por isso quem manda é o sumiço confirmado, não o status HTTP.
+ */
+export async function resetarInstancia(config, tentativas = 4) {
+  if (!config?.apiKey) return false
+
+  await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
+    method: 'DELETE', headers: { apikey: config.apiKey }
+  }).catch(() => {})
+  await fetch(`${config.apiUrl}/instance/delete/${config.instanceName}`, {
+    method: 'DELETE', headers: { apikey: config.apiKey }
+  }).catch(() => {})
+
+  // O delete não é instantâneo: a Evolution ainda derruba o socket e limpa a
+  // sessão depois de responder. Recriar antes disso ressuscita a instância presa.
+  for (let i = 0; i < tentativas; i++) {
+    await pausa(1000)
+    if (await instanciaSumiu(config)) return true
+  }
+  return false
+}
+
+/** Cria (se preciso) e pede o QR. Devolve o base64 ou null se a API não mandou. */
+async function criarEConectar(config) {
   // 403/409 = instância já existe; não é erro.
   const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
     method: 'POST',
@@ -75,6 +176,11 @@ export async function gerarQrCode(config) {
     })
   })
 
+  // 401/403 de chave inválida precisa estourar: nenhum reset resolve isso e
+  // insistir só esconderia a causa real atrás de "conexão travada".
+  if (createResponse.status === 401) {
+    throw new Error('Integração do WhatsApp recusada pelo servidor. Fale com o suporte.')
+  }
   if (![403, 409].includes(createResponse.status) && !createResponse.ok) {
     const erro = await createResponse.json().catch(() => ({}))
     throw new Error(erro.message || `Erro ao criar instância: HTTP ${createResponse.status}`)
@@ -85,16 +191,48 @@ export async function gerarQrCode(config) {
     { headers: { apikey: config.apiKey } }
   )
 
-  if (!connectResponse.ok) {
-    const erro = await connectResponse.json().catch(() => ({}))
-    throw new Error(erro.message || `HTTP ${connectResponse.status}`)
-  }
+  // Falha aqui não é terminal: quase sempre é a instância presa, e quem trata
+  // isso é o reset do gerarQrCode. Devolver null deixa ele decidir.
+  if (!connectResponse.ok) return null
 
   const data = await connectResponse.json()
   // A Evolution já devolveu o QR em formatos diferentes entre versões
-  const qr = data.base64 || data.qrcode?.base64 || data.code || data.qr
+  return data.base64 || data.qrcode?.base64 || data.code || data.qr || null
+}
 
-  if (!qr) throw new Error('A API não devolveu o QR Code. Tente de novo.')
+/**
+ * Garante que a instância existe e devolve o QR em base64.
+ * Se já estiver conectada de verdade, devolve { jaConectado: true } e não gera QR.
+ *
+ * `forcar` = o usuário clicou em "Reconectar": descarta a sessão atual antes de
+ * parear, inclusive quando ela está apenas 'connecting'. Esse é justamente o
+ * estado em que a Evolution devolve 200 sem QR e o cliente ficava rodando em
+ * círculo — mas nunca derrubamos uma sessão que está viva, mesmo com forcar.
+ */
+export async function gerarQrCode(config, { forcar = false } = {}) {
+  if (!config?.apiKey) {
+    throw new Error('Integração do WhatsApp não configurada. Fale com o suporte.')
+  }
+
+  const { veredito } = await verificarSaude(config)
+  if (veredito === 'conectado') return { jaConectado: true, qr: null }
+
+  // Zumbi: o painel diz "open" com o socket morto. A Evolution recusa parear
+  // enquanto a sessão morta ocupar o nome — a tela dizia "conectado", o botão
+  // desconectar dava 500 e o QR nunca vinha.
+  if (veredito === 'zumbi' || forcar) await resetarInstancia(config)
+
+  let qr = await criarEConectar(config)
+
+  // 200 sem QR = instância presa. Última cartada: reset duro e tentar de novo.
+  // Sem isto a tela morria em "QR Code não foi gerado pela API" e o cliente
+  // dependia de alguém mexer no servidor para voltar a enviar cobrança.
+  if (!qr) {
+    await resetarInstancia(config)
+    qr = await criarEConectar(config)
+  }
+
+  if (!qr) throw new Error(MENSAGEM_TRAVADA)
 
   return { jaConectado: false, qr }
 }

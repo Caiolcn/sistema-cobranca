@@ -8,6 +8,7 @@ import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import whatsappService from './services/whatsappService'
+import { verificarSaude, gerarQrCode } from './services/whatsappConexao'
 import { resolverDestinatario } from './utils/destinatario'
 // Textos vivem em src/data pra o wizard de onboarding poder semear os mesmos
 // templates ao conectar, sem importar este componente inteiro
@@ -913,31 +914,35 @@ export default function WhatsAppConexao() {
         }
 
         // 6. Verificar status WhatsApp (pode ser em paralelo com os outros)
+        //
+        // Só o round-trip real decide. O connectionState fica "open" com o socket
+        // morto ("zumbi"), e confiar nele causava dois estragos: a tela mostrava
+        // "WhatsApp Conectado!" ao lado do banner vermelho de desconexão, e o
+        // upsert abaixo reescrevia conectado = true por cima do veredito do
+        // health-check — devolvendo a conta às views vw_parcelas_* com o canal
+        // morto, até a varredura seguinte derrubar de novo. Agora só gravamos
+        // conectado = true quando a sonda passa; no zumbi não tocamos no banco
+        // (quem manda ali é o health-check) e a UI conta a verdade.
         if (apiKey && instanceName) {
           try {
-            const response = await fetch(
-              `${apiUrl}/instance/connectionState/${instanceName}`,
-              { headers: { 'apikey': apiKey } }
-            )
+            const { veredito } = await verificarSaude({ apiKey, apiUrl, instanceName })
 
-            if (response.ok) {
-              const data = await response.json()
-              const state = data.instance?.state || 'close'
-              if (state === 'open') {
-                setStatus('connected')
-                // Sincronizar mensallizap para que o onboarding checklist reflita a conexão
-                supabase
-                  .from('mensallizap')
-                  .upsert({
-                    user_id: effectiveUserId,
-                    conectado: true,
-                    instance_name: instanceName,
-                    updated_at: new Date().toISOString()
-                  }, { onConflict: 'user_id' })
-                  .then(({ error }) => {
-                    if (error) console.warn('Erro ao sincronizar mensallizap:', error)
-                  })
-              }
+            if (veredito === 'conectado') {
+              setStatus('connected')
+              // Sincronizar mensallizap para que o onboarding checklist reflita a conexão
+              supabase
+                .from('mensallizap')
+                .upsert({
+                  user_id: effectiveUserId,
+                  conectado: true,
+                  instance_name: instanceName,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' })
+                .then(({ error }) => {
+                  if (error) console.warn('Erro ao sincronizar mensallizap:', error)
+                })
+            } else if (veredito === 'zumbi') {
+              setStatus('zombie')
             }
           } catch (error) {
             console.log('Instância não existe ou está desconectada')
@@ -1901,41 +1906,25 @@ export default function WhatsAppConexao() {
   }
 
   // FUNÇÃO UNIFICADA: Conectar WhatsApp
-  const conectarWhatsApp = async () => {
+  //
+  // O passo a passo (sonda, zumbi, reset da instância, retry do QR) mora no
+  // service — é o mesmo do wizard de onboarding. Aqui ficou só o que é de tela.
+  // Este fluxo já foi duplicado antes e as duas cópias divergiram: a do wizard
+  // ganhou o tratamento de zumbi e esta não, então o cliente que caía batia no
+  // "QR Code não foi gerado pela API" sem nenhum caminho de volta.
+  //
+  // forcar = clique em "Reconectar/Forçar nova conexão": descarta a sessão presa
+  // antes de pedir o QR (a que fica em 'connecting' segurando o nome).
+  const conectarWhatsApp = async ({ forcar = false } = {}) => {
     setLoading(true)
     setErro('')
 
     try {
-      console.log('📱 Conectando WhatsApp...')
+      console.log(forcar ? '📱 Forçando nova conexão do WhatsApp...' : '📱 Conectando WhatsApp...')
 
-      // 1. Verificar se instância existe
-      console.log('🔍 Verificando instância...')
-      const response = await fetch(`${config.apiUrl}/instance/fetchInstances`, {
-        headers: { 'apikey': config.apiKey }
-      })
+      const { jaConectado, qr } = await gerarQrCode(config, { forcar })
 
-      let instanciaExiste = false
-      let estadoInstancia = null
-      if (response.ok) {
-        const data = await response.json()
-        // Evolution 2.3.7 devolve a lista achatada ({ name, connectionStatus });
-        // versões antigas aninhavam em .instance. Aceitar as duas — procurar só
-        // pela antiga fazia o fluxo achar que a instância não existia e tentar
-        // recriá-la a cada reconexão.
-        const minhaInstancia = (Array.isArray(data) ? data : []).find(
-          inst => (inst.name || inst.instance?.instanceName) === config.instanceName
-        )
-        instanciaExiste = !!minhaInstancia
-        estadoInstancia = minhaInstancia?.connectionStatus || minhaInstancia?.instance?.state || null
-      }
-
-      console.log(`ℹ️ Instância existe: ${instanciaExiste}`)
-      if (instanciaExiste && estadoInstancia) {
-        console.log(`📊 Estado da instância: ${estadoInstancia}`)
-      }
-
-      // 2. Se já está conectada, não precisa gerar QR Code
-      if (instanciaExiste && estadoInstancia === 'open') {
+      if (jaConectado) {
         console.log('✅ Instância já está conectada! Pulando QR Code.')
         setStatus('connected')
         setQrCode(null)
@@ -1949,49 +1938,6 @@ export default function WhatsAppConexao() {
         return
       }
 
-      // 3. Se não existe, criar
-      if (!instanciaExiste) {
-        console.log('🔄 Criando instância...')
-        const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': config.apiKey
-          },
-          body: JSON.stringify({ instanceName: config.instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' })
-        })
-
-        // 403/409 = já existe, não é erro
-        if (createResponse.status !== 403 && createResponse.status !== 409 && !createResponse.ok) {
-          const errorData = await createResponse.json().catch(() => ({}))
-          throw new Error(errorData.message || `Erro ao criar instância: HTTP ${createResponse.status}`)
-        }
-
-        console.log('✅ Instância criada/já existe')
-      }
-
-      // 4. Gerar QR Code
-      console.log('📡 Gerando QR Code...')
-      const connectResponse = await fetch(`${config.apiUrl}/instance/connect/${config.instanceName}`, {
-        headers: { 'apikey': config.apiKey }
-      })
-
-      if (!connectResponse.ok) {
-        const errorData = await connectResponse.json().catch(() => ({}))
-        throw new Error(errorData.message || `HTTP ${connectResponse.status}`)
-      }
-
-      const data = await connectResponse.json()
-      console.log('📦 Resposta completa da API:', data)
-
-      // Tentar extrair QR Code de múltiplos formatos
-      const qr = data.base64 || data.qrcode?.base64 || data.code || data.qr
-
-      if (!qr) {
-        console.error('❌ QR Code não encontrado. Estrutura da resposta:', Object.keys(data))
-        throw new Error('QR Code não foi gerado pela API. Abra o console (F12) para ver detalhes.')
-      }
-
       console.log('✅ QR Code gerado!')
       setQrCode(qr)
       setStatus('connecting')
@@ -2000,6 +1946,8 @@ export default function WhatsAppConexao() {
     } catch (error) {
       console.error('❌ Erro completo:', error)
       setErro(error.message)
+      // Cai em 'disconnected' (não 'zombie') de propósito: é o estado que mostra
+      // o botão de forçar nova conexão junto do erro.
       setStatus('disconnected')
     } finally {
       setLoading(false)
@@ -2416,9 +2364,12 @@ export default function WhatsAppConexao() {
         )}
 
         {/* Status badge + Desconectar */}
+        {/* 'zombie' cai no visual vermelho junto com 'disconnected': o canal está
+            morto, então mostrar verde aqui era a contradição que o cliente via
+            entre esta tela e o banner de desconexão. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <div
-            title={status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
+            title={status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : status === 'zombie' ? 'Conexão travada' : 'Desconectado'}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -2436,7 +2387,7 @@ export default function WhatsAppConexao() {
             }} />
             {!isMobile && (
               <span style={{ fontSize: '13px', fontWeight: '600', color: status === 'connected' ? '#2e7d32' : status === 'connecting' ? '#e65100' : '#c62828' }}>
-                {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
+                {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : status === 'zombie' ? 'Conexão travada' : 'Desconectado'}
               </span>
             )}
           </div>
@@ -2491,6 +2442,32 @@ export default function WhatsAppConexao() {
                 <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
                   Seu WhatsApp está conectado e pronto para enviar mensagens automáticas.
                 </p>
+              </div>
+            ) : status === 'zombie' && !qrCode ? (
+              // ESTADO 1B: ZUMBI — a Evolution diz "open", mas o canal está morto.
+              // Sem este bloco o cliente via a tela verde de sucesso e não tinha
+              // como descobrir que nada estava saindo.
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <Icon icon="mdi:alert-circle" width="80" height="80" style={{ color: '#f44336', marginBottom: '20px' }} />
+                <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', fontWeight: '600', color: '#344848' }}>
+                  Conexão travada
+                </h3>
+                <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666', maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}>
+                  Seu WhatsApp aparece como conectado, mas o canal parou de responder —
+                  suas cobranças e lembretes <strong>não estão sendo enviados</strong>.
+                  Reconecte para voltar a enviar.
+                </p>
+                <button
+                  onClick={() => conectarWhatsApp({ forcar: true })}
+                  disabled={loading}
+                  style={{
+                    padding: '12px 28px', backgroundColor: '#344848', color: 'white', border: 'none',
+                    borderRadius: '8px', fontSize: '15px', fontWeight: 600,
+                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
+                  }}
+                >
+                  {loading ? 'Reconectando...' : 'Reconectar WhatsApp'}
+                </button>
               </div>
             ) : qrCode ? (
               // ESTADO 2: CONECTANDO (QR Code visível)
@@ -2600,7 +2577,7 @@ export default function WhatsAppConexao() {
                 </div>
 
                 <button
-                  onClick={conectarWhatsApp}
+                  onClick={() => conectarWhatsApp()}
                   disabled={loading}
                   style={{
                     width: '100%',
@@ -2635,6 +2612,41 @@ export default function WhatsAppConexao() {
                   )}
                 </button>
 
+                {/* Saída para quando o botão verde não resolve.
+                    Um dono de academia não vai abrir o F12 — o que ele precisa
+                    é derrubar a sessão presa e pedir um QR novo, e isso é um
+                    clique. Fica fora do bloco de erro porque quem já tentou
+                    conectar duas vezes sem sucesso precisa achar isto sozinho. */}
+                <button
+                  onClick={() => conectarWhatsApp({ forcar: true })}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    marginTop: '12px',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    color: '#344848',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: loading ? 0.7 : 1
+                  }}
+                  onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                  onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = 'white')}
+                >
+                  <Icon icon="mdi:refresh" width="18" height="18" />
+                  {loading ? 'Reconectando...' : 'Não aparece o QR Code? Forçar nova conexão'}
+                </button>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#888', textAlign: 'center' }}>
+                  Encerra a sessão antiga no servidor e gera um QR Code novo do zero.
+                </p>
+
                 {erro && (
                   <div style={{
                     marginTop: '20px',
@@ -2649,15 +2661,10 @@ export default function WhatsAppConexao() {
                       <Icon icon="mdi:alert-circle" width="20" height="20" style={{ flexShrink: 0, marginTop: '2px' }} />
                       <div style={{ flex: 1 }}>
                         <strong style={{ display: 'block', marginBottom: '8px' }}>{erro}</strong>
-                        <details style={{ fontSize: '13px', cursor: 'pointer' }}>
-                          <summary style={{ marginBottom: '8px' }}>Ver ajuda para resolver</summary>
-                          <div style={{ paddingLeft: '8px', borderLeft: '2px solid #f44336', marginTop: '8px' }}>
-                            <p style={{ margin: '0 0 8px 0' }}>1. Abra o console do navegador (pressione F12)</p>
-                            <p style={{ margin: '0 0 8px 0' }}>2. Procure por mensagens detalhadas do erro</p>
-                            <p style={{ margin: '0 0 8px 0' }}>3. Verifique se a Evolution API está online</p>
-                            <p style={{ margin: '0' }}>4. Verifique se a API Key está configurada corretamente</p>
-                          </div>
-                        </details>
+                        <p style={{ margin: 0, fontSize: '13px' }}>
+                          Clique em <strong>“Forçar nova conexão”</strong> acima. Se ainda assim não
+                          aparecer o QR Code, chame o suporte — resolvemos direto no servidor.
+                        </p>
                       </div>
                     </div>
                   </div>
