@@ -409,16 +409,23 @@ export async function salvarConexao(userId, config) {
     .eq('id', userId)
     .maybeSingle()
 
-  // Número pareado: melhor esforço, não impede a gravação
+  // Número pareado: melhor esforço, não impede a gravação.
+  //
+  // Vem do ownerJid do fetchInstances, que é o JID canônico. Antes lia
+  // GET /instance/fetchProfile — endpoint que **não existe** e responde 404 —
+  // e por isso whatsapp_numero ficou NULL nas 26 contas pagas. Esse buraco é o
+  // que fazia o aviso de queda ser montado a partir do telefone cadastrado e
+  // errar a grafia do nono dígito.
   let whatsappNumero = null
   try {
-    const perfil = await fetch(
-      `${config.apiUrl}/instance/fetchProfile/${config.instanceName}`,
+    const res = await fetch(
+      `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
       { headers: { apikey: config.apiKey } }
     )
-    if (perfil.ok) {
-      const dados = await perfil.json()
-      whatsappNumero = dados.wuid || dados.id || null
+    if (res.ok) {
+      const dados = await res.json()
+      const inst = (Array.isArray(dados) ? dados : [dados])[0]
+      whatsappNumero = inst?.ownerJid ? String(inst.ownerJid).split('@')[0] : null
     }
   } catch {
     /* segue sem o número */

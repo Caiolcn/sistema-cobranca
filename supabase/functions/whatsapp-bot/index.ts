@@ -117,7 +117,7 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
 
   const { data: zap } = await supabase
     .from('mensallizap')
-    .select('user_id, ultimo_aviso_desconexao')
+    .select('user_id, ultimo_aviso_desconexao, gestor_jid')
     .eq('instance_name', instance)
     .maybeSingle()
   if (!zap?.user_id) return
@@ -179,7 +179,11 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
       .select('telefone, nome_empresa')
       .eq('id', userId)
       .maybeSingle()
-    const numero = formatarTelefoneGestor(u?.telefone || '')
+    // gestor_jid é o JID que o WhatsApp confirmou, resolvido e cacheado pelo
+    // health-check. Preferi-lo conserta o aviso que voltava 400 exists:false:
+    // em DDD pré-2014 o JID canônico não tem o nono dígito, e montar o destino
+    // a partir do telefone cadastrado errava em 4 contas (107 falhas em 7 dias).
+    const numero = zap.gestor_jid || formatarTelefoneGestor(u?.telefone || '')
     if (!numero) return
 
     // Só avisa pelo master se ele estiver conectado.
@@ -192,7 +196,10 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
       `e suas mensagens automáticas (cobranças, lembretes) não estão saindo.\n\n` +
       `👉 Reconecte agora escaneando o QR Code:\n${APP_URL}/app/whatsapp\n\n` +
       `É rápido e leva menos de 1 minuto. Qualquer dúvida, é só chamar a gente por aqui!`
-    await enviarMensagem(apiUrl, apiKey, masterInstance, `${numero}@s.whatsapp.net`, texto)
+    // gestor_jid já vem com sufixo; o telefone cru não. Concatenar sem checar
+    // geraria "...@s.whatsapp.net@s.whatsapp.net" e o envio falharia calado.
+    const destino = numero.includes('@') ? numero : `${numero}@s.whatsapp.net`
+    await enviarMensagem(apiUrl, apiKey, masterInstance, destino, texto)
     await supabase.from('mensallizap').update({ ultimo_aviso_desconexao: agoraIso }).eq('user_id', userId)
     console.log('📣 connection.update: aviso de queda enviado ao gestor', userId)
   }

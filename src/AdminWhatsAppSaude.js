@@ -14,11 +14,31 @@ const formatarDataHora = (iso) => {
 const labelEstado = (e) => ({
   open: 'Painel: conectado',
   close: 'Painel: desconectado',
-  connecting: 'Painel: conectando',
+  connecting: 'Painel: travado (pareando)',
   timeout: 'Painel: timeout',
   inexistente: 'Sem instância',
   erro: 'Erro ao ler painel',
 }[e] || e || '—')
+
+// "há 3 dias" a partir do disconnectionAt da Evolution. É o que faltava pra
+// enxergar conta esquecida: a Nr assessoria passou 8 dias fora sem ninguém ver.
+const tempoFora = (iso) => {
+  if (!iso) return null
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (min < 0) return null
+  if (min < 60) return `há ${min} min`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `há ${h}h`
+  return `há ${Math.floor(h / 24)} dias`
+}
+
+// 401 = loggedOut: credencial morta, só novo QR resolve. Os outros são
+// transitórios — a credencial serve e o restart reconecta sem pareamento.
+const labelMotivo = (c) => {
+  if (c === null || c === undefined) return null
+  if (c === 401) return 'deslogado (401) — exige novo QR'
+  return `queda transitória (${c}) — restart resolveria`
+}
 
 export default function AdminWhatsAppSaude() {
   const { isAdmin, loading: userLoading } = useUser()
@@ -28,6 +48,7 @@ export default function AdminWhatsAppSaude() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [linhas, setLinhas] = useState([])
+  const [masterStatus, setMasterStatus] = useState(null)
 
   useEffect(() => {
     if (!userLoading && !isAdmin) navigate('/app/home')
@@ -45,6 +66,12 @@ export default function AdminWhatsAppSaude() {
       const { data, error } = await supabase.rpc('admin_whatsapp_saude')
       if (error) throw error
       setLinhas(data || [])
+
+      // Estado da master na última varredura. Se ela não estiver 'open', NENHUM
+      // aviso de queda sai — e até agora o único registro disso era um
+      // console.warn dentro da edge function, que ninguém lê.
+      const { data: mestre } = await supabase.rpc('admin_whatsapp_master_estado')
+      setMasterStatus(mestre?.[0]?.estado || null)
     } catch (err) {
       console.error('Erro ao carregar saúde do WhatsApp:', err)
       setErro(err.message || 'Falha ao carregar')
@@ -56,10 +83,13 @@ export default function AdminWhatsAppSaude() {
   const totais = useMemo(() => {
     const total = linhas.length
     const saudaveis = linhas.filter(l => l.saudavel).length
-    const deslogados = linhas.filter(l => l.acao === 'logout').length
-    // "Falso positivo" = painel dizia open mas a sonda achou morto
-    const falsosPositivos = linhas.filter(l => l.estado_painel === 'open' && !l.saudavel).length
-    return { total, saudaveis, deslogados, falsosPositivos }
+    // Travado ('connecting') NÃO é o mesmo que caído ('close'): o travado não
+    // consegue gerar QR e não sai disso sozinho. Enquanto os dois apareciam
+    // juntos como "pode reconectar", 4 contas pagantes ficaram presas sem
+    // ninguém ver — uma delas por 8 dias.
+    const travados = linhas.filter(l => l.estado_painel === 'connecting').length
+    const podemReconectar = linhas.filter(l => !l.saudavel && l.estado_painel === 'close').length
+    return { total, saudaveis, travados, podemReconectar }
   }, [linhas])
 
   const ultimaExecucao = linhas[0]?.checado_em
@@ -112,6 +142,18 @@ export default function AdminWhatsAppSaude() {
         </div>
       )}
 
+      {masterStatus && masterStatus !== 'open' && (
+        <div style={{ padding: '14px 16px', borderRadius: '10px', backgroundColor: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', marginBottom: '20px', fontSize: '14px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <Icon icon="mdi:bullhorn-off" width="20" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <strong>A instância master está {labelEstado(masterStatus).replace('Painel: ', '')} — nenhum aviso de queda está saindo.</strong>
+            <div style={{ marginTop: '4px' }}>
+              Os clientes que caírem não vão ser avisados enquanto ela não voltar. Reconecte em WhatsApp do Mensalli.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPIs */}
       <div style={{
         display: 'grid',
@@ -121,8 +163,8 @@ export default function AdminWhatsAppSaude() {
         {[
           { label: 'Clientes pagos verificados', valor: totais.total, icon: 'mdi:account-group', cor: '#667eea', bg: '#f0f4ff' },
           { label: 'Realmente conectados', valor: totais.saudaveis, icon: 'mdi:check-circle', cor: '#16a34a', bg: '#f0fdf4' },
-          { label: 'Painel mentia (socket morto)', valor: totais.falsosPositivos, icon: 'mdi:alert', cor: '#dc2626', bg: '#fef2f2' },
-          { label: 'Deslogados (QR liberado)', valor: totais.deslogados, icon: 'mdi:logout-variant', cor: '#d97706', bg: '#fffbeb' },
+          { label: 'Travados (não geram QR)', valor: totais.travados, icon: 'mdi:lock-alert', cor: '#dc2626', bg: '#fef2f2' },
+          { label: 'Fora, mas podem reconectar', valor: totais.podemReconectar, icon: 'mdi:qrcode-scan', cor: '#d97706', bg: '#fffbeb' },
         ].map(c => (
           <div key={c.label} style={{ padding: isMobile ? '14px' : '18px', borderLeft: `3px solid ${c.cor}`, backgroundColor: c.bg, borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -145,7 +187,7 @@ export default function AdminWhatsAppSaude() {
           <p style={{ color: '#999', fontSize: '13px', margin: 0 }}>Carregando...</p>
         ) : linhas.length === 0 ? (
           <p style={{ color: '#999', fontSize: '13px', margin: 0 }}>
-            Nenhuma verificação registrada ainda. O cron roda às 06:00 (BRT) — ou rode manualmente via SQL (ver sql-criar-whatsapp-health-check.sql).
+            Nenhuma verificação registrada ainda. O cron roda nos minutos 15 e 45 de cada hora — ou rode manualmente via SQL (ver sql-criar-whatsapp-health-check.sql).
           </p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -179,6 +221,11 @@ export default function AdminWhatsAppSaude() {
                       {l.estado_painel === 'open' && !l.saudavel && (
                         <span title="O painel dizia conectado, mas a sonda provou que o socket estava morto" style={{ marginLeft: 4 }}>⚠️</span>
                       )}
+                      {!l.saudavel && (tempoFora(l.caiu_em) || labelMotivo(l.motivo_queda)) && (
+                        <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+                          {[tempoFora(l.caiu_em), labelMotivo(l.motivo_queda)].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '8px' }}>
                       {l.acao === 'logout' ? (
@@ -189,6 +236,11 @@ export default function AdminWhatsAppSaude() {
                         <span title="Painel diz 'open' mas o socket está morto: logout dá 500, restart é no-op e o connect não devolve QR. O cliente NÃO consegue reconectar sozinho — precisa de delete + recriar instância."
                           style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fef2f2', color: '#c62828' }}>
                           Travado (ação manual)
+                        </span>
+                      ) : l.acao === 'travado_sem_qr' ? (
+                        <span title="A instância ficou presa em 'connecting': a Evolution esgotou as tentativas de QR tentando reparear sozinha, e o connect passou a responder 200 SEM o QR. O cliente vê 'QR Code não foi gerado pela API' e NÃO consegue resolver pela tela — precisa do botão Forçar nova conexão (ou delete+recriar)."
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, backgroundColor: '#fef2f2', color: '#c62828' }}>
+                          Travado (sem QR)
                         </span>
                       ) : l.acao === 'qr_ja_livre' ? (
                         <span title="Sem sessão pra derrubar e QR já disponível: o cliente consegue reconectar sozinho, só precisa saber que caiu."

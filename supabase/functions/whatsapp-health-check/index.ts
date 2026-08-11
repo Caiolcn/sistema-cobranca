@@ -38,9 +38,10 @@
 //    sozinha, emite QRs que ninguém escaneia, esgota o QRCODE_LIMIT e trava:
 //    GET /instance/connect passa a responder 200 SEM base64 e o cliente vê
 //    "QR Code não foi gerado pela API", sem saída pela tela. Só delete+recriar
-//    resolve. E este código É CEGO a esse estado: o connectionState responde
-//    "close" para instância que o fetchInstances mostra em "connecting"
-//    (confirmado ao vivo em 11/08). Ler o fetchInstances é o conserto.
+//    resolve. Esta varredura era CEGA a esse estado até 11/08/26 porque lia o
+//    connectionState, que responde "close" para instância que o fetchInstances
+//    mostra em "connecting". Agora lê o fetchInstances (1 request pra frota
+//    inteira) e marca 'travado_sem_qr' — NÃO confundir com 'qr_ja_livre'.
 //  - "open" + socket morto (zumbi): é o único caso em que derrubar adianta,
 //    e é justamente onde nada funciona —
 //      DELETE /instance/logout  -> 500 "Connection Closed"
@@ -124,20 +125,86 @@ async function fetchComTimeout(url: string, options: RequestInit, timeoutMs: num
   }
 }
 
-// Lê o connectionState (o que o painel mostra). Não é confiável sozinho.
-async function lerEstado(apiUrl: string, apiKey: string, instance: string): Promise<string> {
+type InstanciaFrota = {
+  estado: string
+  ownerJid: string | null
+  motivoQueda: number | null
+  caiuEm: string | null
+}
+
+/**
+ * Lê a frota inteira num request só.
+ *
+ * Substituiu 1 connectionState por cliente por 1 fetchInstances por rodada, e não
+ * é só economia: o connectionState MENTE. Ele responde `close` para instância que
+ * o fetchInstances mostra em `connecting` (confirmado ao vivo em 11/08 na conta do
+ * Projeto Jiu-Jitsu). Era por isso que esta varredura não enxergava instância
+ * travada — classificava como "QR já livre" 4 contas pagantes que estavam presas,
+ * uma delas há 8 dias.
+ *
+ * De quebra vem ownerJid (JID canônico do cliente) e o motivo/hora da última queda.
+ *
+ * Devolve null se a API não respondeu: nesse caso NÃO sabemos nada sobre ninguém,
+ * e a rodada inteira precisa se abster — uma instabilidade da Evolution não pode
+ * virar "a base toda caiu".
+ */
+async function lerFrota(apiUrl: string, apiKey: string): Promise<Map<string, InstanciaFrota> | null> {
   try {
     const res = await fetchComTimeout(
-      `${apiUrl}/instance/connectionState/${instance}`,
+      `${apiUrl}/instance/fetchInstances`,
       { headers: { apikey: apiKey } },
-      PROBE_TIMEOUT_MS,
+      PROBE_TIMEOUT_MS * 3, // payload da frota inteira
     )
-    if (!res.ok) return res.status === 404 ? 'inexistente' : 'erro'
-    const data = await res.json()
-    return data?.instance?.state || 'close'
+    if (!res.ok) return null
+    const lista = await res.json()
+    if (!Array.isArray(lista)) return null
+
+    const mapa = new Map<string, InstanciaFrota>()
+    for (const i of lista) {
+      const nome = i?.name || i?.instance?.instanceName
+      if (!nome) continue
+      mapa.set(nome, {
+        estado: i?.connectionStatus || i?.instance?.state || 'close',
+        ownerJid: i?.ownerJid || null,
+        motivoQueda: typeof i?.disconnectionReasonCode === 'number' ? i.disconnectionReasonCode : null,
+        caiuEm: i?.disconnectionAt || null,
+      })
+    }
+    return mapa
   } catch (_e) {
-    return 'timeout'
+    return null
   }
+}
+
+/**
+ * Mesmo número, ignorando o nono dígito?
+ *
+ * Contas BR pré-2014 têm o JID canônico SEM o 9 mesmo depois da migração da
+ * Anatel, então o telefone cadastrado e o JID real divergem na grafia sem serem
+ * números diferentes. Medido na base: 18 das 26 contas pagas têm ownerJid igual
+ * ao telefone do gestor, e em 8 delas a grafia difere — que são exatamente as
+ * que faziam o aviso de queda voltar 400 exists:false.
+ */
+function mesmoNumero(a: string, b: string): boolean {
+  const norm = (s: string) => {
+    let n = String(s || '').replace(/\D/g, '')
+    if (n.startsWith('55')) n = n.slice(2)
+    if (n.length === 11 && n[2] === '9') n = n.slice(0, 2) + n.slice(3)
+    return n
+  }
+  const x = norm(a)
+  return x.length >= 10 && x === norm(b)
+}
+
+/** Grafias plausíveis do número, com e sem o nono dígito, sempre com DDI. */
+function grafiasTelefone(telefone: string): string[] {
+  let n = String(telefone || '').replace(/\D/g, '')
+  if (!n) return []
+  if (n.startsWith('55')) n = n.slice(2)
+  const fora: string[] = [n]
+  if (n.length === 11 && n[2] === '9') fora.push(n.slice(0, 2) + n.slice(3))
+  if (n.length === 10) fora.push(n.slice(0, 2) + '9' + n.slice(2))
+  return fora.map((x) => '55' + x)
 }
 
 // Sonda profunda: força round-trip ao WhatsApp. Retorna se o socket
@@ -232,32 +299,28 @@ async function garantirWebhook(
   }
 }
 
-// Telefone do gestor pro padrão internacional (55…), só dígitos.
-function formatarTelefone(telefone: string): string | null {
-  let n = (telefone || '').replace(/\D/g, '')
-  if (!n) return null
-  if (!n.startsWith('55')) n = '55' + n
-  return n
-}
-
 // Canal C: envia o aviso pela instância MASTER da Mensalli ao gestor.
 // (O WhatsApp do próprio cliente está fora, então usamos o número da plataforma.)
+//
+// Recebe o JID já resolvido (ver resolverJidGestor) em vez do telefone cru:
+// montar o destino a partir do cadastro errava a grafia do nono dígito e o
+// envio voltava 400 exists:false — 107 vezes em 7 dias, sem ninguém notar.
 async function avisarPeloMaster(
   apiUrl: string,
   apiKey: string,
   masterInstance: string,
-  telefoneGestor: string,
+  jidGestor: string,
   texto: string,
 ): Promise<{ ok: boolean; detalhe: string | null }> {
-  const numero = formatarTelefone(telefoneGestor)
-  if (!numero) return { ok: false, detalhe: 'aviso: telefone do gestor vazio' }
+  if (!jidGestor) return { ok: false, detalhe: 'aviso: destino do gestor vazio' }
+  const destino = jidGestor.includes('@') ? jidGestor : `${jidGestor}@s.whatsapp.net`
   try {
     const res = await fetchComTimeout(
       `${apiUrl}/message/sendText/${masterInstance}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: apiKey },
-        body: JSON.stringify({ number: `${numero}@s.whatsapp.net`, text: texto }),
+        body: JSON.stringify({ number: destino, text: texto }),
       },
       PROBE_TIMEOUT_MS,
     )
@@ -273,9 +336,55 @@ async function avisarPeloMaster(
   }
 }
 
-// Master está conectado? Só tenta o Canal C se sim (senão sobra o Canal A).
-async function masterConectado(apiUrl: string, apiKey: string, masterInstance: string): Promise<boolean> {
-  return (await lerEstado(apiUrl, apiKey, masterInstance)) === 'open'
+/**
+ * Descobre para qual JID mandar o aviso de queda, e cacheia.
+ *
+ * O envio direto para `usuarios.telefone` + '55' falha em DDD pré-2014 (o JID
+ * canônico não tem o nono dígito): 107 tentativas viraram 400 exists:false em 7
+ * dias, em 4 contas — ou seja, o cliente caía e NUNCA era avisado.
+ *
+ * Ordem: cache -> ownerJid (quando é o mesmo número do gestor, é o JID que o
+ * próprio WhatsApp confirmou) -> consulta ao master testando as duas grafias.
+ * A consulta é 1 número real, no máximo 1x a cada 3 dias por conta, e só quando
+ * já vamos avisar — nada a ver com a sonda que derrubava a base.
+ */
+async function resolverJidGestor(
+  apiUrl: string,
+  apiKey: string,
+  masterInstance: string,
+  telefone: string,
+  ownerJid: string | null,
+  jidCacheado: string | null,
+): Promise<string | null> {
+  if (jidCacheado) return jidCacheado
+
+  const soNumero = (jid: string) => jid.split('@')[0]
+  if (ownerJid && mesmoNumero(soNumero(ownerJid), telefone)) return ownerJid
+
+  const grafias = grafiasTelefone(telefone)
+  if (!grafias.length) return null
+
+  try {
+    const res = await fetchComTimeout(
+      `${apiUrl}/chat/whatsappNumbers/${masterInstance}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: apiKey },
+        body: JSON.stringify({ numbers: grafias }),
+      },
+      PROBE_TIMEOUT_MS,
+    )
+    if (res.ok) {
+      const lista = await res.json()
+      const achou = (Array.isArray(lista) ? lista : []).find((i: any) => i?.exists && i?.jid)
+      if (achou?.jid) return achou.jid
+    }
+  } catch (_e) {
+    /* cai no fallback */
+  }
+
+  // Última tentativa: a grafia do cadastro, que é o que se fazia antes.
+  return `${grafias[0]}@s.whatsapp.net`
 }
 
 // Faz o trabalho pesado. Roda em background (EdgeRuntime.waitUntil),
@@ -303,13 +412,35 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     throw new Error('evolution_api_key não configurada na tabela config')
   }
 
-  // Canal C só funciona se o WhatsApp master da Mensalli estiver conectado.
-  // Checa uma vez; se estiver fora, cai só no Canal A (banner in-app).
-  const masterOk = await masterConectado(apiUrl, apiKey, masterInstance)
-  if (!masterOk) console.warn('⚠️ Instância master não conectada — avisos do Canal C serão pulados.')
+  // Estado de TODAS as instâncias num request só (ver lerFrota).
+  const frota = await lerFrota(apiUrl, apiKey)
+  if (!frota) {
+    // Sem a frota não sabemos nada sobre ninguém. Abster é obrigatório: gravar
+    // "caiu" aqui tiraria a base inteira das views vw_parcelas_* por causa de
+    // uma indisponibilidade da Evolution.
+    console.error('❌ fetchInstances não respondeu — rodada abortada sem escrever nada.')
+    return { abortado: 'fetchInstances indisponível', checado_em: new Date().toISOString() }
+  }
 
-  // Clientes com assinatura paga. Junta o número/instância já conhecidos
-  // (mensallizap) pra usar o próprio número como sonda quando houver.
+  // Canal C só funciona se o WhatsApp master da Mensalli estiver conectado.
+  // Se ele cai, TODO aviso de queda para em silêncio — por isso o estado dele
+  // vai para a config, que o painel admin lê. Antes disso, o único registro era
+  // um console.warn que ninguém via.
+  const masterOk = frota.get(masterInstance)?.estado === 'open'
+  if (!masterOk) console.warn('⚠️ Instância master não conectada — avisos do Canal C serão pulados.')
+  const { error: erroMaster } = await admin.from('whatsapp_master_estado').upsert(
+    {
+      id: true,
+      estado: masterOk ? 'open' : (frota.get(masterInstance)?.estado || 'inexistente'),
+      checado_em: new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  )
+  // Sempre logar a falha: a primeira versão disto gravava em `config` e estourava
+  // config_user_id_fkey em silêncio, então parecia que estava funcionando.
+  if (erroMaster) console.error('Falha ao gravar whatsapp_master_estado:', erroMaster.message)
+
+  // Clientes com assinatura paga.
   const { data: usuarios, error: usuariosError } = await admin
     .from('usuarios')
     .select('id, nome_empresa, email, plano, plano_pago, telefone')
@@ -320,12 +451,14 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   const userIds = (usuarios || []).map((u: { id: string }) => u.id)
   const { data: zaps } = await admin
     .from('mensallizap')
-    .select('user_id, instance_name, whatsapp_numero, conectado, ultima_conexao, ultimo_aviso_desconexao')
+    .select('user_id, instance_name, whatsapp_numero, gestor_jid, conectado, ultima_conexao, ultimo_aviso_desconexao')
     .in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000'])
 
   type ZapInfo = {
     instance_name: string | null
     whatsapp_numero: string | null
+    gestor_jid: string | null
+    conectado: boolean | null
     ultima_conexao: string | null
     ultimo_aviso_desconexao: string | null
   }
@@ -334,6 +467,8 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     zapPorUser.set(z.user_id, {
       instance_name: z.instance_name,
       whatsapp_numero: z.whatsapp_numero,
+      gestor_jid: z.gestor_jid,
+      conectado: z.conectado,
       ultima_conexao: z.ultima_conexao,
       ultimo_aviso_desconexao: z.ultimo_aviso_desconexao,
     })
@@ -389,7 +524,19 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const zap = zapPorUser.get(u.id)
     const instance = zap?.instance_name || `instance_${u.id.substring(0, 8)}`
 
-    const estado = await lerEstado(apiUrl, apiKey, instance)
+    const info = frota.get(instance)
+    const estado = info ? info.estado : 'inexistente'
+
+    // ownerJid é o JID canônico do cliente — a fonte certa do número, que o
+    // salvarConexao nunca conseguiu preencher porque lia /instance/fetchProfile
+    // (endpoint que responde 404). Por isso whatsapp_numero está NULL em todas
+    // as contas. Guardar aqui conserta o cadastro sozinho, rodada a rodada.
+    if (info?.ownerJid) {
+      const numero = info.ownerJid.split('@')[0]
+      if (numero && numero !== zap?.whatsapp_numero) {
+        await admin.from('mensallizap').update({ whatsapp_numero: numero }).eq('user_id', u.id)
+      }
+    }
 
     // Self-heal: garante o webhook de connection.update enquanto a instância existir.
     if (estado !== 'inexistente' && rodadaProfunda) {
@@ -422,10 +569,18 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const estadoConclusivo = ESTADOS_CONCLUSIVOS.includes(estado)
     const confirmado = !saudavel && estadoConclusivo && caidoNaRodadaAnterior.get(u.id) === true
 
-    if (confirmado && estado !== 'open') {
-      // close/connecting: a Evolution recusa logout ("instance is not
-      // connected") e não há o que liberar — o QR já está disponível.
-      // Não depende do master: é diagnóstico, não ação.
+    if (confirmado && estado === 'connecting') {
+      // TRAVADO — o oposto de 'qr_ja_livre', apesar de os dois serem "não open".
+      // Depois de um logout a Evolution repareia sozinha, emite QRs que ninguém
+      // escaneia, esgota o QRCODE_LIMIT e para: o connect passa a responder 200
+      // SEM base64 e o cliente vê "QR Code não foi gerado pela API". Este código
+      // tratava isso como "o cliente reconecta sozinho" — e foi assim que 4
+      // contas pagantes ficaram presas sem ninguém ver, uma delas por 8 dias.
+      // Só delete + recriar destrava (Etapa 3; hoje é diagnóstico).
+      acao = 'travado_sem_qr'
+    } else if (confirmado && estado === 'close') {
+      // close de verdade: não há sessão pra derrubar e o QR ESTÁ livre —
+      // o cliente reconecta sozinho, só precisa saber que caiu.
       acao = 'qr_ja_livre'
     } else if (confirmado && masterOk) {
       // open + sonda morta = zumbi. Tentar o logout continua valendo (é barato
@@ -447,7 +602,13 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     if (saudavel) {
       // Reconectou: garante conectado=true e ZERA o anti-spam, pra que a
       // próxima queda avise imediatamente.
-      if (zap?.ultimo_aviso_desconexao) {
+      //
+      // A condição era só `ultimo_aviso_desconexao` — e isso deixava conta
+      // parada FORA da régua para sempre: quem caiu por blip (webhook grava
+      // conectado=false na hora, sem aviso) ou pelo botão Desconectar voltava
+      // a ficar open sem nunca ser restaurado, some de todas as vw_parcelas_*
+      // com a tela dizendo "conectado". Agora qualquer divergência conserta.
+      if (zap?.conectado === false || zap?.ultimo_aviso_desconexao) {
         await admin
           .from('mensallizap')
           .update({ conectado: true, ultimo_aviso_desconexao: null, updated_at: checadoEm })
@@ -465,14 +626,31 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       // resolveu sozinha não vira mensagem de alarme pro gestor.
       let avisouAgora = false
       if (confirmado && masterOk && podeReavisar && u.telefone) {
+        const jidGestor = await resolverJidGestor(
+          apiUrl, apiKey, masterInstance, u.telefone, info?.ownerJid || null, zap?.gestor_jid || null,
+        )
+        if (jidGestor && jidGestor !== zap?.gestor_jid) {
+          await admin.from('mensallizap').update({ gestor_jid: jidGestor }).eq('user_id', u.id)
+        }
+
         const nome = (u.nome_empresa || '').trim().split(' ')[0] || 'tudo bem'
+
+        // Há quanto tempo está fora. A Nr assessoria ficou 8 dias sem enviar
+        // nada e recebeu um aviso dizendo "detectamos que desconectou", como se
+        // tivesse acabado de acontecer — o tempo é o que dá a real urgência.
+        let desdeQuando = ''
+        if (info?.caiuEm) {
+          const dias = Math.floor((agora - Date.parse(info.caiuEm)) / 86400000)
+          if (dias >= 1) desdeQuando = ` Isso já faz *${dias} ${dias === 1 ? 'dia' : 'dias'}*.`
+        }
+
         const texto =
           `⚠️ *MensalliZap — atenção*\n\n` +
           `Olá${nome ? `, ${nome}` : ''}! Detectamos que o *WhatsApp da sua conta desconectou* ` +
-          `e suas mensagens automáticas (cobranças, lembretes) não estão saindo.\n\n` +
+          `e suas mensagens automáticas (cobranças, lembretes) não estão saindo.${desdeQuando}\n\n` +
           `👉 Reconecte agora escaneando o QR Code:\n${APP_URL}/app/whatsapp\n\n` +
           `É rápido e leva menos de 1 minuto. Qualquer dúvida, é só chamar a gente por aqui!`
-        const envio = await avisarPeloMaster(apiUrl, apiKey, masterInstance, u.telefone, texto)
+        const envio = await avisarPeloMaster(apiUrl, apiKey, masterInstance, jidGestor || '', texto)
         avisouAgora = envio.ok
         if (envio.detalhe) detalheAcao = [detalheAcao, envio.detalhe].filter(Boolean).join(' | ')
         if (avisouAgora) avisados++
@@ -510,6 +688,11 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       saudavel,
       acao,
       erro: [probeErro, detalheAcao].filter(Boolean).join(' | ') || null,
+      // Motivo/hora da queda direto da Evolution: 401 = loggedOut (credencial
+      // morta, só QR novo resolve); os outros são transitórios e o restart
+      // reconecta sem pareamento. É o que vai guiar a recuperação da Etapa 2.
+      motivo_queda: info?.motivoQueda ?? null,
+      caiu_em: info?.caiuEm ?? null,
       checado_em: checadoEm,
     })
 
