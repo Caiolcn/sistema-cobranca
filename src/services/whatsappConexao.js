@@ -1,4 +1,4 @@
-import { supabase } from '../supabaseClient'
+import { supabase, FUNCTIONS_URL } from '../supabaseClient'
 import { TEMPLATES_SEED } from '../data/templatesPadrao'
 
 /**
@@ -57,13 +57,21 @@ export async function verificarEstado(config) {
 const NUMERO_SONDA = '5511999999999'
 
 /**
- * Sonda profunda: força um round-trip até o servidor do WhatsApp.
+ * DESATIVADA em 11/08/26 — não chame. Mantida só para rollback.
  *
- * O connectionState MENTE — fica "open" com o socket Baileys morto por baixo
- * ("zumbi"). Foi assim que a Escolinha Napoli passou 2 dias com a tela verde,
- * o banner vermelho e nenhuma cobrança saindo. Só o round-trip distingue os dois.
+ * Esta sonda (e a gêmea no whatsapp-health-check) era o que derrubava a base:
+ * consultar repetidamente um número INEXISTENTE contra o servidor do WhatsApp é
+ * assinatura de anti-abuso, e a resposta foi invalidar as sessões (22 de 22
+ * quedas com statusCode 401 loggedOut). A média saiu de 2,0 para 12,3 quedas/dia
+ * quando a varredura passou de 1x/dia para 48x/dia, e as quedas passaram a
+ * acontecer no MINUTO do cron.
  *
- * Socket morto responde 400/500 "Connection Closed" (Boom 428) ou trava até o timeout.
+ * Aqui no front era ainda pior que no cron: rodava toda vez que o cliente abria
+ * /app/whatsapp — ou seja, batíamos no número falso justamente na instância de
+ * quem tinha acabado de cair.
+ *
+ * Se um dia voltar: com número real e sem repetição. Ver o topo do
+ * supabase/functions/whatsapp-health-check/index.ts.
  */
 export async function sondarSocket(config, timeoutMs = 12000) {
   if (!config?.apiKey) return false
@@ -86,19 +94,93 @@ export async function sondarSocket(config, timeoutMs = 12000) {
 }
 
 /**
- * Veredito honesto da conexão, para a UI e para o que se grava no banco.
+ * Veredito da conexão, para a UI e para o que se grava no banco.
  *
- *  'conectado'    — open + socket vivo. Único caso em que vale gravar conectado = true.
- *  'zumbi'        — open + socket morto. A conta NÃO envia; precisa reparear.
- *  'desconectado' — close/connecting: o QR já está livre.
- *
- * Nunca devolve 'conectado' só porque o painel disse "open".
+ *  'conectado'    — o painel diz open.
+ *  'desconectado' — close/connecting.
+ *  'zumbi'        — open + socket morto. NÃO é mais devolvido aqui: distinguir
+ *                   zumbi exigia a sonda, e o preço dela era derrubar a base
+ *                   (ver sondarSocket). Quem passou a denunciar zumbi é o envio
+ *                   real falhando — logs_mensagens.erro_codigo 'connection_closed'.
+ *                   O tratamento de 'zumbi' segue no chamador para quando a
+ *                   detecção voltar por esse caminho.
  */
 export async function verificarSaude(config) {
   const estado = await verificarEstado(config)
-  if (estado !== 'open') return { estado, veredito: 'desconectado' }
-  const vivo = await sondarSocket(config)
-  return { estado, veredito: vivo ? 'conectado' : 'zumbi' }
+  return { estado, veredito: estado === 'open' ? 'conectado' : 'desconectado' }
+}
+
+const WEBHOOK_BOT_URL = `${FUNCTIONS_URL}/whatsapp-bot`
+
+/**
+ * (Re)aponta o webhook da instância para o whatsapp-bot.
+ *
+ * Obrigatório depois de TODO create: a configuração de webhook morre junto com
+ * a instância no delete, e sem o CONNECTION_UPDATE a conta some do rastreio de
+ * queda em tempo real — o cliente cai e ninguém fica sabendo até a varredura
+ * seguinte. O /webhook/set substitui a config inteira, então vai a lista toda.
+ */
+async function garantirWebhook(config, userId) {
+  let botAtivo = false
+  if (userId) {
+    const { data } = await supabase
+      .from('configuracoes_cobranca')
+      .select('bot_ativo')
+      .eq('user_id', userId)
+      .maybeSingle()
+    botAtivo = !!data?.bot_ativo
+  }
+
+  try {
+    await fetch(`${config.apiUrl}/webhook/set/${config.instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
+      body: JSON.stringify({
+        webhook: {
+          enabled: true,
+          url: WEBHOOK_BOT_URL,
+          webhookByEvents: false,
+          webhookBase64: false,
+          events: botAtivo ? ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'] : ['CONNECTION_UPDATE']
+        }
+      })
+    })
+  } catch {
+    // best-effort: o self-heal do health-check reafirma na próxima rodada
+  }
+}
+
+/**
+ * Tenta trazer a instância de volta SEM novo pareamento.
+ *
+ * Numa queda transitória (428 connectionClosed, 408 timeout, 515 restartRequired)
+ * a credencial continua válida e o restart reconecta sem o cliente ver QR nenhum.
+ *
+ * Vem antes de qualquer reset porque re-parear não é de graça: segundo
+ * docs/runbook-lid-whatsapp.md o re-pareamento é o GATILHO da migração LID, e
+ * conta migrada na 2.3.7 não entrega mais nada — o envio volta 201 e o sistema
+ * marca "enviado". Resetar por reflexo troca "escaneia o QR de novo" por "esta
+ * conta nunca mais envia e ninguém percebe".
+ *
+ * POST: o PUT devolve 404 nesta versão (medido em 11/08/26).
+ */
+export async function tentarRestart(config, esperaMs = 15000) {
+  if (!config?.apiKey) return false
+  try {
+    const res = await fetch(`${config.apiUrl}/instance/restart/${config.instanceName}`, {
+      method: 'POST', headers: { apikey: config.apiKey }
+    })
+    if (!res.ok) return false
+  } catch {
+    return false
+  }
+
+  const limite = Date.now() + esperaMs
+  while (Date.now() < limite) {
+    await pausa(2500)
+    if ((await verificarEstado(config)) === 'open') return true
+  }
+  return false
 }
 
 const pausa = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -164,7 +246,7 @@ export async function resetarInstancia(config, tentativas = 4) {
 }
 
 /** Cria (se preciso) e pede o QR. Devolve o base64 ou null se a API não mandou. */
-async function criarEConectar(config) {
+async function criarEConectar(config, userId) {
   // 403/409 = instância já existe; não é erro.
   const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
     method: 'POST',
@@ -186,6 +268,11 @@ async function criarEConectar(config) {
     throw new Error(erro.message || `Erro ao criar instância: HTTP ${createResponse.status}`)
   }
 
+  // Antes do connect: se este create veio depois de um reset, a instância é
+  // nova e nasceu sem webhook. Sem isso o cliente reconecta e mesmo assim fica
+  // fora do rastreio de queda em tempo real.
+  await garantirWebhook(config, userId)
+
   const connectResponse = await fetch(
     `${config.apiUrl}/instance/connect/${config.instanceName}`,
     { headers: { apikey: config.apiKey } }
@@ -202,34 +289,41 @@ async function criarEConectar(config) {
 
 /**
  * Garante que a instância existe e devolve o QR em base64.
- * Se já estiver conectada de verdade, devolve { jaConectado: true } e não gera QR.
+ * Se já estiver conectada, devolve { jaConectado: true } e não gera QR.
  *
- * `forcar` = o usuário clicou em "Reconectar": descarta a sessão atual antes de
- * parear, inclusive quando ela está apenas 'connecting'. Esse é justamente o
- * estado em que a Evolution devolve 200 sem QR e o cliente ficava rodando em
- * círculo — mas nunca derrubamos uma sessão que está viva, mesmo com forcar.
+ * A ordem aqui é deliberada: **reconectar sem QR primeiro, re-parear por último**.
+ * Re-parear é a ação mais cara do sistema — é o gatilho da migração LID, que na
+ * 2.3.7 não tem volta (ver tentarRestart). Então só destruímos credencial depois
+ * que o restart provou que ela não serve mais.
+ *
+ * `forcar` = o cliente clicou em "Forçar nova conexão", ou seja, disse que não
+ * está funcionando. Aí NÃO devolvemos "já conectado" mesmo com o painel em open:
+ * sem a sonda não dá pra distinguir open real de zumbi, e era justamente esse
+ * atalho que deixava o cliente preso numa tela verde que não enviava nada.
  */
-export async function gerarQrCode(config, { forcar = false } = {}) {
+export async function gerarQrCode(config, { forcar = false, userId = null } = {}) {
   if (!config?.apiKey) {
     throw new Error('Integração do WhatsApp não configurada. Fale com o suporte.')
   }
 
-  const { veredito } = await verificarSaude(config)
-  if (veredito === 'conectado') return { jaConectado: true, qr: null }
+  const estado = await verificarEstado(config)
+  if (!forcar && estado === 'open') return { jaConectado: true, qr: null }
 
-  // Zumbi: o painel diz "open" com o socket morto. A Evolution recusa parear
-  // enquanto a sessão morta ocupar o nome — a tela dizia "conectado", o botão
-  // desconectar dava 500 e o QR nunca vinha.
-  if (veredito === 'zumbi' || forcar) await resetarInstancia(config)
-
-  let qr = await criarEConectar(config)
-
-  // 200 sem QR = instância presa. Última cartada: reset duro e tentar de novo.
-  // Sem isto a tela morria em "QR Code não foi gerado pela API" e o cliente
-  // dependia de alguém mexer no servidor para voltar a enviar cobrança.
-  if (!qr) {
+  if (forcar) {
+    if (await tentarRestart(config)) return { jaConectado: true, qr: null }
     await resetarInstancia(config)
-    qr = await criarEConectar(config)
+  }
+
+  let qr = await criarEConectar(config, userId)
+
+  // 200 sem QR = instância presa (tipicamente em 'connecting', com o balde de
+  // tentativas de QR esgotado pela própria Evolution tentando reparear sozinha).
+  // Sem este resgate a tela morria em "QR Code não foi gerado pela API" e o
+  // cliente dependia de alguém mexer no servidor para voltar a cobrar.
+  if (!qr) {
+    if (!forcar && await tentarRestart(config)) return { jaConectado: true, qr: null }
+    await resetarInstancia(config)
+    qr = await criarEConectar(config, userId)
   }
 
   if (!qr) throw new Error(MENSAGEM_TRAVADA)

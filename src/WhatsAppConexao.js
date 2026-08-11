@@ -1922,7 +1922,7 @@ export default function WhatsAppConexao() {
     try {
       console.log(forcar ? '📱 Forçando nova conexão do WhatsApp...' : '📱 Conectando WhatsApp...')
 
-      const { jaConectado, qr } = await gerarQrCode(config, { forcar })
+      const { jaConectado, qr } = await gerarQrCode(config, { forcar, userId: contextUserId })
 
       if (jaConectado) {
         console.log('✅ Instância já está conectada! Pulando QR Code.')

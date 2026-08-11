@@ -237,7 +237,8 @@ export default function Onboarding() {
       const config = zapConfigRef.current || (await carregarConfigEvolution(userId))
       setZapConfig(config)
 
-      const { jaConectado, qr } = await gerarQrCode(config)
+      // userId: o serviço precisa dele pra reapontar o webhook da instância
+      const { jaConectado, qr } = await gerarQrCode(config, { userId })
       if (jaConectado) {
         setZapStatus('conectado')
         await salvarConexao(userId, config)

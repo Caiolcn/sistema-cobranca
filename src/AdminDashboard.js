@@ -151,9 +151,9 @@ export default function AdminDashboard() {
         return
       }
 
-      // Chamar restart
+      // Chamar restart (POST — o PUT devolve 404 na Evolution 2.3.7)
       const response = await fetch(`${apiUrl}/instance/restart/${instanceName}`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'apikey': apiKey }
       })
 

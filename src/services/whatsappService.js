@@ -1718,10 +1718,13 @@ Equipe {{nomeEmpresa}}`)
     try {
       console.log('🔄 Tentando restart da instância:', this.instanceName)
 
+      // POST, não PUT: o PUT responde 404 na Evolution 2.3.7 (medido em 11/08/26),
+      // então este restart NUNCA funcionou — o !response.ok abaixo devolvia false
+      // em 100% das vezes e todo "tentamos reconectar automaticamente" era fachada.
       const response = await this.fetchWithTimeout(
         `${this.apiUrl}/instance/restart/${this.instanceName}`,
         {
-          method: 'PUT',
+          method: 'POST',
           headers: {
             'apikey': this.apiKey
           }

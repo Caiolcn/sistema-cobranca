@@ -1,23 +1,47 @@
 // Edge Function: WhatsApp Health Check
 // ============================================================
-// Testa DE VERDADE se a conexão Evolution de cada cliente pago
-// está viva — não confia só no painel (connectionState mente:
-// fica "open" mesmo com o socket morto por baixo).
+// A SONDA FOI DESLIGADA EM 11/08/26 — ERA ELA QUE DERRUBAVA OS CLIENTES.
 //
-// Teste profundo: além do connectionState, força um round-trip
-// até o servidor do WhatsApp via POST /chat/whatsappNumbers.
-// Se o socket estiver morto isso estoura "Connection Closed" /
-// 500 / timeout, mesmo com state === "open".
+// A varredura sondava cada instância "open" com POST /chat/whatsappNumbers
+// (um onWhatsApp do Baileys, round-trip real ao servidor do WhatsApp) usando o
+// número FAKE 5511999999999 — porque mensallizap.whatsapp_numero está NULL nas
+// 26 contas pagas (o salvarConexao lê GET /instance/fetchProfile, que responde
+// 404). Dava ~1.250 consultas por dia por um número inexistente, saindo do
+// mesmo servidor: assinatura de anti-abuso, e a resposta do WhatsApp foi
+// justamente invalidar as sessões (22 de 22 quedas com statusCode 401 loggedOut).
 //
-// Saudável = state "open" E a sonda respondeu sem erro.
+// A conta bate com a mudança de cadência:
+//   até 27/07 ('0 11 * * *', 1x/dia) ..... 2,0 quedas/dia
+//   de 28/07 ('*/30', 48x/dia) .......... 12,3 quedas/dia
+// E as quedas seguiram o MINUTO do cron: quando ele passou de '*/30' para
+// '15,45' em 05/08, o agrupamento migrou de 122 quedas nos minutos 0-2/30-32
+// (5 nos minutos 15-18/45-48) para 0 e 39, respectivamente.
+//
+// Custo assumido: voltamos a ser cegos ao zumbi (open + socket morto). É raro
+// (1 em 243 rodadas) e existe detecção melhor e de graça em logs_mensagens
+// (erro_codigo 'connection_closed'/'instance_500'), que é o socket falhando num
+// envio de verdade. sondarSocket() segue no arquivo, sem uso, pra rollback.
+//
+// NÃO reative a sonda sem trocar o número falso e a cadência — foi essa
+// combinação que criou o problema.
+//
+// Saudável = state "open" (o painel volta a ser a fonte, com a ressalva abaixo).
 //
 // O QUE FAZER COM O NÃO-SAUDÁVEL depende do estado (medido na Evolution
 // 2.3.7 em 31/07/2026, ver tabela abaixo):
-//  - "close"/"connecting": NÃO há sessão pra derrubar e o QR JÁ está livre.
-//    O logout aqui volta 400 "instance is not connected" — foram 711
-//    tentativas inúteis em 7 dias. O cliente consegue reconectar sozinho,
-//    só precisa SABER que caiu.
-//  - "open" + sonda morta (zumbi): é o único caso em que derrubar adianta,
+//  - "close": não há sessão pra derrubar e o QR está livre. O logout aqui volta
+//    400 "instance is not connected" — foram 711 tentativas inúteis em 7 dias.
+//    O cliente reconecta sozinho, só precisa SABER que caiu.
+//  - "connecting": ATENÇÃO, NÃO é a mesma coisa que "close" — a linha acima
+//    dizia que era, e foi por isso que 4 contas pagantes ficaram presas sem
+//    ninguém ver (uma delas 8 dias). Depois de um 401 a Evolution repareia
+//    sozinha, emite QRs que ninguém escaneia, esgota o QRCODE_LIMIT e trava:
+//    GET /instance/connect passa a responder 200 SEM base64 e o cliente vê
+//    "QR Code não foi gerado pela API", sem saída pela tela. Só delete+recriar
+//    resolve. E este código É CEGO a esse estado: o connectionState responde
+//    "close" para instância que o fetchInstances mostra em "connecting"
+//    (confirmado ao vivo em 11/08). Ler o fetchInstances é o conserto.
+//  - "open" + socket morto (zumbi): é o único caso em que derrubar adianta,
 //    e é justamente onde nada funciona —
 //      DELETE /instance/logout  -> 500 "Connection Closed"
 //      POST  /instance/restart  -> 200 mas no-op (socket segue morto)
@@ -364,7 +388,6 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   for (const u of usuarios || []) {
     const zap = zapPorUser.get(u.id)
     const instance = zap?.instance_name || `instance_${u.id.substring(0, 8)}`
-    const numeroSonda = (zap?.whatsapp_numero || '').replace(/\D/g, '') || NUMERO_SONDA_FALLBACK
 
     const estado = await lerEstado(apiUrl, apiKey, instance)
 
@@ -373,7 +396,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       await garantirWebhook(apiUrl, apiKey, instance, botPorUser.get(u.id) || false)
     }
 
-    let probeOk = false
+    const probeOk = false
     let probeErro: string | null = null
     let saudavel = false
 
@@ -381,12 +404,11 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       // Instância nem existe na Evolution — nada a deslogar.
       probeErro = 'instância não existe na Evolution'
     } else if (estado === 'open') {
-      // Só vale a pena sondar quando o painel diz "open" — é justamente
-      // o caso que mente. Se já está close/connecting, não está saudável.
-      const sonda = await sondarSocket(apiUrl, apiKey, instance, numeroSonda)
-      probeOk = sonda.vivo
-      probeErro = sonda.erro
-      saudavel = sonda.vivo
+      // SONDA DESLIGADA em 11/08/26 — ver o bloco no topo do arquivo.
+      // Voltamos a confiar no painel: pior ter zumbi invisível por um tempo do
+      // que continuar derrubando a base inteira pra detectá-lo.
+      saudavel = true
+      probeErro = 'sonda desligada (veredito pelo estado do painel)'
     } else {
       probeErro = `estado "${estado}" (painel já indica não-conectado)`
     }
