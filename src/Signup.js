@@ -198,9 +198,9 @@ export default function Signup({ onCadastroIniciado }) {
       const mensagemBoasVindas =
 `Oi ${primeiroNome}! 👋
 
-Aqui é o Caio, da equipe do Mensalli. Vi que você acabou de criar sua conta de teste — seja muito bem-vindo(a)! 🎉
+Aqui é o Caio, da equipe do Mensalli. Vi que você acabou de criar sua conta — seja muito bem-vindo(a)! 🎉
 
-Seu teste grátis de 3 dias já está liberado com tudo desbloqueado. Pra ver a mágica acontecer, é só cadastrar seus alunos e ativar a cobrança automática no WhatsApp.
+Sua conta já está com tudo desbloqueado. Pra ver a mágica acontecer, é só cadastrar seus alunos e ativar a cobrança automática no WhatsApp.
 
 Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que eu te ajudo. 😊`
 
