@@ -660,6 +660,17 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   // conta que não volta, isso é o que impede o teste de QR de esgotar o balde
   // sozinho — ele consome uma tentativa a cada chamada.
   const jaTentadasHoje = new Set((tentativas24h || []).map((r: { instance_name: string }) => r.instance_name))
+
+  // Resultado do teste de QR mais recente por instância. A escada roda 1x/dia,
+  // então nas outras 47 rodadas o rótulo tem que vir daqui — senão a conta que
+  // JÁ foi testada e gera QR aparece o dia inteiro como "travada", que é
+  // exatamente a inferência pelo estado que se provou errada.
+  const qrTestadoOk = new Map<string, boolean>()
+  for (const r of (tentativas24h || []) as { instance_name: string; acao: string; sucesso: boolean }[]) {
+    if (r.acao === 'verificar_qr' && !qrTestadoOk.has(r.instance_name)) {
+      qrTestadoOk.set(r.instance_name, r.sucesso)
+    }
+  }
   const totalRecriacoes24h = (tentativas24h || []).filter((r: { acao: string }) => r.acao === 'recriar').length
   let recuperacoesNestaRodada = 0
 
@@ -732,7 +743,12 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const estadoConclusivo = ESTADOS_CONCLUSIVOS.includes(estado)
     const confirmado = !saudavel && estadoConclusivo && caidoNaRodadaAnterior.get(u.id) === true
 
-    if (confirmado && estado === 'connecting') {
+    if (confirmado && estado === 'connecting' && qrTestadoOk.get(instance) === true) {
+      // Testada hoje e o QR sai: está fora, mas o cliente resolve escaneando.
+      // Sem esta linha o rótulo cairia no 'travado_sem_qr' abaixo e acusaria de
+      // travada uma conta que a gente JÁ provou que não está.
+      acao = 'qr_ja_livre'
+    } else if (confirmado && estado === 'connecting') {
       // TRAVADO — o oposto de 'qr_ja_livre', apesar de os dois serem "não open".
       // Depois de um logout a Evolution repareia sozinha, emite QRs que ninguém
       // escaneia, esgota o QRCODE_LIMIT e para: o connect passa a responder 200
