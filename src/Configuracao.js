@@ -179,7 +179,7 @@ function Configuracao({ secao = 'config' }) {
   const [loading, setLoading] = useState(false)
   const [anamneseCamposExtras, setAnamneseCamposExtras] = useState([])
   const [anamneseSalvando, setAnamneseSalvando] = useState(false)
-  const { userId: contextUserId, isAdmin, adminViewingAs } = useUser()
+  const { userId: contextUserId, isAdmin, adminViewingAs, refreshUserData } = useUser()
   const { isLocked } = useUserPlan()
 
   // Company data
@@ -575,6 +575,11 @@ function Configuracao({ secao = 'config' }) {
         .eq('id', contextUserId)
 
       if (error) throw error
+      // Sem isso o UserContext segue com o nome_empresa/chave_pix antigos e o
+      // painel de primeiros passos da Home continua cobrando uma etapa que a
+      // pessoa acabou de concluir — só voltava ao normal depois de um F5.
+      // No modo espelho não recarrega: o contexto ali é do admin, não da conta.
+      if (!adminViewingAs && refreshUserData) await refreshUserData()
       showToast('Configurações salvas!', 'success')
     } catch (error) {
       console.error('Erro ao salvar:', error)

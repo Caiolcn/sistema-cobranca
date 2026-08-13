@@ -13,7 +13,6 @@ import Login from './Login'
 import Signup from './Signup'
 import ResetPassword from './ResetPassword'
 import Privacidade from './pages/Privacidade'
-import RequireOnboarding from './RequireOnboarding'
 import BarraModoEspelho from './components/BarraModoEspelho'
 import InstalarAppPrompt from './components/InstalarAppPrompt'
 
@@ -30,7 +29,6 @@ const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
 const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
 const PortalCliente = lazy(() => import('./pages/PortalCliente'))
 const PaginaContrato = lazy(() => import('./pages/PaginaContrato'))
-const Onboarding = lazy(() => import('./Onboarding'))
 const AgendaNova = lazy(() => import('./AgendaNova'))
 const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
@@ -93,7 +91,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   // O signUp autentica na hora, então a sessão existe antes do cadastro terminar.
   // Sem esse flag o guard da rota /signup jogaria a pessoa no /app/home no meio
-  // do processo, e só depois o Signup a levaria pro /app/onboarding.
+  // do processo, antes do popup de conta criada aparecer.
   const [cadastroEmCurso, setCadastroEmCurso] = useState(false)
 
   useEffect(() => {
@@ -144,7 +142,11 @@ function App() {
               {/* Rotas protegidas (sistema) - carregadas sob demanda */}
               {session ? (
                 <>
-                  <Route path="/app/onboarding" element={<Onboarding />} />
+                  {/* O wizard de 4 passos saiu do caminho: a conta agora cai
+                      direto na dashboard e o onboarding virou um painel dentro
+                      da Home. A rota fica só redirecionando pra não quebrar
+                      link antigo (Onboarding.js segue no repo, desligado). */}
+                  <Route path="/app/onboarding" element={<Navigate to="/app/home" replace />} />
                   <Route path="/app/upgrade" element={<UpgradePage />} />
                   <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
                   <Route path="/app/design-system" element={<DSLayout />}>
@@ -173,9 +175,7 @@ function App() {
                     <Route path="wizard-stepper" element={<PaginaWizardStepper />} />
                     <Route path=":slug" element={<PaginaPlaceholder />} />
                   </Route>
-                  {/* RequireOnboarding fica só aqui: /app/onboarding é rota irmã
-                      (acima), então não há risco de loop de redirect. */}
-                  <Route path="/app" element={<RequireOnboarding><Dashboard /></RequireOnboarding>}>
+                  <Route path="/app" element={<Dashboard />}>
                     <Route index element={<Navigate to="/app/home" replace />} />
                     <Route path="home" element={<Home />} />
                     <Route path="financeiro" element={<Financeiro />} />

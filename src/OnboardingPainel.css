@@ -1,0 +1,337 @@
+/* Painel de primeiros passos — vive dentro da Home, logo abaixo da saudação.
+   Segue a linguagem dos outros cards da Home (raio 16px, borda 1px, roxo da
+   marca #8867A1); o verde só aparece no passo do WhatsApp, que é o que a gente
+   quer que a pessoa clique primeiro. */
+
+.onb-painel {
+  background: linear-gradient(120deg, #f3eefa 0%, #faf8fd 60%, #ffffff 100%);
+  border: 1px solid #e3d7f0;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.onb-painel.recolhido {
+  padding-bottom: 16px;
+}
+
+/* ---------- topo: título + progresso ---------- */
+
+.onb-painel-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.onb-painel-titulo-bloco {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.onb-painel-icone {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #8867A1 0%, #6a4d82 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(136, 103, 161, 0.3);
+}
+
+.onb-painel-titulo {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.onb-painel-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.onb-painel-progresso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.onb-painel-barra {
+  width: 120px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e7dcf2;
+  overflow: hidden;
+}
+
+.onb-painel-barra-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8867A1, #6a4d82);
+  transition: width 0.3s ease;
+}
+
+.onb-painel-contagem {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6a4d82;
+  min-width: 28px;
+}
+
+.onb-painel-toggle {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e3d7f0;
+  border-radius: 8px;
+  /* App.css pinta todo button de azul no hover — precisa de background próprio
+     aqui E no :hover, senão o botão vira um quadrado azul. */
+  background: #ffffff;
+  color: #6a4d82;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.onb-painel-toggle:hover {
+  background: #f3eefa;
+  border-color: #cdb6e6;
+}
+
+/* ---------- corpo ---------- */
+
+.onb-painel-corpo {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Passo em foco */
+.onb-destaque {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #e3d7f0;
+  background: #ffffff;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.onb-destaque:hover {
+  background: #ffffff;
+  border-color: #cdb6e6;
+  box-shadow: 0 6px 20px rgba(136, 103, 161, 0.14);
+  transform: translateY(-1px);
+}
+
+/* O passo do WhatsApp é o que decide ativação: ganha o verde da marca */
+.onb-destaque.zap {
+  border-color: #b7e4c7;
+  background: linear-gradient(120deg, #f0fbf4 0%, #ffffff 70%);
+}
+
+.onb-destaque.zap:hover {
+  background: linear-gradient(120deg, #f0fbf4 0%, #ffffff 70%);
+  border-color: #86d3a3;
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.16);
+}
+
+.onb-destaque-icone {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #8867A1 0%, #6a4d82 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(136, 103, 161, 0.3);
+}
+
+.onb-destaque.zap .onb-destaque-icone {
+  background: linear-gradient(135deg, #22c55e 0%, #0ea372 100%);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+.onb-destaque-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.onb-destaque-titulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.onb-destaque-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.onb-destaque-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8867A1 0%, #6a4d82 100%);
+  white-space: nowrap;
+}
+
+.onb-destaque.zap .onb-destaque-cta {
+  background: linear-gradient(135deg, #22c55e 0%, #0ea372 100%);
+}
+
+/* Passos secundários */
+.onb-secundarios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.onb-secundario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid #ece5f4;
+  background: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.onb-secundario:hover {
+  background: #ffffff;
+  border-color: #cdb6e6;
+}
+
+/* Passo concluído continua clicável (dá pra voltar e revisar), só perde o
+   realce de hover pra não competir com o que ainda falta fazer. */
+.onb-secundario.feito:hover {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: #ece5f4;
+}
+
+.onb-secundario-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f3eefa;
+  color: #8867A1;
+}
+
+.onb-secundario-check.feito {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.onb-secundario-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.onb-secundario-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onb-secundario.feito .onb-secundario-titulo {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.onb-secundario-desc {
+  font-size: 11.5px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onb-secundario-seta {
+  color: #c4b5d6;
+  flex-shrink: 0;
+}
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 1024px) {
+  .onb-secundarios {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .onb-painel {
+    padding: 16px;
+  }
+
+  .onb-painel-topo {
+    align-items: flex-start;
+  }
+
+  .onb-painel-progresso {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .onb-painel-barra {
+    flex: 1;
+    width: auto;
+  }
+
+  .onb-destaque {
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+
+  .onb-destaque-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .onb-secundarios {
+    grid-template-columns: 1fr;
+  }
+}

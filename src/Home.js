@@ -5,21 +5,24 @@ import { Icon } from '@iconify/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser } from './contexts/UserContext';
 import { SkeletonDashboard } from './components/Skeleton';
-import OnboardingChecklist from './OnboardingChecklist';
+import OnboardingPainel from './OnboardingPainel';
 import whatsappService from './services/whatsappService';
 import { showToast } from './Toast';
 import { useUserPlan } from './hooks/useUserPlan';
 import FeatureLocked from './FeatureLocked';
+import ModalCobranca from './components/ModalCobranca';
+import { agruparEnviosPorMensalidade, ehLogDeCobranca } from './utils/logsCobranca';
 import './Home.css';
 
-// Tipos de log que representam uma cobrança/lembrete disparado pelo Mensalli
-// (exclui confirmação de pagamento e boas-vindas). tipo nulo = envios diretos do CRM.
-const TIPOS_COBRANCA = new Set(['overdue', 'due_day', 'pre_due_3days']);
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 // Fila "Precisam de você hoje": a mensalidade aparece a partir de N dias de atraso
 // (3 dias da cobrança automática + 1 de folga) se ainda não estiver paga.
 const DIAS_PARA_FILA = 4;
+
+// A fila mostra só as N mais antigas — ela é a lista de ações do dia, não o
+// relatório de inadimplência. O total real vai no badge e no link do rodapé.
+const TAMANHO_FILA = 5;
 
 // Fila "Precisam de você hoje": itens que o gestor dispensou ficam guardados
 // no navegador (por usuário), pra não voltarem a aparecer após recarregar.
@@ -70,6 +73,8 @@ function Home() {
 
   // Listas e séries derivadas (fila de ação, vitórias, tendência)
   const [acoesHoje, setAcoesHoje] = useState([]);
+  // Quantos atrasados existem no total — a fila só exibe os TAMANHO_FILA mais antigos
+  const [totalAtrasados, setTotalAtrasados] = useState(0);
   const [ultimosPagamentos, setUltimosPagamentos] = useState([]);
   const [tendencia, setTendencia] = useState([]);
 
@@ -78,8 +83,8 @@ function Home() {
   const [aniversariantes, setAniversariantes] = useState([]);
   const [parabensEnviados, setParabensEnviados] = useState(() => new Set());
 
-  // Modal de cobrança rápida (mensagem editável + envio direto pelo WhatsApp)
-  const [modalCobranca, setModalCobranca] = useState(null); // { item, mensagem, carregando, enviando }
+  // Item aberto no modal de cobrança rápida ({ id, nome, valor, dias, envio })
+  const [itemCobranca, setItemCobranca] = useState(null);
 
   // Onboarding checklist: só os sinais que vêm das queries do dashboard.
   // empresa/PIX entram no useMemo abaixo, direto do contexto.
@@ -281,22 +286,19 @@ function Home() {
       // Despesas pagas no mês → resultado (lucro) do mês
       const despesasMes = (despesasMesData || []).reduce((sum, d) => sum + parseFloat(d.valor || 0), 0);
 
-      // Conjunto de mensalidades que receberam uma cobrança/lembrete (janela ampliada, ~45d
-      // antes do mês, p/ pegar lembrete do fim do mês passado que gerou pgto no início deste).
-      // Guarda também a data do 1º envio para garantir que o lembrete veio ANTES do pagamento.
+      // Envios de cobrança por mensalidade (janela ampliada, ~45d antes do mês, p/ pegar
+      // lembrete do fim do mês passado que gerou pgto no início deste). Guarda o 1º envio
+      // para garantir que o lembrete veio ANTES do pagamento, e o último p/ o aviso de reenvio.
+      const enviosPorMensalidade = agruparEnviosPorMensalidade(logsCobranca);
       const cobrancaPorMensalidade = {}; // mensalidade_id -> data (YYYY-MM-DD) do envio mais antigo
-      let cobrancasEnviadas = 0; // contador só do mês atual (o card diz "este mês")
-      (logsCobranca || []).forEach(l => {
-        if (!l.mensalidade_id) return;
-        const ehCobranca = l.tipo == null || TIPOS_COBRANCA.has(l.tipo);
-        if (!ehCobranca) return;
-        const dataEnvio = (l.enviado_em || '').split('T')[0];
-        if (dataEnvio >= inicio) cobrancasEnviadas += 1; // só conta envios do mês atual
-        const atual = cobrancaPorMensalidade[l.mensalidade_id];
-        if (!atual || (dataEnvio && dataEnvio < atual)) {
-          cobrancaPorMensalidade[l.mensalidade_id] = dataEnvio;
-        }
+      Object.entries(enviosPorMensalidade).forEach(([id, envio]) => {
+        cobrancaPorMensalidade[id] = (envio.primeiroISO || '').split('T')[0];
       });
+
+      // Contador só do mês atual (o card diz "este mês")
+      const cobrancasEnviadas = (logsCobranca || []).filter(l =>
+        l.mensalidade_id && ehLogDeCobranca(l) && (l.enviado_em || '').split('T')[0] >= inicio
+      ).length;
 
       // Itens que o gestor já dispensou da fila (guardados no navegador)
       const dispensadas = lerDispensadas(userId);
@@ -362,7 +364,14 @@ function Home() {
           // não estiver paga, salvo se o gestor dispensou.
           const dias = Math.floor((hoje - new Date(`${dataVenc}T00:00:00`)) / 86400000);
           if (dias >= DIAS_PARA_FILA && !dispensadas.has(p.id)) {
-            atrasados.push({ id: p.id, devedorId: p.devedor_id, nome: nomePorDevedor[p.devedor_id] || 'Aluno', valor, dias });
+            atrasados.push({
+              id: p.id,
+              devedorId: p.devedor_id,
+              nome: nomePorDevedor[p.devedor_id] || 'Aluno',
+              valor,
+              dias,
+              envio: enviosPorMensalidade[p.id] || null
+            });
           }
         }
 
@@ -383,11 +392,13 @@ function Home() {
         serieTendencia.push({ mes: MESES_CURTOS[d.getMonth()], valor: Math.round(recebidoPorMes[chave] || 0) });
       }
 
-      // Top 5 atrasados (mais antigos primeiro) e últimos 5 pagamentos
-      const filaAcoes = atrasados.sort((a, b) => b.dias - a.dias).slice(0, 5);
+      // A fila mostra as mais antigas primeiro, mas o total inteiro vai pro badge:
+      // mostrar o tamanho da lista cortada fazia o gestor ler "só tenho 5 em atraso".
+      const filaAcoes = atrasados.sort((a, b) => b.dias - a.dias).slice(0, TAMANHO_FILA);
       const feedPagamentos = pagamentos.sort((a, b) => (a.data < b.data ? 1 : -1)).slice(0, 5);
 
       setAcoesHoje(filaAcoes);
+      setTotalAtrasados(atrasados.length);
       setUltimosPagamentos(feedPagamentos);
       setTendencia(serieTendencia);
 
@@ -459,7 +470,11 @@ function Home() {
      checklist se corrige sozinho.
   ---------------------------------------------------------------- */
   const onboardingSteps = useMemo(() => ({
-    empresa: !!(nomeEmpresaContext && nomeEmpresaContext.trim()),
+    // Toda conta nova nasce com nome_empresa = "Minha Empresa" (o passo saiu do
+    // cadastro). Se contasse como preenchido, a etapa nasceria concluída e
+    // ninguém trocaria o placeholder — que aparece nas mensagens dos alunos.
+    empresa: !!(nomeEmpresaContext && nomeEmpresaContext.trim() &&
+      nomeEmpresaContext.trim().toLowerCase() !== 'minha empresa'),
     pix: !!(chavePix && chavePix.trim()),
     whatsapp: sinaisOnboarding.whatsapp,
     cliente: sinaisOnboarding.cliente
@@ -523,51 +538,13 @@ function Home() {
     }
   };
 
-  // Abre o modal de cobrança e carrega a prévia da mensagem (template do usuário já preenchido)
-  const abrirModalCobranca = async (item) => {
-    setModalCobranca({ item, mensagem: '', carregando: true, enviando: false });
-    try {
-      const { mensagem } = await whatsappService.gerarPreviewMensagem(item.id);
-      setModalCobranca((prev) => (prev && prev.item.id === item.id
-        ? { ...prev, mensagem: mensagem || '', carregando: false }
-        : prev));
-    } catch (e) {
-      setModalCobranca((prev) => (prev && prev.item.id === item.id
-        ? { ...prev, mensagem: '', carregando: false }
-        : prev));
-    }
-  };
-
-  const restaurarMensagemPadrao = async () => {
-    if (!modalCobranca) return;
-    const { item } = modalCobranca;
-    setModalCobranca((prev) => ({ ...prev, carregando: true }));
-    try {
-      const { mensagem } = await whatsappService.gerarPreviewMensagem(item.id);
-      setModalCobranca((prev) => (prev ? { ...prev, mensagem: mensagem || '', carregando: false } : prev));
-    } catch {
-      setModalCobranca((prev) => (prev ? { ...prev, carregando: false } : prev));
-    }
-  };
-
-  const enviarCobrancaModal = async () => {
-    if (!modalCobranca || !modalCobranca.mensagem.trim() || modalCobranca.enviando) return;
-    const { item, mensagem } = modalCobranca;
-    setModalCobranca((prev) => ({ ...prev, enviando: true }));
-    try {
-      const resultado = await whatsappService.enviarCobranca(item.id, mensagem);
-      if (resultado.sucesso) {
-        showToast('Cobrança enviada pelo WhatsApp! 🚀', 'success');
-        setAcoesHoje((prev) => prev.filter((a) => a.id !== item.id));
-        setModalCobranca(null);
-      } else {
-        showToast(resultado.erro || 'Não foi possível enviar a cobrança', 'error');
-        setModalCobranca((prev) => (prev ? { ...prev, enviando: false } : prev));
-      }
-    } catch (e) {
-      showToast('Erro ao enviar: ' + e.message, 'error');
-      setModalCobranca((prev) => (prev ? { ...prev, enviando: false } : prev));
-    }
+  // Cobrança enviada: sai da fila e o total encolhe junto (o próximo atrasado só
+  // entra na lista no próximo carregamento, o que evita a fila pular na tela).
+  const aoEnviarCobranca = (item) => {
+    showToast('Cobrança enviada pelo WhatsApp! 🚀', 'success');
+    setAcoesHoje((prev) => prev.filter((a) => a.id !== item.id));
+    setTotalAtrasados((prev) => Math.max(0, prev - 1));
+    setItemCobranca(null);
   };
 
   const getHoraSaudacao = () => {
@@ -618,6 +595,14 @@ function Home() {
 
   const nomeEmpresa = nomeEmpresaContext || 'Empresa';
 
+  // Dois cards-herói empilhados brigam entre si, e o de baixo nasce zerado numa
+  // conta em onboarding (sem WhatsApp não existe cobrança automática, logo não
+  // existe nada recuperado). Com o painel de primeiros passos na tela, o
+  // recuperado só entra se tiver número de verdade — o que cobre a conta que já
+  // cobra mas ainda não fechou todas as etapas. Sem o painel, aparece sempre,
+  // inclusive zerado: aí o zero é informação legítima ("nada recuperado no mês").
+  const mostrarHeroRecuperado = !mostrarChecklist || recuperadoValor > 0 || cobrancasEnviadas > 0;
+
   // Destaca a próxima aula do dia (primeira cujo horário ainda não passou)
   const agoraHHMM = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
   const idxProximaAula = aulasHojeLista.findIndex((a) => a.horario && a.horario >= agoraHHMM);
@@ -648,7 +633,18 @@ function Home() {
         </div>
       </div>
 
-      {/* Card-herói: prova de valor do Mensalli (dinheiro recuperado pela cobrança automática) */}
+      {/* Primeiros passos: entrou no lugar do wizard que bloqueava a entrada e do
+          balão flutuante do canto. Some sozinho quando as 4 etapas fecham. */}
+      {mostrarChecklist && (
+        <OnboardingPainel completedSteps={onboardingSteps} />
+      )}
+
+      {/* Card-herói: prova de valor do Mensalli (dinheiro recuperado pela cobrança automática).
+          Um herói de cada vez: enquanto o painel de primeiros passos está na tela, este só
+          aparece se tiver algo real pra mostrar. Numa conta que ainda não conectou o
+          WhatsApp ele só pode marcar R$ 0,00 — dois blocos grandes empilhados, e o de
+          baixo vazio. Assim que o onboarding fecha, o painel some e este assume o topo. */}
+      {mostrarHeroRecuperado && (
       <div className="home-hero-recuperado" onClick={() => navigate('/app/financeiro?status=pago')}>
         <div className="hero-recuperado-main">
           <div className="hero-recuperado-icon">
@@ -671,6 +667,7 @@ function Home() {
           </span>
         </div>
       </div>
+      )}
 
       {/* KPIs financeiros */}
       <div className="home-cards-grid home-cards-3">
@@ -893,7 +890,7 @@ function Home() {
                 <h2>Precisam de você hoje</h2>
                 <span className="section-header-sub">Vencidas há {DIAS_PARA_FILA}+ dias e ainda sem pagamento</span>
               </div>
-              {isProOrAbove && acoesHoje.length > 0 && <span className="badge-count">{acoesHoje.length}</span>}
+              {isProOrAbove && totalAtrasados > 0 && <span className="badge-count">{totalAtrasados}</span>}
             </div>
             {acoesHoje.length === 0 ? (
               <div className="empty-state compact">
@@ -903,13 +900,13 @@ function Home() {
             ) : (
               <div className="painel-lista">
                 {acoesHoje.map((a) => (
-                  <div key={a.id} className="acao-item" onClick={() => abrirModalCobranca(a)}>
+                  <div key={a.id} className="acao-item" onClick={() => setItemCobranca(a)}>
                     <div className="acao-info">
                       <span className="acao-nome">{a.nome}</span>
                       <span className="acao-detalhe">{a.dias} {a.dias === 1 ? 'dia' : 'dias'} em atraso · {formatarMoeda(a.valor)}</span>
                     </div>
                     <div className="acao-acoes">
-                      <button className="acao-btn" onClick={(e) => { e.stopPropagation(); abrirModalCobranca(a); }}>
+                      <button className="acao-btn" onClick={(e) => { e.stopPropagation(); setItemCobranca(a); }}>
                         <Icon icon="ic:baseline-whatsapp" width="16" /> Cobrar
                       </button>
                       <button
@@ -923,6 +920,17 @@ function Home() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* A fila é curta de propósito; o resto dos atrasados fica no Financeiro */}
+            {totalAtrasados > acoesHoje.length && (
+              <button
+                className="painel-footer-link"
+                onClick={() => navigate('/app/financeiro?status=atrasado')}
+              >
+                Mostrando {acoesHoje.length} de {totalAtrasados} · Ver todas
+                <Icon icon="mdi:arrow-right" width="14" />
+              </button>
             )}
           </div>
         </FeatureLocked>
@@ -986,86 +994,15 @@ function Home() {
         </div>
       </div>
 
-      {/* Modal de cobrança rápida */}
-      {modalCobranca && (
-        <div className="modal-overlay" onClick={() => !modalCobranca.enviando && setModalCobranca(null)}>
-          <div className="modal-content modal-cobranca" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-cobranca-titulo">
-                <div className="modal-cobranca-avatar">
-                  <Icon icon="ic:baseline-whatsapp" width="22" />
-                </div>
-                <div>
-                  <h3>Cobrar {modalCobranca.item.nome}</h3>
-                  <span className="modal-cobranca-sub">
-                    {modalCobranca.item.dias} {modalCobranca.item.dias === 1 ? 'dia' : 'dias'} em atraso · {formatarMoeda(modalCobranca.item.valor)}
-                  </span>
-                </div>
-              </div>
-              <button
-                className="modal-cobranca-fechar"
-                onClick={() => !modalCobranca.enviando && setModalCobranca(null)}
-                aria-label="Fechar"
-              >
-                <Icon icon="mdi:close" width="20" />
-              </button>
-            </div>
-
-            <div className="modal-cobranca-body">
-              <div className="modal-cobranca-label-row">
-                <label>Mensagem</label>
-                <button className="modal-cobranca-restaurar" onClick={restaurarMensagemPadrao} disabled={modalCobranca.carregando || modalCobranca.enviando}>
-                  <Icon icon="mdi:restore" width="14" /> Restaurar texto padrão
-                </button>
-              </div>
-              {modalCobranca.carregando ? (
-                <div className="modal-cobranca-loading">
-                  <Icon icon="mdi:loading" className="spin" width="22" />
-                  <span>Montando a mensagem…</span>
-                </div>
-              ) : (
-                <textarea
-                  className="modal-cobranca-textarea"
-                  value={modalCobranca.mensagem}
-                  onChange={(e) => setModalCobranca((prev) => ({ ...prev, mensagem: e.target.value }))}
-                  rows={10}
-                  placeholder="Escreva a mensagem da cobrança…"
-                  disabled={modalCobranca.enviando}
-                />
-              )}
-              <span className="modal-cobranca-dica">
-                Edite à vontade. O link de pagamento é inserido automaticamente no envio.
-              </span>
-            </div>
-
-            <div className="modal-cobranca-footer">
-              <button
-                className="modal-cobranca-btn cancelar"
-                onClick={() => setModalCobranca(null)}
-                disabled={modalCobranca.enviando}
-              >
-                Cancelar
-              </button>
-              <button
-                className="modal-cobranca-btn enviar"
-                onClick={enviarCobrancaModal}
-                disabled={modalCobranca.carregando || modalCobranca.enviando || !modalCobranca.mensagem.trim()}
-              >
-                {modalCobranca.enviando ? (
-                  <><Icon icon="mdi:loading" className="spin" width="18" /> Enviando…</>
-                ) : (
-                  <><Icon icon="ic:baseline-whatsapp" width="18" /> Enviar pelo WhatsApp</>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      {itemCobranca && (
+        <ModalCobranca
+          item={itemCobranca}
+          envio={itemCobranca.envio}
+          onFechar={() => setItemCobranca(null)}
+          onEnviado={aoEnviarCobranca}
+        />
       )}
 
-      {/* Onboarding Checklist - painel flutuante */}
-      {mostrarChecklist && (
-        <OnboardingChecklist completedSteps={onboardingSteps} />
-      )}
     </div>
   );
 }
