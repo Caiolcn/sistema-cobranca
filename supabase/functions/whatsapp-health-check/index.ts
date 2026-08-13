@@ -177,6 +177,59 @@ async function lerFrota(apiUrl: string, apiKey: string): Promise<Map<string, Ins
 }
 
 /**
+ * Estado barato: connectionState é uma leitura de memória da Evolution.
+ *
+ * Existe porque o fetchInstances da frota inteira NÃO é barato: ele devolve
+ * `_count` de Message/Contact/Chat por instância — com 57 instâncias, ~170
+ * agregações sobre tabelas de dezenas de milhares de linhas, a cada 30 min, no
+ * mesmo processo que segura os sockets Baileys. Depois que ele entrou (11/08),
+ * 70% das quedas restantes passaram a cair em cima do minuto do cron.
+ *
+ * A contrapartida conhecida: o connectionState MENTE, responde 'close' para
+ * instância presa em 'connecting'. Por isso ele é só o filtro — quem não estiver
+ * 'open' leva uma consulta detalhada (1 instância, não a frota).
+ */
+async function lerEstadoBarato(apiUrl: string, apiKey: string, instance: string): Promise<string> {
+  try {
+    const res = await fetchComTimeout(
+      `${apiUrl}/instance/connectionState/${instance}`,
+      { headers: { apikey: apiKey } },
+      PROBE_TIMEOUT_MS,
+    )
+    if (!res.ok) return res.status === 404 ? 'inexistente' : 'erro'
+    const d = await res.json()
+    return d?.instance?.state || 'close'
+  } catch (_e) {
+    return 'erro'
+  }
+}
+
+/** Detalhe de UMA instância (estado real, ownerJid, motivo da queda). */
+async function detalhesInstancia(
+  apiUrl: string, apiKey: string, instance: string,
+): Promise<InstanciaFrota | null> {
+  try {
+    const res = await fetchComTimeout(
+      `${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instance)}`,
+      { headers: { apikey: apiKey } },
+      PROBE_TIMEOUT_MS,
+    )
+    if (!res.ok) return null
+    const d = await res.json()
+    const i = (Array.isArray(d) ? d : [d])[0]
+    if (!i) return null
+    return {
+      estado: i?.connectionStatus || 'close',
+      ownerJid: i?.ownerJid || null,
+      motivoQueda: typeof i?.disconnectionReasonCode === 'number' ? i.disconnectionReasonCode : null,
+      caiuEm: i?.disconnectionAt || null,
+    }
+  } catch (_e) {
+    return null
+  }
+}
+
+/**
  * Mesmo número, ignorando o nono dígito?
  *
  * Contas BR pré-2014 têm o JID canônico SEM o 9 mesmo depois da migração da
@@ -542,8 +595,10 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     throw new Error('evolution_api_key não configurada na tabela config')
   }
 
-  // Estado de TODAS as instâncias num request só (ver lerFrota).
-  const frota = await lerFrota(apiUrl, apiKey)
+  // A master é checada com a leitura barata; a frota inteira NÃO é mais varrida
+  // de uma vez (ver lerEstadoBarato para o porquê).
+  const estadoMaster = await lerEstadoBarato(apiUrl, apiKey, masterInstance)
+  const frota: Map<string, InstanciaFrota> | null = estadoMaster === 'erro' ? null : new Map()
   if (!frota) {
     // Sem a frota não sabemos nada sobre ninguém. Abster é obrigatório: gravar
     // "caiu" aqui tiraria a base inteira das views vw_parcelas_* por causa de
@@ -556,7 +611,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   // Se ele cai, TODO aviso de queda para em silêncio — por isso o estado dele
   // vai para a config, que o painel admin lê. Antes disso, o único registro era
   // um console.warn que ninguém via.
-  const masterOk = frota.get(masterInstance)?.estado === 'open'
+  const masterOk = estadoMaster === 'open'
   if (!masterOk) console.warn('⚠️ Instância master não conectada — avisos do Canal C serão pulados.')
   const { error: erroMaster } = await admin.from('whatsapp_master_estado').upsert(
     {
@@ -696,10 +751,17 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     const zap = zapPorUser.get(u.id)
     const instance = zap?.instance_name || `instance_${u.id.substring(0, 8)}`
 
-    const info = frota.get(instance)
+    // Leitura barata primeiro; só quem não está 'open' custa a consulta
+    // detalhada. Assim a rodada deixa de fazer ~170 agregações na base da
+    // Evolution e passa a fazer 27 leituras de memória + ~5 consultas pontuais.
+    const estadoBarato = await lerEstadoBarato(apiUrl, apiKey, instance)
+    const info = estadoBarato === 'open'
+      ? { estado: 'open', ownerJid: null, motivoQueda: null, caiuEm: null } as InstanciaFrota
+      : await detalhesInstancia(apiUrl, apiKey, instance)
+
     // let: a recuperação automática mais abaixo pode mudar o estado (restart que
     // deu certo, instância recriada), e o relatório tem que refletir o resultado.
-    let estado = info ? info.estado : 'inexistente'
+    let estado = info ? info.estado : (estadoBarato === 'inexistente' ? 'inexistente' : 'erro')
 
     // ownerJid é o JID canônico do cliente — a fonte certa do número, que o
     // salvarConexao nunca conseguiu preencher porque lia /instance/fetchProfile

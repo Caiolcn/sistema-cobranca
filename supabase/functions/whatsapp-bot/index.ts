@@ -117,7 +117,7 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
 
   const { data: zap } = await supabase
     .from('mensallizap')
-    .select('user_id, ultimo_aviso_desconexao, gestor_jid')
+    .select('user_id, ultimo_aviso_desconexao, gestor_jid, conectado')
     .eq('instance_name', instance)
     .maybeSingle()
   if (!zap?.user_id) return
@@ -136,13 +136,29 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
 
   // ---- Caiu ----
   if (estado === 'close') {
-    // Sempre registra a queda (timestamp exato) e reflete no banner in-app.
-    await supabase.from('logs_conexao').insert({ user_id: userId, instance_name: instance, status: 'desconectado' })
-    await supabase
-      .from('mensallizap')
-      .update({ conectado: false, ultima_desconexao: agoraIso, updated_at: agoraIso })
-      .eq('user_id', userId)
-    console.log(`⚠️ connection.update: caiu ${instance} (statusReason ${statusReason})`)
+    // Só é QUEDA quando a conta estava conectada. Instância já caída fica
+    // ciclando connecting→close→connecting e emite 'close' o tempo todo — e as
+    // nossas próprias ações de recuperação (restart, pedir QR) também geram.
+    //
+    // Registrar tudo como queda fazia dois estragos: inflava a contagem (a
+    // métrica de "quedas/dia" contava reemissão de quem já estava fora) e
+    // REJUVENESCIA o ultima_desconexao — a Nr assessoria, fora desde 03/08,
+    // aparecia como "caiu 12/08 12:45", quebrando o "há quantos dias" do painel
+    // e do aviso ao cliente.
+    const quedaReal = zap.conectado !== false
+
+    if (quedaReal) {
+      await supabase.from('logs_conexao').insert({ user_id: userId, instance_name: instance, status: 'desconectado' })
+      await supabase
+        .from('mensallizap')
+        .update({ conectado: false, ultima_desconexao: agoraIso, updated_at: agoraIso })
+        .eq('user_id', userId)
+      console.log(`⚠️ connection.update: caiu ${instance} (statusReason ${statusReason})`)
+    } else {
+      // Já estava fora: só garante o flag, sem mexer no "desde quando".
+      await supabase.from('mensallizap').update({ conectado: false, updated_at: agoraIso }).eq('user_id', userId)
+      console.log(`↻ connection.update: ${instance} segue fora (close repetido, statusReason ${statusReason})`)
+    }
 
     // 401 = DisconnectReason.loggedOut → saiu de vez: avisa na hora, aqui mesmo.
     //
