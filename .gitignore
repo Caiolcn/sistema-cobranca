@@ -60,3 +60,7 @@ credentials.json
 
 # Supabase CLI (project ref local)
 /supabase/.temp/
+
+# Exports crus do n8n contem a chave do Supabase chumbada nos nos.
+# Commitar so versoes REDIGIDAS (ver n8n-workflows/backup-*/).
+/n8n-export-*.json
