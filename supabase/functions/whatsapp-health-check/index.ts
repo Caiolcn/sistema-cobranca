@@ -689,6 +689,55 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   // martelar a Evolution. Roda na varredura das 8h BRT (11h UTC).
   const rodadaProfunda = new Date().getUTCHours() === 11
 
+  // ---- Zumbi detectado pelos ENVIOS REAIS ----
+  // O painel diz 'open' e o socket está morto. Antes isso era pego pela sonda —
+  // que foi desligada porque derrubava a base. Este é o substituto de graça:
+  // um envio de verdade que volta "Connection Closed"/500 prova o socket morto
+  // melhor que qualquer sonda sintética, e não gera tráfego nenhum.
+  //
+  // Caso que motivou (13/08): CT SOARES aparecia "Conectado" na tela do cliente
+  // com 13 cobranças falhando e ZERO mensagens entregues no dia. Um restart
+  // ressuscitou — o conserto existia, faltava alguém perceber.
+  const desdeZumbi = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  const { data: falhasSocket } = await admin
+    .from('logs_mensagens')
+    .select('user_id, erro_codigo, erro, created_at')
+    .eq('status', 'falha')
+    .gte('created_at', desdeZumbi)
+
+  const falhasPorUser = new Map<string, number>()
+  for (const f of (falhasSocket || []) as { user_id: string; erro_codigo: string | null; erro: string | null }[]) {
+    const socketMorto = f.erro_codigo === 'instance_500' ||
+      (f.erro || '').includes('Connection Closed')
+    if (socketMorto) falhasPorUser.set(f.user_id, (falhasPorUser.get(f.user_id) || 0) + 1)
+  }
+
+  // Envio bem-sucedido depois da falha limpa a suspeita: o socket voltou.
+  const { data: sucessos } = await admin
+    .from('logs_mensagens')
+    .select('user_id, created_at')
+    .eq('status', 'enviado')
+    .gte('created_at', desdeZumbi)
+  const ultimoSucesso = new Map<string, string>()
+  for (const s of (sucessos || []) as { user_id: string; created_at: string }[]) {
+    const atual = ultimoSucesso.get(s.user_id)
+    if (!atual || s.created_at > atual) ultimoSucesso.set(s.user_id, s.created_at)
+  }
+
+  // 2 falhas: uma isolada pode ser o número do aluno, não o socket.
+  const zumbisPorEnvio = new Set<string>()
+  for (const [uid, n] of falhasPorUser) {
+    if (n < 2) continue
+    const ultimaFalha = (falhasSocket || [])
+      .filter((f: { user_id: string }) => f.user_id === uid)
+      .map((f: { created_at: string }) => f.created_at)
+      .sort()
+      .pop()
+    const ok = ultimoSucesso.get(uid)
+    if (!ok || (ultimaFalha && ok < ultimaFalha)) zumbisPorEnvio.add(uid)
+  }
+  if (zumbisPorEnvio.size) console.log(`🧟 zumbis pelos envios: ${zumbisPorEnvio.size}`)
+
   // ---- Recuperação automática: configuração e tetos ----
   // Tudo em dado, não em código: dá pra desligar ou apertar com um UPDATE, sem
   // deploy. O recriar é irreversível (destrói credencial e pode migrar a conta
@@ -786,10 +835,16 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
     if (estado === 'inexistente') {
       // Instância nem existe na Evolution — nada a deslogar.
       probeErro = 'instância não existe na Evolution'
+    } else if (estado === 'open' && zumbisPorEnvio.has(u.id)) {
+      // Painel diz open, mas os envios reais falham com socket morto. Não é
+      // saudável: entra na escada de recuperação, que começa pelo restart —
+      // e o restart resolve (testado em 13/08 na CT SOARES e na Team Juliana,
+      // ambas voltaram sem QR).
+      saudavel = false
+      probeErro = 'open, mas envios falhando com socket morto (zumbi pelos envios)'
     } else if (estado === 'open') {
       // SONDA DESLIGADA em 11/08/26 — ver o bloco no topo do arquivo.
-      // Voltamos a confiar no painel: pior ter zumbi invisível por um tempo do
-      // que continuar derrubando a base inteira pra detectá-lo.
+      // Sem ela, 'open' vale como saudável até que um envio real prove o contrário.
       saudavel = true
       probeErro = 'sonda desligada (veredito pelo estado do painel)'
     } else {
@@ -863,8 +918,13 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
       // 1) Restart — devolve a conta sem o cliente perceber, quando a credencial
       // ainda vale. Em 401 (loggedOut) ela morreu: o restart só reiniciaria o
       // socket sem credencial, que é justamente o que queima o QRCODE_LIMIT.
+      // O motivo vem da ÚLTIMA queda registrada, que pode ser de semanas atrás:
+      // a CT SOARES estava 'open' com um 401 de 24/07 no cadastro. Se a instância
+      // está open agora, a credencial não morreu — ela travou, e restart é
+      // exatamente o que resolve. Só pulamos o restart em 401 de instância que
+      // realmente está fora.
       let voltou = false
-      if (cfgRec?.restart_ativo && motivo !== 401) {
+      if (cfgRec?.restart_ativo && (estado === 'open' || motivo !== 401)) {
         voltou = await tentarRestart(apiUrl, apiKey, instance)
         await admin.from('whatsapp_recovery_log').insert({
           user_id: u.id, instance_name: instance, acao: 'restart',
@@ -878,6 +938,13 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
         saudavel = true
         estado = 'open'
         acao = acao === 'nenhuma' ? 'restart_ok' : `${acao}+restart_ok`
+      } else if (estado === 'open') {
+        // Zumbi que o restart não curou. NÃO seguimos para o teste de QR nem
+        // para o recriar: a instância está 'open', então a credencial pode estar
+        // boa e destruí-la seria trocar "travou, restart resolve" por um
+        // re-pareamento desnecessário — que é o gatilho do LID, sem volta.
+        // Fica marcado para intervenção humana, como era antes.
+        acao = 'zumbi_travado'
       } else {
         // 2) O QR ainda sai? É o teste que decide se precisamos destruir.
         //
