@@ -1,4 +1,5 @@
 import { supabase, FUNCTIONS_URL } from '../supabaseClient'
+import { modoEspelhoAtivo } from '../utils/modoEspelho'
 import { TEMPLATES_SEED } from '../data/templatesPadrao'
 
 /**
@@ -202,8 +203,17 @@ async function garantirWebhook(config, userId) {
  *
  * POST: o PUT devolve 404 nesta versão (medido em 11/08/26).
  */
-export async function tentarRestart(config, esperaMs = 15000) {
+export async function tentarRestart(config, numeroReal, esperaMs = 15000) {
   if (!config?.apiKey) return false
+
+  // SEM número não há como provar que voltou. Antes isto conferia o resultado
+  // com o connectionState — que responde 'open' para instância ZUMBI, sempre.
+  // Resultado: em 17/08 o botão "Forçar nova conexão" da Rede Fit declarou
+  // "Conectado" numa instância que não enviava nada. Na dúvida, dizemos que NÃO
+  // voltou: seguir para o reset é recuperável; mentir "conectado" devolve a
+  // conta para a régua e as cobranças falham em silêncio.
+  if (!numeroReal) return false
+
   try {
     const res = await fetch(`${config.apiUrl}/instance/restart/${config.instanceName}`, {
       method: 'POST', headers: { apikey: config.apiKey }
@@ -216,9 +226,57 @@ export async function tentarRestart(config, esperaMs = 15000) {
   const limite = Date.now() + esperaMs
   while (Date.now() < limite) {
     await pausa(2500)
-    if ((await verificarEstado(config)) === 'open') return true
+    if (await sondarSocketReal(config, numeroReal)) return true
   }
   return false
+}
+
+/**
+ * Round-trip real ao WhatsApp com um número REAL do próprio cliente.
+ *
+ * É o único teste honesto de "consegue enviar". Diferente da sondarSocket
+ * antiga, que usava número inventado em massa e derrubou a base: aqui é 1
+ * consulta, com número do próprio dono, e só dentro de uma ação do usuário.
+ */
+async function sondarSocketReal(config, numero, timeoutMs = 12000) {
+  if (!config?.apiKey || !numero) return false
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${config.apiUrl}/chat/whatsappNumbers/${config.instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
+      body: JSON.stringify({ numbers: [String(numero).replace(/\D/g, '')] }),
+      signal: controller.signal
+    })
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(id)
+  }
+}
+
+/** Número real do cliente, do cadastro. Null se não houver — aí não se afirma nada. */
+async function numeroRealDoCliente(userId) {
+  if (!userId) return null
+  try {
+    const { data: z } = await supabase
+      .from('mensallizap')
+      .select('whatsapp_numero, gestor_jid')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (z?.whatsapp_numero) return z.whatsapp_numero
+    if (z?.gestor_jid) return String(z.gestor_jid).split('@')[0]
+
+    const { data: u } = await supabase
+      .from('usuarios').select('telefone').eq('id', userId).maybeSingle()
+    const n = String(u?.telefone || '').replace(/\D/g, '')
+    if (n.length < 10) return null
+    return n.startsWith('55') ? n : '55' + n
+  } catch {
+    return null
+  }
 }
 
 const pausa = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -364,6 +422,13 @@ export async function gerarQrCode(config, { forcar = false, userId = null } = {}
     throw new Error('Integração do WhatsApp não configurada. Fale com o suporte.')
   }
 
+  // A trava do modo espelho mora no whatsappService; este serviço usa fetch
+  // direto e escapava dela. Sem isto, um admin "vendo como cliente" que
+  // clicasse em conectar criava/apagava a instância REAL dele.
+  if (modoEspelhoAtivo()) {
+    throw new Error('Modo espelho: você está vendo a conta do cliente. Conectar o WhatsApp precisa ser feito por ele.')
+  }
+
   const estado = await verificarEstado(config)
   if (!forcar && estado === 'open') return { jaConectado: true, qr: null }
 
@@ -372,8 +437,11 @@ export async function gerarQrCode(config, { forcar = false, userId = null } = {}
   // tem 2 min pra escanear).
   await marcarPareamento(userId, 240)
 
+  // Número real do cliente: sem ele o restart não tem como PROVAR que voltou.
+  const numeroReal = await numeroRealDoCliente(userId)
+
   if (forcar) {
-    if (await tentarRestart(config)) return { jaConectado: true, qr: null }
+    if (await tentarRestart(config, numeroReal)) return { jaConectado: true, qr: null }
     await resetarInstancia(config)
   }
 
@@ -384,7 +452,7 @@ export async function gerarQrCode(config, { forcar = false, userId = null } = {}
   // Sem este resgate a tela morria em "QR Code não foi gerado pela API" e o
   // cliente dependia de alguém mexer no servidor para voltar a cobrar.
   if (!qr) {
-    if (!forcar && await tentarRestart(config)) return { jaConectado: true, qr: null }
+    if (!forcar && await tentarRestart(config, numeroReal)) return { jaConectado: true, qr: null }
     await resetarInstancia(config)
     qr = await criarEConectar(config, userId)
   }
