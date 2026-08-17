@@ -1039,16 +1039,21 @@ export default function WhatsAppConexao() {
         return
       }
 
-      // Buscar número do WhatsApp conectado (tentativa via Evolution API)
+      // Número pareado, do ownerJid. Antes lia GET /instance/fetchProfile, que
+      // NÃO existe nesta versão e responde 404 — por isso whatsapp_numero
+      // nasceu NULL em toda a base. Esse número é o que permite sondar o socket
+      // com um número real (a sonda com número inventado foi o que derrubou a
+      // base em agosto) e é o destino de fallback do aviso de queda.
       let whatsappNumero = null
       try {
-        const profileResponse = await fetch(
-          `${config.apiUrl}/instance/fetchProfile/${config.instanceName}`,
+        const res = await fetch(
+          `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
           { headers: { 'apikey': config.apiKey } }
         )
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json()
-          whatsappNumero = profileData.wuid || profileData.id || null
+        if (res.ok) {
+          const dados = await res.json()
+          const inst = (Array.isArray(dados) ? dados : [dados])[0]
+          whatsappNumero = inst?.ownerJid ? String(inst.ownerJid).split('@')[0] : null
           console.log('📱 Número WhatsApp detectado:', whatsappNumero)
         }
       } catch (err) {
