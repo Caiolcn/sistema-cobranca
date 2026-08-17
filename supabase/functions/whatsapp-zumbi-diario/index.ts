@@ -120,6 +120,19 @@ function numeroParaSonda(
   return n.startsWith('55') ? n : '55' + n
 }
 
+/** Estado da instância. 0,1s — o fetchInstances leva 32s e não é necessário aqui. */
+async function estadoInstancia(apiUrl: string, apiKey: string, instance: string): Promise<string> {
+  try {
+    const r = await fetchTimeout(`${apiUrl}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } })
+    if (r.status === 404) return 'inexistente'
+    if (!r.ok) return 'erro'
+    const d = await r.json()
+    return d?.instance?.state || 'erro'
+  } catch (_e) {
+    return 'erro'
+  }
+}
+
 /** POST — o PUT devolve 404 nesta versão da Evolution (medido em 11/08/26). */
 async function restart(apiUrl: string, apiKey: string, instance: string): Promise<boolean> {
   try {
@@ -298,7 +311,7 @@ async function executar(): Promise<Record<string, unknown>> {
 
   const { data: zaps } = await admin
     .from('mensallizap')
-    .select('user_id, instance_name, whatsapp_numero, gestor_jid, pareamento_ate')
+    .select('user_id, instance_name, whatsapp_numero, gestor_jid, pareamento_ate, conectado')
     .in('user_id', suspeitos)
 
   const { data: usuarios } = await admin
@@ -331,7 +344,7 @@ async function executar(): Promise<Record<string, unknown>> {
   const alvos: Alvo[] = []
   for (const z of (zaps || []) as {
     user_id: string; instance_name: string | null; whatsapp_numero: string | null
-    gestor_jid: string | null; pareamento_ate: string | null
+    gestor_jid: string | null; pareamento_ate: string | null; conectado: boolean | null
   }[]) {
     if (alvos.length >= teto) break
     const inst = z.instance_name
@@ -339,6 +352,18 @@ async function executar(): Promise<Record<string, unknown>> {
     if (inst === master) continue                       // nunca a master: CRM de leads + canal de aviso
     if (jaMexidas.has(inst)) continue                   // 1 intervenção por dia
     if (z.pareamento_ate && Date.parse(z.pareamento_ate) > agora) continue // cliente com o QR na tela
+
+    // SÓ mexemos em quem o sistema ACHA que está conectado. Zumbi é exatamente
+    // isso: "acreditamos que está conectado e não está". Se conectado = false,
+    // o sistema já sabe da queda e quem resolve é o cliente escaneando — não há
+    // nada a recuperar, e agir aqui só destrói.
+    //
+    // Sem esta condição, em 17/08 às 16:21 a varredura apagou as instâncias
+    // NOVAS da GR Esperança e da Team Juliana: recém-criadas, aguardando o
+    // pareamento, elas respondem à sonda igual a uma quebrada. A escada leu
+    // zumbi, tentou restart (não havia sessão para reiniciar), foi ao delete e
+    // deixou os dois clientes sem instância nenhuma.
+    if (z.conectado === false) continue
 
     const u = userPorId.get(z.user_id) as { nome_empresa?: string; telefone?: string } | undefined
     const conta = u?.nome_empresa || inst
@@ -364,6 +389,18 @@ async function executar(): Promise<Record<string, unknown>> {
   const mortos: Alvo[] = []
   for (const a of alvos) {
     if (semTempo()) break
+
+    // Zumbi é 'open' com socket morto. Se a instância NÃO está 'open', ela está
+    // desconectada ou aguardando pareamento — nos dois casos quem resolve é o
+    // cliente, e mexer aqui é destruir o que está esperando por ele.
+    // connectionState custa 0,1s, contra 32s do fetchInstances.
+    const estado = await estadoInstancia(apiUrl, apiKey, a.inst)
+    if (estado !== 'open') {
+      await registrar(a.uid, a.inst, a.conta, 'sonda', true,
+        `instância em '${estado}' — não é zumbi, aguarda o cliente escanear`)
+      continue
+    }
+
     if (await socketVivo(apiUrl, apiKey, a.inst, a.numero)) {
       await registrar(a.uid, a.inst, a.conta, 'sonda', true, 'socket vivo — as falhas tinham outra causa, nada a fazer')
     } else {
@@ -389,7 +426,15 @@ async function executar(): Promise<Record<string, unknown>> {
       curado ? 'voltou a enviar sem novo pareamento' : 'não voltou depois do restart')
     if (!curado) persistentes.push(a)
   }
-  if (!cfg.restart_ativo) persistentes.push(...mortos)
+  // Antes: sem restart, todos os mortos iam DIRETO para o delete+create — o
+  // interruptor que parece o mais seguro era o mais destrutivo. Agora desligar
+  // o restart desliga a escada inteira: sem tentar o barato, não se faz o caro.
+  if (!cfg.restart_ativo) {
+    for (const a of mortos) {
+      await registrar(a.uid, a.inst, a.conta, 'restart', false,
+        'restart desligado na configuração — nada a fazer sem tentar o passo não-destrutivo')
+    }
+  }
 
   // 4) Recriar + avisar. Só aqui se destrói credencial.
   for (const a of persistentes) {
@@ -403,6 +448,16 @@ async function executar(): Promise<Record<string, unknown>> {
     await registrar(a.uid, a.inst, a.conta, 'recriar', r.ok, r.detalhe)
 
     // Depois do recriar SÓ o cliente resolve, escaneando o QR.
+    if (r.ok) {
+      // A instância nova não tem pareamento: marcar a queda tira a conta das
+      // vw_parcelas_* (parar de disparar contra um socket que não existe) e,
+      // pela trava do topo, faz a própria varredura nunca mais tocar nela até
+      // o cliente reconectar.
+      await admin
+        .from('mensallizap')
+        .update({ conectado: false, ultima_desconexao: new Date().toISOString() })
+        .eq('user_id', a.uid)
+    }
     if (r.ok && a.jid) {
       const avisou = await avisarGestor(apiUrl, apiKey, master, a.jid, a.nome)
       await registrar(a.uid, a.inst, a.conta, 'aviso', avisou, avisou ? 'gestor avisado' : 'aviso não saiu (master fora?)')
