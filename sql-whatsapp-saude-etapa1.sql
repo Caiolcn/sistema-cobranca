@@ -93,3 +93,29 @@ $function$;
 --   update whatsapp_recovery_cfg set ativo = false where id = true;          -- para tudo
 --   update whatsapp_recovery_cfg set recriar_ativo = false where id = true;  -- só o destrutivo
 -- ============================================================
+
+-- ============================================================
+-- Varredura de ZUMBI (17/08/26) — substitui o health-check antigo
+--
+-- Zumbi = Evolution diz 'open', tela do cliente diz "Conectado", e nenhuma
+-- mensagem sai. No fim de semana de 15-16/08 foram 8 contas assim e 104
+-- mensagens que nao sairam; a PAINEIRAS estava nesse estado desde 31/07.
+--
+-- A DETECCAO NAO CUSTA NADA A EVOLUTION: sai de logs_mensagens (falhas com
+-- 'Connection Closed'/instance_500 sem envio bem-sucedido depois). So tocamos
+-- em instancia que JA provou estar quebrada.
+--
+-- Escada: sonda (1 chamada) -> restart -> delete+create(qrcode:false) -> avisa.
+--
+-- Agendamento (jobid 9): 4x/dia, e cada instancia so pode ser tocada 1x a cada
+-- 24h — as rodadas se revezam entre os candidatos.
+--   select cron.alter_job(9, active := false);  -- para tudo
+--
+-- Controles em whatsapp_recovery_cfg:
+--   ativo / restart_ativo / recriar_ativo separados
+--   max_recuperacoes_rodada = 3  (a edge function e encerrada em ~2 min)
+--   max_recriacoes_dia = 4
+--
+-- O cron do health-check antigo (jobid 8) fica DESLIGADO: era ele que derrubava
+-- a base (sonda em numero fake) e, depois, o fetchInstances de 52s por rodada.
+-- ============================================================
