@@ -949,18 +949,40 @@ export default function WhatsAppConexao() {
 
             if (veredito === 'conectado') {
               setStatus('connected')
-              // Sincronizar mensallizap para que o onboarding checklist reflita a conexão
-              supabase
+              // Sincronizar mensallizap para que o onboarding checklist reflita a conexão.
+              //
+              // NUNCA gravar o instance_name que está na memória desta aba. Quando
+              // trocamos a instância de um cliente (a saída do deadlock), a aba que
+              // ele deixou aberta continua com o nome ANTIGO; a instância antiga é
+              // um zumbi, responde 'open', e este upsert reescrevia o registro de
+              // volta para ela — desfazendo a troca e ainda marcando conectado =
+              // true, o que devolve a conta às vw_parcelas_* com o canal morto.
+              // Foi o que aconteceu com a INDEPENDENTE em 17/08.
+              const { data: reg } = await supabase
                 .from('mensallizap')
-                .upsert({
-                  user_id: effectiveUserId,
-                  conectado: true,
-                  instance_name: instanceName,
-                  updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' })
-                .then(({ error }) => {
-                  if (error) console.warn('Erro ao sincronizar mensallizap:', error)
-                })
+                .select('instance_name')
+                .eq('user_id', effectiveUserId)
+                .maybeSingle()
+
+              if (reg?.instance_name && reg.instance_name !== instanceName) {
+                console.warn(
+                  `⚠️ Instância trocada em outro lugar (memória: ${instanceName}, ` +
+                  `registrada: ${reg.instance_name}). Recarregue a página.`
+                )
+                setStatus('disconnected')
+              } else {
+                supabase
+                  .from('mensallizap')
+                  .upsert({
+                    user_id: effectiveUserId,
+                    conectado: true,
+                    instance_name: instanceName,
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'user_id' })
+                  .then(({ error }) => {
+                    if (error) console.warn('Erro ao sincronizar mensallizap:', error)
+                  })
+              }
             } else if (veredito === 'zumbi') {
               setStatus('zombie')
             }
