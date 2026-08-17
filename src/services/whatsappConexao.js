@@ -15,8 +15,46 @@ import { TEMPLATES_SEED } from '../data/templatesPadrao'
 
 const API_URL_PADRAO = 'https://service-evolution-api.tnvro1.easypanel.host'
 
-export function getInstanceName(userId) {
+/**
+ * Nome que uma conta NOVA recebe. Só isso — não use para descobrir a instância
+ * de uma conta existente; para isso existe o resolverInstanceName abaixo.
+ */
+export function nomePadraoInstancia(userId) {
   return `instance_${userId.substring(0, 8)}`
+}
+
+/**
+ * Descobre em qual instância da Evolution esta conta vive.
+ *
+ * LÊ do banco. Derivar do user_id (como era em 8 pontos do código) amarrava
+ * cada conta a um único nome para sempre — e é isso que transforma o deadlock
+ * da Evolution em beco sem saída: quando aquele nome trava (logout 500, delete
+ * 400, connect sem QR — caso Rede Fit em 17/08), não há para onde ir, e a única
+ * saída vira mexer no Postgres da Evolution ou reiniciar o container inteiro.
+ *
+ * Lendo do banco, destravar passa a ser: cria instância com nome novo, aponta
+ * o mensallizap para ela, cliente escaneia. A travada vira órfã inofensiva.
+ *
+ * Fallback no nome padrão para conta que ainda não tem registro (primeiro
+ * pareamento) — é o mesmo que as edge functions já fazem.
+ */
+export async function resolverInstanceName(userId) {
+  if (!userId) return null
+  try {
+    const { data } = await supabase
+      .from('mensallizap')
+      .select('instance_name')
+      .eq('user_id', userId)
+      .maybeSingle()
+    return data?.instance_name || nomePadraoInstancia(userId)
+  } catch {
+    return nomePadraoInstancia(userId)
+  }
+}
+
+/** @deprecated use resolverInstanceName (lê do banco) ou nomePadraoInstancia. */
+export function getInstanceName(userId) {
+  return nomePadraoInstancia(userId)
 }
 
 /** Lê a chave/URL globais da Evolution e monta a config da instância do usuário. */
@@ -32,7 +70,7 @@ export async function carregarConfigEvolution(userId) {
   return {
     apiKey: mapa.evolution_api_key || '',
     apiUrl: mapa.evolution_api_url || API_URL_PADRAO,
-    instanceName: getInstanceName(userId)
+    instanceName: await resolverInstanceName(userId)
   }
 }
 

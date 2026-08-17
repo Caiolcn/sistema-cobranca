@@ -17,6 +17,7 @@ class WhatsAppService {
     // Cache para reduzir queries desnecessárias
     this._cache = {
       userValidation: new Map(), // Cache de validação por userId
+      instanciaPorUser: {},      // userId -> instance_name (lido do banco)
       lastInit: null,            // Timestamp da última inicialização
       initTTL: 5 * 60 * 1000     // 5 minutos de cache para credenciais
     }
@@ -27,6 +28,7 @@ class WhatsAppService {
    */
   clearCache() {
     this._cache.userValidation.clear()
+    this._cache.instanciaPorUser = {}
     this._cache.lastInit = null
     this.initialized = false
   }
@@ -113,6 +115,11 @@ class WhatsAppService {
    */
   async initialize() {
     try {
+      // Zera o mapa de instâncias junto com as credenciais: a recuperação pode
+      // ter reapontado a conta para uma instância nova, e cache velho mandaria
+      // a mensagem para a instância travada. O TTL de 5 min limita a defasagem.
+      this._cache.instanciaPorUser = {}
+
       // Buscar configurações da Evolution API
       const { data: configs, error } = await supabase
         .from('config')
@@ -129,10 +136,15 @@ class WhatsAppService {
       this.apiKey = configMap.evolution_api_key
       this.apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
 
-      // Gerar nome da instância baseado no usuário
+      // Nome da instância: LÊ do banco, não deriva do user_id.
+      // Derivar amarrava a conta a um nome só para sempre — quando esse nome
+      // trava na Evolution (logout 500 / delete 400 / connect sem QR), a conta
+      // fica sem saída. Lendo daqui, dá para apontar a conta para uma instância
+      // nova sem tocar no servidor. Fallback no nome padrão para quem ainda não
+      // tem registro em mensallizap.
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        this.instanceName = `instance_${user.id.substring(0, 8)}`
+        this.instanceName = await this.getInstanceNameForUser(user.id)
       }
 
       this.initialized = true
@@ -355,10 +367,30 @@ class WhatsAppService {
   }
 
   /**
-   * Retorna o nome da instância para um userId específico
+   * Nome da instância de um userId. LÊ do banco (mensallizap.instance_name).
+   *
+   * Era derivado do user_id, o que prendia cada conta a um unico nome de
+   * instancia. Ver resolverInstanceName em services/whatsappConexao.js.
    */
-  getInstanceNameForUser(userId) {
-    return `instance_${userId.substring(0, 8)}`
+  async getInstanceNameForUser(userId) {
+    if (!userId) return null
+    if (this._cache.instanciaPorUser?.[userId]) return this._cache.instanciaPorUser[userId]
+
+    let nome = `instance_${userId.substring(0, 8)}`
+    try {
+      const { data } = await supabase
+        .from('mensallizap')
+        .select('instance_name')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (data?.instance_name) nome = data.instance_name
+    } catch {
+      /* fica com o nome padrão */
+    }
+
+    if (!this._cache.instanciaPorUser) this._cache.instanciaPorUser = {}
+    this._cache.instanciaPorUser[userId] = nome
+    return nome
   }
 
   /**
@@ -1126,7 +1158,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       console.log('📨 Mensagem final após substituição:', mensagemFinal)
 
       // Enviar via Evolution API (usando instância do dono da mensalidade)
-      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const ownerInstanceName = await this.getInstanceNameForUser(ownerId)
       const telefoneEnvio = destinatario.telefone
       const resultado = await this.enviarMensagem(telefoneEnvio, mensagemFinal, ownerInstanceName)
 
@@ -1408,7 +1440,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
 
       // Usar instância do dono da mensalidade (não do admin logado)
       const ownerId = mensalidade.user_id
-      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const ownerInstanceName = await this.getInstanceNameForUser(ownerId)
       const resultado = await this.enviarMensagem(destinatario.telefone, mensagemTexto, ownerInstanceName)
 
       // Logar envio (sempre com user_id do dono da mensalidade)
@@ -1522,7 +1554,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       }
 
       const ownerId = cobranca.user_id
-      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const ownerInstanceName = await this.getInstanceNameForUser(ownerId)
       const resultado = await this.enviarMensagem(destinatario.telefone, mensagemTexto, ownerInstanceName)
 
       await supabase.from('logs_mensagens').insert({
@@ -1641,7 +1673,7 @@ Equipe {{nomeEmpresa}}`)
       }
 
       // Usar instância do dono do registro (não do admin logado)
-      const ownerInstanceName = this.getInstanceNameForUser(ownerId)
+      const ownerInstanceName = await this.getInstanceNameForUser(ownerId)
       const resultado = await this.enviarMensagem(destinatario.telefone, mensagemTexto, ownerInstanceName)
 
       // Logar envio (sempre com user_id do dono)

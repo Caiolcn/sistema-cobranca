@@ -8,7 +8,7 @@ import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import whatsappService from './services/whatsappService'
-import { verificarSaude, gerarQrCode } from './services/whatsappConexao'
+import { verificarSaude, gerarQrCode, resolverInstanceName } from './services/whatsappConexao'
 import { resolverDestinatario } from './utils/destinatario'
 // Textos vivem em src/data pra o wizard de onboarding poder semear os mesmos
 // templates ao conectar, sem importar este componente inteiro
@@ -737,7 +737,9 @@ export default function WhatsAppConexao() {
         const effectiveUserId = contextUserId
         if (!effectiveUserId) return
 
-        const instanceName = `instance_${effectiveUserId.substring(0, 8)}`
+        // LÊ do banco, não deriva: a conta pode ter sido apontada para uma
+        // instância nova depois de um travamento da Evolution.
+        const instanceName = await resolverInstanceName(effectiveUserId)
 
         // 2. Fazer TODAS as queries em paralelo
         const [configResult, templatesResult, automacoesResult, usuarioResult, metodoPagResult, asaasResult] = await Promise.all([
