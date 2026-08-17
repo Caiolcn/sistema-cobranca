@@ -1060,6 +1060,28 @@ export default function WhatsAppConexao() {
         console.log('⚠️ Não foi possível buscar o número do WhatsApp:', err.message)
       }
 
+      // A instância REGISTRADA manda. Esta tela carrega o nome no mount e o
+      // mantém em memória; se a conta for reapontada para outra instância (o
+      // conserto de deadlock) enquanto a página está aberta, gravar o nome da
+      // memória DESFAZ o reapontamento em silêncio. Foi o que aconteceu com a
+      // GR Esperança em 17/08 às 12:10: ela reconectou na instância travada e o
+      // reapontamento se perdeu.
+      const { data: registrada } = await supabase
+        .from('mensallizap')
+        .select('instance_name')
+        .eq('user_id', contextUserId)
+        .maybeSingle()
+
+      if (registrada?.instance_name && registrada.instance_name !== config.instanceName) {
+        console.warn(
+          `⚠️ Instância mudou durante o pareamento (memória: ${config.instanceName}, registrada: ${registrada.instance_name}). ` +
+          'Não gravando conexão — recarregue a página e conecte de novo.'
+        )
+        setErro('A conexão foi atualizada em outro lugar. Recarregue a página e clique em conectar novamente.')
+        setStatus('disconnected')
+        return
+      }
+
       // Atualizar ou criar registro na mensallizap
       const agora = new Date().toISOString()
       const { data: mensallizapData, error: mensallizapError } = await supabase
@@ -1071,7 +1093,7 @@ export default function WhatsAppConexao() {
           telefone: usuarioData?.telefone || null,
           plano: usuarioData?.plano || 'starter',
           whatsapp_numero: whatsappNumero,
-          instance_name: config.instanceName,
+          instance_name: registrada?.instance_name || config.instanceName,
           conectado: true,
           ultima_conexao: agora,
           updated_at: agora
