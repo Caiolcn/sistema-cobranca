@@ -581,6 +581,91 @@ class WhatsAppService {
   }
 
   /**
+   * Envio de REENVIO MANUAL. Caminho deliberadamente separado de
+   * enviarMensagem() — e a diferença é o ponto todo.
+   *
+   * enviarMensagem() faz, por envio: sonda `/chat/whatsappNumbers`, até 3
+   * `sendText` (fetchWithRetry faz retry em 5xx), e — ao ver 'Connection
+   * Closed' — um `/instance/restart` seguido de mais uma sonda e mais 3
+   * `sendText`. Até 9 chamadas e 1 restart.
+   *
+   * Isso é aceitável num envio automático isolado. Não é aceitável num botão:
+   * a única classe de falha que ganha "Reenviar" é `transitoria`, que é
+   * composta justamente de instance_500 / Connection Closed — ou seja, o botão
+   * só apareceria nos casos que disparam restart. O whatsapp-zumbi-diario
+   * limita restart a 1x/24h por instância porque restart derruba cliente
+   * saudável (Machado black team caiu 8s depois de uma chamada nossa, 13/08).
+   *
+   * Aqui: 1 chamada, sem sonda, sem retry, sem restart. O JID vem resolvido do
+   * envio original, então nem a sonda é necessária.
+   *
+   * Continua passando por fetchWithTimeout, então herda a trava do modo espelho.
+   *
+   * @param {{ jid: string, mensagem: string, instanceName: string }} params
+   */
+  async reenviarMensagemSegura({ jid, mensagem, instanceName }) {
+    await this.ensureInitialized()
+
+    if (!jid || !mensagem || !instanceName) {
+      return { sucesso: false, erro: 'Dados insuficientes para reenvio', erroCodigo: 'reenvio_incompleto' }
+    }
+
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.apiUrl}/message/sendText/${instanceName}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': this.apiKey },
+          body: JSON.stringify({ number: jid, text: mensagem })
+        },
+        30000
+      )
+
+      const httpStatus = response.status
+      const texto = await response.text()
+      let corpo = null
+      try { corpo = texto ? JSON.parse(texto) : null } catch { corpo = { raw: texto } }
+
+      if (!response.ok) {
+        // Mesma taxonomia de erro_codigo do envio normal, para o log reenviado
+        // cair nas mesmas classes de falha_classe.
+        let erroCodigo = `http_${httpStatus}`
+        let erro = corpo?.response?.message || corpo?.message || texto || `HTTP ${httpStatus}`
+        if (httpStatus === 500) { erroCodigo = 'instance_500'; erro = 'Instância retornou 500 (provável desconexão)' }
+        else if (httpStatus === 404) { erroCodigo = 'instance_not_found'; erro = 'Instância não encontrada na Evolution API' }
+        else if (httpStatus === 401 || httpStatus === 403) { erroCodigo = 'auth_failed'; erro = 'Credencial Evolution API inválida' }
+        else if (httpStatus === 400) { erroCodigo = 'bad_request' }
+
+        return {
+          sucesso: false,
+          erro: typeof erro === 'string' ? erro : JSON.stringify(erro),
+          erroCodigo,
+          httpStatus,
+          responseApi: corpo
+        }
+      }
+
+      return {
+        sucesso: true,
+        messageId: corpo?.key?.id || null,
+        httpStatus,
+        responseApi: corpo
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return { sucesso: false, erro: 'Tempo limite excedido — Evolution API não respondeu em 30s', erroCodigo: 'timeout' }
+      }
+      const errCode = error.cause?.code || error.code
+      return {
+        sucesso: false,
+        erro: error.message || 'Erro desconhecido',
+        erroCodigo: errCode ? `network_${String(errCode).toLowerCase()}` : 'exception',
+        responseApi: { name: error.name, message: error.message }
+      }
+    }
+  }
+
+  /**
    * Envia documento/arquivo via Evolution API (PDF, imagem, etc)
    * @param {string} telefone - Número do telefone
    * @param {string} mediaUrl - URL do arquivo (deve ser acessível publicamente)
