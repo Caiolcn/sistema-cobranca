@@ -278,10 +278,15 @@ async function executar(): Promise<Record<string, unknown>> {
   // Assinatura de SOCKET morto — não de número errado do aluno.
   const contagem = new Map<string, { n: number; ultima: string }>()
   for (const f of (falhas || []) as { user_id: string; erro_codigo: string | null; erro: string | null; created_at: string }[]) {
+    // 'evolution_db_pool' NÃO é socket morto: é o pool do Prisma da Evolution
+    // estourando DEPOIS da entrega. Contar isso como prova levaria a varredura a
+    // destruir instância saudável (medido em 18/08 na AD Lions, que entregou as
+    // três mensagens do teste — inclusive a que devolveu 500).
     const socketMorto =
       f.erro_codigo === 'instance_500' ||
       (f.erro || '').includes('Connection Closed') ||
       (f.erro || '').includes('não foi possível enviar')
+    if (f.erro_codigo === 'evolution_db_pool') continue
     if (!socketMorto) continue
     const c = contagem.get(f.user_id) || { n: 0, ultima: '' }
     c.n++
