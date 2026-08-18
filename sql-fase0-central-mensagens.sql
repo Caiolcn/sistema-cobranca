@@ -400,3 +400,38 @@ GROUP BY 1, 2;
 -- SELECT cron.schedule('fila-expirar',      '40 11 * * *',      $$SELECT public.expirar_fila()$$);
 -- SELECT cron.schedule('fila-materializar', '45 11 * * *',      $$SELECT public.materializar_fila_dia()$$);
 -- SELECT cron.schedule('fila-reconciliar',  '0 13,16,22 * * *', $$SELECT public.reconciliar_fila()$$);
+
+
+-- ==========================================================================
+-- PASSO 5 — Fechar a leitura de logs_mensagens (aplicado em 18/08/2026)
+--
+-- A policy "Acesso total logs" era `FOR ALL USING (true)`. Policies são OR'd,
+-- então as três restritas ao lado dela não valiam nada: qualquer usuário
+-- autenticado lia mensagem de TODAS as contas — corpo, aluno, telefone, valor.
+-- A Central é feita exatamente desses dados, então isso tinha de cair antes de
+-- a tela ser aberta ao cliente.
+--
+-- ORDEM IMPORTA: o WITH CHECK do INSERT é afrouxado ANTES de a policy aberta
+-- cair, na mesma transação — senão existe um instante em que envio deixa de
+-- ser logado.
+--
+-- Medido depois de aplicar:
+--   admin        → 10.611 linhas, 42 contas
+--   gestor comum →    604 linhas,  1 conta
+--   anon         →      0 linhas
+-- ==========================================================================
+
+-- O front grava user_id = dono da mensalidade/aluno, NÃO o usuário logado.
+-- Sem o is_admin(), todo envio feito pelo seletor de conta do admin passaria a
+-- acontecer sem log — o buraco silencioso que este projeto existe para fechar.
+-- Verificado em 18/08: não há colaborador com login próprio operando conta
+-- alheia (dos 3 com conta auth, 2 são o próprio gestor e 1 é registro de teste
+-- sem login desde janeiro).
+ALTER POLICY "Usuários podem criar seus próprios logs" ON logs_mensagens
+  WITH CHECK (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Acesso total logs" ON logs_mensagens;
+
+-- Vazamento equivalente aberto pela Parte D: a view de saúde nasceu sem
+-- security_invoker, então rodava com os direitos do dono e ignorava a RLS.
+ALTER VIEW vw_mensagens_saude SET (security_invoker = true);
