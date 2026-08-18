@@ -20,7 +20,7 @@ const WEBHOOK_URL = `${SUPABASE_URL}/functions/v1/whatsapp-bot`
 // Instância comercial do Mensalli: mesmo com o bot de aluno desligado, ela
 // precisa do MESSAGES_UPSERT — é a fonte do CRM de leads (/app/admin/leads).
 // Fallback de config.evolution_master_instance.
-const INSTANCIA_MENSALLI = 'mensalli_master_v2'
+const INSTANCIA_MENSALLI = 'mensalli_master'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

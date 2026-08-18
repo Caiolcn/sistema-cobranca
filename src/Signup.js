@@ -61,7 +61,7 @@ const DEPOIMENTOS = []
 // Fonte de verdade é config.evolution_master_instance; aqui fica só o mesmo
 // fallback do resto do sistema, porque o cadastro não pode pagar uma query a
 // mais no caminho crítico. Se trocar a master, trocar lá E aqui.
-const INSTANCIA_MENSALLI = 'mensalli_master_v2'
+const INSTANCIA_MENSALLI = 'mensalli_master'
 
 // Prévia da cobrança logo no cadastro: a prova de valor mais barata que existe.
 // Aqui ainda não há empresa, plano nem aluno cadastrado, então o exemplo usa

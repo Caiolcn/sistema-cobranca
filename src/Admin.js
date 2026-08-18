@@ -11,7 +11,7 @@ import whatsappService from './services/whatsappService'
 // (mesma que o n8n usava — ver n8n-recuperar-trials.json).
 // Fonte de verdade é config.evolution_master_instance; este é o mesmo fallback
 // usado pelo health-check e pelo bot.
-const INSTANCIA_MENSALLI = 'mensalli_master_v2'
+const INSTANCIA_MENSALLI = 'mensalli_master'
 // Intervalo entre envios no disparo direto (anti-bloqueio do WhatsApp)
 const INTERVALO_ENVIO_MS = 15000
 

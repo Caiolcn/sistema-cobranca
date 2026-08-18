@@ -13,7 +13,7 @@ const APP_URL = Deno.env.get('APP_URL') || 'https://www.mensalli.com.br'
 // campanhas). Mensagens dessa instancia NAO passam pelo bot de aluno: viram lead
 // no CRM de campanha (/app/admin/leads). Mesma constante de Signup.js e Admin.js.
 // Fallback de config.evolution_master_instance.
-const INSTANCIA_MENSALLI = 'mensalli_master_v2'
+const INSTANCIA_MENSALLI = 'mensalli_master'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -182,7 +182,7 @@ async function tratarConnectionUpdate(supabase: any, instance: string, data: any
     for (const r of configRows || []) cm[r.chave] = r.valor
     const apiUrl = cm.evolution_api_url
     const apiKey = cm.evolution_api_key
-    const masterInstance = cm.evolution_master_instance || 'mensalli_master_v2'
+    const masterInstance = cm.evolution_master_instance || 'mensalli_master'
     if (!apiUrl || !apiKey) return
 
     // Libera o QR (idempotente; em loggedOut a Evolution já derrubou a sessão).

@@ -21,7 +21,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // trocou de instância uma vez (instance_c93b3e8d → mensalli_master) e esta
 // função ficou pra trás apontando pra uma sessão morta: 3 dias de cobrança
 // falhando com "undefined (reading 'sendMessage')" sem ninguém ver.
-const INSTANCIA_MASTER_FALLBACK = 'mensalli_master_v2'
+const INSTANCIA_MASTER_FALLBACK = 'mensalli_master'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -251,7 +251,7 @@ async function executar(): Promise<Record<string, unknown>> {
   configs?.forEach((c: { chave: string; valor: string }) => { cm[c.chave] = c.valor })
   const apiKey = cm.evolution_api_key
   const apiUrl = cm.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
-  const master = cm.evolution_master_instance || 'mensalli_master_v2'
+  const master = cm.evolution_master_instance || 'mensalli_master'
   if (!apiKey) throw new Error('evolution_api_key não configurada')
 
   // ---------- DETECÇÃO: 100% no banco, zero chamadas à Evolution ----------
