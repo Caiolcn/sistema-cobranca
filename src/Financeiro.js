@@ -19,6 +19,8 @@ import CobrancasAvulsas from './CobrancasAvulsas'
 import ConfirmModal from './ConfirmModal'
 import { validarCPF } from './utils/validators'
 import DateInput from './components/DateInput'
+import ModalCobranca from './components/ModalCobranca'
+import { agruparEnviosPorMensalidade, rotuloUltimoEnvio } from './utils/logsCobranca'
 import SearchInput from './design-system/components/SearchInput'
 import Button from './design-system/components/Button'
 import Select from './design-system/components/Select'
@@ -131,6 +133,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [baixaMulta, setBaixaMulta] = useState('0.00')
   const [baixaJuros, setBaixaJuros] = useState('0.00')
 
+  // Envios de cobrança por mensalidade (de logs_mensagens — enxerga o n8n também)
+  const [enviosPorMensalidade, setEnviosPorMensalidade] = useState({})
+  // Mensalidade aberta no modal de cobrança
+  const [itemCobranca, setItemCobranca] = useState(null)
+
   // Paginação
   const [paginaAtual, setPaginaAtual] = useState(1)
   const itensPorPagina = 20
@@ -229,20 +236,27 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setLoading(true)
     try {
       // Executar todas as queries em paralelo
+      // Janela dos logs de cobrança: 90 dias cobre com folga o que é acionável na
+      // listagem (a conta mais ativa da base faz ~750 envios nesse período).
+      const inicioLogs = new Date()
+      inicioLogs.setDate(inicioLogs.getDate() - 90)
+
       const [
         { data: mensalidadesData, error: mensalidadesError },
-        { data: vendasData, error: vendasError }
+        { data: vendasData, error: vendasError },
+        { data: logsData }
       ] = await Promise.all([
         // 1. Mensalidades com dados do devedor e boleto (se existir)
         supabase
           .from('mensalidades')
           .select(`
             *,
-            devedor:devedores(
+            devedor:devedores!inner(
               nome,
               telefone,
               cpf,
               assinatura_ativa,
+              lixo,
               plano:planos(nome, tipo, valor, ciclo_cobranca)
             ),
             boletos(
@@ -260,6 +274,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           `)
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false')
+          // Aluno com ficha excluída não pode aparecer aqui: a listagem olhava
+          // só o lixo da mensalidade, então a parcela do aluno que saiu seguia
+          // em aberto na tela (e nos cards) para sempre. `!inner` é seguro —
+          // mensalidades.devedor_id é NOT NULL.
+          .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedor' })
           .order('data_vencimento', { ascending: true }),
 
         // 2. Vendas (cobranças avulsas) para incluir nos totais
@@ -267,7 +286,18 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
-          .or('lixo.is.null,lixo.eq.false')
+          .or('lixo.is.null,lixo.eq.false'),
+
+        // 3. Cobranças já enviadas — para não cobrar duas vezes sem saber.
+        // Vem do log porque as colunas de `mensalidades` só registram o envio
+        // manual do front; o que sai pelo n8n não passa por elas.
+        supabase
+          .from('logs_mensagens')
+          .select('mensalidade_id, tipo, enviado_em')
+          .eq('user_id', userId)
+          .eq('status', 'enviado')
+          .not('mensalidade_id', 'is', null)
+          .gte('enviado_em', inicioLogs.toISOString())
       ])
 
       if (mensalidadesError) throw mensalidadesError
@@ -281,6 +311,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       setMensalidades(mensalidadesComStatus)
       setVendas(vendasData || [])
+      setEnviosPorMensalidade(agruparEnviosPorMensalidade(logsData))
       // Os totais dos cards são recalculados em aplicarFiltros (useEffect),
       // para que respeitem os filtros ativos.
 
@@ -530,6 +561,14 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         return
       }
 
+      // 2b. Ficha excluída não gera parcela nova. A baixa de uma mensalidade
+      // antiga de aluno já excluído criava a do mês seguinte, e como ela nunca
+      // é cobrada (as views filtram d.lixo) ficava em aberto indefinidamente.
+      if (devedor.lixo) {
+        console.log('Aluno com ficha excluída, não criar próxima mensalidade')
+        return
+      }
+
       // 3. Verificar se é mensalidade recorrente
       // Se assinatura está ativa mas is_mensalidade não está definido, assumir como recorrente
       const isRecorrente = mensalidadeAtual.is_mensalidade === true ||
@@ -653,7 +692,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         .from('mensalidades')
         .update(updateData)
         .eq('id', mensalidadeParaAtualizar.id)
-        .select('*, devedores(nome, telefone, assinatura_ativa, plano:planos(valor, ciclo_cobranca))')
+        .select('*, devedores(nome, telefone, assinatura_ativa, lixo, plano:planos(valor, ciclo_cobranca))')
         .single()
 
       if (error) throw error
@@ -964,6 +1003,45 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     } finally {
       setConfirmExcluirMensalidade({ show: false, mensalidade: null })
     }
+  }
+
+  // Botão de cobrança da linha/card. Só aparece em quem ainda deve — cobrar
+  // mensalidade paga é o erro que o gestor não pode cometer por descuido.
+  const renderBotaoCobrar = (mensalidade) => {
+    if (mensalidade.statusCalculado === 'pago') return null
+    return (
+      <Button
+        variant="whatsapp"
+        size="sm"
+        iconOnly
+        icon="ic:baseline-whatsapp"
+        aria-label={`Cobrar ${mensalidade.devedor?.nome || 'aluno'} pelo WhatsApp`}
+        title="Cobrar pelo WhatsApp"
+        onClick={() => handleEnviarCobranca(mensalidade)}
+      />
+    )
+  }
+
+  // Selo "Cobrado há X dias" — vem do log, então enxerga também o que o n8n mandou
+  const renderSeloCobranca = (mensalidade) => {
+    const rotulo = rotuloUltimoEnvio(enviosPorMensalidade[mensalidade.id])
+    if (!rotulo) return null
+    const envio = enviosPorMensalidade[mensalidade.id]
+    return (
+      <div style={{
+        fontSize: '11px',
+        color: '#64748b',
+        marginTop: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3px',
+        justifyContent: 'center',
+        whiteSpace: 'nowrap'
+      }}>
+        <Icon icon="ic:baseline-whatsapp" width="12" color="#25D366" />
+        {rotulo}{envio.total > 1 ? ` · ${envio.total}x` : ''}
+      </div>
+    )
   }
 
   // Menu "..." de ações da linha/card — compartilhado pelas duas listagens.
@@ -1487,41 +1565,42 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setMostrarModalBoleto(true)
   }
 
+  // Dias de atraso (positivo) ou dias até vencer (negativo) — o modal usa para o subtítulo
+  const diasEmRelacaoAoVencimento = (mensalidade) => {
+    if (!mensalidade.data_vencimento) return null
+    const venc = new Date(String(mensalidade.data_vencimento).slice(0, 10) + 'T00:00:00')
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+    return Math.round((hoje - venc) / 86400000)
+  }
+
   const handleEnviarCobranca = async (mensalidade) => {
     if (mensalidade.status === 'pago' || mensalidade.statusCalculado === 'pago') {
       showToast('Esta mensalidade já foi paga', 'info')
       return
     }
 
-    // Verificar conexão WhatsApp primeiro
+    // Verificar conexão WhatsApp primeiro — sem isso o modal abriria só pra falhar no envio
     const status = await whatsappService.verificarStatus()
     if (!status.conectado) {
       showToast('WhatsApp não está conectado. Conecte primeiro na aba WhatsApp.', 'error')
       return
     }
 
-    // Confirmação
-    const confirmar = window.confirm(
-      `Enviar cobrança de R$ ${parseFloat(mensalidade.valor).toFixed(2)} para ${mensalidade.devedor.nome}?`
-    )
-    if (!confirmar) return
+    setItemCobranca({
+      id: mensalidade.id,
+      nome: mensalidade.devedor?.nome || 'Aluno',
+      valor: mensalidade.valor,
+      dias: diasEmRelacaoAoVencimento(mensalidade),
+      envio: enviosPorMensalidade[mensalidade.id] || null
+    })
+  }
 
-    try {
-      setLoading(true)
-      const resultado = await whatsappService.enviarCobranca(mensalidade.id)
-
-      if (resultado.sucesso) {
-        showToast('Cobrança enviada com sucesso!', 'success')
-        carregarDados() // Reload to update sent status
-      } else {
-        showToast('Erro ao enviar: ' + resultado.erro, 'error')
-      }
-    } catch (error) {
-      console.error('Erro ao enviar cobrança:', error)
-      showToast('Erro ao enviar cobrança: ' + error.message, 'error')
-    } finally {
-      setLoading(false)
-    }
+  // Envio confirmado: recarrega para o selo de "já cobrado" refletir na hora
+  const aoEnviarCobranca = () => {
+    showToast('Cobrança enviada pelo WhatsApp! 🚀', 'success')
+    setItemCobranca(null)
+    carregarDados()
   }
 
   const getStatusBadge = (status) => {
@@ -2141,7 +2220,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       {mensalidade.devedor?.plano?.nome || 'Sem plano'}
                     </p>
                   </div>
-                  {getStatusBadge(mensalidade.statusCalculado)}
+                  <div style={{ textAlign: 'right' }}>
+                    {getStatusBadge(mensalidade.statusCalculado)}
+                    {renderSeloCobranca(mensalidade)}
+                  </div>
                 </div>
 
                 {/* Info do card */}
@@ -2168,7 +2250,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   })()}
 
                   {/* Ações */}
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '6px' }}>
+                    {renderBotaoCobrar(mensalidade)}
                     {renderMenuAcoes(mensalidade)}
                   </div>
                 </div>
@@ -2232,7 +2315,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 key: 'status',
                 label: 'Status',
                 align: 'center',
-                render: (m) => getStatusBadge(m.statusCalculado)
+                render: (m) => (
+                  <>
+                    {getStatusBadge(m.statusCalculado)}
+                    {renderSeloCobranca(m)}
+                  </>
+                )
               },
               {
                 key: 'forma_pagamento',
@@ -2250,9 +2338,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 key: 'acoes',
                 label: 'Ações',
                 align: 'center',
-                width: 80,
+                width: 120,
                 render: (m) => (
-                  <div data-no-row-click style={{ display: 'flex', justifyContent: 'center' }}>
+                  <div data-no-row-click style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                    {renderBotaoCobrar(m)}
                     {renderMenuAcoes(m)}
                   </div>
                 )
@@ -3554,6 +3643,16 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         cancelText="Cancelar"
         type="warning"
       />
+
+      {/* Modal de cobrança pelo WhatsApp (mesmo fluxo da fila da Home) */}
+      {itemCobranca && (
+        <ModalCobranca
+          item={itemCobranca}
+          envio={itemCobranca.envio}
+          onFechar={() => setItemCobranca(null)}
+          onEnviado={aoEnviarCobranca}
+        />
+      )}
     </div>
   )
 }
