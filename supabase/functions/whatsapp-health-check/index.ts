@@ -83,7 +83,7 @@ const NUMERO_SONDA_FALLBACK = '5511999999999'
 // leads de campanha (/app/admin/leads). Sem esta exceção, o self-heal abaixo
 // derrubaria a captura de leads todo dia às 8h.
 // Mesmo fallback de config.evolution_master_instance usado no resto do sistema.
-const INSTANCIA_MENSALLI = 'mensalli_master'
+const INSTANCIA_MENSALLI = 'mensalli_master_v2'
 
 // Timeout curto: socket vivo responde rápido; morto trava.
 const PROBE_TIMEOUT_MS = 12000
@@ -589,7 +589,7 @@ async function executarVarredura(): Promise<Record<string, unknown>> {
   })
   const apiKey = configMap.evolution_api_key
   const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
-  const masterInstance = configMap.evolution_master_instance || 'mensalli_master'
+  const masterInstance = configMap.evolution_master_instance || 'mensalli_master_v2'
 
   if (!apiKey) {
     throw new Error('evolution_api_key não configurada na tabela config')

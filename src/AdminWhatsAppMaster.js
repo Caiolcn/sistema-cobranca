@@ -8,9 +8,9 @@ import { Icon } from '@iconify/react'
 // Tela ADMIN pra conectar o WhatsApp MASTER da Mensalli — o número da
 // plataforma que dispara avisos de sistema (ex.: "seu WhatsApp caiu").
 // Reaproveita o fluxo de QR Code da Evolution, mas numa instância fixa
-// (config.evolution_master_instance, default "mensalli_master").
+// (config.evolution_master_instance, default "mensalli_master_v2").
 
-const MASTER_INSTANCE_FALLBACK = 'mensalli_master'
+const MASTER_INSTANCE_FALLBACK = 'mensalli_master_v2'
 
 // A Evolution 2.3.7 devolve o fetchInstances ACHATADO ({ name, connectionStatus,
 // ownerJid }); versões antigas aninhavam tudo em .instance. Procurar só pela
