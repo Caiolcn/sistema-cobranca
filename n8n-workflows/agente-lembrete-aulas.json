@@ -12,18 +12,17 @@
           ]
         }
       },
-      "id": "schedule-trigger",
+      "id": "cbe2a627-3817-47ee-93bd-2d4168c7c9a2",
       "name": "Disparo a cada 15 min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        250,
-        400
+        0,
+        0
       ]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/vw_aulas_lembrete_1hora",
         "sendHeaders": true,
         "headerParameters": {
@@ -40,26 +39,26 @@
         },
         "options": {}
       },
-      "id": "buscar-aulas",
+      "id": "d676b9d6-f881-4b16-a1a6-3ede9393948b",
       "name": "1. Buscar Aulas 1h",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        500,
-        400
+        256,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "// Lembrete de Aula - 1 hora antes\nconst FALLBACK_AULA = 'Olá, {{nomeCliente}}!\\n\\nLembrete: sua aula de {{descricaoAula}} começa em 1 hora! 🕐\\n\\n⏰ Horário: {{horarioAula}}\\n📍 Local: {{nomeEmpresa}}\\n\\nAté já! 💪';\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  let mensagem = data.template_mensagem;\n  if (!mensagem || mensagem.trim() === '') {\n    mensagem = FALLBACK_AULA;\n  }\n\n  const horarioFormatado = data.horario ? data.horario.substring(0, 5) : '';\n\n  const variaveis = {\n    '{{nomeCliente}}': data.nome_cliente || 'Aluno',\n    '{{descricaoAula}}': data.descricao || 'aula',\n    '{{horarioAula}}': horarioFormatado,\n    '{{nomeEmpresa}}': data.nome_empresa || 'Equipe'\n  };\n\n  Object.entries(variaveis).forEach(([chave, valor]) => {\n    mensagem = mensagem.replace(new RegExp(chave, 'g'), valor);\n  });\n\n  let telefone = String(data.telefone || '').replace(/\\D/g, '');\n  if (!telefone.startsWith('55')) telefone = '55' + telefone;\n\n  results.push({\n    json: {\n      ...data,\n      mensagem,\n      telefone,\n      evolution_url: `${data.evolution_api_url}/message/sendText/${data.evolution_instance_name}`,\n      tipo_lembrete: 'lembrete_aula'\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "criar-msg-aula",
+      "id": "39e9742e-9a89-4e47-a71c-6eed4a81d4ef",
       "name": "2. Criar Msg Aula",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        750,
-        400
+        512,
+        0
       ]
     },
     {
@@ -80,23 +79,18 @@
         "jsonBody": "={\n  \"number\": \"{{ $json.telefone }}\",\n  \"text\": {{ JSON.stringify($json.mensagem) }}\n}",
         "options": {
           "response": {
-            "response": {
-              "fullResponse": false
-            }
-          },
-          "includeInputFields": true
+            "response": {}
+          }
         }
       },
-      "id": "enviar-whatsapp-aula",
+      "id": "038597ca-76c2-4b04-80e9-6e3b6f6cf187",
       "name": "3. Enviar WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1000,
-        400
-      ],
-      "continueOnFail": true,
-      "onError": "continueErrorOutput"
+        752,
+        0
+      ]
     },
     {
       "parameters": {
@@ -128,13 +122,13 @@
         "jsonBody": "={\n  \"lembrete_enviado_em\": \"{{ new Date().toISOString() }}\",\n  \"updated_at\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
-      "id": "marcar-enviado",
+      "id": "3e7e3a4b-6807-4903-8944-b8244f64f8e0",
       "name": "4. Marcar Enviado",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1250,
-        400
+        1008,
+        0
       ]
     },
     {
@@ -163,14 +157,107 @@
         "jsonBody": "={\n  \"p_user_id\": \"{{ $('2. Criar Msg Aula').item.json.user_id }}\"\n}",
         "options": {}
       },
-      "id": "incrementar-uso",
+      "id": "b367cdd7-15da-4bde-9e7a-7c600a983684",
       "name": "5. Incrementar Uso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1500,
-        400
+        1264,
+        0
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__SUPABASE_SERVICE_ROLE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer __SUPABASE_SERVICE_ROLE_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('2. Criar Msg Aula').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('2. Criar Msg Aula').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('2. Criar Msg Aula').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('2. Criar Msg Aula').item.json.mensagem) }},\n  \"tipo\": \"class_reminder\",\n  \"status\": \"enviado\",\n  \"response_api\": {{ JSON.stringify($json) }}\n}",
+        "options": {}
+      },
+      "id": "log-aula-ok",
+      "name": "Log Aula OK",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1250,
+        580
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza o erro ANTES de gravar o log. Sem isto o registro nasce com\n// \"Erro no envio\" e erro_codigo null — foi o que jogou 46% das falhas de\n// cobranca na classe 'indeterminada'.\n// pairedItem preservado p/ $('2. Criar Msg Aula').item continuar resolvendo.\nconst items = $input.all();\n\nreturn items.map((item, i) => {\n  const j = item.json || {};\n  const err = j.error || {};\n  const status = err.status ?? err.statusCode ?? j.statusCode ?? null;\n  const corpo = err.response?.body ?? err.body ?? err.message ?? j.message ?? null;\n  const texto = typeof corpo === 'string' ? corpo : JSON.stringify(corpo ?? null);\n\n  let codigo = status ? `http_${status}` : 'exception';\n  if (status === 500) codigo = 'instance_500';\n  else if (status === 404) codigo = 'instance_not_found';\n  else if (status === 401 || status === 403) codigo = 'auth_failed';\n  else if (status === 400) codigo = 'bad_request';\n  if (/exists\"?\\s*:\\s*false/i.test(texto || '')) codigo = 'numero_inexistente';\n  if (/Connection Closed/i.test(texto || '')) codigo = 'connection_closed';\n\n  return {\n    json: { erro_codigo: codigo, http_status: status,\n      erro_mensagem: texto && texto !== 'null' ? texto\n        : 'Falha no envio do lembrete (provedor nao detalhou)' },\n    pairedItem: item.pairedItem ?? { item: i }\n  };\n});\n"
+      },
+      "id": "classificar-erro-aula",
+      "name": "Classificar Erro Aula",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zvlnkkmcytjtridiojxx.supabase.co/rest/v1/logs_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__SUPABASE_SERVICE_ROLE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer __SUPABASE_SERVICE_ROLE_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('2. Criar Msg Aula').item.json.user_id }}\",\n  \"devedor_id\": \"{{ $('2. Criar Msg Aula').item.json.devedor_id }}\",\n  \"telefone\": \"{{ $('2. Criar Msg Aula').item.json.telefone }}\",\n  \"mensagem\": {{ JSON.stringify($('2. Criar Msg Aula').item.json.mensagem) }},\n  \"tipo\": \"class_reminder\",\n  \"status\": \"falha\",\n  \"erro\": {{ JSON.stringify($json.erro_mensagem) }},\n  \"erro_codigo\": {{ JSON.stringify($json.erro_codigo) }},\n  \"http_status\": {{ JSON.stringify($json.http_status ?? null) }}\n}",
+        "options": {}
+      },
+      "id": "log-aula-falha",
+      "name": "Log Aula Falha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1250,
+        760
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -214,6 +301,18 @@
             "node": "4. Marcar Enviado",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Log Aula OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Classificar Erro Aula",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -228,9 +327,23 @@
           }
         ]
       ]
+    },
+    "Classificar Erro Aula": {
+      "main": [
+        [
+          {
+            "node": "Log Aula Falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
-  }
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null
 }

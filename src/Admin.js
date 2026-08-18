@@ -144,9 +144,13 @@ export default function Admin() {
         supabase
           .from('assinaturas_mercadopago')
           .select('id, user_id, plano, status, valor, data_inicio, proxima_cobranca, created_at'),
+        // Mensagens do mês por conta. Sem filtro de status a contagem incluía
+        // falha — inflando o uso de contas cujo WhatsApp estava caído, que é
+        // justamente onde o número engana mais.
         supabase
           .from('logs_mensagens')
           .select('user_id, enviado_em')
+          .or('status.eq.enviado,falha_classe.eq.nao_falha')
           .gte('enviado_em', `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`),
         // Chance de converter (quente/morno/frio) — ver sql-criar-score-retencao.sql
         supabase

@@ -8,6 +8,7 @@ import ConfirmModal from './ConfirmModal'
 import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import whatsappService from './services/whatsappService'
+import CentralMensagens from './CentralMensagens'
 import { verificarSaude, gerarQrCode, resolverInstanceName } from './services/whatsappConexao'
 import { resolverDestinatario } from './utils/destinatario'
 // Textos vivem em src/data pra o wizard de onboarding poder semear os mesmos
@@ -645,7 +646,15 @@ export default function WhatsAppConexao() {
   const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [searchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState(searchParams.get('aba') === 'templates' ? 'templates' : 'conexao')
+  // 'mensagens' (Central de Mensagens) é admin-only nesta fase: a tela expõe a
+  // taxa de falha real de todas as contas e os bugs do n8n ainda estão abertos.
+  const abaUrl = searchParams.get('aba')
+  const [activeTab, setActiveTab] = useState(
+    abaUrl === 'templates' ? 'templates' : abaUrl === 'mensagens' ? 'mensagens' : 'conexao'
+  )
+  // Contador que a Central observa para recarregar — o botão de atualizar vive
+  // no header, junto da tag de conexão, mas os dados moram no filho.
+  const [recarregarMensagens, setRecarregarMensagens] = useState(0)
 
   // ESTADOS SIMPLIFICADOS (6 essenciais)
   const [status, setStatus] = useState('disconnected') // 'disconnected' | 'connecting' | 'connected'
@@ -2370,6 +2379,7 @@ export default function WhatsAppConexao() {
               <option value="templates">Templates de Mensagens</option>
               <option value="campanhas">Campanhas</option>
               <option value="bot">Bot</option>
+              {isAdmin && <option value="mensagens">Central de Mensagens</option>}
             </select>
           </div>
         ) : (
@@ -2384,7 +2394,8 @@ export default function WhatsAppConexao() {
               { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
               { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' },
               { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' },
-              { id: 'bot', label: 'Bot', icon: 'mdi:robot-happy' }
+              { id: 'bot', label: 'Bot', icon: 'mdi:robot-happy' },
+              ...(isAdmin ? [{ id: 'mensagens', label: isSmallScreen ? 'Mensagens' : 'Central de Mensagens', icon: 'mdi:message-alert-outline' }] : [])
             ].map(tab => (
               <button
                 key={tab.id}
@@ -2419,6 +2430,27 @@ export default function WhatsAppConexao() {
             morto, então mostrar verde aqui era a contradição que o cliente via
             entre esta tela e o banner de desconexão. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          {/* Atualizar a Central sem recarregar a página. Só lê banco — não
+              encosta na Evolution, então clicar à vontade não custa conexão. */}
+          {activeTab === 'mensagens' && (
+            <button
+              onClick={() => setRecarregarMensagens(n => n + 1)}
+              title="Atualizar a lista de mensagens"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                padding: isMobile ? '8px' : '6px 12px',
+                width: isMobile ? '32px' : 'auto', height: isMobile ? '32px' : 'auto',
+                backgroundColor: '#fff', color: '#344848',
+                border: '1px solid #d5dede', borderRadius: isMobile ? '50%' : '20px',
+                fontSize: '13px', fontWeight: '500', cursor: 'pointer', flexShrink: 0
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f5' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#fff' }}
+            >
+              <Icon icon="mdi:refresh" width="16" />
+              {!isMobile && 'Atualizar'}
+            </button>
+          )}
           <div
             title={status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : status === 'zombie' ? 'Conexão travada' : 'Desconectado'}
             style={{
@@ -3717,6 +3749,15 @@ export default function WhatsAppConexao() {
 
         return <CampanhasContent contextUserId={contextUserId} isSmallScreen={isSmallScreen} />
       })()}
+
+      {/* ===== ABA CENTRAL DE MENSAGENS (admin-only nesta fase) ===== */}
+      {activeTab === 'mensagens' && (
+        <CentralMensagens
+          isAdmin={isAdmin}
+          irParaConexao={() => setActiveTab('conexao')}
+          recarregarToken={recarregarMensagens}
+        />
+      )}
 
       {/* ===== ABA BOT WHATSAPP ===== */}
       {activeTab === 'bot' && (() => {

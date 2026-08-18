@@ -660,11 +660,17 @@ export default function Clientes() {
       const avulsasValorDevido = avulsas.filter(avulsaEmAberto).reduce((t, a) => t + parseFloat(a.valor || 0), 0)
       const avulsasValorAtrasado = avulsas.filter(avulsaAtrasada).reduce((t, a) => t + parseFloat(a.valor || 0), 0)
 
-      // Buscar logs de mensagens enviadas para este cliente
+      // Buscar logs de mensagens enviadas para este cliente.
+      // Sem filtro de status isso contava falha como contato: com 26% de falha
+      // na base, "último contato" apontava para uma mensagem que o aluno nunca
+      // recebeu. `falha_classe = 'nao_falha'` entra porque É entrega — JID
+      // canônico BR sem o 9, que o guard do n8n acusa errado
+      // (ver docs/fix-guard-jid-n8n.md).
       const { data: logsData } = await supabase
         .from('logs_mensagens')
         .select('id, enviado_em')
         .eq('devedor_id', cliente.id)
+        .or('status.eq.enviado,falha_classe.eq.nao_falha')
         .order('enviado_em', { ascending: false })
 
       const totalMensagensEnviadas = logsData?.length || 0
@@ -873,20 +879,42 @@ export default function Clientes() {
     if (!cliente) return
 
     try {
-      // Se opção de excluir mensalidades marcada → soft delete das mensalidades
+      const agoraISO = new Date().toISOString()
+
+      // As mensalidades em aberto vão junto SEMPRE. Antes isso dependia do
+      // checkbox, que nem chegava a aparecer quando a exclusão saía da lista
+      // (totalMensalidades só é calculado ao abrir a ficha) — a parcela órfã
+      // continuava no Financeiro e o cron gerava a do mês seguinte em cima
+      // dela, indefinidamente (caso Chalana SD / AG nataçao, 17/06/2026).
+      const { error: pendentesError } = await supabase
+        .from('mensalidades')
+        .update({ lixo: true, deletado_em: agoraISO })
+        .eq('devedor_id', cliente.id)
+        .eq('status', 'pendente')
+        .or('lixo.is.null,lixo.eq.false')
+
+      if (pendentesError) throw pendentesError
+
+      // O checkbox decide só o histórico pago: apagar isso tira receita já
+      // recebida dos relatórios do mês, então continua sendo escolha explícita.
       if (excluirMensalidades) {
         await supabase
           .from('mensalidades')
-          .update({ lixo: true, deletado_em: new Date().toISOString() })
+          .update({ lixo: true, deletado_em: agoraISO })
           .eq('devedor_id', cliente.id)
+          .eq('status', 'pago')
+          .or('lixo.is.null,lixo.eq.false')
       }
 
-      // Soft delete: marcar cliente como lixo = true
+      // Soft delete: marcar cliente como lixo = true. `assinatura_ativa` cai
+      // junto porque é ela que o cron de geração e as views de cobrança olham —
+      // a exclusão não desligava a assinatura, então o aluno seguia elegível.
       const { error: clienteError } = await supabase
         .from('devedores')
         .update({
           lixo: true,
-          deletado_em: new Date().toISOString()
+          assinatura_ativa: false,
+          deletado_em: agoraISO
         })
         .eq('id', cliente.id)
 
@@ -1441,9 +1469,13 @@ Abraços,
 Equipe ${nomeEmpresa}`
             }
 
-            const telefoneEnvio = temResponsavel ? novoClienteResponsavelTelefone.trim() : novoClienteTelefone.trim()
-            const resultado = await whatsappService.enviarMensagem(
-              telefoneEnvio,
+            // enviarBoasVindas em vez de enviarMensagem: só o primeiro grava em
+            // logs_mensagens. Com o envio direto, a boas-vindas saía de verdade
+            // mas não existia na Central de Mensagens — o gestor não tinha como
+            // saber se chegou. Ele também resolve sozinho o destinatário
+            // (responsável > aluno) e a instância do dono do registro.
+            const resultado = await whatsappService.enviarBoasVindas(
+              clienteData[0].id,
               mensagemFinal
             )
 
@@ -3624,12 +3656,16 @@ Equipe ${nomeEmpresa}`
         onClose={() => { setConfirmDelete({ show: false, cliente: null }); setExcluirMensalidades(false) }}
         onConfirm={confirmarExclusao}
         title={`Excluir aluno "${confirmDelete.cliente?.nome}"?`}
-        message={`Este aluno possui ${confirmDelete.cliente?.totalMensalidades || 0} mensalidade(s) associadas.`}
+        message={
+          confirmDelete.cliente?.parcelasPendentes > 0
+            ? `As ${confirmDelete.cliente.parcelasPendentes} mensalidade(s) em aberto deste aluno serão canceladas junto.`
+            : 'As mensalidades em aberto deste aluno serão canceladas junto.'
+        }
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"
-        showCheckbox={confirmDelete.cliente?.totalMensalidades > 0}
-        checkboxLabel={`Também excluir as ${confirmDelete.cliente?.totalMensalidades || 0} mensalidades`}
+        showCheckbox={confirmDelete.cliente?.mensalidadesPagas > 0}
+        checkboxLabel={`Apagar também o histórico de ${confirmDelete.cliente?.mensalidadesPagas || 0} mensalidade(s) já paga(s) — essa receita sai dos relatórios`}
         checkboxChecked={excluirMensalidades}
         onCheckboxChange={setExcluirMensalidades}
       />
