@@ -642,7 +642,7 @@ export default function WhatsAppConexao() {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked } = useUserPlan()
-  const { userId: contextUserId, isAdmin, adminViewingAs, refreshUserData } = useUser()
+  const { userId: contextUserId, isAdmin, adminViewingAs, refreshUserData, loading: loadingUser } = useUser()
   const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [searchParams] = useSearchParams()
@@ -655,6 +655,15 @@ export default function WhatsAppConexao() {
   // Contador que a Central observa para recarregar — o botão de atualizar vive
   // no header, junto da tag de conexão, mas os dados moram no filho.
   const [recarregarMensagens, setRecarregarMensagens] = useState(0)
+
+  // A aba 'mensagens' é admin-only e não aparece no menu para os outros, mas
+  // `?aba=mensagens` na URL entra direto no estado — sem isto o gestor ficava
+  // numa aba fantasma, que não existe no seletor e da qual ele não sai.
+  // Gate por `!loadingUser`: `isAdmin` deriva de userData, que chega DEPOIS do
+  // user, então checar antes do fim do load expulsaria o próprio admin.
+  useEffect(() => {
+    if (!loadingUser && !isAdmin && activeTab === 'mensagens') setActiveTab('conexao')
+  }, [loadingUser, isAdmin, activeTab])
 
   // ESTADOS SIMPLIFICADOS (6 essenciais)
   const [status, setStatus] = useState('disconnected') // 'disconnected' | 'connecting' | 'connected'
@@ -3751,7 +3760,9 @@ export default function WhatsAppConexao() {
       })()}
 
       {/* ===== ABA CENTRAL DE MENSAGENS (admin-only nesta fase) ===== */}
-      {activeTab === 'mensagens' && (
+      {/* Só monta depois do contexto resolvido: enquanto carrega, isAdmin é
+          false por padrão e o admin veria um "não liberada" piscando. */}
+      {activeTab === 'mensagens' && !loadingUser && (
         <CentralMensagens
           isAdmin={isAdmin}
           irParaConexao={() => setActiveTab('conexao')}
