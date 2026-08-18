@@ -447,6 +447,30 @@ class WhatsAppService {
         return { sucesso: false, erro: 'WhatsApp desconectado (Connection Closed)', erroCodigo: 'connection_closed', connectionClosed: true, httpStatus, responseApi }
       }
 
+      // 500 por ESGOTAMENTO DO POOL do Prisma da Evolution: a mensagem JÁ SAIU.
+      //
+      // A Evolution entrega ao WhatsApp e só depois grava no banco dela; quando o
+      // pool estoura (medido em 18/08: connection_limit=3 para 66 instâncias), ela
+      // devolve 500 com a mensagem já entregue. Tratar isso como desconexão causa
+      // dois estragos: a parcela não é marcada como enviada e é cobrada DE NOVO do
+      // aluno, e a varredura de zumbi lê 'instance_500' como prova de socket morto
+      // e destrói uma instância saudável.
+      //
+      // Não reenviar: entre arriscar duplicar a cobrança e arriscar não cobrar,
+      // duplicar é o dano que chega no aluno.
+      const corpo500 = `${errorText || ''} ${JSON.stringify(responseApi || {})}`
+      if (response.status === 500 && /connection pool|PrismaClient|pris\.ly/i.test(corpo500)) {
+        return {
+          sucesso: false,
+          erro: 'Evolution sem conexão de banco (pool esgotado) — mensagem provavelmente ENTREGUE, não reenviar',
+          erroCodigo: 'evolution_db_pool',
+          connectionClosed: false,
+          provavelEntregue: true,
+          httpStatus,
+          responseApi
+        }
+      }
+
       // Erro 500 = geralmente WhatsApp desconectado ou instância com problema
       if (response.status === 500) {
         return { sucesso: false, erro: 'Instância retornou 500 (provável desconexão)', erroCodigo: 'instance_500', connectionClosed: true, httpStatus, responseApi }
