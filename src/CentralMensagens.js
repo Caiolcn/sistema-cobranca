@@ -80,8 +80,13 @@ const SITUACOES = {
 
 // Por que a falha aconteceu, em português, e o que dá pra fazer sobre ela.
 const CLASSES_FALHA = {
-  transitoria: { label: 'Conexão/infra', ajuda: 'Instância caída ou instável no momento do envio. Reenviar resolve — mas só depois do WhatsApp voltar.' },
-  permanente: { label: 'Número inválido', ajuda: 'O número não existe no WhatsApp. Reenviar nunca vai funcionar: precisa corrigir o cadastro do aluno.' },
+  transitoria: { label: 'Conexão/infra', ajuda: 'Instância caída, instável ou recém-pareada no momento do envio. Reenviar costuma resolver — mas só depois do WhatsApp voltar.' },
+  // 'permanente' não é mais produzido pela classificar_falha: "número não existe"
+  // provou ser veredito não confiável. Em 19/08 a Rede Fit teve duas
+  // confirmações recusadas por número inexistente logo após parear, e os mesmos
+  // números respondiam exists=true minutos depois. O texto antigo mandava o
+  // gestor corrigir um cadastro que estava certo. Mantido só para linhas velhas.
+  permanente: { label: 'Número recusado', ajuda: 'O WhatsApp disse que o número não existe. Isso costuma ser falso logo após reconectar — vale reenviar antes de mexer no cadastro do aluno.' },
   nao_falha: { label: 'Entregue', ajuda: 'Foi entregue. O número tem JID canônico sem o 9 (conta BR anterior à Anatel) e o guard do n8n acusa como erro.' },
   nao_tentada: { label: 'Nunca tentada', ajuda: 'O lote do n8n estourou o tempo e marcou como falha algo que nunca chegou a sair.' },
   config: { label: 'Credencial', ajuda: 'Credencial ou instância inválida na Evolution. Não se resolve reenviando.' },
