@@ -78,6 +78,33 @@ const SITUACOES = {
   }
 }
 
+/**
+ * "Número recusado" e "conexão caiu" são a MESMA classe (`transitoria`) desde
+ * que o reenvio foi liberado para número inexistente — as duas são reenviáveis.
+ * Mas para quem lê a tela são coisas opostas: uma é problema da conta, a outra
+ * é do cadastro de um aluno.
+ *
+ * Sem esta separação a Central mostrava "Conexão/infra" para número inválido, e
+ * duas falhas dessas em contas diferentes foram lidas como "2 clientes off" —
+ * com as contas funcionando perfeitamente.
+ */
+function ehNumeroRecusado(r) {
+  if (!r) return false
+  if (r.erro_codigo === 'numero_inexistente') return true
+  return /exists["\\\s:]*false|não existe no WhatsApp/i.test(r.erro || '')
+}
+
+const NUMERO_RECUSADO = {
+  label: 'Número recusado',
+  ajuda: 'O WhatsApp disse que o número não existe. Logo após uma reconexão isso costuma ser falso — reenvie uma vez; se falhar de novo, aí sim confira o cadastro do aluno. A conta em si está funcionando.'
+}
+
+function classeDaFalha(r) {
+  if (!r?.falha_classe) return null
+  if (ehNumeroRecusado(r)) return NUMERO_RECUSADO
+  return CLASSES_FALHA[r.falha_classe] || null
+}
+
 // Por que a falha aconteceu, em português, e o que dá pra fazer sobre ela.
 const CLASSES_FALHA = {
   transitoria: { label: 'Conexão/infra', ajuda: 'Instância caída, instável ou recém-pareada no momento do envio. Reenviar costuma resolver — mas só depois do WhatsApp voltar.' },
@@ -318,7 +345,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
       width: 210,
       render: (r) => {
         const s = SITUACOES[r.situacao] || { label: r.situacao, variant: 'default', icon: 'mdi:help' }
-        const c = r.falha_classe ? CLASSES_FALHA[r.falha_classe] : null
+        const c = classeDaFalha(r)
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
             <Badge variant={s.variant} icon={s.icon}>{s.label}</Badge>
@@ -488,7 +515,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
         <Modal.Body>
           {detalhe && (() => {
             const s = SITUACOES[detalhe.situacao] || {}
-            const c = detalhe.falha_classe ? CLASSES_FALHA[detalhe.falha_classe] : null
+            const c = classeDaFalha(detalhe)
             const Campo = ({ rotulo, children }) => (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: .4, color: '#94a3b8', marginBottom: 4 }}>{rotulo}</div>

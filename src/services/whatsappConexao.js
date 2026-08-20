@@ -429,6 +429,33 @@ export async function gerarQrCode(config, { forcar = false, userId = null } = {}
     throw new Error('Modo espelho: você está vendo a conta do cliente. Conectar o WhatsApp precisa ser feito por ele.')
   }
 
+  // RERESOLVE o nome da instância no momento do clique, em vez de confiar no
+  // que a aba capturou ao carregar.
+  //
+  // Quando a instância de um cliente é trocada (a saída do deadlock), a aba que
+  // ele já tinha aberta continua com o nome ANTIGO. A instância antiga responde
+  // 'open' mesmo morta, então a tela dizia "conectado" — e, quando ele forçava,
+  // o QR era gerado para a instância errada. Ele escaneava, via sucesso, e
+  // seguia sem enviar nada.
+  //
+  // Aconteceu com INDEPENDENTE (18/08), GR Esperança (19/08) e Lucas Saulo
+  // (20/08, duas vezes). A orientação era "feche todas as abas antes" — e
+  // instrução que depende do cliente executar direito não é solução: os três
+  // erraram o mesmo passo. Reresolver aqui remove o passo humano.
+  if (userId) {
+    const registrada = await resolverInstanceName(userId)
+    if (registrada && registrada !== config.instanceName) {
+      console.warn(
+        `⚠️ Aba com instância defasada (memória: ${config.instanceName}, ` +
+        `registrada: ${registrada}). Gerando o QR da registrada.`
+      )
+      // Muta de propósito: o chamador guarda este mesmo objeto e usa o nome no
+      // polling do pareamento. Corrigir só a cópia local deixaria a tela
+      // esperando confirmação na instância errada.
+      config.instanceName = registrada
+    }
+  }
+
   const estado = await verificarEstado(config)
   if (!forcar && estado === 'open') return { jaConectado: true, qr: null }
 
