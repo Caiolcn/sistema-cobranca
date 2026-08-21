@@ -947,7 +947,50 @@ export default function WhatsAppConexao() {
           try {
             const { veredito } = await verificarSaude({ apiKey, apiUrl, instanceName })
 
+            // Zumbi SEM sonda: a evidencia sai dos NOSSOS logs, nao da Evolution.
+            //
+            // A tela ja tinha o estado 'zombie' pronto (bloco "Conexao travada",
+            // com botao que forca reconexao), mas ele virou codigo morto em
+            // 11/08, quando a sonda foi desligada — verificarSaude passou a
+            // devolver so 'conectado'/'desconectado'. Desde entao o cliente
+            // zumbi ve a tela verde de sucesso e NAO TEM caminho nenhum para se
+            // resolver: o botao de forcar so existe no bloco de desconectado.
+            // Foi o caso do Studio T.S em 21/08 — 9 falhas em 24h com a tela
+            // dizendo "WhatsApp Conectado!".
+            //
+            // Criterio: falha recente com assinatura de socket morto e NENHUM
+            // envio bem-sucedido depois dela. E o mesmo que o
+            // whatsapp-zumbi-diario usa, e nao custa nada a Evolution.
+            let ehZumbi = false
             if (veredito === 'conectado') {
+              try {
+                const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+                const { data: recentes } = await supabase
+                  .from('logs_mensagens')
+                  .select('status, erro_codigo, erro, enviado_em')
+                  .eq('user_id', effectiveUserId)
+                  .gte('enviado_em', desde)
+                  .order('enviado_em', { ascending: false })
+                  .limit(30)
+
+                const ultimoOk = (recentes || []).find((r) => r.status === 'enviado')
+                const ultimaMorte = (recentes || []).find(
+                  (r) =>
+                    r.status === 'falha' &&
+                    (r.erro_codigo === 'connection_closed' ||
+                      r.erro_codigo === 'instance_500' ||
+                      /Connection Closed/i.test(r.erro || ''))
+                )
+                ehZumbi =
+                  !!ultimaMorte && (!ultimoOk || ultimoOk.enviado_em < ultimaMorte.enviado_em)
+              } catch {
+                /* sem evidencia = nao acusa; a tela segue mostrando conectado */
+              }
+            }
+
+            if (ehZumbi) {
+              setStatus('zombie')
+            } else if (veredito === 'conectado') {
               setStatus('connected')
               // Sincronizar mensallizap para que o onboarding checklist reflita a conexão.
               //
