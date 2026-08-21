@@ -445,7 +445,45 @@ async function executar(): Promise<Record<string, unknown>> {
     }
   }
 
-  // 4) Recriar + avisar. Só aqui se destrói credencial.
+  // 4) AVISAR — antes e independente de recriar.
+  //
+  // Este e o unico alerta que pega o ZUMBI. O aviso de queda do whatsapp-bot
+  // depende do evento connection.update, que NUNCA chega quando a instancia
+  // fica 'open' com o socket morto: para a Evolution nada aconteceu. E esse e
+  // justamente o caso que mais dói — o gestor abre a tela, le "Conectado", e
+  // so descobre pelo aluno reclamando que nao recebeu.
+  //
+  // Ficava preso dentro do ramo de recriar (`if (r.ok && a.jid)`), entao com
+  // recriar_ativo = false a varredura detectava e nao avisava ninguem.
+  //
+  // Sem restart_ativo os mortos nao chegam a 'persistentes'; nesse modo a
+  // deteccao ja basta para avisar.
+  const paraAvisar = cfg.restart_ativo ? persistentes : mortos
+  const avisados = new Set<string>()
+
+  for (const a of paraAvisar) {
+    if (semTempo()) break
+    if (!a.jid) continue
+
+    // 1 aviso por conta por dia: o gestor nao pode receber a mesma cobranca de
+    // atencao a cada rodada (sao 4 por dia).
+    const { data: jaAvisou } = await admin
+      .from('whatsapp_recovery_log')
+      .select('id')
+      .eq('user_id', a.uid)
+      .eq('acao', 'aviso')
+      .eq('sucesso', true)
+      .gte('criado_em', new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString())
+      .limit(1)
+    if (jaAvisou && jaAvisou.length > 0) continue
+
+    const avisou = await avisarGestor(apiUrl, apiKey, master, a.jid, a.nome)
+    await registrar(a.uid, a.inst, a.conta, 'aviso', avisou,
+      avisou ? 'gestor avisado (instancia travada)' : 'aviso nao saiu (master fora?)')
+    if (avisou) avisados.add(a.uid)
+  }
+
+  // 5) Recriar. Só aqui se destrói credencial.
   for (const a of persistentes) {
     if (semTempo()) break // o que sobrar sai na próxima rodada
     if (!cfg.recriar_ativo || recriacoes >= (cfg.max_recriacoes_dia ?? 5)) {
@@ -467,10 +505,7 @@ async function executar(): Promise<Record<string, unknown>> {
         .update({ conectado: false, ultima_desconexao: new Date().toISOString() })
         .eq('user_id', a.uid)
     }
-    if (r.ok && a.jid) {
-      const avisou = await avisarGestor(apiUrl, apiKey, master, a.jid, a.nome)
-      await registrar(a.uid, a.inst, a.conta, 'aviso', avisou, avisou ? 'gestor avisado' : 'aviso não saiu (master fora?)')
-    }
+    // O aviso ja saiu no passo 4, na deteccao — nao repetir aqui.
   }
 
   const resumo = { candidatos: suspeitos.length, tratados: relatorio.length, recriacoes, detalhes: relatorio }
