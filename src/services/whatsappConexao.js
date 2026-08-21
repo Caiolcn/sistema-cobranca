@@ -298,7 +298,11 @@ async function instanciaSumiu(config) {
   try {
     const res = await fetch(
       `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
-      { headers: { apikey: config.apiKey } }
+      // Timeout obrigatorio: o fetchInstances degradou junto com a Evolution
+      // (nao respondeu em 180s em 21/08). Sem isso a chamada pendura a tela do
+      // cliente no meio do fluxo de conexao — e no caso do instanciaSumiu, que
+      // roda num laco de 4, pendura quatro vezes.
+      { headers: { apikey: config.apiKey }, signal: AbortSignal.timeout(8000) }
     )
     if (res.status === 404) return true
     if (!res.ok) return false
@@ -578,7 +582,11 @@ export async function salvarConexao(userId, config) {
   try {
     const res = await fetch(
       `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
-      { headers: { apikey: config.apiKey } }
+      // Timeout obrigatorio: o fetchInstances degradou junto com a Evolution
+      // (nao respondeu em 180s em 21/08). Sem isso a chamada pendura a tela do
+      // cliente no meio do fluxo de conexao — e no caso do instanciaSumiu, que
+      // roda num laco de 4, pendura quatro vezes.
+      { headers: { apikey: config.apiKey }, signal: AbortSignal.timeout(8000) }
     )
     if (res.ok) {
       const dados = await res.json()

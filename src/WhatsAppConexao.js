@@ -1088,7 +1088,10 @@ export default function WhatsAppConexao() {
       try {
         const res = await fetch(
           `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
-          { headers: { 'apikey': config.apiKey } }
+          // Timeout: sem ele, o cliente escaneia o QR com sucesso e a tela fica
+          // pendurada aqui, buscando o numero — sem gravar conectado = true.
+          // Da a impressao de "escaneei e nao aconteceu nada".
+          { headers: { 'apikey': config.apiKey }, signal: AbortSignal.timeout(8000) }
         )
         if (res.ok) {
           const dados = await res.json()
