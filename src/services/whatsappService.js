@@ -556,18 +556,33 @@ class WhatsAppService {
           const retryResult = await this._executarEnvio(telefone, mensagem, instanceNameOverride)
 
           if (retryResult.connectionClosed) {
+            // Preserva o diagnóstico. Estes dois returns descartavam erroCodigo,
+            // httpStatus e responseApi e deixavam só o texto amigável — que vira
+            // erro_codigo 'unknown' no log. Em 19, 20 e 21/08 isso me obrigou a
+            // ir na Evolution para descobrir o óbvio, e escondia de vez a
+            // diferença entre socket morto, pool esgotado e número recusado.
+            //
+            // A orientação ao gestor não se perde: a Central monta o texto de
+            // ajuda a partir de falha_classe, que sai justamente do erro_codigo.
             return {
+              ...retryResult,
               sucesso: false,
-              erro: '📱 Tentamos reconectar automaticamente mas não foi possível enviar. Vá em WhatsApp → Conexão e escaneie o QR Code para reconectar.'
+              erroCodigo: retryResult.erroCodigo || 'connection_closed',
+              recuperacaoTentada: true
             }
           }
 
           return retryResult
         }
 
+        // Idem: devolve o resultado original (com código, status e corpo da
+        // Evolution) em vez de trocá-lo por uma frase.
         return {
+          ...resultado,
           sucesso: false,
-          erro: '📱 Seu WhatsApp está desconectado e não foi possível reconectar automaticamente. Vá em WhatsApp → Conexão e escaneie o QR Code para reconectar.'
+          erroCodigo: resultado.erroCodigo || 'connection_closed',
+          recuperacaoTentada: true,
+          restartFalhou: true
         }
       }
 

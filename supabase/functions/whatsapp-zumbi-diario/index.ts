@@ -284,6 +284,10 @@ async function executar(): Promise<Record<string, unknown>> {
     // três mensagens do teste — inclusive a que devolveu 500).
     const socketMorto =
       f.erro_codigo === 'instance_500' ||
+      // A partir de 21/08 o whatsappService preserva o erro real em vez de
+      // trocá-lo pela frase amigável, então o código é o sinal confiável — o
+      // texto 'não foi possível enviar' vai desaparecendo dos logs novos.
+      f.erro_codigo === 'connection_closed' ||
       (f.erro || '').includes('Connection Closed') ||
       (f.erro || '').includes('não foi possível enviar')
     if (f.erro_codigo === 'evolution_db_pool') continue
