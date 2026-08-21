@@ -638,6 +638,45 @@ export const getWhatsAppStatus = () => globalStatus
 // Mensagem padrão do template (fallback para compatibilidade)
 const MENSAGEM_PADRAO = TEMPLATES_PADRAO.overdue
 
+/**
+ * Zumbi SEM sonda: a evidencia sai dos NOSSOS logs, nao da Evolution.
+ *
+ * Duas assinaturas, ambas medidas em 21/08:
+ *   - "Connection Closed": socket morto (Studio T.S)
+ *   - "Cannot read properties of undefined": instancia registrada sem cliente
+ *     Baileys ativo (Team Juliana). Faltava esta, e por isso a tela dela seguiu
+ *     verde enquanto 3 envios falhavam.
+ *
+ * So conta se NAO houve envio bem-sucedido depois da falha — senao a conta
+ * oscilou e voltou, que e diferente de estar travada.
+ */
+async function temEvidenciaDeZumbi(userId) {
+  if (!userId) return false
+  try {
+    const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { data } = await supabase
+      .from('logs_mensagens')
+      .select('status, erro_codigo, erro, enviado_em')
+      .eq('user_id', userId)
+      .gte('enviado_em', desde)
+      .order('enviado_em', { ascending: false })
+      .limit(30)
+
+    const ultimoOk = (data || []).find((r) => r.status === 'enviado')
+    const ultimaMorte = (data || []).find(
+      (r) =>
+        r.status === 'falha' &&
+        (r.erro_codigo === 'connection_closed' ||
+          r.erro_codigo === 'instance_500' ||
+          /Connection Closed/i.test(r.erro || '') ||
+          /Cannot read properties of undefined/i.test(r.erro || ''))
+    )
+    return !!ultimaMorte && (!ultimoOk || ultimoOk.enviado_em < ultimaMorte.enviado_em)
+  } catch {
+    return false
+  }
+}
+
 export default function WhatsAppConexao() {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
@@ -961,32 +1000,7 @@ export default function WhatsAppConexao() {
             // Criterio: falha recente com assinatura de socket morto e NENHUM
             // envio bem-sucedido depois dela. E o mesmo que o
             // whatsapp-zumbi-diario usa, e nao custa nada a Evolution.
-            let ehZumbi = false
-            if (veredito === 'conectado') {
-              try {
-                const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-                const { data: recentes } = await supabase
-                  .from('logs_mensagens')
-                  .select('status, erro_codigo, erro, enviado_em')
-                  .eq('user_id', effectiveUserId)
-                  .gte('enviado_em', desde)
-                  .order('enviado_em', { ascending: false })
-                  .limit(30)
-
-                const ultimoOk = (recentes || []).find((r) => r.status === 'enviado')
-                const ultimaMorte = (recentes || []).find(
-                  (r) =>
-                    r.status === 'falha' &&
-                    (r.erro_codigo === 'connection_closed' ||
-                      r.erro_codigo === 'instance_500' ||
-                      /Connection Closed/i.test(r.erro || ''))
-                )
-                ehZumbi =
-                  !!ultimaMorte && (!ultimoOk || ultimoOk.enviado_em < ultimaMorte.enviado_em)
-              } catch {
-                /* sem evidencia = nao acusa; a tela segue mostrando conectado */
-              }
-            }
+            const ehZumbi = veredito === 'conectado' && (await temEvidenciaDeZumbi(effectiveUserId))
 
             if (ehZumbi) {
               setStatus('zombie')
@@ -2040,6 +2054,16 @@ export default function WhatsAppConexao() {
       const { jaConectado, qr } = await gerarQrCode(config, { forcar, userId: contextUserId })
 
       if (jaConectado) {
+        // A Evolution diz 'open', mas se os nossos logs mostram envio morrendo
+        // sem sucesso depois, ela esta mentindo — e mandar "Ja Conectado!" deixa
+        // o cliente sem saida nenhuma. Foi o caso da Team Juliana em 21/08: ela
+        // clicou, recebeu o modal de sucesso, e continuou sem enviar.
+        if (!forcar && (await temEvidenciaDeZumbi(contextUserId))) {
+          console.warn('⚠️ open + falhas recentes sem sucesso = zumbi. Mostrando conexao travada.')
+          setStatus('zombie')
+          setQrCode(null)
+          return
+        }
         console.log('✅ Instância já está conectada! Pulando QR Code.')
         setStatus('connected')
         setQrCode(null)
