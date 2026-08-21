@@ -63,9 +63,17 @@ export default function AdminWhatsAppMaster() {
           const data = await res.json()
           if ((data.instance?.state) === 'open') {
             setStatus('connected')
-            // busca o número conectado (best-effort)
+            // Busca o número conectado (best-effort).
+            //
+            // Com timeout curto e filtrado por instância: sem isso o fetch fica
+            // pendurado no fetchInstances degradado (180s sem resposta em
+            // 21/08) e a tela inteira trava só para exibir um número que é
+            // enfeite. Falhar rápido aqui é melhor que carregar devagar.
             try {
-              const pr = await fetch(`${url}/instance/fetchInstances`, { headers: { apikey: key } })
+              const pr = await fetch(`${url}/instance/fetchInstances?instanceName=${encodeURIComponent(inst)}`, {
+                headers: { apikey: key },
+                signal: AbortSignal.timeout(8000)
+              })
               if (pr.ok) {
                 const arr = await pr.json()
                 const minha = acharInstancia(arr, inst)
@@ -86,13 +94,22 @@ export default function AdminWhatsAppMaster() {
     setLoading(true); setErro('')
     try {
       // 1. existe?
+      //
+      // connectionState no lugar de fetchInstances: a listagem completa agrega
+      // contagem de mensagens de TODAS as instâncias e degradou junto com a
+      // Evolution — medido em 21/08, ela não respondeu em 180s, enquanto o
+      // connectionState devolveu em 1s. Como era o PRIMEIRO passo do fluxo, a
+      // tela travava antes de chegar no QR e o admin via "não gera QR Code"
+      // com a instância perfeitamente saudável.
+      //
+      // 404 aqui significa instância inexistente, que é exatamente o que este
+      // passo quer descobrir.
       let existe = false, estado = null
-      const r = await fetch(`${apiUrl}/instance/fetchInstances`, { headers: { apikey: apiKey } })
+      const r = await fetch(`${apiUrl}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } })
       if (r.ok) {
-        const arr = await r.json()
-        const minha = acharInstancia(arr, instance)
-        existe = !!minha
-        estado = minha?.connectionStatus || minha?.instance?.state || null
+        const d = await r.json().catch(() => null)
+        estado = d?.instance?.state || null
+        existe = !!estado
       }
 
       if (existe && estado === 'open') {
