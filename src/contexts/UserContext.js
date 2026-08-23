@@ -13,7 +13,7 @@ const UserContext = createContext(null)
 const CAMPOS_CONTA =
   'id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, ' +
   'nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, ' +
-  'trial_fim, virou_pagante_em, cancelado_em, role'
+  'trial_fim, virou_pagante_em, cancelado_em, role, ultimo_acesso'
 
 const CAMPOS_CONTA_COM_ONBOARDING = `${CAMPOS_CONTA}, onboarding_completed, onboarding_step`
 
@@ -25,6 +25,30 @@ export function UserProvider({ children }) {
   // Admin: estado para visualizar como outro usuário
   const [adminViewingAs, setAdminViewingAs] = useState(null)
   const [adminClientData, setAdminClientData] = useState(null)
+
+  // Carimbar ultimo_acesso: a coluna existe desde criar-tabela-usuarios.sql mas
+  // nunca foi escrita, o que deixa a ativação (quem realmente volta ao app)
+  // invisível.
+  //
+  // Trava de 12h de propósito: usuarios tem um AFTER UPDATE
+  // (trigger_sync_mensallizap_on_usuario_update) que ressincroniza
+  // nome/email/telefone/plano em mensallizap. Ele NÃO toca em conectado nem
+  // instance_name — não há risco para a conexão — mas loadUser roda a cada
+  // TOKEN_REFRESHED, e não faz sentido bater na tabela do WhatsApp de hora em
+  // hora. Com a trava é ~1 escrita por usuário por dia.
+  //
+  // Falha é silenciosa: telemetria nunca pode derrubar o login.
+  const registrarAcesso = useCallback(async (usuarioId, ultimoAcesso) => {
+    const DOZE_HORAS = 12 * 60 * 60 * 1000
+    if (ultimoAcesso && Date.now() - new Date(ultimoAcesso).getTime() < DOZE_HORAS) return
+
+    const { error } = await supabase
+      .from('usuarios')
+      .update({ ultimo_acesso: new Date().toISOString() })
+      .eq('id', usuarioId)
+
+    if (error) console.warn('Não foi possível registrar ultimo_acesso:', error)
+  }, [])
 
   // Carregar usuário UMA vez ao iniciar
   const loadUser = useCallback(async () => {
@@ -62,12 +86,17 @@ export function UserProvider({ children }) {
       // Se a busca falhou (rede/RLS), mantém os dados anteriores: zerar userData
       // rebaixa a conta pro/premium para os padrões de starter em toda a UI
       setUserData(prev => (falhouBuscar ? prev : usuarioData))
+
+      // Fire-and-forget: não segura o carregamento da UI
+      if (!falhouBuscar && usuarioData) {
+        registrarAcesso(authUser.id, usuarioData.ultimo_acesso)
+      }
     } catch (error) {
       console.error('Erro ao carregar usuário:', error)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [registrarAcesso])
 
   useEffect(() => {
     loadUser()

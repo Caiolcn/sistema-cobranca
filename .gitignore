@@ -64,3 +64,17 @@ credentials.json
 # Exports crus do n8n contem a chave do Supabase chumbada nos nos.
 # Commitar so versoes REDIGIDAS (ver n8n-workflows/backup-*/).
 /n8n-export-*.json
+
+# ---------------------------------------------------------------------------
+# NUNCA COMMITAR — repositorio e PUBLICO
+# ---------------------------------------------------------------------------
+# Token de acesso pessoal do Supabase (sbp_...) fica aqui.
+/.mcp.json
+# Artefato vazio criado por redirecionamento errado no Windows.
+/nul
+# Levantamentos com nome + telefone de cliente real.
+/docs/ativacao-passo2.md
+# Contem e-mail real e SENHA EM TEXTO PURO de um cliente.
+/sql-trocar-email-senha-cliente.sql
+# Analise de crescimento: nomes de clientes, faturamento e chave Pix.
+/plano-crescimento-mensalli.html
