@@ -1,0 +1,428 @@
+/* Barra de novidades — vive na Home, abaixo do painel de primeiros passos.
+   Mesma linguagem dos cards da Home (raio 16px, borda 1px). Fica propositalmente
+   mais discreta que o OnboardingPainel: ativação (conectar WhatsApp) tem que
+   continuar ganhando o olho de quem acabou de entrar.
+
+   ATENÇÃO: o App.css pinta TODO <button> de azul no :hover. Todo botão custom
+   daqui redefine background no :hover — sem isso herda o bloco azul. */
+
+.nov-barra {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  /* Altura fixa compartilhada com o esqueleto abaixo — é o que garante que a
+     barra montada ocupe exatamente o espaço já reservado, sem pulo. */
+  min-height: 64px;
+}
+
+/* Placeholder: mesma classe da barra, então herda o min-height acima e ocupa
+   exatamente o espaço final. Sem shimmer piscando — a barra é conteúdo
+   secundário, não vale chamar atenção pro fato de ela ainda não ter chegado. */
+.nov-barra-esqueleto {
+  background: #fcfcfd;
+  border-color: #f3f4f6;
+}
+
+/* ---------- selo da esquerda ---------- */
+
+.nov-barra-marca {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: #8867A1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+
+/* ---------- conteúdo (a novidade em foco) ---------- */
+
+.nov-barra-conteudo {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.nov-barra-conteudo:hover {
+  background: transparent; /* neutraliza o hover azul global */
+}
+
+.nov-barra-conteudo:hover .nov-barra-titulo {
+  color: #8867A1;
+}
+
+.nov-barra-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nov-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+
+/* O selo que faz o trabalho: diferencia "novidade do produto" de "novidade
+   pra ESTA pessoa". Some quando ela abre o detalhe, não quando carrega a tela. */
+.nov-barra-novo {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8867A1;
+}
+
+.nov-barra-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  transition: color 0.15s;
+}
+
+.nov-barra-resumo {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- ações e navegação ---------- */
+
+.nov-barra-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nov-barra-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-left: 8px;
+  border-left: 1px solid #f3f4f6;
+}
+
+.nov-nav-seta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nov-nav-seta:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.nov-nav-seta:disabled {
+  /* background-color explícito: o App.css tem `button:disabled { background-color:
+     #ccc }` global, e essa regra (0,1,1) ganha do `.nov-nav-seta` (0,1,0). Sem
+     isto a seta desabilitada vira um bloco cinza sólido. */
+  background: transparent;
+  opacity: 0.35;
+  cursor: default;
+}
+
+.nov-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nov-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.nov-dot:hover {
+  background: #9ca3af;
+  transform: scale(1.2);
+}
+
+/* Não vista: fica na cor da marca mesmo sem estar selecionada — é o rastro de
+   "ainda tem coisa aqui que você não olhou". */
+.nov-dot.novo {
+  background: #c4b0d6;
+}
+
+.nov-dot.ativo,
+.nov-dot.ativo:hover {
+  background: #8867A1;
+  transform: scale(1.35);
+}
+
+/* ---------- modal ---------- */
+
+.nov-modal .ds-modal__header { display: none; }
+
+/* O .ds-modal arredonda o painel, mas não corta o que os filhos pintam por
+   baixo — sem isto o topo escuro e o rodapé cinza vazam quadrados sobre o
+   raio. Só funciona porque a rolagem passa a ser do corpo, logo abaixo. */
+.nov-modal {
+  overflow: hidden;
+}
+
+.nov-modal-topo {
+  position: relative;
+  flex-shrink: 0;
+  padding: 18px 24px 0;
+  background: #ffffff;
+}
+
+.nov-modal-selo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8867A1;
+}
+
+.nov-modal-ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8867A1;
+}
+
+/* Barra segmentada: um traço por slide, preenchido até o atual. É o ÚNICO
+   indicador de posição do modal — e também o controle, dá pra pular clicando. */
+.nov-modal-progresso {
+  display: flex;
+  gap: 5px;
+  margin-top: 20px;
+}
+
+.nov-seg {
+  flex: 1;
+  height: 3px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: #e5e7eb;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nov-seg:hover {
+  background: #c4b0d6;
+}
+
+.nov-seg.cheio,
+.nov-seg.cheio:hover {
+  background: #8867A1;
+}
+
+.nov-modal-fechar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nov-modal-fechar:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Aqui não é o Modal.Body do DS (o topo e o rodapé são custom), então a
+   rolagem tem que ser declarada: numa novidade com print + texto longo o
+   painel estouraria a altura da tela sem scroll nenhum. */
+.nov-modal-corpo {
+  padding: 18px 24px 22px;
+  overflow-y: auto;
+}
+
+.nov-modal-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+
+.nov-modal-titulo {
+  margin: 10px 0 0;
+  font-size: 21px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.25;
+}
+
+/* Container do print/GIF da feature. Proporção fixa (16/10) pra a altura do
+   modal não dançar entre um slide e outro, e `cover` a partir do topo porque
+   print de tela tem a informação em cima. */
+.nov-modal-midia {
+  margin-top: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.nov-modal-midia img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.nov-modal-descricao {
+  margin: 8px 0 0;
+  font-size: 14.5px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+/* Mesma superfície branca do resto: o cinza fazia o modal ler como três blocos
+   soltos (topo escuro / miolo branco / rodapé cinza). Só a hairline separa. */
+.nov-modal-rodape {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-top: 1px solid #f3f4f6;
+  background: #ffffff;
+}
+
+.nov-modal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Dois problemas no mesmo botão:
+
+   1. o App.css tem `button:disabled { background-color: #ccc }` global, e essa
+      regra (0,1,1) ganha do `.ds-btn--ghost` (0,1,0) — o botão desabilitado
+      virava um retângulo cinza sólido. O seletor daqui (0,3,1) desempata.
+   2. o disabled do DS é opacity .5 sobre um ghost que já é cinza claro, o que
+      lavava o texto. Fica opaco e só mais claro: lê como "existe, mas não agora".
+
+   Isso vale pra QUALQUER botão do DS desabilitado no app — o #ccc está lá em
+   todos, só passava despercebido por baixo do opacity .5. */
+.nov-modal-nav .nov-btn-anterior:disabled {
+  background: transparent;
+  opacity: 1;
+  color: #c7cbd1;
+  cursor: default;
+}
+
+/* ---------- mobile ---------- */
+
+@media (max-width: 900px) {
+  .nov-barra {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .nov-barra-conteudo {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  /* No celular o resumo tem espaço pra duas linhas — e sem ele sobra só o
+     título, que raramente explica a feature sozinho. */
+  .nov-barra-resumo {
+    white-space: normal;
+  }
+
+  .nov-barra-acoes {
+    order: 3;
+    flex: 1;
+  }
+
+  .nov-barra-nav {
+    order: 4;
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  /* Os dois botões passam a empilhar, cada um em largura cheia.
+
+     Lado a lado eles ESTOURAVAM a barra: `flex: 1` num botão do DS não encolhe
+     abaixo do texto (min-width:auto + white-space:nowrap), então um CTA longo
+     como "Configurar formas de pagamento" empurrava o "Ver detalhes" pra fora
+     da tela. Truncar o CTA resolveria o transbordo, mas o rótulo dele é a
+     própria promessa do clique — "Configurar formas d..." não convida ninguém. */
+  .nov-barra-acoes {
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nov-barra-acoes > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* A barra inteira também precisa poder encolher: sem isto o conteúdo mais
+     largo define a largura e a Home ganha rolagem horizontal. */
+  .nov-barra > * {
+    min-width: 0;
+  }
+
+  .nov-barra-nav {
+    width: 100%;
+    justify-content: center;
+  }
+}

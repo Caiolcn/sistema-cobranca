@@ -6,6 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useUser } from './contexts/UserContext';
 import { SkeletonDashboard } from './components/Skeleton';
 import OnboardingPainel from './OnboardingPainel';
+import NovidadesPainel from './components/NovidadesPainel';
 import whatsappService from './services/whatsappService';
 import { showToast } from './Toast';
 import { useUserPlan } from './hooks/useUserPlan';
@@ -638,6 +639,11 @@ function Home() {
       {mostrarChecklist && (
         <OnboardingPainel completedSteps={onboardingSteps} />
       )}
+
+      {/* Novidades do produto. Vem DEPOIS do onboarding de propósito: conta nova
+          precisa conectar o WhatsApp, não descobrir feature. Quando os primeiros
+          passos fecham, o painel some e a barra assume o topo. */}
+      <NovidadesPainel />
 
       {/* Card-herói: prova de valor do Mensalli (dinheiro recuperado pela cobrança automática).
           Um herói de cada vez: enquanto o painel de primeiros passos está na tela, este só

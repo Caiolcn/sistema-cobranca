@@ -13,6 +13,7 @@ import { useAgendamentoNotifications } from './hooks/useAgendamentoNotifications
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 import NotificacoesDropdown, { contarNaoLidas } from './components/NotificacoesDropdown'
+import { prefetchNovidades } from './services/novidadesService'
 import ConfigMenu from './components/ConfigMenu'
 import { groupedConfigTabs } from './configTabs'
 
@@ -37,7 +38,7 @@ export default function Dashboard() {
 
   // Hook para verificar status do trial
   const { bloqueado, motivo, diasRestantes, planoPago, loading } = useTrialStatus()
-  const { userData, userId, isAdmin, adminViewingAs, setAdminClient, realUserId } = useUser()
+  const { userData, userId, isAdmin, adminViewingAs, setAdminClient, realUserId, trialStatus } = useUser()
 
   // Admin: lista de clientes para o dropdown
   const [adminClientes, setAdminClientes] = useState([])
@@ -87,6 +88,13 @@ export default function Dashboard() {
     setNotifAberta(false)
     setConfigMenuAberto(false)
   }, [location.pathname])
+
+  // Aquece as novidades enquanto a Home ainda está no skeleton. O painel delas
+  // só monta depois que a Home termina de carregar — se a busca começasse lá,
+  // a barra entraria na tela atrasada, empurrando o resto pra baixo.
+  useEffect(() => {
+    prefetchNovidades(realUserId, { planoPago: !!trialStatus?.planoPago })
+  }, [realUserId, trialStatus?.planoPago])
 
   // Contador de notificações não-lidas (roda a cada 2 min)
   useEffect(() => {

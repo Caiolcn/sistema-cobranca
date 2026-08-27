@@ -13,34 +13,16 @@ const TIPOS = {
   novidade: { icon: 'material-symbols:campaign-outline-rounded', cor: '#8867A1', bg: '#f3eefa' },
 }
 
-// 📢 Novas Atualizações (changelog do produto) exibidas no sino de notificações.
-// Para divulgar uma novidade, adicione um item NO TOPO desta lista com a data ISO.
-// Uma novidade com data recente acende o sino automaticamente (badge de não lidas).
-const NOVIDADES = [
-  {
-    data: '2026-06-03T12:00:00',
-    tag: 'Novo',
-    titulo: 'CRM de Alunos',
-    texto: 'O CRM ganhou uma aba de Alunos: acompanhe num quadro quem tem aula marcada, quem sumiu (sem retorno) e quem está com pagamento atrasado. E quem tem a assinatura ativada passa de Experimental pra Aluno automaticamente.',
-  },
-  {
-    data: '2026-06-01T12:00:00',
-    tag: 'Novo',
-    titulo: 'Dashboard repaginada',
-    texto: 'Reorganizamos a tela inicial pra deixar tudo mais direto, com os números que mais importam em destaque.',
-  },
-  {
-    data: '2026-05-28T12:00:00',
-    tag: 'Melhoria',
-    titulo: 'Busca de alunos mais rápida',
-    texto: 'Agora você encontra qualquer aluno por nome ou telefone direto na barra de busca do topo.',
-  },
-  {
-    data: '2026-05-20T12:00:00',
-    titulo: 'Agenda Nova no ar',
-    texto: 'A grade de horários ganhou visões por Dia e Semana, mais leve e prática no celular.',
-  },
-]
+// 📢 Changelog do produto no sino. Antes era um array hardcoded aqui — e por
+// isso ficou parado em 03/06/2026: publicar exigia deploy. Agora vem da tabela
+// public.novidades, a mesma que alimenta a barra da Home (NovidadesPainel), e
+// o admin publica pelo /admin > Novidades.
+//
+// Só as recentes entram no sino: o histórico completo é papel da barra da Home.
+// O "lido" aqui continua sendo o carimbo de tempo do localStorage (o sino mistura
+// pagamento, lead, evasão...), então uma novidade já vista na barra ainda pode
+// acender o sino uma vez. É barulho de uma volta só, não vale duas contabilidades.
+const DIAS_NOVIDADE_NO_SINO = 90
 
 const storageKey = (userId) => `mensalli_notif_last_read_${userId}`
 
@@ -67,7 +49,9 @@ export async function carregarNotificacoes(userId) {
   const hojeStr = agora.toISOString().split('T')[0]
   const hojeIni = `${hojeStr}T00:00:00`
 
-  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes] = await Promise.all([
+  const desdeNovidade = new Date(agora.getTime() - DIAS_NOVIDADE_NO_SINO * 86400000).toISOString()
+
+  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes, novRes] = await Promise.all([
     supabase
       .from('mensalidades')
       .select('id, valor, data_pagamento, devedores(nome)')
@@ -112,6 +96,14 @@ export async function carregarNotificacoes(userId) {
       .gte('score_total', 50)
       .order('score_total', { ascending: false })
       .limit(5),
+    supabase
+      .from('novidades')
+      .select('id, titulo, resumo, tag, publicado_em, cta_rota')
+      .eq('ativo', true)
+      .lte('publicado_em', agora.toISOString())
+      .gte('publicado_em', desdeNovidade)
+      .order('publicado_em', { ascending: false })
+      .limit(10),
   ])
 
   const itens = []
@@ -180,16 +172,18 @@ export async function carregarNotificacoes(userId) {
     })
   }
 
-  NOVIDADES.forEach((n, i) => {
+  for (const n of novRes.data || []) {
     itens.push({
       tipo: 'novidade',
-      id: `nov-${i}`,
+      id: `nov-${n.id}`,
       titulo: n.titulo,
-      sub: n.texto,
+      sub: n.resumo,
       tag: n.tag,
-      timestamp: n.data,
+      timestamp: n.publicado_em,
+      // Sem rota o item existe só pra informar — o sino não navega pra lugar nenhum.
+      link: n.cta_rota || undefined,
     })
-  })
+  }
 
   return itens.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
 }

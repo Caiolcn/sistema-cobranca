@@ -11,6 +11,7 @@ import AbaVisaoGeral from './AbaVisaoGeral'
 import AbaContas from './AbaContas'
 import AbaFinanceiro from './AbaFinanceiro'
 import AbaRetencao from './AbaRetencao'
+import AbaNovidades from './AbaNovidades'
 import CentralMensagens from '../CentralMensagens'
 import ModalEditarConta from './ModalEditarConta'
 import ModalDisparo from './ModalDisparo'
@@ -35,6 +36,9 @@ const ABAS = [
   // de /app/whatsapp, que é tela de cliente. Aqui ela fica ao lado dos outros
   // painéis cross-conta. O componente é o mesmo dos dois lugares.
   { value: 'mensagens', label: 'Mensagens', icon: 'mdi:message-alert-outline' },
+  // Changelog do produto. Fica aqui e não em Marketing porque o público é o
+  // mesmo do resto do /admin: todas as contas de uma vez.
+  { value: 'novidades', label: 'Atualizações', icon: 'mdi:bullhorn-outline' },
 ]
 
 export default function AdminShell() {
@@ -131,7 +135,7 @@ export default function AdminShell() {
       {/* A Central tem fonte de dados própria (vw_central_mensagens), então uma
           falha ao carregar as contas não pode escondê-la — era assim que um erro
           numa view derrubava a tela inteira. */}
-      {dados.erro && aba !== 'mensagens' ? (
+      {dados.erro && aba !== 'mensagens' && aba !== 'novidades' ? (
         <EmptyState
           variant="error"
           title="Não foi possível carregar o CRM"
@@ -176,6 +180,7 @@ export default function AdminShell() {
               recarregarToken={tokenAtualizar}
             />
           )}
+          {aba === 'novidades' && <AbaNovidades />}
         </>
       )}
 
