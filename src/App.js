@@ -61,6 +61,7 @@ const PaginaSwitch = lazy(() => import('./design-system/PaginaSwitch'))
 const PaginaBadge = lazy(() => import('./design-system/PaginaBadge'))
 const PaginaAvatar = lazy(() => import('./design-system/PaginaAvatar'))
 const PaginaCard = lazy(() => import('./design-system/PaginaCard'))
+const PaginaStatCard = lazy(() => import('./design-system/PaginaStatCard'))
 const PaginaModal = lazy(() => import('./design-system/PaginaModal'))
 const PaginaToast = lazy(() => import('./design-system/PaginaToast'))
 const PaginaTable = lazy(() => import('./design-system/PaginaTable'))
@@ -163,6 +164,7 @@ function App() {
                     <Route path="badge" element={<PaginaBadge />} />
                     <Route path="avatar" element={<PaginaAvatar />} />
                     <Route path="card" element={<PaginaCard />} />
+                    <Route path="statcard" element={<PaginaStatCard />} />
                     <Route path="modal" element={<PaginaModal />} />
                     <Route path="toast" element={<PaginaToast />} />
                     <Route path="table" element={<PaginaTable />} />

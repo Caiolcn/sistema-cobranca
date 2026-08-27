@@ -37,6 +37,7 @@ const SECOES = [
     grupo: 'Moléculas',
     itens: [
       { slug: 'card', titulo: 'Card', estado: 'em-revisao' },
+      { slug: 'statcard', titulo: 'StatCard', estado: 'em-revisao' },
       { slug: 'modal', titulo: 'Modal', estado: 'em-revisao' },
       { slug: 'toast', titulo: 'Toast', estado: 'em-revisao' },
       { slug: 'table', titulo: 'Table', estado: 'em-revisao' },

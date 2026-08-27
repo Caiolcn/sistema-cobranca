@@ -1,11 +1,18 @@
 import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
 
-export default function TrialExpiredModal({ diasRestantes, onClose, onUpgrade }) {
+export default function TrialExpiredModal({ diasRestantes, motivo, onClose, onUpgrade }) {
   const navigate = useNavigate()
 
   const isExpired = diasRestantes <= 0
   const isExpiringSoon = diasRestantes === 1
+  // Ex-pagante não está em trial: falar "seu teste de 3 dias acabou" com quem
+  // pagou por meses soa como erro do sistema e vira chamado no suporte.
+  // Os três motivos abaixo só existem para quem tem `virou_pagante_em` gravado
+  // (ver UserContext) — nenhum deles alcança uma conta que nunca pagou.
+  const eraPagante = motivo === 'plano_vencido'
+    || motivo === 'pago_sem_vencimento'
+    || motivo === 'cancelado'
 
   return (
     <div style={{
@@ -56,7 +63,9 @@ export default function TrialExpiredModal({ diasRestantes, onClose, onUpgrade })
           marginBottom: '16px',
           color: '#333'
         }}>
-          {isExpired ? 'Trial Expirado' : isExpiringSoon ? 'Seu Trial Expira Amanhã!' : `Faltam ${diasRestantes} Dias`}
+          {isExpired
+            ? (eraPagante ? 'Plano Vencido' : 'Trial Expirado')
+            : isExpiringSoon ? 'Seu Trial Expira Amanhã!' : `Faltam ${diasRestantes} Dias`}
         </h2>
 
         {/* Descrição */}
@@ -67,9 +76,15 @@ export default function TrialExpiredModal({ diasRestantes, onClose, onUpgrade })
           marginBottom: '32px'
         }}>
           {isExpired ? (
-            <>
-              Seu período de teste de 3 dias terminou. Para continuar usando o MensalliZap e todas as suas funcionalidades, faça upgrade para um plano pago.
-            </>
+            eraPagante ? (
+              <>
+                Seu plano venceu e ainda não identifiquei o pagamento. Assim que a renovação cair, o acesso e as cobranças automáticas voltam na hora.
+              </>
+            ) : (
+              <>
+                Seu período de teste de 3 dias terminou. Para continuar usando o MensalliZap e todas as suas funcionalidades, faça upgrade para um plano pago.
+              </>
+            )
           ) : (
             <>
               Seu trial de 3 dias está chegando ao fim. Faça upgrade agora e continue automatizando suas cobranças sem interrupções!
@@ -92,7 +107,7 @@ export default function TrialExpiredModal({ diasRestantes, onClose, onUpgrade })
             marginBottom: '16px',
             textAlign: 'center'
           }}>
-            Com o plano pago você tem:
+            {eraPagante ? 'Com o plano ativo você tem:' : 'Com o plano pago você tem:'}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -144,7 +159,7 @@ export default function TrialExpiredModal({ diasRestantes, onClose, onUpgrade })
             }}
           >
             <Icon icon="mdi:crown" width="20" />
-            Fazer Upgrade Agora
+            {eraPagante ? 'Renovar Agora' : 'Fazer Upgrade Agora'}
           </button>
 
           {!isExpired && (
@@ -180,7 +195,7 @@ export default function TrialExpiredModal({ diasRestantes, onClose, onUpgrade })
             fontSize: '13px',
             color: '#999'
           }}>
-            Não consegue acessar o sistema até fazer upgrade
+            {eraPagante ? 'O acesso volta assim que o pagamento for confirmado' : 'Não consegue acessar o sistema até fazer upgrade'}
           </p>
         )}
       </div>

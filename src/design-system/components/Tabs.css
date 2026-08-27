@@ -113,30 +113,40 @@
 }
 
 /* ============================================================
-   SEGMENTED — iOS/macOS style. Container cinza + ativo branco com sombra leve
+   SEGMENTED — container cinza + ativo branco com sombra leve.
+
+   As medidas abaixo são as do segmented control que já roda em produção
+   (Financeiro "Mensalidades / Vendas / Despesas", e a mesma cópia à mão em
+   Clientes, Configuração, WhatsAppConexao, CRM e Agendamento): container
+   radius 10, pílula radius 8, padding 4, item 8x20, inativo em 75% de opacidade.
+
+   Antes esta variante usava 6/4px e ficava visivelmente mais quadrada que o
+   controle real — quem migrasse pro DS veria a peça "mudar de desenho".
    ============================================================ */
 
 .ds-tabs--segmented {
   background-color: var(--neutral-100);
-  padding: 3px;
-  border-radius: var(--radius-md);
-  gap: 0;
+  padding: 4px;
+  border-radius: var(--radius-xl);
+  gap: 4px;
 }
 
 .ds-tabs--segmented .ds-tabs__item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   cursor: pointer;
+  opacity: 0.75;
   transition: background-color var(--duration-150) var(--ease-out),
               color var(--duration-150) var(--ease-out),
+              opacity var(--duration-150) var(--ease-out),
               box-shadow var(--duration-150) var(--ease-out);
   white-space: nowrap;
 }
@@ -144,11 +154,14 @@
 .ds-tabs--segmented .ds-tabs__item:hover:not(:disabled):not(.ds-tabs__item--active) {
   color: var(--color-text-primary);
   background: transparent;
+  opacity: 1;
 }
 
 .ds-tabs--segmented .ds-tabs__item--active {
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
+  font-weight: 600;
+  opacity: 1;
   box-shadow: var(--shadow-sm);
 }
 
@@ -156,6 +169,11 @@
 .ds-tabs--sm .ds-tabs__item { padding: 6px 10px; font-size: 12px; }
 .ds-tabs--md .ds-tabs__item { /* default */ }
 .ds-tabs--lg .ds-tabs__item { padding: 12px 18px; font-size: 14px; }
+
+/* O segmented tem métrica própria por tamanho — o bloco SIZES acima é do
+   underline/pills e deixaria a pílula apertada demais. */
+.ds-tabs--segmented.ds-tabs--sm .ds-tabs__item { padding: 8px 16px; font-size: 13px; }
+.ds-tabs--segmented.ds-tabs--lg .ds-tabs__item { padding: 10px 24px; font-size: 15px; }
 
 /* Disabled */
 .ds-tabs__item:disabled {

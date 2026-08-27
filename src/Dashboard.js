@@ -36,7 +36,7 @@ export default function Dashboard() {
   const { isMobile, isTablet } = useWindowSize()
 
   // Hook para verificar status do trial
-  const { isExpired, diasRestantes, planoPago, loading } = useTrialStatus()
+  const { bloqueado, motivo, diasRestantes, planoPago, loading } = useTrialStatus()
   const { userData, userId, isAdmin, adminViewingAs, setAdminClient, realUserId } = useUser()
 
   // Admin: lista de clientes para o dropdown
@@ -156,10 +156,12 @@ export default function Dashboard() {
     if (!isAdmin) return
 
     const carregarClientes = async () => {
+      // vw_admin_contas já entrega o `ciclo` pronto. Antes daqui saía uma
+      // TERCEIRA derivação de status própria deste seletor, que colapsava
+      // "plano vencido" e "trial expirado" no mesmo balde "expirado".
       const { data } = await supabase
-        .from('usuarios')
-        .select('id, email, nome_empresa, nome_completo, plano, plano_pago, plano_vencimento, trial_fim')
-        .or('role.neq.admin,role.is.null')
+        .from('vw_admin_contas')
+        .select('id, email, nome_empresa, nome_completo, plano, ciclo')
         .order('nome_empresa', { ascending: true, nullsFirst: false })
 
       if (data) setAdminClientes(data)
@@ -168,12 +170,13 @@ export default function Dashboard() {
     carregarClientes()
   }, [isAdmin])
 
-  // Mostrar modal se trial expirou
+  // Aviso de trial acabando (o pagante prestes a vencer recebe o lembrete
+  // pelo WhatsApp — venc_d3/venc_hoje —, não precisa de modal por cima da tela)
   useEffect(() => {
-    if (!loading && isExpired && !planoPago) {
+    if (!loading && !planoPago && diasRestantes > 0 && diasRestantes <= 2) {
       setMostrarModalTrial(true)
     }
-  }, [isExpired, planoPago, loading])
+  }, [diasRestantes, planoPago, loading])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -183,8 +186,13 @@ export default function Dashboard() {
   // Onboarding checklist agora é mostrado na Home (não bloqueia mais)
   // A rota /app/onboarding continua funcionando por backward compatibility
 
-  // Se trial expirou, bloquear acesso (admin nunca é bloqueado)
-  if (isExpired && !planoPago && !loading && !isAdmin) {
+  // Venceu (trial OU plano pago), bloquear acesso — admin nunca é bloqueado.
+  //
+  // ATENÇÃO ao testar: o seletor de cliente da barra ADMIN não passa por aqui
+  // (quem está logado é o admin, `isAdmin` continua true). Para ver a conta
+  // travada como o cliente vê, use o link "ver como cliente", que abre a
+  // sessão real dele.
+  if (bloqueado && !loading && !isAdmin) {
     return (
       <>
         <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden', filter: 'blur(5px)', pointerEvents: 'none' }}>
@@ -192,6 +200,7 @@ export default function Dashboard() {
         </div>
         <TrialExpiredModal
           diasRestantes={0}
+          motivo={motivo}
           onClose={() => {}}
           onUpgrade={() => navigate('/app/upgrade')}
         />
@@ -202,7 +211,7 @@ export default function Dashboard() {
   return (
     <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden' }}>
       {/* Modal de Trial (se estiver expirando mas ainda ativo) */}
-      {mostrarModalTrial && diasRestantes > 0 && diasRestantes <= 2 && (
+      {mostrarModalTrial && !planoPago && diasRestantes > 0 && diasRestantes <= 2 && (
         <TrialExpiredModal
           diasRestantes={diasRestantes}
           onClose={() => setMostrarModalTrial(false)}
@@ -1372,18 +1381,15 @@ export default function Dashboard() {
             >
               <option value="">Minha conta</option>
               {(() => {
-                const now = new Date()
-                const getStatus = (c) => {
-                  if (c.plano_pago) {
-                    if (!c.plano_vencimento) return 'pago'
-                    return new Date(c.plano_vencimento) > now ? 'pago' : 'expirado'
-                  }
-                  if (!c.trial_fim) return 'expirado'
-                  return new Date(c.trial_fim) > now ? 'trial' : 'expirado'
-                }
-                const pagos = adminClientes.filter(c => getStatus(c) === 'pago')
-                const trial = adminClientes.filter(c => getStatus(c) === 'trial')
-                const expirados = adminClientes.filter(c => getStatus(c) === 'expirado')
+                // Agrupa pelo `ciclo` da vw_admin_contas. Churn e trial expirado
+                // deixam de compartilhar um balde só: são problemas diferentes,
+                // e era justamente essa fusão que escondia o ex-pagante.
+                const porCiclo = (...ciclos) => adminClientes.filter(c => ciclos.includes(c.ciclo))
+                const pagos = porCiclo('ativo', 'vencendo')
+                const trial = porCiclo('trial')
+                const inadimplentes = porCiclo('inadimplente')
+                const churn = porCiclo('churn', 'cancelado')
+                const expirados = porCiclo('trial_expirado')
                 const renderOption = (c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome_empresa || c.nome_completo || c.email} ({c.plano}) — ID: {c.id.substring(0, 8)}
@@ -1401,8 +1407,18 @@ export default function Dashboard() {
                         {trial.map(renderOption)}
                       </optgroup>
                     )}
+                    {inadimplentes.length > 0 && (
+                      <optgroup label={`⚠️ Inadimplentes (${inadimplentes.length})`}>
+                        {inadimplentes.map(renderOption)}
+                      </optgroup>
+                    )}
+                    {churn.length > 0 && (
+                      <optgroup label={`💔 Ex-pagantes (${churn.length})`}>
+                        {churn.map(renderOption)}
+                      </optgroup>
+                    )}
                     {expirados.length > 0 && (
-                      <optgroup label={`❌ Expirados (${expirados.length})`}>
+                      <optgroup label={`❌ Trial expirado (${expirados.length})`}>
                         {expirados.map(renderOption)}
                       </optgroup>
                     )}
