@@ -443,20 +443,37 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
         const dataExpiracao = new Date()
         dataExpiracao.setDate(dataExpiracao.getDate() + 30)
 
-        // Ativar usuário com plano pago por 30 dias
-        await supabase
+        // Ativar usuário com plano pago por 30 dias.
+        //
+        // NÃO gravar `trial_fim` aqui. Isso contaminava o slot do trial com uma
+        // data de assinatura: depois disso, qualquer coisa que desligasse
+        // `plano_pago` fazia a conta reaparecer como "trial expirado" com uma
+        // data de plano dentro. Quem marca a conta como pagante agora é
+        // `virou_pagante_em` (ver sql-ciclo-vida-conta.sql).
+        const atualizacao: Record<string, unknown> = {
+          plano_pago: true,
+          plano: planoFromRef,
+          limite_mensal: limiteMensal,
+          plano_vencimento: dataExpiracao.toISOString(),
+          // pagamento reabre uma conta que tinha sido marcada como expirada
+          cancelado_em: null,
+          cancelado_motivo: null,
+          updated_at: new Date().toISOString(),
+        }
+
+        // virou_pagante_em é WRITE-ONCE: só grava na primeira vez, senão cada
+        // renovação reescreveria a data e a conta pareceria cliente novo.
+        const { data: contaAtual } = await supabase
           .from('usuarios')
-          .update({
-            plano_pago: true,
-            plano: planoFromRef,
-            limite_mensal: limiteMensal,
-            trial_ativo: false,
-            trial_fim: dataExpiracao.toISOString(),
-            plano_vencimento: dataExpiracao.toISOString(),
-            status_conta: 'ativo',
-            updated_at: new Date().toISOString(),
-          })
+          .select('virou_pagante_em')
           .eq('id', userId)
+          .maybeSingle()
+
+        if (!contaAtual?.virou_pagante_em) {
+          atualizacao.virou_pagante_em = new Date().toISOString()
+        }
+
+        await supabase.from('usuarios').update(atualizacao).eq('id', userId)
 
         console.log(`✅ Pix aprovado - usuário ${userId} ativado com plano ${planoFromRef} por 30 dias`)
       }

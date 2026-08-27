@@ -840,14 +840,24 @@ serve(async (req) => {
 
     const { data: usuario, error: usuarioErr } = await supabase
       .from('usuarios')
-      .select('plano, plano_pago, trial_ativo, nome_empresa')
+      .select('plano, plano_pago, plano_vencimento, trial_fim, virou_pagante_em, cancelado_em, nome_empresa')
       .eq('id', userId)
       .single()
 
     if (usuarioErr) console.error('❌ Erro buscar usuário:', usuarioErr)
-    console.log('👤 Usuário:', { plano: usuario?.plano, plano_pago: usuario?.plano_pago, trial_ativo: usuario?.trial_ativo })
 
-    if (!usuario || usuario.plano !== 'premium' || (!usuario.plano_pago && !usuario.trial_ativo)) {
+    // Gate por DATA, não por flag. `trial_ativo` (o gate antigo) nunca é
+    // desligado quando o trial acaba, então contas vencidas seguiam com o bot
+    // premium respondendo de graça. Mesma regra de usuario_pode_enviar() no
+    // banco: quem já foi pagante é lido pelo plano_vencimento, quem nunca
+    // pagou pelo trial_fim, e o dia do vencimento ainda vale.
+    const dataLimite = usuario?.virou_pagante_em ? usuario?.plano_vencimento : usuario?.trial_fim
+    const dentroDoPrazo = !!dataLimite
+      && new Date(`${String(dataLimite).slice(0, 10)}T23:59:59`) >= new Date()
+
+    console.log('👤 Usuário:', { plano: usuario?.plano, plano_pago: usuario?.plano_pago, dataLimite, dentroDoPrazo })
+
+    if (!usuario || usuario.plano !== 'premium' || usuario.cancelado_em || !dentroDoPrazo) {
       console.log('⏭️ Ignorado: plan')
       return new Response(JSON.stringify({ ok: true, ignored: 'plan' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

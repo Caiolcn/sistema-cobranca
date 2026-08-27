@@ -45,7 +45,7 @@ serve(async (req) => {
       .select(`
         id, nome_empresa, logo_url, telefone, site,
         endereco, numero, complemento, bairro, cidade, estado, cep,
-        plano, plano_pago, trial_ativo,
+        plano, plano_pago, plano_vencimento, trial_fim, virou_pagante_em, cancelado_em,
         landing_ativo, landing_slug, landing_descricao,
         landing_cor_primaria, landing_foto_capa_url,
         landing_hero_titulo, landing_hero_subtitulo, landing_cta_texto,
@@ -79,9 +79,26 @@ serve(async (req) => {
       )
     }
 
-    // Gate de plano: so Pro/Premium podem manter landing publica
+    // Gate de plano: so Pro/Premium podem manter landing publica.
+    //
+    // O gate antigo era `plano_pago || trial_ativo`. `trial_ativo` e campo
+    // morto: nada no sistema o desliga quando o trial acaba, entao 32 contas
+    // com o teste vencido ainda diziam `true` — e mantinham a landing publica
+    // no ar de graca, para sempre.
+    //
+    // Agora e por DATA, a mesma regra de usuario_pode_enviar() no banco e do
+    // trialStatus no front: quem ja foi pagante (virou_pagante_em) e lido pelo
+    // plano_vencimento; quem nunca pagou, pelo trial_fim. O dia do vencimento
+    // ainda vale — o corte cai no dia seguinte.
+    const dataLimite = empresa.virou_pagante_em
+      ? empresa.plano_vencimento
+      : empresa.trial_fim
+    const dentroDoPrazo = !!dataLimite
+      && new Date(`${String(dataLimite).slice(0, 10)}T23:59:59`) >= new Date()
+
     const planoOk = ['pro', 'premium'].includes(empresa.plano)
-      && (empresa.plano_pago === true || empresa.trial_ativo === true)
+      && !empresa.cancelado_em
+      && dentroDoPrazo
     if (!planoOk) {
       return new Response(
         JSON.stringify({ error: 'Pagina indisponivel' }),

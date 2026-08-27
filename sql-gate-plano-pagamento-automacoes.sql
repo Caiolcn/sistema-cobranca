@@ -16,7 +16,16 @@
 --     (starter disparando 3-dias-depois) e "Escolinha Alto Santo Antonio"
 --     (starter disparando 3-dias-antes).
 --
+--  3) PLANO VENCIDO DISPARANDO (encontrado em 19/08/2026): o conserto de
+--     13/07 acertou a metade do trial e deixou a de pagamento com o MESMO
+--     defeito — `plano_pago = true` sem olhar `plano_vencimento`. Como nada
+--     desliga essa flag, conta cancelada seguia cobrando de graça; a única
+--     expiração era alguém editar na mão no Admin.
+--     -> Agora as DUAS metades checam data. Ver vw_contas_barradas_plano
+--        para quem o gate está barrando e quanto valor parou junto.
+--
 -- REGRA: o gate DEVE viver no banco (views), nunca só no front.
+-- REGRA: todo gate expira por DATA. Flag booleana de acesso nunca desliga.
 --
 -- ⚠️ ATENÇÃO: rodar `criar-views-novo-fluxo.sql` ou `sql-criar-alerta-despesas.sql`
 --    RECRIA as views SEM o gate e REINTRODUZ o vazamento.
@@ -28,16 +37,27 @@
 -- 1) FUNÇÕES CANÔNICAS (fonte única de verdade do gate)
 -- ----------------------------------------------------------------------------
 
--- Já pode enviar? (pagante OU trial com data válida)
--- Espelha src/contexts/UserContext.js -> trialStatus (que usa trial_fim, não a flag)
+-- Já pode enviar? (plano pago OU trial — os dois com data válida)
+-- Espelha src/contexts/UserContext.js -> trialStatus (que usa data, não flag)
+--
+-- ⚠️ AS DUAS METADES CHECAM DATA. Não volte nenhuma delas para flag booleana:
+--    nada no sistema desliga `plano_pago` quando o plano vence, então
+--    `plano_pago = true` sozinho concede acesso vitalício a quem cancelou.
+--    Sem carência: vence hoje, corta amanhã.
+--
+--    `plano_pago = true` com `plano_vencimento` nulo NÃO concede acesso
+--    (fail-closed proposital). Tanto o mercadopago-webhook quanto o formulário
+--    do Admin gravam os dois campos juntos — vencimento nulo é dado quebrado.
 CREATE OR REPLACE FUNCTION public.usuario_pode_enviar(p_user_id uuid)
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
   SELECT COALESCE(
-    plano_pago = true
-    OR (trial_fim IS NOT NULL AND trial_fim >= CURRENT_DATE),
+    (plano_pago = true
+      AND plano_vencimento IS NOT NULL
+      AND plano_vencimento::date >= CURRENT_DATE)
+    OR (trial_fim IS NOT NULL AND trial_fim::date >= CURRENT_DATE),
     false
   )
   FROM usuarios WHERE id = p_user_id;
@@ -157,7 +177,59 @@ WHERE
 
 
 -- ----------------------------------------------------------------------------
--- 4) TESTE DE INVARIANTE — rodar sempre depois de mexer em view de automação.
+-- 4) VISIBILIDADE DO CORTE (aplicada em 19/08/2026)
+-- ----------------------------------------------------------------------------
+-- Sem isto, a conta barrada apenas SOME das views vw_parcelas_*: sem envio,
+-- sem log, sem alerta. É o mesmo modo de falha do incidente da instância
+-- offline (Rede Fit, 04/08), que já tem a sua vw_parcelas_barradas_offline.
+--
+-- `motivo` distingue ex-pagante de trial expirado: quem tem plano_vencimento
+-- preenchido já teve plano, mesmo com a flag plano_pago desligada na mão.
+
+CREATE OR REPLACE VIEW public.vw_contas_barradas_plano AS
+SELECT
+  u.id AS user_id,
+  u.nome_empresa,
+  u.email,
+  u.telefone,
+  u.plano,
+  u.plano_pago,
+  u.plano_vencimento,
+  u.trial_fim,
+  CASE
+    WHEN u.plano_pago AND u.plano_vencimento IS NULL              THEN 'pago_sem_vencimento'
+    WHEN u.plano_pago AND u.plano_vencimento::date < CURRENT_DATE THEN 'plano_vencido'
+    WHEN NOT u.plano_pago AND u.plano_vencimento IS NOT NULL      THEN 'ex_pagante'
+    WHEN u.trial_fim IS NOT NULL AND u.trial_fim::date < CURRENT_DATE
+                                                                  THEN 'trial_expirado'
+    ELSE 'sem_plano'
+  END AS motivo,
+  GREATEST(CURRENT_DATE - COALESCE(u.plano_vencimento::date, u.trial_fim::date), 0) AS dias_barrada,
+  (SELECT count(*) FROM devedores d
+     WHERE d.user_id = u.id AND COALESCE(d.lixo,false) = false) AS alunos,
+  (SELECT count(*) FROM mensalidades m
+     JOIN devedores d ON d.id = m.devedor_id
+    WHERE d.user_id = u.id
+      AND COALESCE(d.lixo,false) = false
+      AND COALESCE(m.lixo,false) = false
+      AND m.status <> 'pago') AS parcelas_pendentes,
+  (SELECT COALESCE(sum(m.valor),0) FROM mensalidades m
+     JOIN devedores d ON d.id = m.devedor_id
+    WHERE d.user_id = u.id
+      AND COALESCE(d.lixo,false) = false
+      AND COALESCE(m.lixo,false) = false
+      AND m.status <> 'pago') AS valor_parado,
+  (SELECT max(l.created_at) FROM logs_mensagens l WHERE l.user_id = u.id) AS ultimo_envio,
+  COALESCE(mz.conectado,false) AS whatsapp_conectado
+FROM usuarios u
+LEFT JOIN mensallizap mz ON mz.user_id = u.id
+WHERE NOT usuario_pode_enviar(u.id)
+  AND EXISTS (SELECT 1 FROM devedores d
+               WHERE d.user_id = u.id AND COALESCE(d.lixo,false) = false);
+
+
+-- ----------------------------------------------------------------------------
+-- 5) TESTE DE INVARIANTE — rodar sempre depois de mexer em view de automação.
 --    As 3 colunas TÊM que dar 0. Se der > 0, alguma view perdeu o gate.
 --
 --    ⚠️ Valide por COMPORTAMENTO (este teste), nunca por LIKE no pg_get_viewdef:
