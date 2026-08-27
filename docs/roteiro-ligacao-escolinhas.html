@@ -1,0 +1,1025 @@
+<title>Roteiro das 300 Escolinhas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#F2F4F0;
+    --surface:#FBFCF9;
+    --surface-2:#E8ECE4;
+    --ink:#0F1815;
+    --ink-soft:#31413B;
+    --muted:#63726B;
+    --rule:#D7DED5;
+    --rule-strong:#B8C4B5;
+    --accent:#0E6B57;
+    --accent-soft:#DBEAE3;
+    --brass:#875D12;
+    --brass-soft:#F1E6CA;
+    --iris:#2F5480;
+    --iris-soft:#DEE7F3;
+    --risk:#96291D;
+    --risk-soft:#F5DDD8;
+    --shadow:0 1px 2px rgba(15,24,21,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0B1210;
+      --surface:#121B18;
+      --surface-2:#18231E;
+      --ink:#E8EEEA;
+      --ink-soft:#C3D0CA;
+      --muted:#8C9C95;
+      --rule:#243230;
+      --rule-strong:#35473F;
+      --accent:#5AC7A9;
+      --accent-soft:#11312A;
+      --brass:#D9AB55;
+      --brass-soft:#32270F;
+      --iris:#8DB1DE;
+      --iris-soft:#152439;
+      --risk:#E8877A;
+      --risk-soft:#391C17;
+      --shadow:none;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0B1210;
+    --surface:#121B18;
+    --surface-2:#18231E;
+    --ink:#E8EEEA;
+    --ink-soft:#C3D0CA;
+    --muted:#8C9C95;
+    --rule:#243230;
+    --rule-strong:#35473F;
+    --accent:#5AC7A9;
+    --accent-soft:#11312A;
+    --brass:#D9AB55;
+    --brass-soft:#32270F;
+    --iris:#8DB1DE;
+    --iris-soft:#152439;
+    --risk:#E8877A;
+    --risk-soft:#391C17;
+    --shadow:none;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+    font-size:17px;
+    line-height:1.6;
+    margin:0;
+    padding:0 20px 110px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .spine{max-width:74ch;margin:0 auto}
+  .wide{max-width:1000px;margin:0 auto}
+
+  h1,h2,h3,h4{
+    font-family:Archivo,"Segoe UI",system-ui,sans-serif;
+    font-weight:600;text-wrap:balance;margin:0;
+    letter-spacing:-.015em;
+  }
+  h1{font-size:clamp(2rem,5vw,2.9rem);line-height:1.06;letter-spacing:-.03em;font-weight:700}
+  h2{font-size:clamp(1.35rem,3vw,1.7rem);line-height:1.2}
+  h3{font-size:1.06rem;line-height:1.3}
+  p{margin:0}
+  strong{font-weight:600}
+  a{color:var(--accent)}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.69rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  /* ---------- barra fixa ---------- */
+  nav.bar{
+    position:sticky;top:0;z-index:20;
+    margin:0 -20px;padding:0 20px;
+    background:var(--ground);
+    border-bottom:1px solid var(--rule);
+  }
+  nav.bar .inner{
+    max-width:1000px;margin:0 auto;
+    display:flex;align-items:center;gap:2px;
+    overflow-x:auto;scrollbar-width:none;
+    height:46px;
+  }
+  nav.bar .inner::-webkit-scrollbar{display:none}
+  nav.bar a{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.71rem;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--muted);text-decoration:none;white-space:nowrap;
+    padding:6px 10px;border-radius:2px;
+  }
+  nav.bar a:hover{color:var(--accent);background:var(--accent-soft)}
+  nav.bar a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+  header{padding:64px 0 34px;border-bottom:1px solid var(--rule);margin-bottom:44px}
+  header .stack{display:flex;flex-direction:column;gap:18px}
+  .lede{font-size:1.1rem;color:var(--ink-soft);max-width:60ch}
+  .stamp{
+    display:flex;flex-wrap:wrap;gap:8px 24px;padding-top:6px;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.73rem;color:var(--muted);font-variant-numeric:tabular-nums;
+  }
+
+  section{margin-bottom:64px;scroll-margin-top:62px}
+  .sec-head{display:flex;flex-direction:column;gap:9px;margin-bottom:24px}
+  .sec-head p.sub{font-size:.97rem;color:var(--ink-soft);max-width:62ch}
+  .prose{display:flex;flex-direction:column;gap:16px}
+
+  /* ---------- etapas numeradas ---------- */
+  .step{
+    display:grid;grid-template-columns:auto 1fr;gap:0 20px;
+    align-items:start;margin-bottom:44px;
+  }
+  .step:last-child{margin-bottom:0}
+  .step-num{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.8rem;font-weight:500;color:var(--accent);
+    background:var(--accent-soft);
+    width:30px;height:30px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin-top:2px;flex:none;
+  }
+  .step-body{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .step-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+  .timer{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums;
+    border:1px solid var(--rule-strong);border-radius:2px;
+    padding:2px 7px;white-space:nowrap;
+  }
+
+  /* ---------- fala ---------- */
+  .fala{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-left:3px solid var(--accent);
+    border-radius:2px;
+    padding:15px 18px 16px;
+    display:flex;flex-direction:column;gap:7px;
+    box-shadow:var(--shadow);
+  }
+  .fala .tag{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--accent);
+  }
+  .fala p{font-size:1.045rem;line-height:1.58;color:var(--ink)}
+  .fala em{color:var(--muted);font-style:italic}
+
+  .nota{
+    font-family:Archivo,system-ui,sans-serif;
+    font-size:.885rem;line-height:1.55;color:var(--muted);
+  }
+  .nota b{color:var(--ink-soft);font-weight:600}
+  .nota em{font-style:italic}
+
+  .alerta{
+    display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start;
+    background:var(--brass-soft);border-radius:2px;
+    padding:14px 17px;
+    font-family:Archivo,system-ui,sans-serif;
+    font-size:.9rem;line-height:1.54;color:var(--ink-soft);
+  }
+  .alerta .mk{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    color:var(--brass);font-weight:500;font-size:.7rem;letter-spacing:.12em;
+    padding-top:3px;
+  }
+  .alerta b{color:var(--ink);font-weight:600}
+  .alerta em{font-style:italic}
+
+  /* ---------- perguntas de descoberta ---------- */
+  .perguntas{display:flex;flex-direction:column}
+  .pq{
+    display:grid;grid-template-columns:auto 1fr;gap:4px 16px;
+    padding:16px 0;border-bottom:1px solid var(--rule);
+  }
+  .pq:last-child{border-bottom:none;padding-bottom:0}
+  .pq .k{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.72rem;color:var(--iris);padding-top:5px;
+  }
+  .pq .q{
+    font-size:1.06rem;color:var(--ink);
+    border-left:3px solid var(--iris);padding-left:13px;
+  }
+  .pq .por{
+    grid-column:2;font-family:Archivo,system-ui,sans-serif;
+    font-size:.87rem;color:var(--muted);padding-left:16px;line-height:1.5;
+  }
+  .pq .por b{color:var(--ink-soft);font-weight:600}
+
+  /* ---------- mapa de respostas ---------- */
+  .mapa{display:flex;flex-direction:column;gap:14px}
+  .caso{
+    background:var(--surface);border:1px solid var(--rule);border-radius:2px;
+    padding:19px 21px 20px;display:flex;flex-direction:column;gap:12px;
+    box-shadow:var(--shadow);
+  }
+  .caso-top{display:flex;flex-wrap:wrap;gap:9px 14px;align-items:baseline;justify-content:space-between}
+  .caso-diz{font-size:1.05rem;color:var(--ink);font-weight:600;flex:1 1 300px;min-width:0}
+  .caso-diz .asp{color:var(--rule-strong)}
+  .caso-leitura{
+    font-family:Archivo,system-ui,sans-serif;font-size:.885rem;
+    color:var(--ink-soft);line-height:1.5;
+  }
+  .caso-leitura b{font-weight:600}
+  .caso .fala{border-left-color:var(--rule-strong);background:var(--surface-2);box-shadow:none}
+  .caso .fala .tag{color:var(--muted)}
+  .caso.bom .fala{border-left-color:var(--accent)}
+  .caso.bom .fala .tag{color:var(--accent)}
+
+  .chip{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;
+    padding:3px 8px;border-radius:2px;white-space:nowrap;
+    background:var(--surface-2);color:var(--muted);border:1px solid var(--rule);
+  }
+  .chip.verde{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+  .chip.azul{background:var(--iris-soft);color:var(--iris);border-color:transparent}
+  .chip.ambar{background:var(--brass-soft);color:var(--brass);border-color:transparent}
+  .chip.vermelho{background:var(--risk-soft);color:var(--risk);border-color:transparent}
+
+  /* ---------- objeções ---------- */
+  .objs{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));
+    gap:1px;background:var(--rule);
+    border:1px solid var(--rule);border-radius:2px;overflow:hidden;
+  }
+  .obj{background:var(--surface);padding:19px 20px 20px;display:flex;flex-direction:column;gap:10px}
+  .obj h4{font-size:.98rem;color:var(--risk)}
+  .obj .resp{font-size:.99rem;line-height:1.55;color:var(--ink)}
+  .obj .resp em{color:var(--muted);font-style:italic}
+  .obj .regra{
+    font-family:Archivo,system-ui,sans-serif;font-size:.83rem;color:var(--muted);
+    border-top:1px solid var(--rule);padding-top:9px;margin-top:auto;line-height:1.5;
+  }
+  .obj .regra em{font-style:italic}
+
+  /* ---------- números ---------- */
+  .split{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;
+  }
+  .cell{background:var(--surface);padding:19px 20px 21px;display:flex;flex-direction:column;gap:4px}
+  .cell .big{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+    font-size:1.95rem;line-height:1.05;letter-spacing:-.03em;color:var(--accent);
+  }
+  .cell .big.neg{color:var(--risk)}
+  .cell .cap{font-family:Archivo,system-ui,sans-serif;font-size:.845rem;color:var(--muted);line-height:1.45}
+
+  /* ---------- checklist ---------- */
+  .check{display:flex;flex-direction:column}
+  .ck{
+    display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    padding:14px 0;border-bottom:1px solid var(--rule);
+  }
+  .ck:last-child{border-bottom:none;padding-bottom:0}
+  .ck .box{
+    width:15px;height:15px;border:1.5px solid var(--rule-strong);
+    border-radius:2px;margin-top:5px;flex:none;
+  }
+  .ck .txt{font-size:.99rem;color:var(--ink);line-height:1.5}
+  .ck .txt b{font-weight:600}
+  .ck .txt small{
+    display:block;font-family:Archivo,system-ui,sans-serif;
+    font-size:.845rem;color:var(--muted);margin-top:3px;line-height:1.45;
+  }
+
+  .msg{
+    background:var(--surface-2);border:1px dashed var(--rule-strong);border-radius:2px;
+    padding:15px 17px;display:flex;flex-direction:column;gap:7px;
+  }
+  .msg .tag{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  }
+  .msg p{font-size:.99rem;line-height:1.56;color:var(--ink)}
+
+  footer{
+    border-top:1px solid var(--rule);padding-top:24px;
+    font-family:Archivo,system-ui,sans-serif;
+    color:var(--muted);font-size:.855rem;line-height:1.55;
+    display:flex;flex-direction:column;gap:8px;
+  }
+
+  @media (max-width:620px){
+    body{font-size:16.5px;padding:0 16px 80px}
+    nav.bar{margin:0 -16px;padding:0 16px}
+    .step{grid-template-columns:1fr;gap:12px}
+    .pq{grid-template-columns:1fr}
+    .pq .k{padding-top:0}
+    .pq .por{grid-column:1;padding-left:16px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+  }
+</style>
+
+<nav class="bar">
+  <div class="inner">
+    <a href="#preparo">Antes</a>
+    <a href="#abertura">1 · Abertura</a>
+    <a href="#descoberta">2 · Descoberta</a>
+    <a href="#mapa">3 · Mapa</a>
+    <a href="#oferta">4 · Oferta</a>
+    <a href="#fechamento">5 · Fechamento</a>
+    <a href="#objecoes">Objeções</a>
+    <a href="#depois">Depois</a>
+  </div>
+</nav>
+
+<div class="spine">
+  <header>
+    <div class="stack">
+      <span class="eyebrow">Mensalli · Prospecção ativa</span>
+      <h1>Roteiro das 300 escolinhas</h1>
+      <p class="lede">
+        Quatro minutos ao telefone com o dono de uma escolinha de futebol. A ligação
+        tem dois produtos: descobrir <strong>como ele cobra hoje</strong> — e sair com a
+        lista de alunos dele na mão.
+      </p>
+      <div class="stamp">
+        <span>26 ago 2026</span>
+        <span>Futebol/escolinhas: 9 contas · 4 pagantes</span>
+        <span>Teto por ligação: 4 min</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ ANTES ============ -->
+  <section id="preparo">
+    <div class="sec-head">
+      <span class="eyebrow">Antes de discar</span>
+      <h2>O que precisa estar na tela</h2>
+      <p class="sub">
+        Trinta segundos de preparo por ligação. Sem isso a abertura sai genérica
+        e você é ouvido como telemarketing.
+      </p>
+    </div>
+
+    <div class="prose">
+      <div class="check">
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">Nome da escolinha e a cidade
+            <small>Falar o nome certo na primeira frase é o que separa você de uma central de vendas.</small>
+          </div>
+        </div>
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">O nome do dono, se o documento tiver
+            <small>Se não tiver, a primeira pergunta é justamente essa — e você anota.</small>
+          </div>
+        </div>
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">Onde você vai anotar as três respostas
+            <small>Board de leads em /app/admin/leads, ou a própria planilha das 300. O registro é o ativo.</small>
+          </div>
+        </div>
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">WhatsApp aberto no mesmo número de onde você está ligando
+            <small>A mensagem de follow-up sai no minuto seguinte ao "tchau", não no fim do dia.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="alerta">
+        <span class="mk">HORA</span>
+        <div>
+          <b>Ligue entre 9h–11h30 e 14h–16h30.</b> Escolinha treina no fim da tarde e à noite;
+          depois das 17h o dono está em campo com apito na boca e a ligação morre em quinze
+          segundos. Sábado de manhã é o pior horário possível — é dia de jogo.
+        </div>
+      </div>
+
+      <p class="nota">
+        <b>O objetivo da ligação não é vender.</b> É sair dela com três informações —
+        quantos alunos, como cobra hoje, quem paga — e com uma próxima ação marcada.
+        Quem tenta fechar no telefone perde as duas coisas.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 1 ABERTURA ============ -->
+  <section id="abertura">
+    <div class="sec-head">
+      <span class="eyebrow">Etapa 1</span>
+      <h2>Abertura</h2>
+      <p class="sub">Único objetivo: chegar no dono e comprar trinta segundos de atenção.</p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-head">
+          <h3>Nomeie o nicho na primeira frase</h3>
+          <span class="timer">0:00 – 0:20</span>
+        </div>
+
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>"Oi, bom dia! Aqui é o Caio, do Mensalli. Falo com o responsável pela escolinha?"</p>
+          <p>
+            <em>[quando ele atender]</em> "Prazer, [nome]. Olha, vou ser bem rápido:
+            eu trabalho com escolinha de futebol e CT, cuidando da parte de mensalidade —
+            a cobrança dos pais. Te tomo dois minutos, pode ser?"
+          </p>
+        </div>
+
+        <p class="nota">
+          <b>Por que funciona:</b> "escolinha de futebol" na primeira frase diz que você não
+          está ligando de uma lista comprada. E "dois minutos" é um pedido pequeno e verificável —
+          "cinco minutinhos" já soa a reunião disfarçada.
+        </p>
+
+        <div class="alerta">
+          <span class="mk">SE</span>
+          <div>
+            <b>"Agora não dá."</b> Não insista e não desligue seco:
+            <em>"Sem problema. Prefere que eu te chame às [x]h, ou te mando no WhatsApp deste
+            mesmo número?"</em> — e mande a mensagem <b>na hora</b>, enquanto ele ainda lembra
+            da sua voz.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2 DESCOBERTA ============ -->
+  <section id="descoberta">
+    <div class="sec-head">
+      <span class="eyebrow">Etapa 2 · a parte que importa</span>
+      <h2>Descoberta</h2>
+      <p class="sub">
+        Três perguntas, nesta ordem. Aqui você não vende nada — só pergunta e anota.
+        Se a ligação inteira for só isso, ela já valeu.
+      </p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-head">
+          <h3>As três perguntas</h3>
+          <span class="timer">0:20 – 1:50</span>
+        </div>
+
+        <div class="perguntas">
+          <div class="pq">
+            <span class="k">P1</span>
+            <p class="q">"Quantos alunos vocês têm hoje, mais ou menos?"</p>
+            <p class="por">
+              É o qualificador. Na base do Mensalli, acima de 30 alunos <b>80% viram pagantes</b>;
+              abaixo de 20, quase ninguém. Ouviu "uns 15"? Seja simpático, mas não force o fechamento.
+            </p>
+          </div>
+
+          <div class="pq">
+            <span class="k">P2</span>
+            <p class="q">"E a mensalidade, como vocês controlam hoje? Caderno, planilha, algum sistema?"</p>
+            <p class="por">
+              <b>Esta é a pergunta das 300 ligações.</b> Oferecer as três opções dentro da própria
+              pergunta dá permissão para ele admitir o caderno sem vergonha. A resposta define tudo
+              o que vem depois — veja o mapa abaixo.
+            </p>
+          </div>
+
+          <div class="pq">
+            <span class="k">P3</span>
+            <p class="q">"E quem paga é o pai, a mãe? Como é que a cobrança chega até eles?"</p>
+            <p class="por">
+              A dor mora aqui. Escolinha é o nicho em que quem usa o serviço não é quem paga —
+              e quase sempre a resposta é alguém digitando no WhatsApp, um por um, todo mês.
+            </p>
+          </div>
+
+          <div class="pq">
+            <span class="k">+1</span>
+            <p class="q">"E quantos costumam atrasar por mês?"</p>
+            <p class="por">
+              Só se ele estiver falante. <b>Anote o número literal que ele disser</b> — é o seu
+              argumento de venda inteiro, e quem disse foi ele, não você.
+            </p>
+          </div>
+        </div>
+
+        <div class="alerta">
+          <span class="mk">REGRA</span>
+          <div>
+            Depois de cada pergunta, <b>fique calado</b>. O silêncio de três segundos é o que faz
+            o dono completar a resposta com a reclamação — e a reclamação dele é a sua proposta pronta.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3 MAPA ============ -->
+  <section id="mapa" class="wide">
+    <div class="sec-head spine">
+      <span class="eyebrow">Etapa 3 · ramificação</span>
+      <h2>Mapa de respostas</h2>
+      <p class="sub">Sete caminhos possíveis para a P2. Ache o dele, leia a fala, siga.</p>
+    </div>
+
+    <div class="mapa">
+
+      <div class="caso bom">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>É no caderno mesmo. / Tá na minha cabeça.<span class="asp">"</span></p>
+          <span class="chip verde">Melhor cenário</span>
+        </div>
+        <p class="caso-leitura">
+          Sem software para desinstalar, sem contrato, sem sócio de tecnologia para convencer.
+          Só um dono cansado.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Entendi. E quando um pai atrasa, você cobra ou deixa passar? … Pois é, é sempre isso.
+            É exatamente o que eu resolvo: o sistema manda a cobrança pelo <b>seu próprio</b>
+            WhatsApp — três dias antes, no dia e depois do vencimento. Você não digita nada,
+            e ainda vê num painel quem pagou e quem não pagou."
+          </p>
+        </div>
+      </div>
+
+      <div class="caso bom">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>Tenho uma planilha no Excel.<span class="asp">"</span></p>
+          <span class="chip verde">Lista pronta</span>
+        </div>
+        <p class="caso-leitura">
+          O melhor de todos para fechar: ele já tem exatamente o insumo de que você precisa para
+          montar a conta dele hoje.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Perfeito — planilha é o que eu mais recebo. Você me manda essa planilha
+            <b>do jeito que ela está</b>, eu subo tudo e te devolvo funcionando. Não precisa
+            arrumar coluna, não precisa redigitar nada."
+          </p>
+        </div>
+      </div>
+
+      <div class="caso bom">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>Eu mando no WhatsApp na mão, um por um.<span class="asp">"</span></p>
+          <span class="chip verde">Dor madura</span>
+        </div>
+        <p class="caso-leitura">
+          Ele já faz o trabalho que o Mensalli faz. Não explique o produto — faça ele dizer
+          em voz alta quanto isso custa.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "E quanto tempo isso te toma por mês? … <em>[ouça até o fim]</em> É o que todo mundo
+            me fala: dia 5, dia 10, cutucando pai de aluno. O Mensalli faz esse mesmo trabalho
+            sozinho, saindo do <b>seu</b> número — o pai nem percebe diferença, continua sendo
+            você falando com ele."
+          </p>
+        </div>
+      </div>
+
+      <div class="caso">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>Uso o Asaas / PagSeguro / InfinitePay / só PIX.<span class="asp">"</span></p>
+          <span class="chip azul">Tem cobrança, falta régua</span>
+        </div>
+        <p class="caso-leitura">
+          Não ataque o gateway — ele continua sendo o recebimento. O buraco é <b>quem avisa</b>.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Ótimo, e o Asaas continua sendo o seu recebimento — eu não substituo isso, eu me
+            conecto nele. O que falta ali é quem avisa: o Asaas manda e-mail e boleto, e pai de
+            aluno não abre e-mail. Eu ponho o lembrete no WhatsApp com o link de pagamento junto,
+            e a baixa cai sozinha quando ele paga."
+          </p>
+        </div>
+      </div>
+
+      <div class="caso">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>Já tenho sistema — NextFit, TecnoFit, Sponte, Pacto…<span class="asp">"</span></p>
+          <span class="chip ambar">Procure a fresta</span>
+        </div>
+        <p class="caso-leitura">
+          Não brigue de frente com o ERP: você não tem ficha de treino nem catraca, e nem quer ter.
+          Pergunte pela régua, que é onde eles furam.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Legal — e a cobrança dele avisa o pai pelo WhatsApp automático, ou só gera o boleto?
+            … Entendi. É bem comum: o sistema é bom de cadastro e fraco de cobrança. Tem cliente
+            meu que mantém o sistema e usa o Mensalli só pra régua, porque é ali que fura."
+          </p>
+        </div>
+        <p class="nota">
+          Se ele estiver genuinamente satisfeito, <b>encerre bem e marque revisita em três meses</b>.
+          Escolinha troca de sistema em janeiro. Não queime a porta.
+        </p>
+      </div>
+
+      <div class="caso">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>Quem cuida disso é a secretária / minha esposa.<span class="asp">"</span></p>
+          <span class="chip azul">O usuário é outro</span>
+        </div>
+        <p class="caso-leitura">
+          Não perca a ligação nem tente vender para quem não sente a dor. Peça a ponte.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Então é com ela que eu preciso falar! Ela atende no WhatsApp? Me passa o número que
+            eu falo direto com ela e te copio no que a gente combinar — sem te tomar mais tempo."
+          </p>
+        </div>
+      </div>
+
+      <div class="caso">
+        <div class="caso-top">
+          <p class="caso-diz"><span class="asp">"</span>Aqui não tem mensalidade, é avulso / por aula.<span class="asp">"</span></p>
+          <span class="chip vermelho">Fora do perfil</span>
+        </div>
+        <p class="caso-leitura">
+          Sem mensalidade recorrente não há produto. Encerre em vinte segundos, com educação —
+          ele conhece outros donos de escolinha.
+        </p>
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Ah, então o meu não serve pra você — eu resolvo mensalidade recorrente mesmo.
+            Não vou te tomar tempo. Só uma coisa: se você conhece alguém que tem turma fixa e
+            sofre com isso, me indica? Bom treino aí!"
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 4 OFERTA ============ -->
+  <section id="oferta">
+    <div class="sec-head">
+      <span class="eyebrow">Etapa 4</span>
+      <h2>A frase de posicionamento</h2>
+      <p class="sub">Uma frase só, e sempre <em>depois</em> de ouvir. Nunca antes da P2.</p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-head">
+          <h3>O que o Mensalli é — e o que ele não é</h3>
+          <span class="timer">1:50 – 2:15</span>
+        </div>
+
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "O Mensalli é um sistema de mensalidade feito pra quem tem <b>turma</b> — escolinha,
+            CT, studio. Ele cobra os pais sozinho pelo seu WhatsApp, te mostra num painel quem
+            pagou e quem não pagou, e o pai paga por um link, no PIX, cartão ou boleto."
+          </p>
+          <p>
+            "E ele não é sistema de academia: não tem ficha de treino, não tem catraca, não tem
+            venda de suplemento. É só a parte do dinheiro, bem feita."
+          </p>
+        </div>
+
+        <p class="nota">
+          <b>Dizer o que você não faz vende mais do que listar funcionalidade.</b> O dono já foi
+          apresentado a três ERPs caros e complicados; ouvir "isso eu não faço" soa a honestidade
+          e reposiciona o preço na cabeça dele antes de você falar o número.
+        </p>
+
+        <div class="alerta">
+          <span class="mk">NÃO</span>
+          <div>
+            Não entre em lista de features. Se ele perguntar "tem controle de presença?",
+            responda em uma frase e <b>volte para a cobrança</b>: <em>"Tem, mas o que faz diferença
+            no seu caso é a mensalidade — e é justamente isso que eu queria te mostrar."</em>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5 FECHAMENTO ============ -->
+  <section id="fechamento">
+    <div class="sec-head">
+      <span class="eyebrow">Etapa 5</span>
+      <h2>Fechamento em três degraus</h2>
+      <p class="sub">Ofereça nesta ordem, e só desça um degrau quando o de cima for recusado.</p>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-head">
+          <h3>Degrau 1 — a lista (é este que converte)</h3>
+          <span class="timer">2:15 – 3:30</span>
+        </div>
+
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Vou te propor o que eu faço com todo mundo: você me manda a sua lista de alunos
+            <b>do jeito que ela estiver</b> — planilha, foto do caderno, print de conversa, tanto
+            faz. Eu monto a sua conta inteira: alunos, valores, dia de vencimento e as mensagens
+            escritas no seu tom."
+          </p>
+          <p>
+            "Aí eu te ligo de volta, a gente conecta o seu WhatsApp em cinco minutos e você vê a
+            primeira cobrança saindo. Isso não te custa nada pra ver. Se fizer sentido, depois a
+            gente conversa de plano. Posso te chamar no WhatsApp agora?"
+          </p>
+        </div>
+
+        <div class="split">
+          <div class="cell">
+            <span class="big">51%</span>
+            <span class="cap">viraram pagantes entre quem teve a lista subida e o WhatsApp conectado</span>
+          </div>
+          <div class="cell">
+            <span class="big neg">1,9%</span>
+            <span class="cap">viraram pagantes entre quem só ganhou o login e foi mexer sozinho</span>
+          </div>
+          <div class="cell">
+            <span class="big neg">0</span>
+            <span class="cap">pagantes entre as 46 contas que nunca cadastraram um único aluno</span>
+          </div>
+        </div>
+
+        <p class="nota">
+          É por isso que o degrau 1 não é "teste grátis": <b>nunca termine uma ligação em
+          "vou te mandar o link do teste"</b>. Quem recebe só o link não digita quarenta alunos
+          numa terça-feira — ele some, e você perde o lead achando que ele não quis.
+          O teste existe e continua sendo seu; ele só começa com a conta já montada.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-head">
+          <h3>Degrau 2 — a reunião, se ele quiser ver antes</h3>
+          <span class="timer">se recusar o degrau 1</span>
+        </div>
+
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Se você preferir ver antes de me mandar qualquer coisa, tudo bem: a gente faz vinte
+            minutos por vídeo e eu te mostro com dados de escolinha mesmo, não com exemplo
+            genérico. Amanhã às 10h ou quinta às 15h?"
+          </p>
+        </div>
+
+        <p class="nota">
+          <b>Sempre duas opções de horário.</b> "Quando você pode?" devolve o trabalho para ele
+          e a reunião nunca acontece. Mande o convite no WhatsApp antes de desligar.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-head">
+          <h3>Degrau 3 — o contato salvo</h3>
+          <span class="timer">se recusar os dois</span>
+        </div>
+
+        <div class="fala">
+          <span class="tag">Você</span>
+          <p>
+            "Tranquilo, sem problema nenhum. Posso te mandar no WhatsApp um resumo de uma linha
+            e um vídeo de um minuto? Aí fica salvo aí, e se um dia a cobrança dos pais estiver te
+            dando trabalho, você me chama."
+          </p>
+        </div>
+
+        <p class="nota">
+          Isso não é prêmio de consolação: <b>100% dos clientes atuais do Mensalli entraram pelo
+          WhatsApp</b>, e a mediana entre o cadastro e o primeiro pagamento é de 27 dias.
+          O "não" de hoje que virou contato salvo é o lead de novembro.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OBJEÇÕES ============ -->
+  <section id="objecoes" class="wide">
+    <div class="sec-head spine">
+      <span class="eyebrow">Consulta rápida</span>
+      <h2>Objeções</h2>
+      <p class="sub">Responda curto e devolva a conversa para onde ela estava.</p>
+    </div>
+
+    <div class="objs">
+
+      <div class="obj">
+        <h4>"Quanto custa?" — logo no começo</h4>
+        <p class="resp">
+          "Vai de R$ 49 a R$ 149 por mês, dependendo do tamanho — pra uma escolinha do seu porte
+          é o de R$ 99. Mas antes do preço eu preciso saber se serve pra você; me deixa te
+          perguntar mais uma coisa?"
+        </p>
+        <p class="regra">Nunca fuja do preço — fugir custa a confiança da ligação inteira. Diga o número e siga.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Vou pensar."</h4>
+        <p class="resp">
+          "Claro. Só pra eu não ficar te enchendo: te chamo na [dia da semana], ou prefere que
+          eu deixe quieto e você me procura?"
+        </p>
+        <p class="regra">Saia com data marcada ou com um "não" limpo. As duas servem; o limbo não.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Manda por WhatsApp que eu vejo depois."</h4>
+        <p class="resp">
+          "Mando agora mesmo. Só me diz uma coisa antes, pra eu te mandar a coisa certa e não um
+          material genérico: hoje é planilha ou caderno?"
+        </p>
+        <p class="regra">Nunca desligue sem a P2 respondida — é o dado que você foi buscar nas 300.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Meu WhatsApp não vai ser banido?"</h4>
+        <p class="resp">
+          "Não. Só sai mensagem pra aluno que você mesmo cadastrou, no ritmo normal, sem lista
+          fria e sem disparo em massa. É o mesmo que você já faz na mão — a diferença é que não
+          é você digitando."
+        </p>
+        <p class="regra">Objeção comum e legítima. Responder rápido e sem defensiva encerra o assunto.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Não entendo nada de tecnologia."</h4>
+        <p class="resp">
+          "E não precisa entender. Você não vai configurar nada — quem monta sou eu. O que sobra
+          pra você é abrir o painel e ver quem pagou."
+        </p>
+        <p class="regra">É a objeção mais fácil de virar fechamento: ela <em>pede</em> o degrau 1.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Preciso falar com meu sócio."</h4>
+        <p class="resp">
+          "Faz todo sentido. Chama ele numa call de vinte minutos comigo, aí vocês decidem juntos
+          e ninguém fica no telefone sem fio. Quinta às 10h serve pros dois?"
+        </p>
+        <p class="regra">Transforme o obstáculo em convite. Nunca mande material para o sócio ver sozinho.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Os pais vão achar ruim receber cobrança automática."</h4>
+        <p class="resp">
+          "É o contrário do que parece: a mensagem sai do seu número, com o nome da escolinha,
+          três dias <b>antes</b> de vencer. Pai gosta de ser lembrado antes — chato é ser cobrado depois."
+        </p>
+        <p class="regra">Aqui você vende dignidade, não automação. É o argumento mais forte do nicho.</p>
+      </div>
+
+      <div class="obj">
+        <h4>"Já usei sistema e não deu certo."</h4>
+        <p class="resp">
+          "O que aconteceu? … <em>[ouça inteiro]</em> Pois é, é quase sempre isso: entregam o
+          login e somem. Eu faço o contrário — eu monto, e só te chamo quando estiver rodando."
+        </p>
+        <p class="regra">Deixe ele contar a história toda. A resposta dele é o roteiro da sua diferenciação.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ DEPOIS ============ -->
+  <section id="depois">
+    <div class="sec-head">
+      <span class="eyebrow">Sessenta segundos por ligação</span>
+      <h2>Depois de desligar</h2>
+      <p class="sub">
+        Sempre — inclusive com quem disse não. É esta parte que transforma 300 discagens
+        em um ativo.
+      </p>
+    </div>
+
+    <div class="prose">
+      <div class="check">
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">Mande o WhatsApp <b>na hora</b>
+            <small>Enquanto ele lembra da sua voz. Uma hora depois você virou mais um número desconhecido.</small>
+          </div>
+        </div>
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">Registre o card no board de leads
+            <small>/app/admin/leads — casando o telefone, o card caminha sozinho de "novo" até "pagante".</small>
+          </div>
+        </div>
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">Anote a resposta da P2 na planilha das 300
+            <small>Caderno · planilha · WhatsApp na mão · gateway · ERP · avulso. Seis categorias, uma coluna.</small>
+          </div>
+        </div>
+        <div class="ck">
+          <div class="box"></div>
+          <div class="txt">Anote o número de alunos e o de atrasos
+            <small>Depois de 50 ligações você já sabe o tamanho real do mercado — e qual argumento fecha.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <span class="tag">WhatsApp · ele topou o degrau 1</span>
+        <p>
+          "[Nome], foi bom falar com você agora. Aqui é o Caio do Mensalli, como combinei.
+          Me manda a lista dos seus alunos do jeito que estiver — planilha, foto do caderno,
+          print, tanto faz — que eu monto a sua conta e te mostro rodando. Sem custo pra ver."
+        </p>
+      </div>
+
+      <div class="msg">
+        <span class="tag">WhatsApp · ele não quis nada agora</span>
+        <p>
+          "[Nome], obrigado pelo tempo agora há pouco. Fico por aqui — qualquer dia que a cobrança
+          dos pais estiver dando trabalho, é só me chamar neste número. Bom treino aí!"
+        </p>
+      </div>
+
+      <p class="nota">
+        <b>O ativo real das 300 ligações não é a venda.</b> É saber, com número, o que o mercado
+        de escolinha de futebol usa hoje para cobrar mensalidade. Nenhum concorrente tem esse
+        dado — e ele reescreve a landing, o anúncio e o preço.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ RITMO ============ -->
+  <section id="ritmo">
+    <div class="sec-head">
+      <span class="eyebrow">Operação</span>
+      <h2>Ritmo</h2>
+      <p class="sub">
+        Números para calibrar, não metas de fé — refaça a conta depois das primeiras 50 ligações,
+        com o que realmente aconteceu.
+      </p>
+    </div>
+
+    <div class="split">
+      <div class="cell">
+        <span class="big">25</span>
+        <span class="cap">discagens por bloco, sem parar no meio para responder WhatsApp</span>
+      </div>
+      <div class="cell">
+        <span class="big">4 min</span>
+        <span class="cap">de teto por ligação — passou disso, ou já fechou ou está enrolando</span>
+      </div>
+      <div class="cell">
+        <span class="big">12</span>
+        <span class="cap">blocos até cobrir as 300 — três semanas em ritmo de 4 blocos por semana</span>
+      </div>
+    </div>
+
+    <p class="nota" style="margin-top:18px">
+      Ao fim do primeiro bloco, meça três coisas: quantos atenderam, quantos responderam a P2 e
+      quantos mandaram a lista. Se "mandou a lista" estiver perto de zero mas a P2 estiver alta,
+      o problema é o degrau 1 — não o roteiro inteiro.
+    </p>
+  </section>
+
+  <footer>
+    <p>
+      Números de conversão apurados no banco de produção do Mensalli em 21 de agosto de 2026:
+      108 contas criadas, 25 com plano vigente, 41 com WhatsApp conectado. Futebol e escolinhas:
+      9 contas e 4 pagantes — o segundo melhor nicho da base, atrás de lutas e artes marciais.
+    </p>
+    <p>Complementa o Posicionamento Mensalli e o Plano de crescimento 26 → 50.</p>
+  </footer>
+</div>

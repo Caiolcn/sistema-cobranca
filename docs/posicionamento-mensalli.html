@@ -1,0 +1,719 @@
+<title>O que é o Mensalli</title>
+<style>
+  :root{
+    --ground:#F3F5F1;
+    --surface:#FCFDFA;
+    --surface-2:#EDF0EA;
+    --ink:#101A17;
+    --ink-soft:#33433E;
+    --muted:#5F6E68;
+    --rule:#D9E0D8;
+    --rule-strong:#BCC7B9;
+    --accent:#0E6B57;
+    --accent-soft:#D8E8E1;
+    --brass:#8F6314;
+    --brass-soft:#F0E4C8;
+    --iris:#2F5480;
+    --iris-soft:#DCE6F2;
+    --plum:#6B3B70;
+    --plum-soft:#EEDEF0;
+    --olive:#586D24;
+    --olive-soft:#E6EDCE;
+    --risk:#9E2B1F;
+    --risk-soft:#F5DCD7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0C1311;
+      --surface:#131D19;
+      --surface-2:#18241F;
+      --ink:#E7EEE9;
+      --ink-soft:#C4D1CB;
+      --muted:#8E9E97;
+      --rule:#25332E;
+      --rule-strong:#35473F;
+      --accent:#54C3A5;
+      --accent-soft:#12332B;
+      --brass:#D9AB55;
+      --brass-soft:#33280F;
+      --iris:#8AAFDD;
+      --iris-soft:#16243A;
+      --plum:#C596CA;
+      --plum-soft:#2B1A2E;
+      --olive:#AFC468;
+      --olive-soft:#222B12;
+      --risk:#E88375;
+      --risk-soft:#3A1D18;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0C1311;
+    --surface:#131D19;
+    --surface-2:#18241F;
+    --ink:#E7EEE9;
+    --ink-soft:#C4D1CB;
+    --muted:#8E9E97;
+    --rule:#25332E;
+    --rule-strong:#35473F;
+    --accent:#54C3A5;
+    --accent-soft:#12332B;
+    --brass:#D9AB55;
+    --brass-soft:#33280F;
+    --iris:#8AAFDD;
+    --iris-soft:#16243A;
+    --plum:#C596CA;
+    --plum-soft:#2B1A2E;
+    --olive:#AFC468;
+    --olive-soft:#222B12;
+    --risk:#E88375;
+    --risk-soft:#3A1D18;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16.5px;
+    line-height:1.62;
+    margin:0;
+    padding:0 20px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .spine{max-width:66ch;margin:0 auto}
+  .wide{max-width:1080px;margin-left:auto;margin-right:auto}
+  h1,h2,h3{font-family:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;font-weight:600;text-wrap:balance;margin:0}
+  h1{font-size:clamp(2.1rem,5.2vw,3.05rem);line-height:1.08;letter-spacing:-.022em}
+  h2{font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.18;letter-spacing:-.015em}
+  h3{font-size:1.14rem;line-height:1.3;letter-spacing:-.008em}
+  p{margin:0}
+  strong{font-weight:650;color:var(--ink)}
+  a{color:var(--accent)}
+  .eyebrow{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.705rem;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--muted);
+  }
+  .num{font-variant-numeric:tabular-nums}
+
+  header{border-bottom:1px solid var(--rule);padding:76px 0 40px;margin-bottom:56px}
+  header .stack{display:flex;flex-direction:column;gap:20px}
+  .lede{font-size:1.115rem;color:var(--ink-soft);max-width:58ch}
+  .stamp{
+    display:flex;flex-wrap:wrap;gap:10px 26px;padding-top:8px;
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.735rem;color:var(--muted);
+  }
+
+  section{margin-bottom:76px}
+  .sec-head{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+  .prose{display:flex;flex-direction:column;gap:18px}
+  .prose ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:9px}
+
+  /* ---------- mapa ---------- */
+  .mapwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface);padding:22px 8px}
+  .mapwrap svg{display:block;min-width:700px;width:100%;height:auto}
+  .mm-line{fill:none;stroke-width:2.6;stroke-linecap:round}
+  .mm-root{fill:var(--surface-2);stroke:var(--rule-strong);stroke-width:1}
+  .mm-rootlabel{fill:var(--ink);font-family:ui-serif,Georgia,serif;font-size:19px;font-weight:600}
+  .mm-label{fill:var(--ink);font-family:system-ui,sans-serif;font-size:14.5px;font-weight:600}
+  .mm-sub{fill:var(--muted);font-family:system-ui,sans-serif;font-size:11.5px}
+  .b1{stroke:var(--brass)} .b2{stroke:var(--accent)} .b3{stroke:var(--iris)}
+  .b4{stroke:var(--plum)} .b5{stroke:var(--olive)}
+
+  /* ---------- ramos ---------- */
+  .branches{display:flex;flex-direction:column;gap:22px}
+  .branch{
+    background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+    border-left:3px solid var(--b);padding:24px 26px 22px;
+    display:flex;flex-direction:column;gap:16px;
+  }
+  .branch-top{display:flex;flex-direction:column;gap:7px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+  .branch-top h3{color:var(--b);font-size:1.3rem}
+  .branch-top p{font-size:.945rem;color:var(--ink-soft)}
+  .leaves{display:flex;flex-direction:column;gap:0}
+  .leaf{
+    display:grid;grid-template-columns:1fr auto;gap:6px 18px;align-items:baseline;
+    padding:13px 0;border-bottom:1px solid var(--rule);
+  }
+  .leaf:last-child{border-bottom:none;padding-bottom:0}
+  .leaf-name{font-weight:600;font-size:.985rem}
+  .leaf-desc{grid-column:1 / -1;font-size:.9rem;color:var(--ink-soft);margin-top:-2px}
+  .leaf-desc .n{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .chip{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.655rem;letter-spacing:.08em;text-transform:uppercase;
+    padding:3px 8px;border-radius:2px;white-space:nowrap;
+    background:var(--surface-2);color:var(--muted);border:1px solid var(--rule);
+  }
+  .chip.on{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+  .chip.build{background:var(--brass-soft);color:var(--brass);border-color:transparent}
+  .chip.stall{background:var(--risk-soft);color:var(--risk);border-color:transparent}
+  .chip.open{background:var(--surface);color:var(--muted);border-style:dashed}
+
+  /* ---------- números ---------- */
+  .split{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden;
+  }
+  .cell{background:var(--surface);padding:20px 20px 22px;display:flex;flex-direction:column;gap:5px}
+  .cell .big{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;
+    font-size:2.05rem;line-height:1.05;letter-spacing:-.03em;
+  }
+  .cell .big.pos{color:var(--accent)}
+  .cell .big.neg{color:var(--risk)}
+  .cell .cap{font-size:.855rem;color:var(--muted);line-height:1.42}
+
+  /* ---------- confronto ---------- */
+  .versus{
+    display:grid;grid-template-columns:1fr 1fr;gap:1px;
+    background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden;
+  }
+  .vs-col{background:var(--surface);padding:22px 24px;display:flex;flex-direction:column;gap:12px}
+  .vs-col.no{background:var(--surface-2)}
+  .vs-col h3{font-size:1.05rem}
+  .vs-col.yes h3{color:var(--accent)}
+  .vs-col.no h3{color:var(--muted)}
+  .vs-col ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:8px;font-size:.925rem;color:var(--ink-soft)}
+
+  /* ---------- tabelas ---------- */
+  table{border-collapse:collapse;width:100%;font-size:.925rem}
+  .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface)}
+  th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.695rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:500;
+    background:var(--surface-2);white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+  td.win{color:var(--accent);font-weight:600}
+  td.zero{color:var(--risk)}
+
+  /* ---------- perguntas abertas ---------- */
+  .opens{display:flex;flex-direction:column;gap:14px}
+  .open-item{
+    display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    padding:17px 19px;background:var(--surface);border:1px solid var(--rule);
+    border-left:3px solid var(--brass);border-radius:3px;
+  }
+  .open-item .q{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.95rem;
+    color:var(--brass);padding-top:1px;
+  }
+  .open-item p{font-size:.93rem;color:var(--ink-soft)}
+  .open-item strong{display:block;margin-bottom:3px;color:var(--ink)}
+
+  footer{border-top:1px solid var(--rule);padding-top:26px;color:var(--muted);font-size:.865rem}
+
+  @media (max-width:640px){
+    .versus{grid-template-columns:1fr}
+    .leaf{grid-template-columns:1fr}
+    .chips{justify-content:flex-start}
+    header{padding-top:48px}
+  }
+</style>
+
+<header class="spine">
+  <div class="stack">
+    <p class="eyebrow">Mensalli · Posicionamento</p>
+    <h1>O que o Mensalli é, e o que ele passa a vender</h1>
+    <p class="lede">
+      O mesmo exercício feito para a Infodental, com uma diferença de fundo: lá a virada é
+      <em>serviço acoplado ao software</em> em regime contínuo, com sete pessoas nomeadas.
+      Aqui o serviço acoplado é <strong>a instalação</strong> — pesada no começo, invisível
+      depois — e o nome ao lado de quase toda folha deste mapa é o mesmo.
+    </p>
+    <div class="stamp">
+      <span>21 ago 2026</span>
+      <span>108 contas · 25 pagantes · MRR R$ 2.647</span>
+      <span>2.770 alunos sob gestão</span>
+      <span>Fonte: banco de produção</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ A TESE ============ -->
+<section class="spine">
+  <div class="sec-head">
+    <p class="eyebrow">A tese</p>
+    <h2>Vendemos a cobrança rodando, não o acesso ao sistema</h2>
+  </div>
+  <div class="prose">
+    <p>
+      A base já respondeu isso e a resposta não é ambígua. Das 108 contas criadas,
+      <strong>quem conecta o WhatsApp e sobe os alunos converte a 51%; quem só cria a conta
+      converte a 1,9%</strong>. As 46 contas que nunca cadastraram um único aluno geraram
+      exatamente zero pagantes — não uma taxa baixa, zero. Acima de 30 alunos cadastrados,
+      80% viram pagantes.
+    </p>
+    <p>
+      Nenhuma dessas pessoas travou por não entender o produto. Travou por não ter vontade de
+      digitar quarenta alunos numa terça-feira. O que separa 1,9% de 51% não é software — é
+      alguém montando. Então o produto que se vende não é o login: é a lista importada, o
+      WhatsApp conectado e a primeira cobrança saindo sozinha.
+    </p>
+    <p>
+      Isso reordena a oferta inteira. O software é o que sustenta o cliente do mês 2 em diante;
+      <strong>o serviço é o que o faz existir no mês 1</strong>. E reordena o discurso: nenhuma
+      mensagem comercial deve oferecer teste grátis ou demonstração. Todas oferecem a mesma
+      coisa — <em>me manda a lista do jeito que ela estiver e eu te devolvo rodando</em>.
+    </p>
+  </div>
+</section>
+
+<!-- ============ O MAPA ============ -->
+<section class="wide">
+  <div class="sec-head spine" style="max-width:66ch">
+    <p class="eyebrow">O mapa</p>
+    <h2>Cinco ramos</h2>
+    <p style="color:var(--ink-soft);font-size:.985rem">
+      A mesma estrutura do mapa da Infodental. O detalhe de cada ramo vem logo abaixo.
+    </p>
+  </div>
+
+  <div class="mapwrap">
+    <svg viewBox="0 0 860 420" role="img" aria-label="Mapa dos cinco ramos do posicionamento do Mensalli: Onboarding, Serviço acoplado, Canais de venda, Estratégias de venda e Painel de clientes.">
+      <rect class="mm-root" x="14" y="182" width="146" height="56" rx="9"></rect>
+      <text class="mm-rootlabel" x="87" y="209" text-anchor="middle">Mensalli</text>
+      <text class="mm-sub" x="87" y="227" text-anchor="middle">a cobrança já rodando</text>
+
+      <path class="mm-line b1" d="M160 202 C 230 202, 240 60, 320 60"></path>
+      <path class="mm-line b2" d="M160 206 C 235 206, 245 140, 320 140"></path>
+      <path class="mm-line b3" d="M160 210 C 250 210, 250 220, 320 220"></path>
+      <path class="mm-line b4" d="M160 214 C 235 214, 245 300, 320 300"></path>
+      <path class="mm-line b5" d="M160 218 C 230 218, 240 380, 320 380"></path>
+
+      <line class="mm-line b1" x1="320" y1="60"  x2="530" y2="60"></line>
+      <line class="mm-line b2" x1="320" y1="140" x2="530" y2="140"></line>
+      <line class="mm-line b3" x1="320" y1="220" x2="530" y2="220"></line>
+      <line class="mm-line b4" x1="320" y1="300" x2="530" y2="300"></line>
+      <line class="mm-line b5" x1="320" y1="380" x2="530" y2="380"></line>
+
+      <text class="mm-label" x="330" y="46">Onboarding</text>
+      <text class="mm-sub"   x="330" y="80">Migração da lista · parametrização · WhatsApp conectado</text>
+
+      <text class="mm-label" x="330" y="126">Serviço acoplado</text>
+      <text class="mm-sub"   x="330" y="160">Montagem · régua configurada · suporte 1:1 · reconexão</text>
+
+      <text class="mm-label" x="330" y="206">Canais de venda</text>
+      <text class="mm-sub"   x="330" y="240">WhatsApp · listas paradas · indicação · Meta Ads · local</text>
+
+      <text class="mm-label" x="330" y="286">Estratégias de venda</text>
+      <text class="mm-sub"   x="330" y="320">Recorrência · anual · upsell de plano · sazonal</text>
+
+      <text class="mm-label" x="330" y="366">Painel de clientes</text>
+      <text class="mm-sub"   x="330" y="400">Quem usa, quem falha, quem está para vencer</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ============ RAMOS DETALHADOS ============ -->
+<section class="wide">
+  <div class="sec-head spine" style="max-width:66ch">
+    <p class="eyebrow">Ramo por ramo</p>
+    <h2>O que cada um contém hoje</h2>
+    <p style="color:var(--ink-soft);font-size:.985rem">
+      As etiquetas dizem em que estado a folha está — <span class="chip on">roda hoje</span>
+      <span class="chip build">a construir</span> <span class="chip stall">parado</span>
+      <span class="chip open">a decidir</span> — e quem executa. No mapa da Infodental há sete
+      nomes diferentes; aqui, um só. Essa é a informação mais importante deste documento.
+    </p>
+  </div>
+
+  <div class="branches">
+
+    <!-- Onboarding -->
+    <div class="branch" style="--b:var(--brass)">
+      <div class="branch-top">
+        <h3>Onboarding</h3>
+        <p>Tirar a pessoa de "criou a conta" e colocar em "a primeira cobrança saiu". É onde 46 das 108 contas morreram.</p>
+      </div>
+      <div class="leaves">
+        <div class="leaf">
+          <span class="leaf-name">Migração da lista de alunos</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">Planilha, foto do caderno, print de conversa — do jeito que estiver. Feito na mão. Trava por volta de <span class="n">60</span> cadastros/mês, que é o teto de janeiro.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Importação assistida como produto</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">dez–jan</span></span>
+          <p class="leaf-desc">O gargalo de braço vira feature. Em janeiro a academia cadastra 30, 50, 80 alunos de uma vez — se ainda for manual, janeiro trava em 20 clientes por falta de mão, não de demanda.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Conectar o WhatsApp</span>
+          <span class="chips"><span class="chip">Caio + sistema</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">A métrica de ativação, e por isso o primeiro passo do painel da Home. <span class="n">41</span> das <span class="n">108</span> contas conectaram. Sem isso o cliente não tem produto, tem tela.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Parametrização</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">Nome da empresa (nasce como "Minha Empresa" e entra em ~15 templates), chave PIX e formas de pagamento, planos e valores, régua de mensagens, grade de horários.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Marcos de resgate</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">outubro</span></span>
+          <p class="leaf-desc">Conta sem aluno em 24h recebe mensagem sua, não automação genérica. Sem WhatsApp em 48h vira ligação de voz, no mesmo dia.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Serviço acoplado -->
+    <div class="branch" style="--b:var(--accent)">
+      <div class="branch-top">
+        <h3>Serviço acoplado</h3>
+        <p>O que a Infodental chama de consultoria e serviços. Aqui tudo isto já é entregue — a diferença é que nada está precificado nem nomeado.</p>
+      </div>
+      <div class="leaves">
+        <div class="leaf">
+          <span class="leaf-name">Montagem completa da conta</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip on">incluído</span></span>
+          <p class="leaf-desc">É a oferta comercial de fato, e é o que produz a conversão de 51%. Hoje sai de graça e sem nome — vale decidir se vira "Setup Mensalli" cobrado à parte ou se continua sendo o custo de aquisição.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Régua de cobrança configurada</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip on">incluído</span></span>
+          <p class="leaf-desc">Escolher os marcos (D-3, no dia, atrasado), escrever os textos no tom do cliente, definir quem recebe — aluno ou responsável.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Suporte 1:1 no WhatsApp</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip on">incluído</span></span>
+          <p class="leaf-desc">Mesmo número da venda, do onboarding e da cobrança da assinatura. É a maior vantagem percebida contra NextFit e TecnoFit — e o maior risco operacional deste documento.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Reconexão e saúde do WhatsApp</span>
+          <span class="chips"><span class="chip">sistema + Caio</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">Escada automática de recuperação, ligada em 11/08. Pagante com instância caída some da régua sem avisar ninguém: para ele o produto parou, e ele ainda não cancelou.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Presença digital do cliente</span>
+          <span class="chips"><span class="chip open">a decidir</span></span>
+          <p class="leaf-desc">Já existe pronto e não é vendido: landing por conta em <span class="n">/:slug</span>, link de agendamento online, link in bio, galeria de artes do Canva, gerador de posts. É o candidato natural a virar o "Serviços" da Infodental — e o mais barato, porque o software já está construído.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Loja de add-ons · 2º número de WhatsApp</span>
+          <span class="chips"><span class="chip stall">recusado até fev</span></span>
+          <p class="leaf-desc">O add-on comercialmente mais forte é o segundo número, e é o tecnicamente mais caro: o sistema inteiro assume uma instância por conta. A loja custa manutenção igual e rende pouco com 25 pagantes. Reabrir em fevereiro, com base maior.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canais de venda -->
+    <div class="branch" style="--b:var(--iris)">
+      <div class="branch-top">
+        <h3>Canais de venda</h3>
+        <p>Um canal ativo, cinco parados. Os <span class="n">88</span> leads da história do Mensalli entraram todos pela mesma porta.</p>
+      </div>
+      <div class="leaves">
+        <div class="leaf">
+          <span class="leaf-name">WhatsApp comercial</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip on">100% dos leads</span></span>
+          <p class="leaf-desc">Todo lead entra por <span class="n">556281618862</span> — que também é o número pessoal do Caio, o número master das automações e o canal de suporte. Concentração de canal e de risco no mesmo ponto.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Listas paradas — a maior fonte imediata</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip stall">parado</span></span>
+          <p class="leaf-desc">O equivalente exato ao ramo "Listas" da Infodental, e aqui ele tem tamanho medido: <span class="n">38</span> leads em "conversando" sem toque há dias · <span class="n">46</span> contas com zero alunos · <span class="n">12</span> ex-pagantes, vários com base grande · contas com plano vencido. A taxa histórica lead → pagante é de <strong>29%</strong>.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Indicação dos pagantes</span>
+          <span class="chips"><span class="chip open">a construir</span></span>
+          <p class="leaf-desc">Os 25 pagantes conhecem outros donos de CT, studio e escolinha — é o mesmo circuito. Um mês grátis por indicação que vira pagante. Custo zero até converter.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Meta Ads</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">volta em nov</span></span>
+          <p class="leaf-desc">Uma campanha, um conjunto, sem trava de interesse — com ~4 cadastros/semana, espalhar em vários conjuntos garante que nenhum aprenda. Criativo campeão a CPA de <span class="n">R$ 5,92</span>. Medir custo por <em>conta ativada</em>, nunca por cadastro.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Prospecção ativa local</span>
+          <span class="chips"><span class="chip open">a construir</span></span>
+          <p class="leaf-desc">O perfil que converte a 80% é conhecido, tem endereço e fica na mesma cidade: academia, CT de luta e escolinha de futebol com 30+ alunos. Vinte contatos por semana.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Parceiros</span>
+          <span class="chips"><span class="chip open">em branco</span></span>
+          <p class="leaf-desc">Deixado vazio de propósito, como no mapa da Infodental. Os candidatos plausíveis: contador que atende academia, fornecedor de tatame e equipamento, federação de luta, quem já vende software para o mesmo dono.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Orgânico — Instagram e tutoriais</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">2 peças/semana</span></span>
+          <p class="leaf-desc">Não vai virar canal de aquisição em seis meses e não é para isso que serve. Serve como prova social de quem já foi impactado, e como ativação de quem já se cadastrou. Vinte e quatro peças publicadas sem falha valem mais que 120 que morrem na terceira semana.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estratégias de venda -->
+    <div class="branch" style="--b:var(--plum)">
+      <div class="branch-top">
+        <h3>Estratégias de venda</h3>
+        <p>Como se ganha mais dos mesmos clientes. O item de cima não é upsell — é parar de perder o que já foi vendido.</p>
+      </div>
+      <div class="leaves">
+        <div class="leaf">
+          <span class="leaf-name">Cobrança recorrente de verdade</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">outubro</span></span>
+          <p class="leaf-desc"><strong>Zero dos 25 pagantes está em cobrança automática.</strong> Os 44 pagamentos da história são PIX avulso, um a um, com <span class="n">plano_vencimento</span> editado à mão. Na prática, você revende os mesmos 25 clientes todo mês — o churn não é de insatisfação, é de fricção.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Oferta anual com desconto</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">novembro</span></span>
+          <p class="leaf-desc">Trava doze meses de receita, elimina o churn do período de uma vez e traz caixa para financiar janeiro. Se só uma coisa for feita em novembro, é esta.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Upsell de plano</span>
+          <span class="chips"><span class="chip open">a decidir</span></span>
+          <p class="leaf-desc">Hoje: <span class="n">14</span> pro, <span class="n">7</span> premium, <span class="n">4</span> starter. A distribuição já pende para cima, o que sugere que o gargalo de receita é número de clientes, não degrau de plano. Revisar preço em fevereiro, quando o produto não for mais o mesmo de agosto.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Sazonalidade — o calendário manda</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">nov + jan</span></span>
+          <p class="leaf-desc">Dono de academia decide a estrutura do ano em <strong>novembro</strong>, matricula em <strong>janeiro</strong> e some entre 20/12 e o Ano Novo. Novembro é "organize 2027"; janeiro é "comece o ano com a mensalidade rodando sozinha". Dezembro fecha quem já conversa e não abre frente nova.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Win-back dos ex-pagantes</span>
+          <span class="chips"><span class="chip">Caio</span><span class="chip build">novembro</span></span>
+          <p class="leaf-desc">Já conhecem o produto e os dados deles ainda estão dentro. Depois dos consertos de setembro você tem o que dizer: o que quebrou e o que foi corrigido. Perguntar o motivo da saída antes de oferecer qualquer coisa.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Expansão de nicho</span>
+          <span class="chips"><span class="chip open">2027</span></span>
+          <p class="leaf-desc">O paralelo ao "Infovita" do mapa da Infodental. O produto já é agnóstico de nicho — o denominador comum de todo cliente é <em>alguém que cobra mensalidade de aluno</em>. Barbearia, clínica, curso e assinatura entram pela mesma engine. Só depois de dominar o nicho atual.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel -->
+    <div class="branch" style="--b:var(--olive)">
+      <div class="branch-top">
+        <h3>Painel de clientes</h3>
+        <p>Aqui o Mensalli está à frente do mapa da Infodental: o painel não é uma tarefa a fazer, já existe e roda sozinho. O que falta é o hábito de olhar.</p>
+      </div>
+      <div class="leaves">
+        <div class="leaf">
+          <span class="leaf-name">Quem está usando</span>
+          <span class="chips"><span class="chip">sistema</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">A fila de Retenção ordena por chance real de converter (quente/morno/frio), com os motivos do score à vista. Os pesos saíram da comparação entre pagantes e não-pagantes na mesma janela de 7 dias, não de chute.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Quem está para vencer</span>
+          <span class="chips"><span class="chip">sistema</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">Cobrança da própria assinatura em D-3, no dia e D+3, pelo cron das 9h. É o remendo enquanto não há recorrência — quando outubro entregar, este ramo perde a razão de existir.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Quem está falhando</span>
+          <span class="chips"><span class="chip">sistema</span><span class="chip stall">urgente</span></span>
+          <p class="leaf-desc">Erros de mensagem, saúde do WhatsApp por conta e contas barradas por plano. É o painel que ninguém pediu e o mais importante dos cinco: pagante com instância offline é churn que já aconteceu e ainda não foi comunicado.</p>
+        </div>
+        <div class="leaf">
+          <span class="leaf-name">Board de leads</span>
+          <span class="chips"><span class="chip">sistema</span><span class="chip on">roda hoje</span></span>
+          <p class="leaf-desc">Quem escreve para o WhatsApp comercial vira card e caminha sozinho de "novo" até "pagante", casando telefone com a base. <span class="n">31</span> dos <span class="n">88</span> leads já viraram pagantes por esse caminho.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ ICP ============ -->
+<section class="wide">
+  <div class="sec-head spine" style="max-width:66ch">
+    <p class="eyebrow">Cliente ideal</p>
+    <h2>O manual de marca e a base discordam</h2>
+    <p style="color:var(--ink-soft);font-size:.985rem">
+      Vale resolver isso antes de qualquer campanha, porque as duas respostas levam a copies
+      opostas — e só uma delas tem pagante atrás.
+    </p>
+  </div>
+
+  <div class="versus wide" style="margin-bottom:26px">
+    <div class="vs-col no">
+      <h3>O que o manual de marca diz (mai/26)</h3>
+      <ul>
+        <li>Âncora no <strong>prestador autônomo</strong> de 10 a 100 clientes.</li>
+        <li>Nomear profissões: personal, nutri, psi, fisio, professor particular.</li>
+        <li>Academia pequena só na Fase 2, por analogia.</li>
+        <li>Falar da <em>vergonha de cobrar</em> de quem cobra olhando no olho.</li>
+      </ul>
+    </div>
+    <div class="vs-col yes">
+      <h3>O que a base pagante diz</h3>
+      <ul>
+        <li>Quem paga é <strong>CT de luta, escolinha de futebol e reforço/idiomas</strong>.</li>
+        <li>Personal e fitness converteram 2 em 10 — o pior grupo com volume.</li>
+        <li>Acima de <strong>30 alunos</strong>, 80% viram pagantes. Abaixo, quase ninguém.</li>
+        <li>A dor real não é vergonha, é <em>volume</em>: quarenta cobranças por mês na mão.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tw wide">
+    <table>
+      <thead>
+        <tr><th>Nicho</th><th>Contas</th><th>Pagantes</th><th>Leitura</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Lutas / artes marciais</td><td class="n">9</td><td class="n win">5</td><td>Melhor taxa da base. Turma grande, mensalidade fixa, dono que dá aula.</td></tr>
+        <tr><td>Futebol / escolinhas</td><td class="n">9</td><td class="n win">4</td><td>Mesma estrutura, com responsável no lugar do aluno pagando.</td></tr>
+        <tr><td>Educação / reforço / idiomas / música</td><td class="n">9</td><td class="n win">4</td><td>Ciclo anual casado com o calendário escolar. Pico de janeiro é o mais forte.</td></tr>
+        <tr><td>Studio / pilates / movimento</td><td class="n">5</td><td class="n">3</td><td>Boa taxa, base pequena — era o alvo original do targeting e é ~8% da carteira.</td></tr>
+        <tr><td>Personal / fitness / corrida</td><td class="n">10</td><td class="n">2</td><td>Muito lead, pouco pagante. Poucos alunos por dono é a explicação provável.</td></tr>
+        <tr><td>Vôlei / tênis / beach</td><td class="n">4</td><td class="n zero">0</td><td>Quatro tentativas, nenhuma conversão. Não segmentar.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose spine" style="margin-top:26px">
+    <p>
+      A síntese que concilia os dois: o denominador comum não é a profissão, é
+      <strong>alguém que cobra mensalidade de trinta ou mais alunos e faz isso na mão</strong>.
+      O manual acertou a emoção e errou o retrato — a comunicação deve continuar falando de
+      alívio e dignidade, mas com a cara de quem tem turma, não de quem tem cliente.
+    </p>
+  </div>
+</section>
+
+<!-- ============ O QUE NÃO SOMOS ============ -->
+<section class="spine">
+  <div class="sec-head">
+    <p class="eyebrow">Fronteira</p>
+    <h2>O que o Mensalli não é</h2>
+  </div>
+  <div class="prose">
+    <p>
+      Um posicionamento só funciona se recusar coisas. As quatro recusas abaixo já estão no
+      manual de marca e continuam valendo — elas são o que impede o produto de virar canivete
+      suíço medíocre agora que a base pede feature toda semana.
+    </p>
+    <ul>
+      <li><strong>Não é ERP de academia.</strong> Sem ficha de treino, catraca ou venda de suplemento. NextFit e TecnoFit jogam outro jogo, para rede de 1.000+ alunos.</li>
+      <li><strong>Não é gestão financeira completa.</strong> Não substitui Conta Azul nem Omie. A régua de cobrança é o coração; despesas e relatórios existem para servir a ela.</li>
+      <li><strong>Não é gateway de pagamento.</strong> Asaas e Mercado Pago processam; o Mensalli é o que faz o aluno pagar antes de alguém precisar pedir.</li>
+      <li><strong>Não é atendimento nem CRM de vendas.</strong> Há um CRM enxuto para leads do cliente, mas o produto não disputa com Zendesk nem com pipeline comercial.</li>
+    </ul>
+    <p>
+      A declaração que sintetiza tudo continua válida palavra por palavra:
+      <em>cobrança automática via WhatsApp</em> é o frame que o mercado já entende e pelo qual
+      se vende hoje; <em>Cobrança Invisível</em> é a categoria a colonizar em dois ou três anos
+      de disciplina narrativa.
+    </p>
+  </div>
+</section>
+
+<!-- ============ A REALIDADE OPERACIONAL ============ -->
+<section class="wide">
+  <div class="sec-head spine" style="max-width:66ch">
+    <p class="eyebrow">Restrição</p>
+    <h2>A diferença estrutural em relação à Infodental</h2>
+    <p style="color:var(--ink-soft);font-size:.985rem">
+      No mapa da Infodental, cada folha tem um nome ao lado — Aline, Fred, Luciano, Walker,
+      Caio. Aqui há um nome só, e ele também escreve o código.
+    </p>
+  </div>
+
+  <div class="split wide">
+    <div class="cell">
+      <span class="big">1</span>
+      <span class="cap">pessoa executando venda, onboarding, suporte, desenvolvimento e mídia — em tempo parcial</span>
+    </div>
+    <div class="cell">
+      <span class="big neg">0</span>
+      <span class="cap">dos 25 pagantes em cobrança recorrente. Todo mês a base inteira é revendida</span>
+    </div>
+    <div class="cell">
+      <span class="big neg">~60</span>
+      <span class="cap">cadastros/mês é o teto da montagem manual. É o gargalo de janeiro, não de hoje</span>
+    </div>
+    <div class="cell">
+      <span class="big">27</span>
+      <span class="cap">dias é a mediana entre cadastro e primeiro pagamento. Nenhum mês se julga por si mesmo</span>
+    </div>
+  </div>
+
+  <div class="prose spine" style="margin-top:26px">
+    <p>
+      Isso tem uma consequência prática que ordena o semestre inteiro:
+      <strong>o serviço acoplado e a confiabilidade do produto competem pelo mesmo recurso</strong>.
+      Subir planilha de aluno na mão e caçar falha de envio às nove da manhã são a mesma hora do
+      dia. Fazer os dois pela metade entrega os dois pela metade — daí a regra de um objetivo por
+      mês do plano de seis meses: setembro e outubro consertam a máquina, novembro a janeiro
+      vendem, fevereiro decide.
+    </p>
+    <p>
+      E tem uma consequência de posicionamento: <strong>o atendimento pessoal é a vantagem
+      competitiva real contra os ERPs</strong>, e ao mesmo tempo o teto de crescimento. Ele deve
+      ser dito na venda, cobrado no preço e aposentado por produto na primeira oportunidade —
+      nesta ordem.
+    </p>
+  </div>
+</section>
+
+<!-- ============ PERGUNTAS ABERTAS ============ -->
+<section class="wide">
+  <div class="sec-head spine" style="max-width:66ch">
+    <p class="eyebrow">Para refinar</p>
+    <h2>As seis decisões que este documento não toma</h2>
+    <p style="color:var(--ink-soft);font-size:.985rem">
+      Cada uma muda o resto do mapa. Deixadas explícitas para você resolver, não escondidas
+      atrás de uma frase de consenso.
+    </p>
+  </div>
+
+  <div class="opens wide">
+    <div class="open-item">
+      <span class="q">?</span>
+      <p><strong>O setup é grátis ou é produto?</strong>
+      Montar a conta é o que produz a conversão de 51% e hoje sai embutido, sem nome e sem preço.
+      Cobrá-lo qualifica o lead e paga a hora; embuti-lo derruba a barreira de entrada. As duas
+      respostas são defensáveis — a atual foi escolhida por omissão.</p>
+    </div>
+    <div class="open-item">
+      <span class="q">?</span>
+      <p><strong>Qual dos dois ICPs vale?</strong>
+      Autônomo de 10 a 100 clientes, como diz o manual, ou dono de turma com 30+ alunos, como diz
+      a base. Toda copy, todo criativo e todo targeting derivam dessa escolha, e hoje eles estão
+      divididos entre as duas.</p>
+    </div>
+    <div class="open-item">
+      <span class="q">?</span>
+      <p><strong>A presença digital vira oferta?</strong>
+      Landing, agendamento, link in bio e artes já estão construídos e não são vendidos. É o ramo
+      "Serviços" mais barato de abrir — ou é distração que rouba a hora que falta para a
+      confiabilidade.</p>
+    </div>
+    <div class="open-item">
+      <span class="q">?</span>
+      <p><strong>Quem são os parceiros?</strong>
+      O único ramo em branco do mapa. Contador de academia, fornecedor de equipamento, federação
+      de luta — todos plausíveis, nenhum testado.</p>
+    </div>
+    <div class="open-item">
+      <span class="q">?</span>
+      <p><strong>O número comercial continua sendo o pessoal?</strong>
+      Hoje venda, suporte, automação master e vida pessoal saem do mesmo WhatsApp. Separar custa
+      trabalho e quebra o histórico das conversas; não separar mantém 100% da aquisição num
+      ponto único de falha.</p>
+    </div>
+    <div class="open-item">
+      <span class="q">?</span>
+      <p><strong>Qual é a primeira contratação?</strong>
+      A resposta decorre de tudo acima: se o setup vira produto, contrata-se para montar contas;
+      se a aposta é volume, contrata-se para vender; se é confiabilidade, contrata-se para
+      programar. Definir isso é o que transforma este mapa de um nome em vários.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="spine">
+  <p>
+    Números apurados no banco de produção em 21 de agosto de 2026: 108 contas criadas, 25 com
+    plano vigente (14 pro, 7 premium, 4 starter), MRR de R$ 2.647, 2.770 alunos sob gestão,
+    88 leads no board comercial e 41 contas com WhatsApp conectado. Duas contas de teste seguem
+    contadas entre os pagantes — o número real de clientes é ~23. As taxas de conversão por
+    etapa e por nicho vêm das apurações de 17 e 19 de agosto, que continuam valendo.
+    Complementa o Plano de crescimento 26 → 50, o Plano de seis meses e o Manual de marca.
+  </p>
+</footer>

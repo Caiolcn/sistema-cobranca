@@ -1,0 +1,1147 @@
+<title>Seis meses do Mensalli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+
+<style>
+  :root{
+    --ground:#F1F3EE;
+    --surface:#FBFCF9;
+    --surface-2:#E7EBE4;
+    --ink:#0E1714;
+    --ink-soft:#313F3A;
+    --muted:#5D6B65;
+    --rule:#D5DDD3;
+    --rule-strong:#B7C2B4;
+    --accent:#0E6B57;
+    --accent-soft:#D6E7E0;
+    --risk:#9C2E20;
+    --risk-soft:#F3DAD5;
+    --brass:#8A6410;
+    --brass-soft:#EFE3C6;
+
+    --serif:"Newsreader",ui-serif,Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0A110E;
+      --surface:#111A16;
+      --surface-2:#17221D;
+      --ink:#E5ECE7;
+      --ink-soft:#C1CFC9;
+      --muted:#8B9B94;
+      --rule:#23312B;
+      --rule-strong:#33453D;
+      --accent:#52C1A3;
+      --accent-soft:#10302A;
+      --risk:#E4897A;
+      --risk-soft:#371914;
+      --brass:#D3A652;
+      --brass-soft:#31260F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0A110E;
+    --surface:#111A16;
+    --surface-2:#17221D;
+    --ink:#E5ECE7;
+    --ink-soft:#C1CFC9;
+    --muted:#8B9B94;
+    --rule:#23312B;
+    --rule-strong:#33453D;
+    --accent:#52C1A3;
+    --accent-soft:#10302A;
+    --risk:#E4897A;
+    --risk-soft:#371914;
+    --brass:#D3A652;
+    --brass-soft:#31260F;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16.5px;
+    line-height:1.62;
+    margin:0;
+    padding:0 20px 110px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .spine{max-width:66ch;margin-left:auto;margin-right:auto}
+  .wide{max-width:1060px;margin-left:auto;margin-right:auto}
+
+  h1,h2,h3,h4{font-family:var(--serif);font-weight:500;text-wrap:balance;margin:0}
+  h1{font-size:clamp(2.2rem,5.4vw,3.2rem);line-height:1.06;letter-spacing:-.02em}
+  h2{font-size:clamp(1.55rem,3.3vw,2.05rem);line-height:1.16;letter-spacing:-.014em}
+  h3{font-size:1.22rem;line-height:1.28}
+  h4{font-size:1.04rem;line-height:1.32}
+  p{margin:0}
+  strong{font-weight:650}
+
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);
+  }
+  .num{font-variant-numeric:tabular-nums}
+  code{font-family:var(--mono);font-size:.87em;background:var(--surface-2);padding:.1em .34em;border-radius:2px}
+
+  /* ---------- header ---------- */
+  header{border-bottom:1px solid var(--rule);padding:82px 0 42px;margin-bottom:60px}
+  header .stack{display:flex;flex-direction:column;gap:22px}
+  .lede{font-size:1.13rem;color:var(--ink-soft);max-width:60ch}
+  .stamp{
+    display:flex;flex-wrap:wrap;gap:9px 26px;padding-top:10px;
+    font-family:var(--mono);font-size:.73rem;color:var(--muted);
+  }
+  .howto{
+    margin-top:6px;padding:14px 17px;background:var(--accent-soft);
+    border-radius:3px;font-size:.9rem;color:var(--ink-soft);line-height:1.55;
+    display:flex;flex-direction:column;gap:13px;
+  }
+  .progress{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+  .progress-bar{
+    flex:1 1 150px;height:6px;min-width:120px;
+    background:var(--surface);border-radius:3px;overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;width:0;background:var(--accent);border-radius:3px;
+    transition:width .22s ease;
+  }
+  .progress-label{
+    font-family:var(--mono);font-size:.74rem;color:var(--muted);white-space:nowrap;
+  }
+  .howto button{
+    font-family:var(--sans);font-size:.74rem;color:var(--muted);
+    background:transparent;border:1px solid var(--rule-strong);border-radius:3px;
+    padding:4px 10px;cursor:pointer;white-space:nowrap;
+    transition:color .12s ease,border-color .12s ease;
+  }
+  .howto button:hover{background:transparent;color:var(--accent);border-color:var(--accent)}
+  .howto button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .month-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .month-count{
+    font-family:var(--mono);font-size:.72rem;color:var(--muted);
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .month-count.done{color:var(--accent)}
+
+  @media (prefers-reduced-motion: reduce){
+    .progress-fill{transition:none}
+  }
+
+  /* ---------- rhythm ---------- */
+  section{margin-bottom:80px}
+  .sec-head{display:flex;flex-direction:column;gap:11px;margin-bottom:30px}
+  .prose{display:flex;flex-direction:column;gap:18px}
+  .prose ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:9px}
+
+  /* ---------- finding blocks ---------- */
+  .findings{display:flex;flex-direction:column;gap:34px;margin-top:34px}
+  .finding{
+    background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--risk);
+    border-radius:3px;padding:26px 28px;display:flex;flex-direction:column;gap:16px;
+  }
+  .finding.watch{border-left-color:var(--brass)}
+  .finding-head{display:flex;flex-direction:column;gap:7px}
+  .finding p{color:var(--ink-soft)}
+
+  /* ---------- failure bars ---------- */
+  .bars{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+  .bar-row{
+    display:grid;grid-template-columns:minmax(120px,1.15fr) minmax(150px,2.4fr) 62px;
+    align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--rule);
+  }
+  .bar-row:last-child{border-bottom:none}
+  .bar-label{font-size:.92rem;color:var(--ink-soft);line-height:1.3}
+  .bar-label small{display:block;font-family:var(--mono);font-size:.68rem;color:var(--muted);letter-spacing:.04em}
+  .bar-track{height:15px;background:var(--surface-2);border-radius:2px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--risk);border-radius:2px 0 0 2px}
+  .bar-fill.good{background:var(--accent)}
+  .bar-pct{
+    font-family:var(--mono);font-variant-numeric:tabular-nums;
+    font-size:.94rem;text-align:right;color:var(--risk);font-weight:600;
+  }
+  .bar-pct.good{color:var(--accent)}
+
+  /* ---------- tables ---------- */
+  .table-wrap{overflow-x:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:.93rem}
+  th{
+    text-align:left;font-family:var(--mono);font-size:.68rem;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted);font-weight:400;
+    padding:0 14px 9px 0;border-bottom:1px solid var(--rule-strong);white-space:nowrap;
+  }
+  td{padding:11px 14px 11px 0;border-bottom:1px solid var(--rule);vertical-align:top;color:var(--ink-soft)}
+  td:first-child{color:var(--ink)}
+  tr:last-child td{border-bottom:none}
+  td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;padding-right:0}
+  .flag-risk{color:var(--risk);font-weight:600}
+  .flag-ok{color:var(--accent);font-weight:600}
+
+  /* ---------- month spine ---------- */
+  .months{display:flex;flex-direction:column;gap:0;margin-top:12px}
+  .month{
+    display:grid;grid-template-columns:88px 1fr;gap:26px;
+    padding:34px 0;border-top:1px solid var(--rule);
+  }
+  .month:first-child{border-top:1px solid var(--rule-strong)}
+  .month-mark{display:flex;flex-direction:column;gap:4px;padding-top:4px}
+  .month-num{
+    font-family:var(--mono);font-size:1.55rem;font-variant-numeric:tabular-nums;
+    color:var(--rule-strong);line-height:1;
+  }
+  .month-when{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .month-body{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .month-goal{font-size:1rem;color:var(--ink-soft)}
+
+  /* ---------- checklist ---------- */
+  .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+  .steps li{border-bottom:1px solid var(--rule)}
+  .steps li:last-child{border-bottom:none}
+  .steps label{
+    display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start;
+    padding:12px 2px;cursor:pointer;font-size:.95rem;color:var(--ink-soft);line-height:1.52;
+  }
+  .steps input[type="checkbox"]{
+    appearance:none;-webkit-appearance:none;
+    width:17px;height:17px;margin:0;margin-top:.28em;
+    border:1.5px solid var(--rule-strong);border-radius:3px;
+    background:var(--surface);cursor:pointer;position:relative;
+    transition:background .12s ease,border-color .12s ease;
+  }
+  .steps label:hover input[type="checkbox"]{border-color:var(--accent)}
+  .steps input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent)}
+  .steps input[type="checkbox"]:checked::after{
+    content:"";position:absolute;left:5px;top:1px;
+    width:4px;height:9px;
+    border:solid var(--surface);border-width:0 2px 2px 0;
+    transform:rotate(42deg);
+  }
+  .steps input[type="checkbox"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .steps input[type="checkbox"]:checked ~ span{
+    opacity:.45;text-decoration:line-through;text-decoration-thickness:1px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .steps input[type="checkbox"]{transition:none}
+  }
+
+  .callouts{display:flex;flex-direction:column;gap:10px}
+  .callout{
+    display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:baseline;
+    padding:13px 16px;border-radius:3px;font-size:.92rem;line-height:1.5;
+  }
+  .callout .tag{
+    font-family:var(--mono);font-size:.63rem;letter-spacing:.11em;text-transform:uppercase;
+    white-space:nowrap;padding-top:.18em;
+  }
+  .callout.gain{background:var(--accent-soft);color:var(--ink-soft)}
+  .callout.gain .tag{color:var(--accent)}
+  .callout.trap{background:var(--risk-soft);color:var(--ink-soft)}
+  .callout.trap .tag{color:var(--risk)}
+
+  /* ---------- do / dont ---------- */
+  .twocol{display:grid;grid-template-columns:1fr;gap:32px;margin-top:10px}
+  @media(min-width:840px){.twocol{grid-template-columns:1fr 1fr;gap:44px}}
+  .col-head{
+    display:flex;align-items:baseline;gap:10px;
+    padding-bottom:12px;margin-bottom:6px;border-bottom:2px solid var(--rule-strong);
+  }
+  .col-head .eyebrow{letter-spacing:.13em}
+  .entry{padding:15px 0;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:5px}
+  .entry:last-child{border-bottom:none}
+  .entry .what{font-weight:600;font-size:.97rem}
+  .entry .why{font-size:.9rem;color:var(--muted);line-height:1.5}
+
+  /* ---------- risks ---------- */
+  .risks{display:flex;flex-direction:column;gap:0;margin-top:10px}
+  .risk-item{
+    display:grid;grid-template-columns:34px 1fr;gap:18px;
+    padding:24px 0;border-top:1px solid var(--rule);
+  }
+  .risk-item:first-child{border-top:1px solid var(--rule-strong)}
+  .risk-n{font-family:var(--mono);font-size:.82rem;color:var(--risk);padding-top:.3em}
+  .risk-body{display:flex;flex-direction:column;gap:8px}
+  .risk-body p{font-size:.94rem;color:var(--ink-soft)}
+
+  /* ---------- panel ---------- */
+  .panel-note{
+    margin-top:20px;padding:16px 18px;background:var(--surface);
+    border:1px solid var(--rule);border-radius:3px;font-size:.9rem;color:var(--muted);
+  }
+
+  footer{
+    border-top:1px solid var(--rule);padding-top:26px;margin-top:20px;
+    font-size:.86rem;color:var(--muted);line-height:1.6;
+  }
+
+  @media(max-width:620px){
+    body{font-size:16px;padding:0 17px 80px}
+    .month{grid-template-columns:1fr;gap:14px}
+    .month-mark{flex-direction:row;align-items:baseline;gap:12px;padding-top:0}
+    .month-num{font-size:1.15rem}
+    .bar-row{grid-template-columns:1fr 52px;gap:10px}
+    .bar-track{grid-column:1 / -1;order:3}
+  }
+</style>
+
+<header class="spine">
+  <div class="stack">
+    <p class="eyebrow">Mensalli · Plano de produto e crescimento</p>
+    <h1>Seis meses: consertar, cobrar sozinho, colher janeiro</h1>
+    <p class="lede">
+      O plano comercial de 17 de agosto está certo e continua valendo. O que ele não sabia é que
+      o produto está falhando para quem já paga: as três automações de cobrança erram entre
+      <span class="num">49%</span> e <span class="num">98%</span> dos envios. Antes de encher o
+      balde, é preciso tapar o furo — e o furo tem endereço.
+    </p>
+    <div class="stamp">
+      <span>19 ago 2026</span>
+      <span>105 contas · 22 pagantes · MRR R$ 2.348</span>
+      <span>Set/26 → Fev/27</span>
+    </div>
+    <div class="howto">
+      <p>
+        Os passos de cada mês são caixas de marcar. Vá clicando conforme fizer — as marcações
+        ficam salvas neste navegador e continuam lá quando você reabrir o arquivo.
+      </p>
+      <div class="progress" id="progresso" hidden>
+        <div class="progress-bar"><div class="progress-fill" id="progressoFill"></div></div>
+        <span class="progress-label num" id="progressoLabel">0 de 0</span>
+        <button type="button" id="limpar">Limpar marcações</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 01 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">01 · Diagnóstico</p>
+    <h2>Três fatos que reordenam a fila</h2>
+  </div>
+
+  <div class="spine prose">
+    <p>
+      Os números abaixo saíram do banco de produção hoje. Nenhum é estimativa. Os dois primeiros
+      não apareciam no plano de agosto porque ninguém tinha olhado para essas tabelas — e os dois
+      mudam qual deve ser o trabalho de setembro.
+    </p>
+  </div>
+
+  <div class="wide findings">
+
+    <article class="finding">
+      <div class="finding-head">
+        <p class="eyebrow">Fato 01</p>
+        <h3>O produto falha para quem paga</h3>
+      </div>
+      <p>
+        Nos últimos 30 dias saíram <span class="num">3.488</span> mensagens e
+        <span class="num">978</span> falharam — <strong>28% do total</strong>. Mas a média esconde
+        o que interessa: a falha está concentrada exatamente nas três automações que a pessoa
+        compra quando assina o Mensalli.
+      </p>
+
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-label">Lembrete 3 dias antes<small>pre_due_3days · n8n</small></div>
+          <div class="bar-track"><div class="bar-fill" style="width:97.8%"></div></div>
+          <div class="bar-pct">97,8%</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Cobrança de atrasado<small>overdue · n8n</small></div>
+          <div class="bar-track"><div class="bar-fill" style="width:77.8%"></div></div>
+          <div class="bar-pct">77,8%</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Vence hoje<small>due_day · n8n</small></div>
+          <div class="bar-track"><div class="bar-fill" style="width:49.1%"></div></div>
+          <div class="bar-pct">49,1%</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Confirmação de pagamento<small>payment_confirmed · misto</small></div>
+          <div class="bar-track"><div class="bar-fill" style="width:12.7%"></div></div>
+          <div class="bar-pct">12,7%</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Envio manual pela tela<small>sem tipo · front</small></div>
+          <div class="bar-track"><div class="bar-fill good" style="width:7.3%"></div></div>
+          <div class="bar-pct good">7,3%</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Lembrete de aula<small>class_reminder</small></div>
+          <div class="bar-track"><div class="bar-fill good" style="width:1%"></div></div>
+          <div class="bar-pct good">0%</div>
+        </div>
+      </div>
+
+      <p>
+        A leitura é direta: <strong>o que passa pelo n8n quebra; o resto entrega.</strong> O
+        lembrete de aula não errou uma única vez em <span class="num">34</span> envios e o envio
+        manual pela tela erra 7%. O lembrete de vencimento, no n8n, erra <span class="num">351</span>
+        de <span class="num">359</span>.
+      </p>
+      <p>
+        E há um agravante que muda o que fazer a respeito: <span class="num">456</span> dessas
+        falhas gravam apenas <code>"Erro no envio"</code>, com <code>response_api</code> nulo, em
+        lotes de <span class="num">127</span> e <span class="num">110</span> registros no mesmo
+        minuto — sempre às 09:05. É a assinatura do timeout de 300s do nó Code do n8n, que aborta e
+        marca o lote inteiro como falha <em>inclusive o que já foi entregue</em>. Ou seja: metade
+        das falhas pode não ser falha, e <strong>não há como saber qual metade.</strong>
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Conta pagante</th>
+              <th class="n">Enviadas</th>
+              <th class="n">Falhas</th>
+              <th class="n">% falha</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Academia de Futebol AD Lions</td><td class="n">30</td><td class="n">65</td><td class="n flag-risk">68,4%</td></tr>
+            <tr><td>CT Soares Artes Marciais</td><td class="n">45</td><td class="n">54</td><td class="n flag-risk">54,5%</td></tr>
+            <tr><td>Rede Fit</td><td class="n">37</td><td class="n">29</td><td class="n flag-risk">43,9%</td></tr>
+            <tr><td>Guigo Academia</td><td class="n">128</td><td class="n">90</td><td class="n flag-risk">41,3%</td></tr>
+            <tr><td>Personal Fight Trainer</td><td class="n">81</td><td class="n">55</td><td class="n flag-risk">40,4%</td></tr>
+            <tr><td>Rg Movimentos</td><td class="n">102</td><td class="n">57</td><td class="n flag-risk">35,8%</td></tr>
+            <tr><td>GR Esperança</td><td class="n">284</td><td class="n">157</td><td class="n flag-risk">35,6%</td></tr>
+            <tr><td>Team Juliana Rodrigues</td><td class="n">227</td><td class="n">88</td><td class="n flag-risk">27,9%</td></tr>
+            <tr><td>Paineiras Soccer Academy</td><td class="n">461</td><td class="n">119</td><td class="n flag-risk">20,5%</td></tr>
+            <tr><td>Independente Futebol de Base</td><td class="n">235</td><td class="n">58</td><td class="n flag-risk">19,8%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Estes são os seus dez maiores clientes. Todos pagando. Todos vendo o produto errar entre
+        um quinto e dois terços das vezes. <strong>Isto explica o churn de 2 por mês melhor do que
+        qualquer hipótese de preço ou concorrência.</strong>
+      </p>
+    </article>
+
+    <article class="finding">
+      <div class="finding-head">
+        <p class="eyebrow">Fato 02</p>
+        <h3>Não existe cobrança recorrente — zero</h3>
+      </div>
+      <p>
+        A tabela <code>assinaturas_mercadopago</code> tem <span class="num">7</span> registros e
+        <strong>todos estão em <code>pending</code></strong>. Cinco são da conta master, ou seja,
+        testes seus. Sobraram duas tentativas reais de clientes, ambas em julho, e nenhuma das duas
+        chegou a virar assinatura ativa.
+      </p>
+      <p>
+        Os <span class="num">44</span> pagamentos aprovados na história do Mensalli são
+        <strong>100% <code>bank_transfer</code></strong> — PIX avulso, um a um. Não há um único
+        cliente em cobrança automática. Some a isso o descompasso: passam
+        <span class="num">9</span> a <span class="num">10</span> pagamentos por mês pelo Mercado
+        Pago, mas existem <span class="num">22</span> pagantes ativos. A diferença é acerto por
+        fora, com <code>plano_vencimento</code> editado à mão no Admin.
+      </p>
+      <p>
+        Na prática você <strong>revende os mesmos 22 clientes todo mês</strong>. Não é churn de
+        insatisfação, é churn de fricção: basta o cliente esquecer de pagar um PIX e ele sai da
+        base. É a causa estrutural mais barata de eliminar de todo este documento.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Receita registrada</th><th class="n">Fev</th><th class="n">Mar</th><th class="n">Abr</th><th class="n">Mai</th><th class="n">Jun</th><th class="n">Jul</th><th class="n">Ago*</th></tr></thead>
+          <tbody>
+            <tr><td>Pagamentos aprovados</td><td class="n">3</td><td class="n">2</td><td class="n">6</td><td class="n">10</td><td class="n">5</td><td class="n">9</td><td class="n">9</td></tr>
+            <tr><td>Valor (R$)</td><td class="n">250</td><td class="n">50</td><td class="n">450</td><td class="n">849</td><td class="n">600</td><td class="n">949</td><td class="n">999</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.86rem;color:var(--muted)">* agosto até o dia 19. MRR teórico dos 22 pagantes ativos: R$ 2.348.</p>
+    </article>
+
+    <article class="finding watch">
+      <div class="finding-head">
+        <p class="eyebrow">Fato 03</p>
+        <h3>As quedas caíram pela metade — e ainda estão 3,5× acima do normal</h3>
+      </div>
+      <p>
+        A maior causa das quedas em massa era nossa: a sonda do health-check consultava um número
+        fake <span class="num">48</span> vezes por dia e derrubava as próprias sessões que deveria
+        vigiar. Foi desligada em <strong>11 de agosto</strong>, e o efeito aparece limpo nos dados.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Período</th><th class="n">Quedas/dia</th><th>Situação</th></tr></thead>
+          <tbody>
+            <tr><td>Junho</td><td class="n flag-ok">2,0</td><td>Linha de base saudável</td></tr>
+            <tr><td>27 jul – 10 ago</td><td class="n flag-risk">12,2</td><td>Sonda ligada, pico do problema</td></tr>
+            <tr><td>11 ago – 19 ago</td><td class="n">7,1</td><td>Sonda desligada</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        O desligamento cortou <strong>42% das quedas de imediato</strong> — foi a decisão certa e
+        não deve ser revertida. Religar o monitoramento seria reintroduzir a doença no lugar do
+        remédio.
+      </p>
+      <p>
+        Mas sobrou um resto que não tem explicação: <strong>7,1 quedas por dia ainda é 3,5× a linha
+        de base de junho</strong>. E o resíduo é concentrado, não difuso — <span class="num">30</span>
+        quedas num único dia (10/08), <span class="num">18</span> em outro (17/08), intercalados por
+        dias com zero. Isso tem cara de evento pontual, não de ruído contínuo. Descobrir o que
+        são esses dias é tarefa de setembro.
+      </p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">02 · Prioridade</p>
+    <h2>Por que produto vem antes de aquisição</h2>
+  </div>
+  <div class="spine prose">
+    <p>
+      O plano de agosto conclui, corretamente, que o gargalo é a ativação e não o tráfego. A
+      correção que este documento faz é de <em>ordem</em>, não de direção: existe um gargalo antes
+      da ativação, e ele fica depois da venda.
+    </p>
+    <p>
+      A conta é simples. Você tem <strong>até R$ 500 por mês de mídia e trabalha sozinho, em tempo
+      parcial</strong>. Cada real gasto agora traz alguém para um produto que erra metade das
+      cobranças. A mediana entre cadastro e primeiro pagamento é de
+      <span class="num">27</span> dias — quem entrar em setembro decide em outubro, já tendo visto
+      o produto falhar duas vezes. Aquisição, nessa condição, financia o próprio churn.
+    </p>
+    <p>
+      Há um segundo argumento, mais duro: <strong>a ativação assistida e a confiabilidade competem
+      pelo mesmo recurso, que é você.</strong> Subir planilha de aluno na mão e caçar falha de
+      envio às 9h da manhã são a mesma hora do dia. Fazer os dois pela metade entrega os dois pela
+      metade.
+    </p>
+    <p>
+      Então a regra dos seis meses é esta: <strong>setembro e outubro consertam a máquina;
+      novembro, dezembro e janeiro vendem; fevereiro decide o que vem depois.</strong> As alavancas
+      de custo zero do plano de agosto — os leads parados e o win-back — rodam em paralelo desde a
+      primeira semana, porque não competem por tempo de desenvolvimento.
+    </p>
+  </div>
+</section>
+
+<!-- ============ 03 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">03 · Execução</p>
+    <h2>Os seis meses, um objetivo por vez</h2>
+  </div>
+  <div class="spine prose">
+    <p>
+      Um objetivo por mês, porque é o que cabe em execução solo e tempo parcial. Tudo que não
+      serve ao objetivo do mês espera o mês seguinte — inclusive coisas boas.
+    </p>
+  </div>
+
+  <div class="wide months">
+
+    <article class="month">
+      <div class="month-mark">
+        <span class="month-num">01</span>
+        <span class="month-when">Setembro</span>
+      </div>
+      <div class="month-body">
+        <h3>Parar a sangria</h3>
+        <p class="month-goal">
+          Objetivo único: fazer as três automações de cobrança entregarem como o lembrete de aula
+          entrega. Nada mais entra neste mês.
+        </p>
+        <ul class="steps">
+          <li><label><input type="checkbox"><span>
+            <strong>Tirar <code>pre_due_3days</code>, <code>due_day</code> e <code>overdue</code>
+            do n8n</strong> para uma edge function do Supabase agendada por <code>pg_cron</code>.
+            O molde já roda em produção: a <code>cobranca-saas</code> (cron das 9h BRT) lê uma view,
+            percorre as linhas e chama a Evolution do lado do servidor. A diferença é que estas
+            precisam sair da instância de cada cliente, não da master.
+          </span></label></li>
+          <li><label><input type="checkbox"><span>
+            <strong>Ligar as três na <code>mensagens_fila</code></strong>, que a Central de
+            Mensagens já deixou pronta e rodando em três crons. A fila trata cada mensagem
+            individualmente, com <code>dedupe_key</code> e <code>tentativas</code> — é exatamente o
+            que falta ao n8n, onde um lote que morre no meio contamina o que já foi entregue.
+          </span></label></li>
+          <li><label><input type="checkbox"><span>
+            <strong>Matar o <code>"Erro no envio"</code> genérico.</strong> Toda falha grava
+            <code>erro_codigo</code>, <code>http_status</code> e <code>response_api</code>. Sem
+            isso você não consegue provar que consertou — e hoje 47% das falhas são
+            indiagnosticáveis.
+          </span></label></li>
+          <li><label><input type="checkbox"><span>
+            <strong>Investigar os dias de pico de queda.</strong> Sobraram 7,1 quedas/dia depois
+            do desligamento da sonda, concentradas em dias isolados. Descobrir o que são esses
+            dias antes de otimizar qualquer outra coisa.
+          </span></label></li>
+          <li><label><input type="checkbox"><span>
+            <strong>Em paralelo, custo zero: zerar os leads parados.</strong> São
+            <span class="num">39</span> em "conversando", <span class="num">30</span> deles sem
+            toque há mais de 3 dias — e o playbook de reativação já está escrito, segmentado e
+            pronto para copiar e colar.
+          </span></label></li>
+        </ul>
+        <div class="callouts">
+          <div class="callout gain">
+            <span class="tag">Ganho</span>
+            <span>Recupera a promessa central para os 22 pagantes. Se a taxa de falha das três automações cair de ~60% para menos de 5%, o cliente passa a ver o produto que comprou — e os leads parados rendem, pela taxa histórica de 29%, entre 6 e 9 clientes ainda em setembro.</span>
+          </div>
+          <div class="callout trap">
+            <span class="tag">Não erre</span>
+            <span>Não reenvie lote nenhum sem cruzar a entrega real na Evolution. Parte das "falhas" foi entregue — já aconteceu de 98 de 150 mensagens marcadas como falha terem chegado. Reenviar cobrança duplicada para o aluno do seu cliente é o erro que faz o cliente cancelar no mesmo dia.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="month">
+      <div class="month-mark">
+        <span class="month-num">02</span>
+        <span class="month-when">Outubro</span>
+      </div>
+      <div class="month-body">
+        <h3>Receita que se renova sozinha</h3>
+        <p class="month-goal">
+          Objetivo único: nenhum cliente precisa lembrar de pagar, e você nunca mais edita
+          <code>plano_vencimento</code> à mão.
+        </p>
+        <ul class="steps">
+          <li><label><input type="checkbox"><span>
+            <strong>Assinatura recorrente de verdade.</strong> Duas tentativas reais de cartão
+            morreram em <code>pending</code> — descobrir onde o fluxo trava antes de oferecer de
+            novo. Se o preapproval do Mercado Pago não fechar, o PIX recorrente do Asaas resolve
+            o mesmo problema e a integração já existe.
+          </span></label></li>
+          <li><label><input type="checkbox"><span>
+            <strong>Migrar os 22 pagantes um a um.</strong> É conversa individual, não campanha.
+            Aproveite para perguntar como está a cobrança depois dos consertos de setembro.
+          </span></label></li>
+          <li><label><input type="checkbox"><span>
+            <strong>Ativação assistida vira rotina.</strong> Conta sem aluno em 24h recebe mensagem
+            sua; sem WhatsApp em 48h vira ligação. Oferecer subir a lista você mesmo — é o que leva
+            a conversão de 1,9% para 51%.
+          </span></label></li>
+        </ul>
+        <div class="callouts">
+          <div class="callout gain">
+            <span class="tag">Ganho</span>
+            <span>Churn involuntário vai a perto de zero e a receita para de depender da memória do cliente. Devolve algumas horas por mês de trabalho administrativo — que é exatamente o recurso mais escasso deste plano.</span>
+          </div>
+          <div class="callout trap">
+            <span class="tag">Não erre</span>
+            <span>Não migre ninguém para cobrança automática sem avisar antes, com valor e data explícitos. Cobrança recorrente que aparece de surpresa no cartão gera chargeback e reclamação pública — e você vende justamente confiança em cobrança.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="month">
+      <div class="month-mark">
+        <span class="month-num">03</span>
+        <span class="month-when">Novembro</span>
+      </div>
+      <div class="month-body">
+        <h3>O mês da virada</h3>
+        <p class="month-goal">
+          Objetivo único: vender. Dono de academia decide a estrutura do ano seguinte em novembro,
+          matricula em janeiro e some depois do dia 20 de dezembro. É o mês de maior retorno por
+          hora do semestre inteiro.
+        </p>
+        <ul class="steps">
+          <li><label><input type="checkbox"><span><strong>Oferta anual com desconto.</strong> Trava receita, elimina churn de 12 meses de uma vez e traz caixa para financiar janeiro. Se só uma coisa for feita em novembro, é esta.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Campanha "organize 2027".</strong> O argumento não é cobrança — é começar o ano com a mensalidade rodando sozinha. Fala com quem está planejando, não com quem está apagando incêndio.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Concentrar a verba aqui.</strong> Guardando os R$ 500 de setembro e outubro, chega novembro com R$ 1.500 para o mês de maior conversão. Medir custo por <em>conta ativada</em>, nunca por cadastro.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Win-back dos ex-pagantes com prova na mão.</strong> Agora você tem o que dizer: o que quebrou, o que foi consertado. A view <code>vw_contas_barradas_plano</code> mantém essa lista sozinha — são 11 ex-pagantes com 590 alunos, 8 deles ainda com o WhatsApp conectado.</span></label></li>
+        </ul>
+        <div class="callouts">
+          <div class="callout gain">
+            <span class="tag">Ganho</span>
+            <span>É o pico natural de demanda do seu mercado somado ao primeiro mês em que o produto está inteiro. O anual, além da receita, resolve retenção sem exigir nenhum trabalho recorrente seu.</span>
+          </div>
+          <div class="callout trap">
+            <span class="tag">Não erre</span>
+            <span>Feche tudo antes do dia 25. Negociação que atravessa para dezembro morre no recesso e só volta em fevereiro — você perde o cliente e o mês.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="month">
+      <div class="month-mark">
+        <span class="month-num">04</span>
+        <span class="month-when">Dezembro</span>
+      </div>
+      <div class="month-body">
+        <h3>Fechar, não abrir</h3>
+        <p class="month-goal">
+          Objetivo único: converter quem já está conversando e chegar em janeiro com munição
+          pronta. Mês curto, cliente disperso, nenhuma frente nova.
+        </p>
+        <ul class="steps">
+          <li><label><input type="checkbox"><span><strong>Só quem já conversa.</strong> Nada de prospecção fria em dezembro. O argumento de fechamento é um só: entrar em janeiro com a cobrança já rodando, sem montar nada na correria da matrícula.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Gravar o conteúdo de janeiro em bloco.</strong> Antes do dia 15, com calma. Janeiro não vai ter tempo.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Preparar o onboarding de turma nova</strong>, que é a feature de janeiro. Especificar em dezembro, construir na virada.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Reduzir mídia depois do dia 15</strong> e segurar a base no recesso — pagante com WhatsApp caído em dezembro só vai perceber em janeiro, e aí cancela.</span></label></li>
+        </ul>
+        <div class="callouts">
+          <div class="callout gain">
+            <span class="tag">Ganho</span>
+            <span>Um mês naturalmente fraco vira preparação, em vez de virar frustração. Chegar em janeiro com conteúdo gravado e feature pronta é o que permite aproveitar o único mês em que o cliente procura você.</span>
+          </div>
+          <div class="callout trap">
+            <span class="tag">Não erre</span>
+            <span>Não lance feature nova em dezembro. Você não vai estar disponível para socorrer o que quebrar, e o cliente também não vai estar para reportar.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="month">
+      <div class="month-mark">
+        <span class="month-num">05</span>
+        <span class="month-when">Janeiro</span>
+      </div>
+      <div class="month-body">
+        <h3>Matrícula</h3>
+        <p class="month-goal">
+          Objetivo único: estar presente no mês em que o cliente tem turma nova para cobrar. É o
+          maior mês do ano do seu cliente e, por consequência, o seu.
+        </p>
+        <ul class="steps">
+          <li><label><input type="checkbox"><span><strong>Onboarding de turma em massa.</strong> Em janeiro a academia cadastra 30, 50, 80 alunos de uma vez. Hoje isso é você subindo planilha na mão — que trava por volta de 60 cadastros/mês. Janeiro é o momento em que a importação assistida precisa ter virado produto.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Todo o conteúdo aponta para uma coisa:</strong> comece o ano com a mensalidade rodando sozinha. Um tema, um mês.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Gastar a verba acumulada.</strong> É o mês de maior intenção de compra do calendário — e o único em que vale pagar mais caro pelo lead.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Vender pelo momento, não pelo desconto.</strong> Quem está matriculando turma nova sente a dor de cobrar 40 pessoas exatamente agora. Preço não é a objeção em janeiro.</span></label></li>
+        </ul>
+        <div class="callouts">
+          <div class="callout gain">
+            <span class="tag">Ganho</span>
+            <span>O valor do produto tem pico exato quando a academia tem mais aluno novo para cobrar. É o único mês do semestre em que o cliente procura a solução sozinho, em vez de você ter que criar a urgência.</span>
+          </div>
+          <div class="callout trap">
+            <span class="tag">Não erre</span>
+            <span>Não entre em janeiro com a importação ainda manual. Se cada conta nova exigir uma hora sua, janeiro trava em 20 clientes e você perde o pico inteiro por gargalo de braço — não de demanda.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="month">
+      <div class="month-mark">
+        <span class="month-num">06</span>
+        <span class="month-when">Fevereiro</span>
+      </div>
+      <div class="month-body">
+        <h3>Consolidar e decidir</h3>
+        <p class="month-goal">
+          Objetivo único: medir o que janeiro trouxe e escolher a aposta do semestre seguinte com
+          dado, não com intuição.
+        </p>
+        <ul class="steps">
+          <li><label><input type="checkbox"><span><strong>Medir o cohort de janeiro</strong> separado de tudo. Quantos ativaram, quantos pagaram, quanto custou cada um. É a sua primeira safra com o produto inteiro — é ela que define o que dá para prometer no próximo semestre.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Segurar a base pós-matrícula.</strong> Fevereiro é quando a academia descobre quem não renovou. Seu cliente vai olhar custo — esteja visivelmente funcionando.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Reabrir a conversa da loja de add-ons.</strong> Aqui sim: com base maior, produto estável e receita recorrente, o upsell passa a fazer sentido. Antes disso, é distração cara.</span></label></li>
+          <li><label><input type="checkbox"><span><strong>Revisar preço.</strong> Com falha perto de zero e recorrência funcionando, o produto de fevereiro não é o mesmo de agosto. O preço pode não ser também.</span></label></li>
+        </ul>
+        <div class="callouts">
+          <div class="callout gain">
+            <span class="tag">Ganho</span>
+            <span>Encerra o semestre com uma decisão fundamentada em vez de mais uma hipótese. E é o primeiro momento em que a loja de add-ons — a ideia que abriu esta conversa — tem base instalada suficiente para pagar o próprio custo de manutenção.</span>
+          </div>
+          <div class="callout trap">
+            <span class="tag">Não erre</span>
+            <span>Não conclua nada sobre o cohort de janeiro antes de fevereiro fechar. A mediana entre cadastro e primeiro pagamento é de 27 dias — medir conversão de janeiro em janeiro sempre vai parecer um fracasso.</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">04 · Escopo</p>
+    <h2>O que construir e o que recusar</h2>
+  </div>
+  <div class="spine prose">
+    <p>
+      Trabalhando sozinho e em tempo parcial, recusar bem vale tanto quanto construir bem. A coluna
+      da direita não contém ideias ruins — contém ideias cujo momento não é agora, e cada uma custa
+      o mês inteiro de alguma coisa da esquerda.
+    </p>
+  </div>
+
+  <div class="wide twocol">
+    <div>
+      <div class="col-head"><p class="eyebrow">Entra nos 6 meses</p></div>
+      <div class="entry">
+        <span class="what">Confiabilidade do envio</span>
+        <span class="why">Setembro. Não é feature, é o produto. Enquanto o D-3 falhar 98%, todo o resto é decoração.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Log de falha diagnosticável</span>
+        <span class="why">Setembro. Sem <code>erro_codigo</code> em toda falha, você não consegue provar melhora nem para o cliente nem para si mesmo.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Assinatura recorrente</span>
+        <span class="why">Outubro. Zero clientes em cobrança automática hoje. Ataca a raiz do churn e devolve horas suas todo mês.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Importação assistida como produto</span>
+        <span class="why">Dez–jan. Hoje é trabalho manual seu e trava em ~60 cadastros/mês. É o gargalo de janeiro.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Onboarding de turma nova</span>
+        <span class="why">Janeiro. A feature sazonal que casa com o único pico de demanda do calendário.</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-head"><p class="eyebrow">Fica de fora</p></div>
+      <div class="entry">
+        <span class="what">Loja de add-ons</span>
+        <span class="why">O trabalho pesado é o controle de acesso, não a vitrine — e com 22 pagantes, o add-on rende pouco e custa manutenção igual. Reabrir em fevereiro.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Linktree como produto pago</span>
+        <span class="why">Commodity gratuita no mercado, e você já entrega algo maior no plano: a landing por conta em <code>/:slug</code>. Vendê-lo à parte canibaliza o que já existe.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Segundo número de WhatsApp</span>
+        <span class="why">Comercialmente o add-on mais forte e tecnicamente o mais caro: o sistema inteiro assume uma instância por conta. Não é projeto para quem está sozinho.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Religar o health-check</span>
+        <span class="why">A sonda era a própria causa das quedas em massa. Ficou desligada de propósito em 11/08 e assim deve continuar — o monitoramento precisa ser repensado, não reativado.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Segundo canal de aquisição pago</span>
+        <span class="why">Adiado para novembro, não cancelado. Com R$ 500/mês, abrir canal antes de consertar a ativação é gastar o trimestre sem mover o placar.</span>
+      </div>
+      <div class="entry">
+        <span class="what">Bug da landing (cor secundária e fonte)</span>
+        <span class="why">Conhecido e deixado de propósito. Continua fora: não afeta receita nem retenção.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">05 · Conteúdo</p>
+    <h2>O que é realista fazendo sozinho</h2>
+  </div>
+  <div class="spine prose">
+    <p>
+      A estratégia de conteúdo já está escrita, e bem: manual de marca, guia de Instagram, funil de
+      vídeo, plano de semana e 65 roteiros de tutoriais. <strong>O gargalo nunca foi estratégia, é
+      execução.</strong> O plano de semana pede 1 vídeo por dia mais 3 stories — uma cadência que
+      não sobrevive a um mês de trabalho solo somado a suporte, vendas e desenvolvimento.
+    </p>
+    <p>
+      Há também um ajuste de expectativa a fazer. Com a base de seguidores onde está e
+      <strong>100% dos leads entrando por um único WhatsApp</strong>, o orgânico não vai virar
+      canal de aquisição em seis meses. Isso não é motivo para abandoná-lo — é motivo para cobrar
+      dele a função certa:
+    </p>
+    <ul>
+      <li><strong>Prova social para quem já foi impactado.</strong> A pessoa vê o anúncio ou recebe a indicação, procura o perfil e decide se você existe de verdade. Um perfil vazio mata a venda; um perfil com 20 peças bem-feitas fecha.</li>
+      <li><strong>Ativação de quem já cadastrou.</strong> É aqui que os 65 tutoriais valem ouro. O mesmo vídeo que ensina a importar aluno serve de conteúdo público e de resposta pronta no suporte.</li>
+    </ul>
+    <p>
+      A proposta, então, é <strong>cortar a cadência e proteger a constância</strong>: 2 vídeos por
+      semana em vez de 5, gravados em bloco uma vez por mês, priorizando os tutoriais que fazem as
+      duas funções ao mesmo tempo. Vinte e quatro peças em seis meses, publicadas sem falha, valem
+      mais que uma tentativa de 120 que morre na terceira semana.
+    </p>
+    <p>
+      E o calendário manda no tema: <strong>novembro é "organize 2027", janeiro é "comece o ano com
+      a cobrança rodando"</strong>. Setembro e outubro, enquanto o produto está sendo consertado,
+      são meses de bastidor e tutorial — o conteúdo mais barato de produzir e o mais útil para a
+      ativação, que é a métrica desses dois meses.
+    </p>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">06 · Riscos</p>
+    <h2>Onde este plano pode quebrar</h2>
+  </div>
+
+  <div class="wide risks">
+    <div class="risk-item">
+      <span class="risk-n">01</span>
+      <div class="risk-body">
+        <h4>Reenviar em massa sem verificar entrega</h4>
+        <p>
+          O risco número um de setembro, e o mais tentador. Ao consertar o pipeline, a vontade é
+          reenviar tudo que consta como falha. Mas parte já foi entregue e o log não sabe qual —
+          já houve caso de 98 de 150 mensagens marcadas como falha terem chegado normalmente.
+          Cobrança duplicada no aluno do seu cliente é o erro que cancela contrato no mesmo dia.
+          Cruze com a Evolution antes de qualquer reenvio, sem exceção.
+        </p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="risk-n">02</span>
+      <div class="risk-body">
+        <h4>Portão por flag em vez de data</h4>
+        <p>
+          Corrigido em 19/08: <code>usuario_pode_enviar</code> passou a exigir
+          <code>plano_vencimento</code> em dia, e não só a flag <code>plano_pago</code>. A lição
+          fica: toda vez que uma regra de acesso nasce como booleano, ela nunca desliga. Vale para
+          <code>trial_ativo</code>, valeu para <code>plano_pago</code>, e vai valer para a próxima.
+        </p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="risk-n">03</span>
+      <div class="risk-body">
+        <h4>Canal único de aquisição</h4>
+        <p>
+          Todos os leads entram por um WhatsApp que também é pessoal. Uma queda de instância, um
+          bloqueio ou uma migração de LID zera a entrada sem aviso — e a migração de LID
+          comprovadamente quebra todo envio do sistema, com reconexão por QR como gatilho. O
+          segundo canal de novembro é seguro operacional antes de ser volume.
+        </p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="risk-n">04</span>
+      <div class="risk-body">
+        <h4>Concentração nas contas grandes</h4>
+        <p>
+          Cinco contas respondem por mais de mil dos 2.741 alunos sob gestão. Perder uma custa
+          receita e prova social ao mesmo tempo — e o Colégio GVC, com 308 alunos, já saiu. São
+          justamente as contas com maior taxa de falha, porque enviam mais. Elas merecem
+          acompanhamento nominal, não fila de suporte.
+        </p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="risk-n">05</span>
+      <div class="risk-body">
+        <h4>Deploy que apaga feature em silêncio</h4>
+        <p>
+          O <code>supabase/functions/</code> do repositório pode estar atrás do que está em
+          produção. Subir o arquivo local por cima já apagou funcionalidade sem erro nenhum. Em
+          setembro e outubro haverá muito deploy de edge function — puxe o que está publicado antes
+          de sobrescrever, toda vez.
+        </p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="risk-n">06</span>
+      <div class="risk-body">
+        <h4>Otimismo de calendário</h4>
+        <p>
+          Este plano assume um objetivo por mês porque é o que cabe em tempo parcial. O modo mais
+          provável de ele falhar não é um mês dar errado — é setembro escorregar para outubro,
+          outubro para novembro, e o pico de janeiro chegar com a importação ainda manual. Se
+          setembro não fechar até o dia 30, corte escopo de outubro; não empurre a fila inteira.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 ============ -->
+<section>
+  <div class="spine sec-head">
+    <p class="eyebrow">07 · Painel</p>
+    <h2>Os sete números da segunda-feira</h2>
+  </div>
+  <div class="spine prose">
+    <p>
+      Cinco vêm do plano de agosto e continuam valendo. Os dois primeiros são novos e saem
+      direto do diagnóstico — são eles que dizem se setembro e outubro funcionaram, meses antes
+      de o número de pagantes reagir.
+    </p>
+  </div>
+
+  <div class="wide table-wrap">
+    <table>
+      <thead>
+        <tr><th>Indicador</th><th class="n">Hoje</th><th class="n">Meta</th><th>Por que importa</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Falha das 3 automações</td>
+          <td class="n flag-risk">49–98%</td><td class="n">&lt;5%</td>
+          <td>É o produto funcionando ou não. Tudo neste documento depende deste número cair primeiro.</td>
+        </tr>
+        <tr>
+          <td>Pagantes em cobrança recorrente</td>
+          <td class="n flag-risk">0 / 22</td><td class="n">22 / 22</td>
+          <td>Enquanto for zero, você revende a base inteira todo mês e o churn é estrutural.</td>
+        </tr>
+        <tr>
+          <td>Quedas de conexão por dia</td>
+          <td class="n">7,1</td><td class="n">2,0</td>
+          <td>A sonda saiu e cortou 42%. O resto ainda é 3,5× a linha de base de junho.</td>
+        </tr>
+        <tr>
+          <td>Leads parados há +3 dias</td>
+          <td class="n">30</td><td class="n">0</td>
+          <td>Dinheiro que já entrou pela porta e está esfriando sozinho.</td>
+        </tr>
+        <tr>
+          <td>Cadastros que conectam o WhatsApp</td>
+          <td class="n">41%</td><td class="n">70%</td>
+          <td>O divisor de águas do funil: 51% de conversão contra 1,9%.</td>
+        </tr>
+        <tr>
+          <td>Pagantes com WhatsApp offline</td>
+          <td class="n">4</td><td class="n">0</td>
+          <td>Churn que já aconteceu e ainda não foi comunicado.</td>
+        </tr>
+        <tr>
+          <td>Novos pagantes no mês</td>
+          <td class="n">4–5</td><td class="n">8–9</td>
+          <td>O placar. Abaixo de 7 em outubro, revise o plano em novembro — não em janeiro.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="wide panel-note">
+    Uma observação sobre leitura: a mediana entre cadastro e primeiro pagamento é de
+    <span class="num">27</span> dias. O trabalho de setembro aparece na receita de outubro, e o de
+    janeiro só fecha em fevereiro. Julgar um mês pelo próprio mês vai fazer todo mês parecer ruim.
+  </div>
+</section>
+
+<footer class="spine">
+  Números apurados no banco de produção em 19 de agosto de 2026: 105 contas criadas, 22 com plano
+  vigente, MRR de R$ 2.348, 2.741 alunos e 5.898 mensalidades sob gestão, 3.488 mensagens e 978
+  falhas nos últimos 30 dias, 44 pagamentos aprovados (todos PIX avulso), 9.842 registros de
+  conexão. Complementa o <em>Plano de crescimento 26 → 50</em> e o <em>Playbook de reativação</em>,
+  ambos de 17 de agosto — a trilha comercial daqueles documentos continua valendo integralmente.
+  As faixas de ganho por mês são estimativas apoiadas nas taxas de conversão históricas da própria
+  base.
+</footer>
+
+<script>
+(function () {
+  'use strict'
+
+  var STORAGE_KEY = 'mensalli-plano-6-meses'
+
+  // Chave estável por item: derivada do mês + do texto do passo. Reordenar os
+  // passos não perde a marcação; reescrever o texto de um passo zera aquele
+  // item de propósito — passo que mudou merece ser reavaliado.
+  function chaveDo(input) {
+    var li = input.closest('li')
+    var mes = input.closest('.month')
+    var quando = mes ? mes.querySelector('.month-when') : null
+    var base = (quando ? quando.textContent : '') + '|' +
+               (li ? li.textContent : '').replace(/\s+/g, ' ').trim()
+    var h = 5381
+    for (var i = 0; i < base.length; i++) h = ((h * 33) ^ base.charCodeAt(i)) >>> 0
+    return h.toString(36)
+  }
+
+  var caixas = Array.prototype.slice.call(
+    document.querySelectorAll('.steps input[type="checkbox"]')
+  )
+  if (!caixas.length) return
+
+  // localStorage pode estar indisponível (Safari em file://, aba anônima).
+  // A página continua funcional, só não lembra entre sessões.
+  var loja = null
+  try {
+    window.localStorage.setItem('__t', '1')
+    window.localStorage.removeItem('__t')
+    loja = window.localStorage
+  } catch (e) { loja = null }
+
+  function ler() {
+    if (!loja) return {}
+    try { return JSON.parse(loja.getItem(STORAGE_KEY) || '{}') } catch (e) { return {} }
+  }
+  function gravar(estado) {
+    if (!loja) return
+    try { loja.setItem(STORAGE_KEY, JSON.stringify(estado)) } catch (e) { /* cota cheia */ }
+  }
+
+  // Contador por mês, ao lado do título
+  document.querySelectorAll('.month').forEach(function (mes) {
+    var h3 = mes.querySelector('h3')
+    if (!h3 || !mes.querySelector('.steps')) return
+    var wrap = document.createElement('div')
+    wrap.className = 'month-title'
+    h3.parentNode.insertBefore(wrap, h3)
+    wrap.appendChild(h3)
+    var cont = document.createElement('span')
+    cont.className = 'month-count'
+    wrap.appendChild(cont)
+  })
+
+  var barra = document.getElementById('progressoFill')
+  var rotulo = document.getElementById('progressoLabel')
+  var painel = document.getElementById('progresso')
+  var botao = document.getElementById('limpar')
+
+  function pintar() {
+    document.querySelectorAll('.month').forEach(function (mes) {
+      var cont = mes.querySelector('.month-count')
+      if (!cont) return
+      var ns = mes.querySelectorAll('.steps input[type="checkbox"]')
+      var feitos = mes.querySelectorAll('.steps input[type="checkbox"]:checked').length
+      cont.textContent = feitos + '/' + ns.length
+      cont.classList.toggle('done', ns.length > 0 && feitos === ns.length)
+    })
+    var total = caixas.length
+    var feitos = caixas.filter(function (c) { return c.checked }).length
+    if (barra) barra.style.width = (total ? (feitos / total) * 100 : 0) + '%'
+    if (rotulo) {
+      rotulo.textContent = feitos + ' de ' + total + ' passos'
+        + (loja ? '' : ' · sem memória neste navegador')
+    }
+  }
+
+  var estado = ler()
+  caixas.forEach(function (c) {
+    var k = chaveDo(c)
+    c.setAttribute('data-k', k)
+    if (estado[k]) c.checked = true
+    c.addEventListener('change', function () {
+      var atual = ler()
+      if (c.checked) atual[k] = 1
+      else delete atual[k]
+      gravar(atual)
+      pintar()
+    })
+  })
+
+  if (botao) {
+    botao.addEventListener('click', function () {
+      if (!caixas.some(function (c) { return c.checked })) return
+      if (!window.confirm('Desmarcar todos os passos já marcados?')) return
+      caixas.forEach(function (c) { c.checked = false })
+      gravar({})
+      pintar()
+    })
+  }
+
+  if (painel) painel.hidden = false
+  pintar()
+})()
+</script>

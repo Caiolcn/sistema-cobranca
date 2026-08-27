@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reativar 49 conversas</title>
+<style>
+  :root{
+    --ground:#F4F3EF; --surface:#FCFBF8; --surface-2:#EDEBE4; --bubble:#FFFFFF;
+    --ink:#17171B; --ink-soft:#3A3A42; --muted:#6B6B76;
+    --rule:#DEDBD2; --rule-strong:#C3BFB2;
+    --accent:#2E4B6B; --accent-soft:#E0E7F0;
+    --hot:#A8531B; --hot-soft:#F6E6D6;
+    --warm:#8E5245; --warm-soft:#F4E3DF;
+    --cold:#46606F; --cold-soft:#DFE8ED;
+    --alert:#9A2B20; --alert-soft:#F6DED9;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#121215; --surface:#1A1A1F; --surface-2:#212127; --bubble:#24242B;
+      --ink:#ECEBE6; --ink-soft:#C8C6BF; --muted:#918F99;
+      --rule:#2D2D35; --rule-strong:#42424D;
+      --accent:#88AEDA; --accent-soft:#1B2632;
+      --hot:#E4924F; --hot-soft:#2E2013;
+      --warm:#D68F80; --warm-soft:#2D1D19;
+      --cold:#93AEC0; --cold-soft:#182429;
+      --alert:#E5806F; --alert-soft:#301613;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#121215; --surface:#1A1A1F; --surface-2:#212127; --bubble:#24242B;
+    --ink:#ECEBE6; --ink-soft:#C8C6BF; --muted:#918F99;
+    --rule:#2D2D35; --rule-strong:#42424D;
+    --accent:#88AEDA; --accent-soft:#1B2632;
+    --hot:#E4924F; --hot-soft:#2E2013;
+    --warm:#D68F80; --warm-soft:#2D1D19;
+    --cold:#93AEC0; --cold-soft:#182429;
+    --alert:#E5806F; --alert-soft:#301613;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16.5px; line-height:1.6; margin:0; padding:0 20px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:840px;margin:0 auto}
+  .narrow{max-width:64ch}
+
+  h1,h2,h3{margin:0;text-wrap:balance;font-weight:700;letter-spacing:-.028em}
+  h1{font-size:clamp(2rem,5vw,2.85rem);line-height:1.06}
+  h2{font-size:clamp(1.4rem,3vw,1.8rem);line-height:1.15;letter-spacing:-.024em}
+  h3{font-size:1.06rem;line-height:1.3;letter-spacing:-.014em;font-weight:650}
+  p{margin:0}
+  strong{font-weight:650}
+  .num{font-variant-numeric:tabular-nums}
+  .note{font-family:Georgia,ui-serif,serif;font-style:italic;color:var(--muted);font-size:.94rem;line-height:1.55}
+
+  .eyebrow{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  }
+
+  header{border-bottom:1px solid var(--rule);padding:72px 0 38px;margin-bottom:52px}
+  header .stack{display:flex;flex-direction:column;gap:18px}
+  .lede{font-size:1.09rem;color:var(--ink-soft);max-width:58ch}
+
+  section{margin-bottom:68px}
+  .sec-head{display:flex;flex-direction:column;gap:9px;margin-bottom:24px}
+  .prose{display:flex;flex-direction:column;gap:16px}
+  .prose ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:8px}
+
+  .seg{margin-bottom:56px}
+  .seg-bar{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:16px 20px;background:var(--seg-soft);border-radius:4px;
+    border-left:4px solid var(--seg);margin-bottom:6px;
+  }
+  .seg-count{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;
+    font-size:1.9rem;font-weight:700;color:var(--seg);line-height:1;letter-spacing:-.03em;
+  }
+  .seg-name{display:flex;flex-direction:column;gap:1px}
+  .seg-name .t{font-weight:650;font-size:1.02rem}
+  .seg-name .s{font-size:.85rem;color:var(--muted)}
+  .seg-when{
+    margin-left:auto;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--seg);
+    border:1px solid var(--seg);padding:4px 9px;border-radius:2px;white-space:nowrap;
+  }
+  .seg-why{padding:14px 20px 22px;max-width:62ch}
+
+  .touch{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+  .touch-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-left:2px}
+  .touch-n{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.7rem;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--seg);font-weight:600;
+  }
+  .touch-when{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.7rem;color:var(--muted)}
+  .bubble{
+    background:var(--bubble);border:1px solid var(--rule);
+    border-radius:16px 16px 16px 4px;padding:18px 20px 16px;
+    position:relative;max-width:56ch;
+  }
+  .bubble .msg{white-space:pre-line;font-size:1rem;line-height:1.58;color:var(--ink)}
+  .bubble .slot{
+    background:var(--accent-soft);color:var(--accent);
+    padding:1px 5px;border-radius:3px;font-weight:600;
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.87em;
+  }
+  .copy{
+    margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);
+    display:flex;justify-content:flex-end;
+  }
+  .copy button{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;
+    background:transparent;color:var(--muted);border:1px solid var(--rule-strong);
+    padding:5px 11px;border-radius:2px;cursor:pointer;transition:.15s;
+  }
+  .copy button:hover{background:var(--surface-2);color:var(--ink);border-color:var(--ink-soft)}
+  .copy button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .copy button.done{color:var(--seg);border-color:var(--seg)}
+
+  .why{
+    margin-top:10px;padding:12px 16px;background:var(--surface);
+    border:1px solid var(--rule);border-radius:3px;max-width:56ch;
+  }
+  .why .lbl{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.66rem;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px;
+  }
+  .why p{font-size:.9rem;color:var(--ink-soft);line-height:1.5}
+
+  .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.925rem}
+  th,td{text-align:left;padding:13px 17px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.68rem;
+    letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:500;
+    background:var(--surface-2);white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+  td.said{font-style:italic;color:var(--ink-soft);white-space:nowrap}
+
+  .rails{display:flex;flex-direction:column;gap:12px}
+  .rail{
+    display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    padding:15px 18px;background:var(--surface);border:1px solid var(--rule);
+    border-left:3px solid var(--alert);border-radius:3px;
+  }
+  .rail .rn{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.78rem;color:var(--alert);padding-top:2px}
+  .rail strong{display:block;margin-bottom:2px}
+  .rail p{font-size:.92rem;color:var(--ink-soft)}
+
+  footer{border-top:1px solid var(--rule);padding-top:24px;color:var(--muted);font-size:.86rem;max-width:64ch}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+  @media (max-width:600px){
+    header{padding-top:44px}
+    .seg-when{margin-left:0}
+    .bubble{max-width:100%}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="stack">
+    <span class="eyebrow">Mensalli &middot; Playbook de reativa&ccedil;&atilde;o</span>
+    <h1>42 conversas paradas<br>no seu WhatsApp</h1>
+    <p class="lede">Todas mandaram mensagem. Nenhuma criou conta. A taxa hist&oacute;rica de lead para pagante &eacute; <strong>29%</strong> — se metade disso se sustentar em contato frio, s&atilde;o <strong>6 a 9 clientes</strong> nesta semana. O que muda de uma para outra n&atilde;o &eacute; h&aacute; quanto tempo sumiu, &eacute; <strong>o quanto de conversa chegou a existir</strong>.</p>
+  </div>
+</header>
+
+<main>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">A oferta</span>
+    <h2>N&atilde;o pergunte se ele quer conhecer</h2>
+  </div>
+  <div class="prose narrow">
+    <p>&Eacute; a decis&atilde;o mais importante do roteiro inteiro, e ela vem do seu pr&oacute;prio banco: <strong>46 contas se cadastraram e nunca colocaram um aluno.</strong> Nenhuma delas pagou. Quem conecta o WhatsApp converte a 51%; quem n&atilde;o conecta, a 1,9%.</p>
+    <p>Isso significa que o obst&aacute;culo n&atilde;o &eacute; interesse — &eacute; o trabalho de come&ccedil;ar. Ningu&eacute;m trava por n&atilde;o entender o sistema. Trava por n&atilde;o ter vontade de digitar 40 alunos numa ter&ccedil;a-feira.</p>
+    <p>Ent&atilde;o nenhuma mensagem aqui oferece demonstra&ccedil;&atilde;o, teste gr&aacute;tis ou "quer conhecer?". <strong>Todas oferecem a mesma coisa: voc&ecirc; monta pra ele.</strong> Ele manda a lista do jeito que estiver — planilha, caderno fotografado, print de conversa — e recebe pronto.</p>
+    <p class="note">&Eacute; trabalho manual e n&atilde;o escala al&eacute;m de uns 60 cadastros por m&ecirc;s. N&atilde;o tem problema: nesta fase, ele &eacute; a diferen&ccedil;a entre 1,9% e 51%.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Segmenta&ccedil;&atilde;o</span>
+    <h2>Tr&ecirc;s temperaturas, roteiros diferentes</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:26px">
+    <p>Mandar o mesmo texto para quem trocou dez mensagens com voc&ecirc; e para quem s&oacute; tocou num an&uacute;ncio queima os dois. O corte que importa &eacute; <strong>quanta conversa existiu de verdade</strong> — &eacute; isso que define se voc&ecirc; pode dizer "retomando nosso papo" ou se precisa se apresentar do zero. O tempo parado entra depois, s&oacute; para decidir a ordem da fila.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Segmento</th><th>Leads</th><th>O que aconteceu</th><th>Toques</th></tr></thead>
+      <tbody>
+        <tr><td>Voc&ecirc; nunca respondeu</td><td class="n">3</td><td>Mandaram mensagem e n&atilde;o ouviram nada. Atendimento atrasado, n&atilde;o reativa&ccedil;&atilde;o.</td><td class="n">1 + conversa</td></tr>
+        <tr><td>Tocou no an&uacute;ncio e sumiu</td><td class="n">15</td><td>Mandaram a mensagem autom&aacute;tica do an&uacute;ncio, voc&ecirc; respondeu, nunca mais falaram.</td><td class="n">2</td></tr>
+        <tr><td>Conversou de verdade</td><td class="n">12</td><td>M&eacute;dia de 8 mensagens recebidas. Sabe o que &eacute; e parou mesmo assim.</td><td class="n">2</td></tr>
+        <tr><td>Trocou 2&ndash;3 mensagens</td><td class="n">12</td><td>Come&ccedil;ou a conversa e morreu cedo. Conhece o produto por cima.</td><td class="n">2</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose narrow" style="margin-top:18px">
+    <p class="note">Dentro de cada grupo, ataque primeiro quem parou h&aacute; menos tempo. Os 8 leads parados h&aacute; mais de 15 dias, de qualquer grupo, v&atilde;o direto para a mensagem de despedida do fim desta p&aacute;gina.</p>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--alert);--seg-soft:var(--alert-soft)">
+  <div class="seg-bar">
+    <span class="seg-count num">3</span>
+    <span class="seg-name"><span class="t">Voc&ecirc; nunca respondeu</span><span class="s">mandaram mensagem e n&atilde;o receberam nada de volta</span></span>
+    <span class="seg-when">Hoje, antes de tudo</span>
+  </div>
+  <div class="seg-why prose">
+    <p>Estas tr&ecirc;s pessoas te procuraram e n&atilde;o ouviram nada. N&atilde;o s&atilde;o leads frios — s&atilde;o leads que voc&ecirc; deixou esfriar. &Eacute; a maior convers&atilde;o da lista e o menor esfor&ccedil;o. Duas j&aacute; est&atilde;o esperando h&aacute; mais de 15 dias.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque &uacute;nico</span><span class="touch-when">hoje, hor&aacute;rio comercial</span></div>
+    <div class="bubble">
+      <div class="msg">Oi <span class="slot">Nome</span>, tudo certo? Aqui &eacute; o Caio, do Mensalli.
+
+Vi sua mensagem aqui e demorei pra responder, desculpa.
+
+Me conta rapidinho pra eu te ajudar direito: quantos alunos voc&ecirc; tem hoje e como voc&ecirc; controla as mensalidades — planilha, caderno, ou na cabe&ccedil;a mesmo?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Assume a demora sem se arrastar em desculpa. Termina numa pergunta de resposta curta e sem compromisso — "na cabe&ccedil;a mesmo" d&aacute; permiss&atilde;o pra ele admitir a bagun&ccedil;a, que &eacute; exatamente o problema que voc&ecirc; resolve.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--accent);--seg-soft:var(--accent-soft)">
+  <div class="seg-bar">
+    <span class="seg-count num">15</span>
+    <span class="seg-name"><span class="t">Tocou no an&uacute;ncio e sumiu</span><span class="s">1 mensagem, voc&ecirc; respondeu, nunca mais falou</span></span>
+    <span class="seg-when">Maior grupo da fila</span>
+  </div>
+  <div class="seg-why prose">
+    <p>O maior grupo isolado da sua fila, e o que menos se parece com os outros. <strong>Onze destas quinze pessoas mandaram exatamente o mesmo texto:</strong> "Ol&aacute;! Vi o an&uacute;ncio e quero saber mais sobre o Mensalli." &Eacute; a frase que o pr&oacute;prio an&uacute;ncio preenche — ningu&eacute;m digitou nada, s&oacute; tocaram num bot&atilde;o.</p>
+    <p>Isso muda tudo. Elas n&atilde;o te procuraram, n&atilde;o investiram nada e boa parte nem lembra que clicou. Qualquer mensagem que comece com "nossa conversa", "voc&ecirc; me procurou" ou "ainda tem interesse?" parte de um v&iacute;nculo que nunca existiu — e por isso &eacute; ignorada.</p>
+  </div>
+
+  <div class="rails" style="max-width:62ch;margin:0 20px 24px">
+    <div class="rail">
+      <span class="rn">!</span>
+      <div><strong>Elas n&atilde;o sumiram. Ningu&eacute;m respondeu a pergunta delas.</strong>
+      <p>Onze das quinze receberam de voc&ecirc; exatamente esta resposta: <em>"Ol&aacute;! Tudo bem? Que bom que voc&ecirc; chegou at&eacute; o Mensalli 😊 Me conta: qual seu tipo de neg&oacute;cio e mais ou menos quantos alunos voc&ecirc;s t&ecirc;m hoje?"</em></p>
+      <p style="margin-top:8px">A pessoa pediu para saber mais e recebeu uma pergunta de volta, sem uma linha sequer sobre o que o produto faz ou quanto custa. Ela foi entrevistada antes de ser atendida. O sil&ecirc;ncio depois disso &eacute; consequ&ecirc;ncia, n&atilde;o falta de interesse — e est&aacute; acontecendo com <strong>todo lead novo que o an&uacute;ncio traz</strong>, n&atilde;o s&oacute; com estes quinze.</p></div>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia 0</span></div>
+    <div class="bubble">
+      <div class="msg">Oi <span class="slot">Nome</span>, aqui &eacute; o Caio, do Mensalli.
+
+Voc&ecirc; clicou num an&uacute;ncio nosso uns dias atr&aacute;s e eu te respondi com uma pergunta, em vez de responder o que voc&ecirc; queria saber. Falha minha. Vou direto ao ponto:
+
+O Mensalli cobra a mensalidade dos seus alunos sozinho, pelo WhatsApp. Avisa antes de vencer, cobra quem atrasou e te mostra quem j&aacute; pagou. A partir de <span class="slot">pre&ccedil;o</span>/m&ecirc;s.
+
+Se fizer sentido pra voc&ecirc;, eu mesmo cadastro seus alunos e te devolvo rodando — voc&ecirc; s&oacute; me manda a lista do jeito que ela estiver.
+
+Quer ver funcionando?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Assume o erro de forma espec&iacute;fica, o que j&aacute; diferencia de qualquer follow-up padr&atilde;o. Depois faz a &uacute;nica coisa que faltava: <strong>responde a pergunta</strong> — o que &eacute;, o que faz e quanto custa, nesta ordem, sem exigir nada em troca. O pre&ccedil;o vai no primeiro toque de prop&oacute;sito: esconder pre&ccedil;o de quem clicou em an&uacute;ncio &eacute; a forma mais r&aacute;pida de perder a resposta.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">4 dias depois, s&oacute; se n&atilde;o respondeu</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, &uacute;ltima vez que te chamo, prometo.
+
+Se um dia correr atr&aacute;s de mensalidade atrasada virar dor de cabe&ccedil;a a&iacute;, me chama que eu monto tudo pra voc&ecirc; em 20 minutos. Fico salvo aqui.
+
+Boa semana!</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>N&atilde;o pede nada — e por isso responde gente que ignorou o toque 1. Para quem nunca conversou com voc&ecirc;, o menu de "1, 2 ou 3" dos outros segmentos &eacute; maquinaria demais para o v&iacute;nculo que existe. Aqui a sa&iacute;da limpa vale mais que a insist&ecirc;ncia.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Conserto de origem</span>
+    <h2>Troque a resposta autom&aacute;tica</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:22px">
+    <p>Reativar os quinze resolve o passado. Se a primeira resposta continuar a mesma, voc&ecirc; refaz esta fila todo m&ecirc;s — e ela j&aacute; &eacute; o maior grupo da sua carteira parada.</p>
+    <p>A regra &eacute; simples: <strong>responda antes de perguntar.</strong> A mesma pergunta de qualifica&ccedil;&atilde;o funciona bem, mas s&oacute; depois que a pessoa recebeu o que veio buscar.</p>
+  </div>
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Nova resposta autom&aacute;tica</span><span class="touch-when">para todo lead vindo de an&uacute;ncio</span></div>
+    <div class="bubble">
+      <div class="msg">Ol&aacute;! Tudo bem? Aqui &eacute; o Caio, do Mensalli 😊
+
+Respondendo direto ao que voc&ecirc; perguntou: o Mensalli cobra a mensalidade dos seus alunos automaticamente pelo WhatsApp. Ele avisa antes de vencer, cobra quem atrasou e te mostra quem j&aacute; pagou — sem voc&ecirc; precisar lembrar de nada. A partir de <span class="slot">pre&ccedil;o</span>/m&ecirc;s.
+
+Pra eu te dizer se compensa no seu caso: qual seu tipo de neg&oacute;cio e quantos alunos voc&ecirc; tem mais ou menos?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">O que mudou</span>
+      <p>Mesma pergunta de qualifica&ccedil;&atilde;o, mesmo tamanho, mesmo tom. A &uacute;nica diferen&ccedil;a &eacute; que agora ela vem <em>depois</em> de tr&ecirc;s linhas que entregam o que a pessoa foi buscar no an&uacute;ncio. Ela responde porque j&aacute; foi atendida, n&atilde;o para ser atendida.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--hot);--seg-soft:var(--hot-soft)">
+  <div class="seg-bar">
+    <span class="seg-count num">12</span>
+    <span class="seg-name"><span class="t">Conversou de verdade e parou</span><span class="s">m&eacute;dia de 8 mensagens recebidas &middot; 7 pararam h&aacute; menos de uma semana</span></span>
+    <span class="seg-when">Dias 1 e 2</span>
+  </div>
+  <div class="seg-why prose">
+    <p>O grupo mais quente da fila: sabe o que o Mensalli faz, gastou tempo com voc&ecirc; e parou mesmo assim. Aqui voc&ecirc; n&atilde;o precisa se reapresentar nem explicar o produto. Precisa de um motivo concreto pra retomar — e o motivo &eacute; a oferta de montar pra ele, que provavelmente voc&ecirc; ainda n&atilde;o tinha feito.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia 0</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, nossa conversa ficou pela metade e a culpa foi minha.
+
+Tem uma coisa que eu acho que n&atilde;o te falei: eu mesmo monto o sistema pra voc&ecirc;. Voc&ecirc; me manda a lista dos seus alunos do jeito que ela estiver — planilha, foto do caderno, print de conversa, tanto faz — e eu devolvo tudo cadastrado, com a cobran&ccedil;a j&aacute; rodando.
+
+Voc&ecirc; s&oacute; confere e liga.
+
+Quer que eu fa&ccedil;a isso? Se me mandar hoje, te devolvo pronto amanh&atilde;.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>"A culpa foi minha" tira o peso dele ter sumido e evita a cobran&ccedil;a impl&iacute;cita. "Do jeito que ela estiver" derruba a desculpa mais comum, que &eacute; achar que precisa organizar antes. O prazo no fim cria urg&ecirc;ncia sem desconto nem press&atilde;o.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">3 dias depois, s&oacute; se n&atilde;o respondeu</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, prometo que &eacute; a &uacute;ltima vez que te chamo.
+
+Me responde s&oacute; com o n&uacute;mero que eu me organizo aqui:
+
+1 — Quero, mas essa semana t&aacute; corrida
+2 — Quero entender melhor antes
+3 — N&atilde;o &eacute; pra mim agora
+
+Qualquer uma das tr&ecirc;s t&aacute; &oacute;tima pra mim.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Responder custa um caractere. A op&ccedil;&atilde;o 3 &eacute; a pe&ccedil;a central: dar sa&iacute;da f&aacute;cil aumenta a taxa de resposta geral, e um "n&atilde;o" claro vale mais que um card parado no board. S&oacute; use se o toque 1 n&atilde;o teve resposta.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--warm);--seg-soft:var(--warm-soft)">
+  <div class="seg-bar">
+    <span class="seg-count num">12</span>
+    <span class="seg-name"><span class="t">Trocou 2 ou 3 mensagens e parou</span><span class="s">conhece o produto por cima, o interesse nunca chegou a firmar</span></span>
+    <span class="seg-when">Dias 3 e 4</span>
+  </div>
+  <div class="seg-why prose">
+    <p>Conversa curta demais pra dizer "retomando nosso papo" e longa demais pra se reapresentar. Voc&ecirc; precisa chegar com informa&ccedil;&atilde;o, n&atilde;o com cobran&ccedil;a — "ainda tem interesse?" &eacute; ignorado aqui. O gancho &eacute; o dinheiro parado, espec&iacute;fico e calculado na frente dele.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia 0</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, uma pergunta r&aacute;pida e sincera:
+
+quantos alunos seus atrasaram a mensalidade este m&ecirc;s?
+
+Pergunto porque &eacute; o n&uacute;mero que mais assusta o pessoal quando a gente senta pra ver. Se forem 4 alunos de R$ 150, s&atilde;o R$ 600 parados. Todo m&ecirc;s, e quase sempre &eacute; o mesmo aluno.
+
+Se quiser, eu cadastro os seus alunos e te mostro exatamente quem t&aacute; devendo. Leva uns 20 minutos do meu lado e voc&ecirc; n&atilde;o precisa decidir nada pra ver.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Abre com pergunta, n&atilde;o com pitch — e &eacute; uma pergunta que ele provavelmente n&atilde;o sabe responder de cabe&ccedil;a, o que j&aacute; &eacute; o argumento. A conta de R$ 600 &eacute; explicitamente um exemplo, n&atilde;o uma estat&iacute;stica inventada. "Voc&ecirc; n&atilde;o precisa decidir nada pra ver" remove o medo de entrar num funil de vendas.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">4 dias depois, s&oacute; se n&atilde;o respondeu</span></div>
+    <div class="bubble">
+      <div class="msg">Sem resposta eu entendo como "n&atilde;o &eacute; o momento" e paro por aqui, <span class="slot">Nome</span> — sem problema nenhum.
+
+Se mudar de ideia, &eacute; s&oacute; me chamar aqui. Fica salvo.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Encerra de verdade, sem ironia e sem culpa. Uma parte responde justamente aqui, quando fica claro que a porta vai fechar. A outra parte some — e sumir &eacute; uma resposta &uacute;til, porque libera o card.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--cold);--seg-soft:var(--cold-soft)">
+  <div class="seg-bar">
+    <span class="seg-count num">8</span>
+    <span class="seg-name"><span class="t">Parado h&aacute; 15 dias ou mais</span><span class="s">de qualquer grupo acima &middot; provavelmente resolveu de outro jeito</span></span>
+    <span class="seg-when">Dia 4</span>
+  </div>
+  <div class="seg-why prose">
+    <p>Este n&atilde;o &eacute; um grupo &agrave; parte: s&atilde;o os oito leads mais antigos, espalhados pelos segmentos acima. Passado esse tempo, o objetivo deixa de ser vender — &eacute; limpar o board e, com sorte, descobrir o motivo real. Um toque, sem insist&ecirc;ncia depois.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque &uacute;nico</span><span class="touch-when">dia 0 &middot; sem follow-up</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, faz um tempo que a gente conversou sobre a cobran&ccedil;a dos seus alunos e acabou n&atilde;o indo pra frente. Imagino que voc&ecirc; tenha resolvido de outro jeito.
+
+S&oacute; pra eu organizar meus contatos aqui: prefere que eu te avise quando tiver novidade, ou que eu n&atilde;o te chame mais?
+
+As duas respostas t&atilde;o certas comigo.
+
+(e se rolou alguma coisa que te fez desistir na &eacute;poca, me fala sem d&oacute; — me ajuda demais)</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Mensagem de despedida costuma ter a maior taxa de resposta de qualquer sequ&ecirc;ncia, porque n&atilde;o pede nada. O par&ecirc;ntese final &eacute; o mais valioso: se dois dos seis derem o mesmo motivo, voc&ecirc; achou um problema de produto ou de pre&ccedil;o que est&aacute; te custando mais que estes seis leads.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Depois da resposta</span>
+    <h2>O que fazer com cada uma</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:24px">
+    <p>A reativa&ccedil;&atilde;o s&oacute; vale se a resposta virar a&ccedil;&atilde;o no mesmo dia. Lead que responde e espera dois dias por voc&ecirc; esfria de novo — e da segunda vez n&atilde;o volta.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Se ele disser</th><th>Voc&ecirc; faz</th><th>Prazo</th></tr></thead>
+      <tbody>
+        <tr><td class="said">"Quero sim"</td><td>Pe&ccedil;a a lista de alunos <strong>na mesma mensagem</strong>, sem marcar reuni&atilde;o. Monte e devolva pronto.</td><td class="n">24h</td></tr>
+        <tr><td class="said">"Quanto custa?"</td><td>Responda o pre&ccedil;o direto, sem rodeio. Depois ofere&ccedil;a montar. Enrolar no pre&ccedil;o mata a conversa.</td><td class="n">na hora</td></tr>
+        <tr><td class="said">"T&ocirc; sem tempo"</td><td>Ofere&ccedil;a dia e hora espec&iacute;ficos ("ter&ccedil;a 10h?"). Nunca "semana que vem".</td><td class="n">na hora</td></tr>
+        <tr><td class="said">"J&aacute; uso outro"</td><td>Pergunte qual e o que mais incomoda. Anote — &eacute; a sua melhor fonte sobre concorr&ecirc;ncia.</td><td class="n">na hora</td></tr>
+        <tr><td class="said">"1" (t&aacute; corrido)</td><td>Combine data. Volte nela, n&atilde;o antes.</td><td class="n">na data</td></tr>
+        <tr><td class="said">"N&atilde;o"</td><td>Agrade&ccedil;a em uma linha. Marque perdido <strong>com o motivo escrito</strong> e tire do board.</td><td class="n">na hora</td></tr>
+        <tr><td class="said">Nada</td><td>Toque 2 no prazo do segmento. Depois dele, perdido — sem terceiro toque.</td><td class="n">3&ndash;4 dias</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Opera&ccedil;&atilde;o</span>
+    <h2>A semana</h2>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Dia</th><th>Quem</th><th>Volume</th><th>Tempo</th></tr></thead>
+      <tbody>
+        <tr><td>Segunda</td><td>Os 3 sem resposta + os 12 que conversaram de verdade</td><td class="n">15</td><td class="n">~1h30</td></tr>
+        <tr><td>Ter&ccedil;a</td><td>Trocar a resposta autom&aacute;tica do an&uacute;ncio + 8 do "tocou e sumiu"</td><td class="n">8</td><td class="n">~1h15</td></tr>
+        <tr><td>Quarta</td><td>Os 7 restantes do "tocou e sumiu" + 5 dos que trocaram 2&ndash;3</td><td class="n">12</td><td class="n">~1h15</td></tr>
+        <tr><td>Quinta</td><td>Os 7 restantes dos 2&ndash;3 + os 8 parados h&aacute; 15+ dias</td><td class="n">15</td><td class="n">~1h30</td></tr>
+        <tr><td>Sexta</td><td>Toque 2 de quem n&atilde;o respondeu na segunda e ter&ccedil;a</td><td class="n">~13</td><td class="n">~45min</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose narrow" style="margin-top:20px">
+    <p class="note">Cerca de 6 horas na semana inteira, para uma fonte que deve render entre 6 e 9 clientes. &Eacute; a melhor rela&ccedil;&atilde;o esfor&ccedil;o/retorno do trimestre — e some se voc&ecirc; deixar para a semana que vem, porque os 4 dias de frieza viram 11.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Cuidados</span>
+    <h2>Como n&atilde;o queimar o n&uacute;mero</h2>
+  </div>
+  <div class="rails">
+    <div class="rail">
+      <span class="rn">01</span>
+      <div><strong>N&atilde;o use automa&ccedil;&atilde;o para isso</strong>
+      <p>Os 86 leads entraram todos por um &uacute;nico WhatsApp, que tamb&eacute;m &eacute; o seu pessoal. Disparar 44 mensagens iguais em sequ&ecirc;ncia &eacute; o padr&atilde;o exato que o WhatsApp pune com bloqueio. Perder esse n&uacute;mero &eacute; perder 100% da sua aquisi&ccedil;&atilde;o — envie na m&atilde;o, ou por alguém da sua equipe.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">02</span>
+      <div><strong>Varie o texto de verdade</strong>
+      <p>Use os roteiros como base, n&atilde;o como copy-paste. Troque a sauda&ccedil;&atilde;o, cite algo da conversa anterior de cada um, mude a ordem das frases. Ajuda com o WhatsApp e converte melhor — a pessoa percebe quando recebeu um molde.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">03</span>
+      <div><strong>Espace os envios</strong>
+      <p>No m&aacute;ximo 15 por dia, com intervalo de alguns minutos entre um e outro. Entre 9h e 11h ou 14h e 17h, dias &uacute;teis. Nada de fim de semana e nada de madrugada.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">04</span>
+      <div><strong>Nenhum link no primeiro toque</strong>
+      <p>Link na mensagem inicial derruba entrega e faz a mensagem parecer disparo em massa. Mande o link s&oacute; depois que a pessoa responder.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">05</span>
+      <div><strong>Todo card sai da coluna</strong>
+      <p>No fim da semana, "conversando" precisa estar perto de zero. Cada lead vira "criou conta" ou "perdido" com motivo escrito. Board com 44 cards parados n&atilde;o &eacute; funil, &eacute; lista de tarefa ignorada — e foi assim que essas conversas chegaram aqui.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Segmenta&ccedil;&atilde;o apurada em 18 de agosto de 2026, cruzando <code>mensalli_leads</code> com o hist&oacute;rico de <code>mensalli_lead_mensagens</code>: 42 leads em "conversando" e "novo", classificados pela quantidade de mensagens que a pessoa de fato enviou — 3 sem nenhuma resposta sua, 15 com uma &uacute;nica mensagem seguida de sil&ecirc;ncio, 12 com 2 ou 3, e 12 com 4 ou mais (m&eacute;dia de 7,7). Os n&uacute;meros mudaram em rela&ccedil;&atilde;o &agrave; primeira vers&atilde;o desta p&aacute;gina porque o board se moveu de um dia para o outro. A taxa de 29% de lead para pagante vem dos 86 leads que entraram desde 13 de julho, dos quais 25 viraram pagantes.</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+document.querySelectorAll(".copy button").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var msg = btn.closest(".bubble").querySelector(".msg");
+    var text = msg.innerText.replace(/ /g, " ");
+    navigator.clipboard.writeText(text).then(function () {
+      var old = btn.textContent;
+      btn.textContent = "Copiado";
+      btn.classList.add("done");
+      setTimeout(function () {
+        btn.textContent = old;
+        btn.classList.remove("done");
+      }, 1600);
+    });
+  });
+});
+</script>
+</body>
+</html>

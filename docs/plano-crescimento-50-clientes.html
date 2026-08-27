@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano 26 → 50</title>
+<style>
+  :root{
+    --ground:#F3F5F1;
+    --surface:#FCFDFA;
+    --surface-2:#EDF0EA;
+    --ink:#101A17;
+    --ink-soft:#33433E;
+    --muted:#5F6E68;
+    --rule:#D9E0D8;
+    --rule-strong:#BCC7B9;
+    --accent:#0E6B57;
+    --accent-soft:#D8E8E1;
+    --brass:#8F6314;
+    --brass-soft:#F0E4C8;
+    --risk:#9E2B1F;
+    --risk-soft:#F5DCD7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0C1311;
+      --surface:#131D19;
+      --surface-2:#18241F;
+      --ink:#E7EEE9;
+      --ink-soft:#C4D1CB;
+      --muted:#8E9E97;
+      --rule:#25332E;
+      --rule-strong:#35473F;
+      --accent:#54C3A5;
+      --accent-soft:#12332B;
+      --brass:#D9AB55;
+      --brass-soft:#33280F;
+      --risk:#E88375;
+      --risk-soft:#3A1D18;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0C1311;
+    --surface:#131D19;
+    --surface-2:#18241F;
+    --ink:#E7EEE9;
+    --ink-soft:#C4D1CB;
+    --muted:#8E9E97;
+    --rule:#25332E;
+    --rule-strong:#35473F;
+    --accent:#54C3A5;
+    --accent-soft:#12332B;
+    --brass:#D9AB55;
+    --brass-soft:#33280F;
+    --risk:#E88375;
+    --risk-soft:#3A1D18;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16.5px;
+    line-height:1.62;
+    margin:0;
+    padding:0 20px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .spine{max-width:66ch;margin:0 auto}
+  .wide{max-width:1080px;margin-left:auto;margin-right:auto}
+
+  h1,h2,h3{font-family:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;font-weight:600;text-wrap:balance;margin:0}
+  h1{font-size:clamp(2.1rem,5.2vw,3.05rem);line-height:1.08;letter-spacing:-.022em}
+  h2{font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.18;letter-spacing:-.015em}
+  h3{font-size:1.14rem;line-height:1.3;letter-spacing:-.008em}
+  p{margin:0}
+  strong{font-weight:650;color:var(--ink)}
+
+  .eyebrow{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.705rem;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--muted);
+  }
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- header ---------- */
+  header{
+    border-bottom:1px solid var(--rule);
+    padding:76px 0 40px;
+    margin-bottom:56px;
+  }
+  header .stack{display:flex;flex-direction:column;gap:20px}
+  .lede{font-size:1.115rem;color:var(--ink-soft);max-width:58ch}
+  .stamp{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    padding-top:8px;
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.735rem;color:var(--muted);
+  }
+
+  /* ---------- section rhythm ---------- */
+  section{margin-bottom:76px}
+  .sec-head{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+  .prose{display:flex;flex-direction:column;gap:18px}
+  .prose ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:9px}
+
+  /* ---------- the math ---------- */
+  .math{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:3px;
+    padding:26px 28px;
+    display:flex;flex-direction:column;gap:0;
+  }
+  .math-row{
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    padding:11px 0;border-bottom:1px solid var(--rule);
+  }
+  .math-row:last-child{border-bottom:none;padding-bottom:0}
+  .math-row.total{
+    border-top:2px solid var(--rule-strong);border-bottom:none;
+    margin-top:8px;padding-top:16px;
+  }
+  .math-label{color:var(--ink-soft);font-size:.95rem}
+  .math-val{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-variant-numeric:tabular-nums;font-size:1.02rem;white-space:nowrap;
+  }
+  .math-row.total .math-val{font-size:1.5rem;color:var(--accent);font-weight:600}
+  .math-row.total .math-label{font-size:1.02rem;color:var(--ink);font-weight:600}
+
+  /* ---------- funnel ---------- */
+  .funnel{display:flex;flex-direction:column;gap:2px;margin:8px 0 22px}
+  .fstage{
+    display:grid;grid-template-columns:1fr 220px;gap:20px;align-items:center;
+    padding:14px 0;border-bottom:1px solid var(--rule);
+  }
+  .fstage:last-child{border-bottom:none}
+  .fbar{position:relative;height:34px;background:var(--surface-2);border-radius:2px;overflow:hidden}
+  .ffill{position:absolute;inset:0 auto 0 0;background:var(--accent);opacity:.88}
+  .fstage:last-child .ffill{background:var(--brass)}
+  .flabel{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    font-size:.83rem;font-weight:600;color:var(--surface);
+    mix-blend-mode:normal;
+  }
+  .fmeta{display:flex;flex-direction:column;gap:1px}
+  .fcount{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;font-size:1.02rem}
+  .fdrop{font-size:.775rem;color:var(--muted)}
+  .fdrop.bad{color:var(--risk)}
+
+  /* ---------- split stats ---------- */
+  .split{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden;
+  }
+  .cell{background:var(--surface);padding:20px 20px 22px;display:flex;flex-direction:column;gap:5px}
+  .cell .big{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:2.05rem;line-height:1.05;letter-spacing:-.03em;
+  }
+  .cell .big.pos{color:var(--accent)}
+  .cell .big.neg{color:var(--risk)}
+  .cell .cap{font-size:.855rem;color:var(--muted);line-height:1.42}
+
+  /* ---------- levers ---------- */
+  .levers{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+  .lever{
+    background:var(--surface);padding:24px 26px;
+    display:grid;grid-template-columns:1fr 150px;gap:22px;align-items:start;
+  }
+  .lever-body{display:flex;flex-direction:column;gap:11px}
+  .lever h3{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+  .lever p{font-size:.945rem;color:var(--ink-soft)}
+  .lever ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px;font-size:.92rem;color:var(--ink-soft)}
+  .yield{
+    display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right;
+    padding-left:20px;border-left:1px solid var(--rule);
+  }
+  .yield .y{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-variant-numeric:tabular-nums;font-size:1.55rem;font-weight:600;
+    color:var(--accent);line-height:1.1;letter-spacing:-.02em;
+  }
+  .yield .yl{font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-family:ui-monospace,"Cascadia Mono",Consolas,monospace}
+
+  .tag{
+    display:inline-block;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.665rem;letter-spacing:.09em;text-transform:uppercase;
+    padding:3px 8px;border-radius:2px;white-space:nowrap;
+  }
+  .tag.free{background:var(--accent-soft);color:var(--accent)}
+  .tag.build{background:var(--brass-soft);color:var(--brass)}
+  .tag.spend{background:var(--risk-soft);color:var(--risk)}
+
+  /* ---------- months ---------- */
+  .months{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:16px}
+  .month{
+    background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+    padding:22px 22px 24px;display:flex;flex-direction:column;gap:14px;
+  }
+  .month.peak{border-color:var(--rule-strong);box-shadow:inset 3px 0 0 var(--brass)}
+  .m-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+  .m-name{font-family:ui-serif,Georgia,serif;font-size:1.22rem;font-weight:600}
+  .m-target{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;font-size:1.32rem;font-weight:600;color:var(--accent)}
+  .m-theme{font-size:.9rem;color:var(--ink-soft);font-style:italic}
+  .month ul{margin:0;padding-left:1.05em;display:flex;flex-direction:column;gap:7px;font-size:.885rem;color:var(--ink-soft)}
+
+  /* ---------- watchlist ---------- */
+  table{border-collapse:collapse;width:100%;font-size:.925rem}
+  .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface)}
+  th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.695rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:500;
+    background:var(--surface-2);white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* ---------- risks ---------- */
+  .risks{display:flex;flex-direction:column;gap:14px}
+  .risk-item{
+    display:grid;grid-template-columns:26px 1fr;gap:14px;align-items:start;
+    padding:16px 18px;background:var(--surface);border:1px solid var(--rule);
+    border-left:3px solid var(--risk);border-radius:3px;
+  }
+  .risk-item .rn{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.8rem;
+    color:var(--risk);padding-top:2px;
+  }
+  .risk-item p{font-size:.93rem;color:var(--ink-soft)}
+  .risk-item strong{display:block;margin-bottom:3px;color:var(--ink)}
+
+  footer{border-top:1px solid var(--rule);padding-top:26px;color:var(--muted);font-size:.865rem}
+
+  @media (max-width:640px){
+    .fstage{grid-template-columns:1fr;gap:8px}
+    .lever{grid-template-columns:1fr;gap:16px}
+    .yield{align-items:flex-start;text-align:left;padding-left:0;border-left:none;
+      border-top:1px solid var(--rule);padding-top:12px;flex-direction:row;gap:10px;align-items:baseline}
+    header{padding-top:48px}
+  }
+</style>
+</head>
+<body>
+
+<header class="wide">
+  <div class="stack">
+    <span class="eyebrow">Mensalli · Plano de crescimento</span>
+    <h1>De 26 a 50 pagantes<br>até dezembro</h1>
+    <p class="lede">O gargalo não é tráfego. São <strong>46 contas que se cadastraram e nunca colocaram um aluno</strong>, <strong>44 leads parados no board</strong> e <strong>2 clientes perdidos por mês</strong> há seis meses seguidos. A meta é alcançável sem aumentar a verba — mas não sem consertar o funil primeiro.</p>
+    <div class="stamp">
+      <span>17 ago 2026</span>
+      <span>Base: 104 contas · 27 pagantes</span>
+      <span>Fonte: banco de produção</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">01 · A conta</span>
+    <h2>Você precisa de 34 novos, não de 24</h2>
+  </div>
+  <div class="spine prose" style="margin-bottom:26px">
+    <p>Sua intuição estava certa e vale explicar por quê: a diferença entre 26 e 50 é 24, mas o churn come parte do que você traz. Você perde <strong>2 clientes por mês</strong> de forma consistente — 12 ex-pagantes em 6 meses, sem um único mês de folga. Conforme a base cresce, a perda absoluta cresce junto.</p>
+  </div>
+  <div class="math">
+    <div class="math-row"><span class="math-label">Pagantes hoje</span><span class="math-val">26</span></div>
+    <div class="math-row"><span class="math-label">Perdas esperadas em 4 meses (2–3/mês sobre base crescente)</span><span class="math-val">−10</span></div>
+    <div class="math-row"><span class="math-label">Meta de dezembro</span><span class="math-val">50</span></div>
+    <div class="math-row total"><span class="math-label">Novos pagantes necessários</span><span class="math-val">34 &nbsp;·&nbsp; 8–9 por mês</span></div>
+  </div>
+  <div class="spine prose" style="margin-top:26px">
+    <p>Hoje você entrega entre <strong>4 e 5 novos pagantes por mês</strong> — cerca de 22 cadastros mensais convertendo a 20%. Descontado o churn, isso é um crescimento líquido de +2,5/mês, e dezembro fecharia em <strong>36</strong>. A meta exige dobrar a taxa de entrada. As duas maiores alavancas para isso não custam nada em mídia.</p>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">02 · Diagnóstico</span>
+    <h2>Onde o funil vaza</h2>
+  </div>
+  <div class="spine prose" style="margin-bottom:30px">
+    <p>Das 104 contas já criadas, aqui está exatamente onde as pessoas param. Cada degrau é uma medição real, não estimativa.</p>
+  </div>
+
+  <div class="funnel">
+    <div class="fstage">
+      <div class="fbar"><div class="ffill" style="width:100%"></div><span class="flabel">Criou a conta</span></div>
+      <div class="fmeta"><span class="fcount num">104 contas</span><span class="fdrop">todo o histórico</span></div>
+    </div>
+    <div class="fstage">
+      <div class="fbar"><div class="ffill" style="width:55.8%"></div><span class="flabel">Cadastrou ao menos 1 aluno</span></div>
+      <div class="fmeta"><span class="fcount num">58 contas</span><span class="fdrop bad">−46 aqui · a maior perda</span></div>
+    </div>
+    <div class="fstage">
+      <div class="fbar"><div class="ffill" style="width:49%"></div><span class="flabel">Conectou o WhatsApp</span></div>
+      <div class="fmeta"><span class="fcount num">51 contas</span><span class="fdrop">51% destas viram pagantes</span></div>
+    </div>
+    <div class="fstage">
+      <div class="fbar"><div class="ffill" style="width:26%"></div><span class="flabel">Virou pagante</span></div>
+      <div class="fmeta"><span class="fcount num">27 contas</span><span class="fdrop">26% do total de cadastros</span></div>
+    </div>
+  </div>
+
+  <div class="split" style="margin-bottom:22px">
+    <div class="cell">
+      <span class="big neg num">1,9%</span>
+      <span class="cap">convertem entre quem <strong>nunca conectou</strong> o WhatsApp (53 contas, 1 pagante)</span>
+    </div>
+    <div class="cell">
+      <span class="big pos num">51%</span>
+      <span class="cap">convertem entre quem <strong>conectou</strong> o WhatsApp (51 contas, 26 pagantes)</span>
+    </div>
+    <div class="cell">
+      <span class="big num">0%</span>
+      <span class="cap">convertem entre as <strong>46 contas com zero alunos</strong> — nenhuma, nunca</span>
+    </div>
+    <div class="cell">
+      <span class="big pos num">80%</span>
+      <span class="cap">convertem entre quem passou de <strong>30 alunos cadastrados</strong> (25 contas, 20 pagantes)</span>
+    </div>
+  </div>
+
+  <div class="spine prose">
+    <p>Isso reduz a estratégia inteira a uma frase: <strong>quem importa os alunos e conecta o WhatsApp compra; quem não faz, não compra.</strong> O produto se vende sozinho depois da primeira mensagem enviada de verdade. Antes disso, ele é uma tela vazia.</p>
+    <p>Há mais duas fontes de clientes já pagas e paradas:</p>
+    <ul>
+      <li><strong>44 leads no status "conversando"</strong> — todos sem interação há 4 dias ou mais, nenhum tocado nos últimos 3 dias. Dos 86 leads que entraram desde 13 de julho, 25 viraram pagantes: uma taxa de 29%.</li>
+      <li><strong>12 ex-pagantes</strong>, vários com base grande e ativa quando saíram — Colégio GVC (308 alunos), Studio Olimpus (105), Igor Silva Personal Soccer (46), Studio DM (36), Reforço Tia Sol (36).</li>
+    </ul>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">03 · Alavancas</span>
+    <h2>De onde vêm os 34</h2>
+  </div>
+  <div class="spine prose" style="margin-bottom:28px">
+    <p>Em ordem de custo, não de tamanho. As três primeiras usam gente e base que você já tem; a quarta só faz sentido depois que o funil parar de vazar, senão você paga para encher um balde furado.</p>
+  </div>
+
+  <div class="levers">
+
+    <div class="lever">
+      <div class="lever-body">
+        <h3>Zerar os 44 leads parados <span class="tag free">Custo zero · Semana 1</span></h3>
+        <p>É a única fonte que dá resultado em dias, não em meses. A taxa histórica de lead → pagante é de 29%; mesmo recuperando metade desse desempenho em contatos frios, são 6 a 9 clientes.</p>
+        <ul>
+          <li>Bloqueie 2 horas por dia nesta semana e limpe a fila inteira, do mais recente ao mais antigo.</li>
+          <li>Escreva 3 mensagens por temperatura (4–7 dias / 8–14 / 15+), não uma genérica.</li>
+          <li>Todo lead sai da coluna: vira "criou conta" ou vira "perdido" com o motivo escrito. Um board com 44 cards parados não é um funil, é uma lista de tarefas ignoradas.</li>
+        </ul>
+      </div>
+      <div class="yield"><span class="y num">+6 a 9</span><span class="yl">clientes</span></div>
+    </div>
+
+    <div class="lever">
+      <div class="lever-body">
+        <h3>Ativação nas primeiras 24 horas <span class="tag build">Produto · Setembro</span></h3>
+        <p>A alavanca de maior impacto no ano inteiro. Se a taxa de "importou alunos + conectou WhatsApp" subir de 49% para 70%, sua conversão global vai de 20% para ~34% sem um real a mais de mídia — e cada novo cadastro passa a valer 70% mais.</p>
+        <ul>
+          <li><strong>Importação assistida:</strong> ofereça importar a lista de alunos por você. Peça a planilha ou os prints no WhatsApp e suba você mesmo. É trabalho manual e vale a pena — nas contas com 30+ alunos, 80% pagam.</li>
+          <li><strong>Ligue para quem cadastrou e não voltou.</strong> Chamada de voz, no mesmo dia. O painel de Primeiros Passos já mostra quem está travado.</li>
+          <li><strong>Corte a espera:</strong> conta sem aluno em 24h dispara mensagem sua, não automação genérica. Conta sem WhatsApp conectado em 48h vira ligação.</li>
+        </ul>
+      </div>
+      <div class="yield"><span class="y num">+10 a 14</span><span class="yl">clientes</span></div>
+    </div>
+
+    <div class="lever">
+      <div class="lever-body">
+        <h3>Win-back dos 12 ex-pagantes <span class="tag free">Custo zero · Setembro</span></h3>
+        <p>Já conhecem o produto, já tiveram os dados dentro dele e vários saíram com base grande. O custo de aquisição é uma mensagem. Uma taxa de retorno de 25% é conservadora para quem já pagou.</p>
+        <ul>
+          <li>Ligue para os 5 maiores primeiro — GVC, Olimpus, Igor Silva, Studio DM e Tia Sol somam mais de 530 alunos.</li>
+          <li>Pergunte o motivo da saída antes de oferecer qualquer coisa. Se três derem a mesma resposta, você achou o motivo do churn.</li>
+          <li>Ofereça 1 mês de volta com a base restaurada. Os dados ainda estão lá.</li>
+        </ul>
+      </div>
+      <div class="yield"><span class="y num">+3 a 4</span><span class="yl">clientes</span></div>
+    </div>
+
+    <div class="lever">
+      <div class="lever-body">
+        <h3>Segundo canal de entrada <span class="tag spend">Verba · Outubro</span></h3>
+        <p><strong>100% dos seus 86 leads entraram por um único WhatsApp.</strong> Isso é o teto do seu crescimento e o seu maior risco operacional ao mesmo tempo. Escalar volume só depois que a ativação estiver arrumada — hoje, 4 de cada 5 reais em mídia vão para contas que nunca cadastram um aluno.</p>
+        <ul>
+          <li>Reative o Meta Ads com o funil já consertado e meça o custo por <em>conta ativada</em>, não por cadastro.</li>
+          <li>Programa de indicação para os 26 pagantes: eles conhecem outros donos de studio. Um mês grátis por indicação que vira pagante.</li>
+          <li>Prospecção ativa nas academias e CTs da sua cidade — o perfil que converte a 80% é conhecido e tem endereço.</li>
+        </ul>
+      </div>
+      <div class="yield"><span class="y num">+8 a 12</span><span class="yl">clientes</span></div>
+    </div>
+
+    <div class="lever">
+      <div class="lever-body">
+        <h3>Cortar o churn pela metade <span class="tag build">Retenção · Contínuo</span></h3>
+        <p>Não traz cliente novo, mas cada perda evitada vale exatamente o mesmo que uma venda — e é muito mais barata. Sair de 2 para 1 por mês devolve 4 clientes até dezembro. <strong>7 dos seus 27 pagantes estão com o WhatsApp desconectado agora:</strong> para eles, o produto parou de funcionar e eles ainda não cancelaram.</p>
+        <ul>
+          <li>Reconectar esses 7 é a tarefa de retenção mais urgente da lista. Hoje.</li>
+          <li>Alerta ativo: pagante desconectado há mais de 48h entra numa lista que alguém liga, não numa fila de e-mail.</li>
+          <li>Pergunte o motivo da saída em 100% dos cancelamentos, sem exceção.</li>
+        </ul>
+      </div>
+      <div class="yield"><span class="y num">+4</span><span class="yl">preservados</span></div>
+    </div>
+
+  </div>
+
+  <div class="spine prose" style="margin-top:26px">
+    <p>Somadas, as alavancas rendem entre <strong>31 e 43 clientes</strong>. A meta de 34 fica no meio dessa faixa — é atingível, mas não com folga. Não dá para pular nenhuma das três primeiras.</p>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">04 · Execução</span>
+    <h2>Mês a mês</h2>
+  </div>
+  <div class="spine prose" style="margin-bottom:28px">
+    <p>Uma observação de calendário que muda a ordem das coisas: <strong>novembro é o seu mês de virada, não dezembro.</strong> Dono de academia decide a estrutura do ano em novembro, matricula em janeiro e some entre 20 de dezembro e o Ano Novo. Carregue o esforço para a frente e use dezembro para fechar quem já está conversando, com o argumento de entrar em janeiro com a cobrança já rodando.</p>
+  </div>
+
+  <div class="months">
+    <div class="month">
+      <div class="m-top"><span class="m-name">Setembro</span><span class="m-target num">33</span></div>
+      <p class="m-theme">Consertar o funil e colher o que já está parado.</p>
+      <ul>
+        <li>Zerar os 44 leads na semana 1</li>
+        <li>Ligar para os 12 ex-pagantes</li>
+        <li>Reconectar os 7 pagantes offline</li>
+        <li>Importação assistida virando rotina</li>
+      </ul>
+    </div>
+    <div class="month">
+      <div class="m-top"><span class="m-name">Outubro</span><span class="m-target num">39</span></div>
+      <p class="m-theme">Abrir o segundo canal, agora que o balde segura água.</p>
+      <ul>
+        <li>Meta Ads de volta, medindo conta ativada</li>
+        <li>Programa de indicação com os pagantes</li>
+        <li>Prospecção ativa: 20 contatos/semana</li>
+        <li>Medir ativação em 24h e 48h</li>
+      </ul>
+    </div>
+    <div class="month peak">
+      <div class="m-top"><span class="m-name">Novembro</span><span class="m-target num">46</span></div>
+      <p class="m-theme">Mês de pico. Concentre verba e esforço aqui.</p>
+      <ul>
+        <li>Campanha "organize 2027" para academias</li>
+        <li>Oferta anual com desconto — trava a receita e derruba o churn</li>
+        <li>Maior investimento em mídia do trimestre</li>
+        <li>Fechar tudo antes do dia 25</li>
+      </ul>
+    </div>
+    <div class="month">
+      <div class="m-top"><span class="m-name">Dezembro</span><span class="m-target num">50</span></div>
+      <p class="m-theme">Fechar quem já conversa. Não abrir frente nova.</p>
+      <ul>
+        <li>Foco total em quem está em negociação</li>
+        <li>Argumento: janeiro com cobrança rodando</li>
+        <li>Reduzir mídia após o dia 15</li>
+        <li>Segurar a base no recesso</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">05 · Painel</span>
+    <h2>Os cinco números da segunda-feira</h2>
+  </div>
+  <div class="spine prose" style="margin-bottom:24px">
+    <p>Se você olhar só para "quantos pagantes eu tenho", vai descobrir que errou a meta em novembro. Estes cinco antecipam o resultado em semanas.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Indicador</th><th>Hoje</th><th>Meta</th><th>Por que importa</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Leads parados há +3 dias</td>
+          <td class="n">44</td>
+          <td class="n">0</td>
+          <td>É dinheiro que já entrou pela porta e está esfriando sozinho.</td>
+        </tr>
+        <tr>
+          <td>Cadastros que conectam o WhatsApp</td>
+          <td class="n">49%</td>
+          <td class="n">70%</td>
+          <td>O divisor de águas: 51% de conversão contra 1,9%.</td>
+        </tr>
+        <tr>
+          <td>Cadastros com 10+ alunos em 7 dias</td>
+          <td class="n">~34%</td>
+          <td class="n">55%</td>
+          <td>Acima de 30 alunos, 80% viram pagantes.</td>
+        </tr>
+        <tr>
+          <td>Pagantes com WhatsApp offline</td>
+          <td class="n">7</td>
+          <td class="n">0</td>
+          <td>Churn que já aconteceu e ainda não foi comunicado.</td>
+        </tr>
+        <tr>
+          <td>Novos pagantes no mês</td>
+          <td class="n">4–5</td>
+          <td class="n">8–9</td>
+          <td>O placar. Se ficar abaixo de 7 em setembro, revise o plano em outubro, não em dezembro.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">06 · Riscos</span>
+    <h2>O que pode derrubar o plano</h2>
+  </div>
+  <div class="risks">
+    <div class="risk-item">
+      <span class="rn">01</span>
+      <div>
+        <strong>Canal único de aquisição</strong>
+        <p>Todos os 86 leads entraram por um único número de WhatsApp, que também é pessoal. Uma queda de instância, um bloqueio ou uma migração de LID zera sua entrada de leads sem aviso. O segundo canal é seguro operacional, não só volume.</p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="rn">02</span>
+      <div>
+        <strong>Churn concentrado nas contas grandes</strong>
+        <p>Os ex-pagantes tinham 308, 105 e 46 alunos. Perder uma conta dessas custa receita e prova social. Se três delas saem no trimestre, a meta de 50 não fecha nem com a aquisição no ritmo certo.</p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="rn">03</span>
+      <div>
+        <strong>Escalar mídia antes de arrumar a ativação</strong>
+        <p>Com 44% dos cadastros parando em zero alunos, cada real investido hoje financia contas que nunca vão pagar. Fazer a lever 04 antes da 02 é o jeito mais rápido de gastar a verba do trimestre inteiro sem mover o placar.</p>
+      </div>
+    </div>
+    <div class="risk-item">
+      <span class="rn">04</span>
+      <div>
+        <strong>Importação assistida não escala</strong>
+        <p>Subir planilha na mão funciona a 25 cadastros por mês e trava a 60. É a alavanca certa agora e a dívida técnica de janeiro — trate como validação do que precisa virar produto, não como processo definitivo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="wide">
+  <p>Números apurados no banco de produção em 17 de agosto de 2026: 104 contas criadas, 27 marcadas como pagantes (25 com plano em dia), 12 ex-pagantes, 86 leads no board desde 13 de julho. As faixas de rendimento por alavanca são estimativas baseadas nas taxas de conversão históricas observadas nessa mesma base.</p>
+</footer>
+
+</main>
+</body>
+</html>
