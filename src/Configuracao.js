@@ -3545,7 +3545,10 @@ function Configuracao({ secao = 'config' }) {
     'upgrade', 'success', 'onboarding', 'configuracao', 'dashboard',
     'mensalli', 'suporte', 'termos', 'privacidade', 'financeiro',
     'clientes', 'horarios', 'relatorios', 'whatsapp', 'crm', 'avisos',
-    'null', 'undefined', 'index', 'root'
+    'null', 'undefined', 'index', 'root',
+    // Landings de nicho (rotas de campanha). Sem isso um cliente pode registrar
+    // o site dele em /escolinha e tomar a URL que esta rodando em anuncio.
+    'escolinha', 'escolinhas', 'futebol'
   ])
 
   const slugEhReservado = (slug) => {

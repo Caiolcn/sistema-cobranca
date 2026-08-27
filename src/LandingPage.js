@@ -3,7 +3,7 @@ import {
   MdCheck, MdCheckCircle, MdArrowForward, MdStar,
   MdDashboardCustomize, MdMessage,
   MdReceiptLong, MdPayments, MdTrendingUp, MdRule, MdLink,
-  MdShield, MdQrCode2, MdLock,
+  MdShield, MdLock,
   MdVerifiedUser, MdFactCheck, MdVisibility, MdSupportAgent, MdAutorenew,
   MdSwapHoriz, MdSchool, MdAdd, MdRemove, MdDoneAll, MdBolt, MdAutoAwesome,
   MdLanguage, MdGroups, MdSmartToy, MdEventAvailable, MdCampaign,
@@ -12,21 +12,13 @@ import {
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
 import { useState, useMemo } from 'react'
 import useWindowSize from './hooks/useWindowSize'
-
-// Paleta clara + degradê verde-WhatsApp
-const INK = '#0f1115'
-const BODY = '#5b636e'
-const MUTED = '#9aa1ab'
-const BORDER = '#ececf0'
-const BG = '#ffffff'
-const BG_SOFT = '#f7faf8'
-const GREEN = '#16a34a'
-const GREEN_DK = '#15803d'
-const GREEN_BRIGHT = '#22c55e'
-const GREEN_SOFT = '#ecfdf3'
-const DARK = '#0d100e'
-const GRAD = 'linear-gradient(135deg, #22c55e 0%, #0ea372 100%)'
-const GRAD_TEXT = 'linear-gradient(120deg, #16a34a, #0ea372)'
+// Paleta e primitivas compartilhadas com as landings de nicho (/escolinha).
+import {
+  INK, BODY, MUTED, BORDER, BG, BG_SOFT,
+  GREEN, GREEN_DK, GREEN_BRIGHT, GREEN_SOFT, DARK, GRAD, GRAD_TEXT,
+  gradText, LANDING_CSS, scrollToId, dot, btnGrad, btnGhost,
+  Blob, PhoneChat
+} from './pages/landing/ui'
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -119,19 +111,7 @@ export default function LandingPage() {
 
   return (
     <div style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: BG, color: INK, WebkitFontSmoothing: 'antialiased', overflowX: 'hidden' }}>
-      <style>{`
-        @keyframes lpFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes lpFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-        @keyframes lpFloatSlow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
-        @keyframes lpBlob { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px,-20px) scale(1.08); } }
-        @keyframes lpTick { 0%,55% { color: #9aa7b0; } 70%,100% { color: #53bdeb; } }
-        .lp-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
-        .lp-card:hover { transform: translateY(-4px); box-shadow: 0 20px 50px rgba(16,24,40,.10); border-color: #d7f0e0 !important; }
-        .lp-float { animation: lpFloat 6s ease-in-out infinite; }
-        .lp-floatslow { animation: lpFloatSlow 8s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce){ .lp-float,.lp-floatslow{ animation:none!important } }
-        input::placeholder { color: ${MUTED}; }
-      `}</style>
+      <style>{LANDING_CSS}</style>
 
       {/* Navbar */}
       <nav style={{ backgroundColor: 'rgba(255,255,255,0.82)', backdropFilter: 'saturate(180%) blur(14px)', WebkitBackdropFilter: 'saturate(180%) blur(14px)', padding: '14px 0', borderBottom: `1px solid ${BORDER}`, position: 'sticky', top: 0, zIndex: 1000 }}>
@@ -259,7 +239,14 @@ export default function LandingPage() {
           </div>
           <div style={{ order: isSmallScreen ? 1 : 2, position: 'relative', display: 'flex', justifyContent: 'center' }}>
             <Blob style={{ top: '-40px', left: '50%', marginLeft: '-220px', width: '440px', height: '440px', opacity: 0.8 }} />
-            <PhoneChat isSmall={isSmallScreen} />
+            <PhoneChat
+              isSmall={isSmallScreen}
+              mensagens={[
+                { de: 'nos', texto: 'Oi, Maria! 👋 Sua mensalidade de R$ 150 vence amanhã.', hora: '09:41', tickAnimado: true },
+                { de: 'nos', texto: 'Pode pagar por aqui no Pix 👇', hora: '09:41', anexo: 'pix' },
+                { de: 'eles', texto: 'Acabei de pagar, obrigada! 🙏', hora: '09:43' }
+              ]}
+            />
           </div>
         </div>
       </section>
@@ -602,63 +589,6 @@ export default function LandingPage() {
   )
 }
 
-// ---- componentes e estilos auxiliares ----
-function scrollToId(id) { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth' }) }
-
-function Blob({ style }) {
-  return <div className="lp-float" style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none', borderRadius: '50%', filter: 'blur(60px)', background: 'radial-gradient(circle at 30% 30%, rgba(34,197,94,0.45), rgba(14,163,114,0.25) 45%, rgba(34,197,94,0) 70%)', animation: 'lpBlob 12s ease-in-out infinite', ...style }} />
-}
-
-function PhoneChat({ isSmall }) {
-  const W = isSmall ? 240 : 280
-  return (
-    <div className="lp-floatslow" style={{ position: 'relative', zIndex: 1, width: W, borderRadius: '38px', border: '10px solid #111', background: '#111', boxShadow: '0 40px 80px rgba(16,24,40,0.3)' }}>
-      <div style={{ borderRadius: '28px', overflow: 'hidden', backgroundColor: '#e7ded5' }}>
-        <div style={{ background: 'linear-gradient(135deg,#0ea372,#16a34a)', padding: '14px 14px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaWhatsapp size={18} color="white" /></span>
-          <div style={{ lineHeight: 1.2 }}>
-            <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: 'white' }}>Mensalli</p>
-            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>online</p>
-          </div>
-        </div>
-        <div style={{ padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: '10px', minHeight: '300px' }}>
-          <div style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: '#d9fdd3', borderRadius: '12px 12px 4px 12px', padding: '9px 11px', boxShadow: '0 1px 1px rgba(0,0,0,0.08)' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#111b21', lineHeight: 1.45 }}>Oi, Maria! 👋 Sua mensalidade de R$ 150 vence amanhã.</p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '3px', marginTop: '3px' }}>
-              <span style={{ fontSize: '10px', color: '#667781' }}>09:41</span>
-              <MdDoneAll size={14} style={{ animation: 'lpTick 4s ease-in-out infinite' }} />
-            </div>
-          </div>
-          <div style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: '#d9fdd3', borderRadius: '12px', padding: '9px 11px', boxShadow: '0 1px 1px rgba(0,0,0,0.08)' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#111b21', lineHeight: 1.45 }}>Pode pagar por aqui no Pix 👇</p>
-            <div style={{ marginTop: '7px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', padding: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MdQrCode2 size={20} style={{ color: GREEN_DK }} />
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#111b21' }}>Link de pagamento</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '3px', marginTop: '4px' }}>
-              <span style={{ fontSize: '10px', color: '#667781' }}>09:41</span>
-              <MdDoneAll size={14} style={{ color: '#53bdeb' }} />
-            </div>
-          </div>
-          <div style={{ alignSelf: 'flex-start', maxWidth: '80%', backgroundColor: 'white', borderRadius: '12px 12px 12px 4px', padding: '9px 11px', boxShadow: '0 1px 1px rgba(0,0,0,0.08)' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#111b21', lineHeight: 1.45 }}>Acabei de pagar, obrigada! 🙏</p>
-            <span style={{ fontSize: '10px', color: '#667781', float: 'right', marginTop: '3px' }}>09:43</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 const navLink = { padding: '8px 14px', backgroundColor: 'transparent', color: BODY, border: 'none', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }
-const gradText = { background: GRAD_TEXT, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
 const formLabel = { display: 'block', fontSize: '13px', fontWeight: '600', color: INK, marginBottom: '7px' }
 const formField = { width: '100%', padding: '12px 14px', fontSize: '15px', backgroundColor: BG_SOFT, color: INK, border: `1.5px solid ${BORDER}`, borderRadius: '11px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }
-
-function btnGrad(padding, fontSize) {
-  return { padding, fontSize, background: GRAD, color: 'white', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '9px', boxShadow: '0 8px 24px rgba(22,163,74,0.28)' }
-}
-function btnGhost(padding, width) {
-  return { padding, width, fontSize: '15px', backgroundColor: 'white', color: INK, border: `1px solid ${BORDER}`, borderRadius: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }
-}
-function dot(c) { return { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: c } }

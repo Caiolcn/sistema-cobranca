@@ -43,6 +43,7 @@ const AdminLeads = lazy(() => import('./AdminLeads'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
+const LandingEscolinha = lazy(() => import('./pages/LandingEscolinha'))
 const LinkInBio = lazy(() => import('./pages/LinkInBio'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
 const VerComo = lazy(() => import('./pages/VerComo'))
@@ -137,6 +138,10 @@ function App() {
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
               {/* Ver como cliente: resgata o token e abre a sessão dele (modo espelho) */}
               <Route path="/ver-como/:token" element={<VerComo />} />
+              {/* Landing de nicho (trafego pago). Fica ANTES do catch-all /:slug
+                  e o slug 'escolinha' esta reservado em Configuracao.js pra
+                  nenhum cliente registrar o site dele nessa URL. */}
+              <Route path="/escolinha" element={session ? <Navigate to="/app/home" replace /> : <LandingEscolinha />} />
               <Route path="/links" element={<LinkInBio />} />
               <Route path="/privacidade" element={<Privacidade />} />
 
