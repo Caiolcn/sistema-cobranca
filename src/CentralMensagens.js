@@ -128,7 +128,10 @@ const TIPOS = {
   welcome: 'Boas-vindas',
   birthday: 'Aniversário',
   class_reminder: 'Lembrete de aula',
-  cobranca_manual: 'Envio manual'
+  cobranca_manual: 'Envio manual',
+  // O workflow de NPS grava o log sem `tipo`; a vw_central_mensagens reconhece
+  // pelo texto e devolve 'nps'. Sem esta entrada a Central mostrava o codigo cru.
+  nps: 'Pesquisa de satisfação'
 }
 
 const fmtDataHora = (iso) => {
