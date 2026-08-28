@@ -4,7 +4,12 @@ import { Icon } from '@iconify/react'
 import { useUser } from '../contexts/UserContext'
 import Modal from '../design-system/components/Modal'
 import Button from '../design-system/components/Button'
-import { carregarNovidades, marcarVistas, registrarClique } from '../services/novidadesService'
+import {
+  carregarNovidades,
+  marcarVistas,
+  registrarClique,
+  dispensarNovidades,
+} from '../services/novidadesService'
 import './NovidadesPainel.css'
 
 /* --------------------------------------------------------------------------
@@ -19,9 +24,20 @@ import './NovidadesPainel.css'
      BARRA  — permanente, discreta, uma novidade por vez com setas. É o estado
               padrão, e fica na dashboard mesmo depois de fechar o modal.
 
-     MODAL  — só abre sozinho quando existe novidade marcada como `destaque`
-              que a pessoa ainda não viu. Pop-up toda semana vira reflexo de
-              fechar; o destaque é pra entrega grande, no máximo uma por mês.
+     MODAL  — abre sozinho quando existe novidade publicada DEPOIS da última
+              vez que a pessoa fechou o aviso, com as MAX_NOVIDADES mais
+              recentes. Fechar grava a marca e desarma: até a próxima
+              publicação, não volta. Não tem flag pra ligar à mão — publicar
+              já é o gatilho.
+
+   Duas datas, duas perguntas diferentes, e é isso que faz a regra funcionar:
+
+     usuarios.novidades_dispensadas_em  — "quando ela fechou o aviso"
+     novidades_lidas                    — "quais novidades ela abriu"
+
+   Fechar o pop-up responde só a primeira. Se respondesse as duas (marcando como
+   lida toda novidade do carrossel), o selo "novo pra você" da barra sumiria de
+   itens que a pessoa nunca abriu e deixaria de significar qualquer coisa.
 
    O selo "novo pra você" só some quando a pessoa realmente abriu o detalhe
    daquele item — não por ter carregado a Home. Marcar como visto na
@@ -34,9 +50,22 @@ import './NovidadesPainel.css'
    ela serve pra alguma coisa.
 -------------------------------------------------------------------------- */
 
-// Quantas bolinhas de navegação a barra mostra. Acima disso o changelog vira
-// arquivo, não novidade — e a fileira de dots fica ilegível.
-const MAX_DOTS = 10
+/* Quantas novidades o painel expõe — uma constante só, porque a barra e o modal
+   têm que contar a MESMA história. Eram dois números (10 bolinhas na barra, 4
+   slides no modal) e a diferença aparecia na tela: dez bolinhas prometendo dez
+   itens, quatro segmentos entregando quatro.
+
+   O teto existe pelo mesmo motivo nos dois lugares. Com 16 novidades ativas, a
+   fileira de dots fica ilegível e a barra de progresso do modal vira 16
+   tracinhos de 2px, com "Próxima" pedindo 15 cliques pra chegar no fim. E na
+   abertura automática é pior: conta nova não viu NADA, então "todas as não
+   vistas" era o catálogo inteiro na frente de quem ainda nem conectou o
+   WhatsApp. Ninguém passa 16 slides — passa dois e fecha, e aí o pop-up gastou
+   a única chance que tinha de anunciar o destaque.
+
+   O que fica de fora não se perde: continua no /admin, e volta pro painel na
+   semana em que for publicado. Aqui é changelog recente, não arquivo. */
+const MAX_NOVIDADES = 4
 
 // Sólido em vez de pastel: a 11px em caixa alta, o pastel some ao lado do
 // título em negrito. Todos passam de 5:1 de contraste (AA).
@@ -80,29 +109,55 @@ export default function NovidadesPainel() {
   const [carregado, setCarregado] = useState(false)
   const [indice, setIndice] = useState(0)
 
-  // Lista que o modal está exibindo no momento (abertura automática mostra só
-  // as não vistas; abertura manual mostra o histórico inteiro).
+  // Lista que o modal está exibindo no momento — MAX_NOVIDADES nas duas
+  // aberturas. Automática: as não vistas, destaque na frente. Manual: as mesmas
+  // que a barra mostra, abertas no item que a pessoa clicou.
   const [modalLista, setModalLista] = useState(null)
   const [slide, setSlide] = useState(0)
   // Só o que a pessoa passou o olho vira "visto" — fechar no primeiro slide não
   // pode queimar as outras oito novidades.
   const [slidesVistos, setSlidesVistos] = useState(() => new Set())
+  // Esta abertura foi o anúncio automático, ou a pessoa clicou na barra? Só a
+  // automática grava a marca de dispensa ao sair. Ver `persistirVistos`.
+  const [anuncioAberto, setAnuncioAberto] = useState(false)
 
   useEffect(() => {
     if (!realUserId) return
     let cancelado = false
 
-    carregarNovidades(realUserId, { planoPago }).then((lista) => {
+    carregarNovidades(realUserId, { planoPago }).then((dados) => {
       if (cancelado) return
+      const { lista, dispensadoEm, dispensaDisponivel } = dados
       setNovidades(lista)
       setCarregado(true)
 
-      const naoVistas = lista.filter((n) => !n.visto)
-      if (naoVistas.some((n) => n.destaque)) {
-        setModalLista(naoVistas)
-        setSlide(0)
-        setSlidesVistos(new Set([0]))
-      }
+      // Sem a coluna de dispensa (migração pendente) não há onde registrar o
+      // fechamento — e um pop-up que não sabe que foi fechado reabre em toda
+      // montagem da Home. Fica desligado até a migração rodar; a barra e o selo
+      // seguem funcionando.
+      if (!dispensaDisponivel) return
+
+      /* O gatilho é a DATA, não uma flag: tudo publicado depois do último
+         fechamento é novidade pra esta pessoa. Conta nova tem a marca nula,
+         então tudo conta e ela recebe um anúncio só, com as mais recentes.
+
+         Repare que `visto` NÃO entra aqui. Ele responde "abriu o detalhe deste
+         item", que é outra pergunta: quem leu uma novidade pela barra durante a
+         semana continua recebendo o anúncio da leva, e quem fechou o anúncio sem
+         ler nada continua com o selo "novo pra você" nos itens. */
+      const marca = dispensadoEm ? new Date(dispensadoEm) : null
+      const novas = lista.filter((n) => !marca || new Date(n.publicado_em) > marca)
+      if (!novas.length) return
+
+      // `lista` já vem da mais recente pra mais antiga, então o corte descarta
+      // as mais velhas. `destaque` deixou de destravar o pop-up e virou só
+      // ordenação: marcado no /admin, o item encabeça o carrossel da semana.
+      const destaques = novas.filter((n) => n.destaque)
+      const resto = novas.filter((n) => !n.destaque)
+      setModalLista([...destaques, ...resto].slice(0, MAX_NOVIDADES))
+      setSlide(0)
+      setSlidesVistos(new Set([0]))
+      setAnuncioAberto(true)
     })
 
     return () => { cancelado = true }
@@ -112,7 +167,20 @@ export default function NovidadesPainel() {
   // barra já dá em dois lugares — o selo "novo pra você" no item e as bolinhas
   // roxas das não vistas. Três indicadores pra mesma informação.
 
-  const fecharModal = useCallback(() => {
+  /* Fecha o modal por dentro. Roda nas DUAS saídas — o X e o CTA da feature.
+     Sair pelo botão da feature descartava o `slidesVistos`: quem avançava até o
+     slide 2 e clicava no CTA dele perdia os slides 0 e 1 que já tinha lido.
+
+     Duas gravações independentes, porque respondem perguntas diferentes:
+
+       marcarVistas       — só os slides que a pessoa realmente abriu. É o que
+                            apaga o selo "novo pra você" daquele item na barra.
+       dispensarNovidades — só na abertura automática. É o que desarma o pop-up
+                            até a próxima publicação.
+
+     Fosse uma gravação só, fechar o anúncio marcaria como lidas quatro novidades
+     que a pessoa talvez nem tenha passado — e o selo da barra viraria enfeite. */
+  const persistirVistos = useCallback(() => {
     const lista = modalLista || []
     const ids = [...slidesVistos].map((i) => lista[i]?.id).filter(Boolean)
 
@@ -122,14 +190,30 @@ export default function NovidadesPainel() {
       setNovidades((atual) => atual.map((n) => (ids.includes(n.id) ? { ...n, visto: true } : n)))
     }
 
-    setModalLista(null)
+    if (anuncioAberto) dispensarNovidades(realUserId)
+
     setSlidesVistos(new Set())
-  }, [modalLista, slidesVistos, realUserId])
+    setAnuncioAberto(false)
+  }, [modalLista, slidesVistos, anuncioAberto, realUserId])
+
+  const fecharModal = useCallback(() => {
+    persistirVistos()
+    setModalLista(null)
+  }, [persistirVistos])
 
   const abrirDetalhe = useCallback((novidadeIndice) => {
-    setModalLista(novidades)
+    // Exatamente as mesmas novidades que a barra mostra, abertas no item
+    // clicado. O modal aqui é a barra expandida, não uma segunda lista: quatro
+    // bolinhas lá viram quatro segmentos aqui, e a terceira bolinha abre no
+    // terceiro segmento. Uma janela deslizante (`slice(indice, indice + N)`)
+    // daria um total diferente a cada item clicado — 4 segmentos no primeiro,
+    // 1 no último — e a posição deixaria de bater com a bolinha de origem.
+    setModalLista(novidades.slice(0, MAX_NOVIDADES))
     setSlide(novidadeIndice)
     setSlidesVistos(new Set([novidadeIndice]))
+    // Abertura manual: a pessoa foi atrás. Não conta como "dispensou o aviso" —
+    // o anúncio automático da leva continua devendo aparecer.
+    setAnuncioAberto(false)
   }, [novidades])
 
   const irParaSlide = useCallback((novo) => {
@@ -139,13 +223,16 @@ export default function NovidadesPainel() {
 
   const seguirCta = useCallback((novidade) => {
     if (!novidade?.cta_rota) return
+    // Também é saída do modal: leva junto o que já foi lido. Chamado da barra da
+    // Home o `persistirVistos` é inócuo — sem modal aberto não há slide pendente.
+    persistirVistos()
     registrarClique(realUserId, novidade.id)
     setNovidades((atual) =>
       atual.map((n) => (n.id === novidade.id ? { ...n, visto: true, clicado: true } : n))
     )
     setModalLista(null)
     navigate(novidade.cta_rota)
-  }, [realUserId, navigate])
+  }, [persistirVistos, realUserId, navigate])
 
   // Reserva a altura da barra enquanto o dado não chegou. Com o prefetch do
   // Dashboard isto quase nunca aparece — é a rede de segurança pro caso de a
@@ -154,8 +241,12 @@ export default function NovidadesPainel() {
   if (!carregado) return <div className="nov-barra nov-barra-esqueleto" aria-hidden="true" />
   if (novidades.length === 0) return null
 
-  const atual = novidades[indice] || novidades[0]
-  const dots = novidades.slice(0, MAX_DOTS)
+  // A barra navega só dentro do que ela consegue mostrar. As setas iam até o
+  // fim da lista enquanto os dots paravam no teto: com 16 novidades ativas, a
+  // partir do primeiro item fora do teto nenhuma bolinha ficava acesa e a barra
+  // lia como quebrada.
+  const naBarra = novidades.slice(0, MAX_NOVIDADES)
+  const atual = naBarra[indice] || naBarra[0]
   const noModal = modalLista?.[slide]
 
   return (
@@ -199,7 +290,7 @@ export default function NovidadesPainel() {
           </button>
 
           <div className="nov-dots">
-            {dots.map((n, i) => (
+            {naBarra.map((n, i) => (
               <button
                 key={n.id}
                 type="button"
@@ -214,8 +305,8 @@ export default function NovidadesPainel() {
             type="button"
             className="nov-nav-seta"
             aria-label="Próxima atualização"
-            disabled={indice >= novidades.length - 1}
-            onClick={() => setIndice((i) => Math.min(novidades.length - 1, i + 1))}
+            disabled={indice >= naBarra.length - 1}
+            onClick={() => setIndice((i) => Math.min(naBarra.length - 1, i + 1))}
           >
             <Chevron direcao="direita" />
           </button>
@@ -295,17 +386,31 @@ export default function NovidadesPainel() {
             </div>
 
             <div className="nov-modal-rodape">
-              {/* CTA da feature à esquerda, navegação do modal à direita: são duas
-                  ações de natureza diferente e estavam disputando o mesmo eixo. */}
-              {noModal.cta_rota ? (
+              {/* CTA da feature em cima, em linha própria e largura cheia; a
+                  navegação do modal embaixo. Continuam sendo duas ações de
+                  natureza diferente — só que agora cada uma tem seu eixo.
+
+                  Lado a lado (o layout anterior) só funcionava enquanto o rótulo
+                  fosse curto: "Configurar formas de pagamento" ao lado de Anterior
+                  + Próxima estoura os ~510px úteis do rodapé, o flex-wrap joga a
+                  navegação pra outra linha e o rodapé passa a ter uma composição
+                  diferente a cada slide, conforme o tamanho do texto do CTA.
+
+                  Encurtar o rótulo resolveria o transbordo e estragaria o resto:
+                  ele é a promessa do clique, e é o clique — não o "viu" — que
+                  prova que a novidade foi descoberta. Empilhado, o rodapé é o
+                  mesmo pra rótulo de 8 ou de 40 caracteres. */}
+              {noModal.cta_rota && (
                 <Button
                   variant="outline"
+                  fullWidth
+                  className="nov-modal-cta"
                   iconRight="mdi:arrow-right"
                   onClick={() => seguirCta(noModal)}
                 >
                   {noModal.cta_label || 'Ver na prática'}
                 </Button>
-              ) : <span />}
+              )}
 
               <div className="nov-modal-nav">
                 {/* Sempre na tela, desabilitado no primeiro slide. Aparecendo só a

@@ -31,7 +31,7 @@ const LIMITE = 20
 
    Guardamos a PROMISE, não só o resultado: duas chamadas simultâneas (o
    prefetch e a montagem do painel) compartilham a mesma ida ao banco. */
-const cache = new Map()  // userId -> Promise<novidades[]>
+const cache = new Map()  // userId -> Promise<{ lista, dispensadoEm, dispensaDisponivel }>
 
 /**
  * Lista as novidades visíveis para a conta, já marcando o que ainda não foi visto.
@@ -40,6 +40,7 @@ const cache = new Map()  // userId -> Promise<novidades[]>
  * @param {object} opts
  * @param {boolean} opts.planoPago  conta pagante? filtra novidades segmentadas
  * @param {boolean} opts.recarregar  ignora o cache
+ * @returns {Promise<{lista: object[], dispensadoEm: string|null, dispensaDisponivel: boolean}>}
  */
 export function carregarNovidades(realUserId, { planoPago = false, recarregar = false } = {}) {
   if (!recarregar && cache.has(realUserId)) return cache.get(realUserId)
@@ -64,10 +65,10 @@ export function prefetchNovidades(realUserId, opts) {
 }
 
 async function buscar(realUserId, planoPago) {
-  // As duas em paralelo: a segunda não depende dos ids da primeira (a lista de
+  // As três em paralelo: nenhuma depende do resultado da outra (a lista de
   // "lidas" de um usuário tem no máximo o tamanho do catálogo, dezenas de linhas).
-  // Sequencial, isto custava duas idas ao banco e era metade do atraso da barra.
-  const [{ data: novidades, error }, { data: lidas }] = await Promise.all([
+  // Sequencial, isto custava três idas ao banco e era o atraso da barra.
+  const [{ data: novidades, error }, { data: lidas }, dispensa] = await Promise.all([
     supabase
       .from('novidades')
       .select('*')
@@ -81,9 +82,26 @@ async function buscar(realUserId, planoPago) {
           .select('novidade_id, clicado_em')
           .eq('user_id', realUserId)
       : Promise.resolve({ data: [] }),
+    realUserId
+      ? supabase
+          .from('usuarios')
+          .select('novidades_dispensadas_em')
+          .eq('id', realUserId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ])
 
-  if (error || !novidades) return []
+  /* `dispensaDisponivel` existe por causa da migração: enquanto
+     sql-criar-dispensa-novidades.sql não tiver rodado, a coluna não existe e
+     este select falha. Sem ela não há ONDE gravar a dispensa — e um pop-up que
+     não consegue registrar que foi fechado reabre a cada carregamento da Home.
+     Então o padrão é fail-safe: coluna ausente, pop-up desligado. A barra e o
+     selo "novo pra você" continuam funcionando normalmente. */
+  const dispensaDisponivel = !dispensa?.error
+
+  if (error || !novidades) {
+    return { lista: [], dispensadoEm: null, dispensaDisponivel }
+  }
 
   const permitido = (publico) =>
     publico === 'todos' ||
@@ -92,13 +110,19 @@ async function buscar(realUserId, planoPago) {
 
   const mapa = new Map((lidas || []).map((l) => [l.novidade_id, l]))
 
-  return novidades
+  const lista = novidades
     .filter((n) => permitido(n.publico))
     .map((n) => ({
       ...n,
       visto: mapa.has(n.id),
       clicado: !!mapa.get(n.id)?.clicado_em,
     }))
+
+  return {
+    lista,
+    dispensadoEm: dispensa?.data?.novidades_dispensadas_em || null,
+    dispensaDisponivel,
+  }
 }
 
 /* Aplica no cache o que acabou de ser gravado. Sem isto, voltar pra Home
@@ -108,14 +132,40 @@ async function patchCache(realUserId, ids, campos) {
   const pendente = cache.get(realUserId)
   if (!pendente) return
   try {
-    const lista = await pendente
+    const dados = await pendente
     ids.forEach((id) => {
-      const item = lista.find((n) => n.id === id)
+      const item = dados.lista.find((n) => n.id === id)
       if (item) Object.assign(item, campos)
     })
   } catch {
     /* cache já invalidado por erro na busca — nada a corrigir */
   }
+}
+
+/**
+ * Registra que a pessoa fechou o modal de atualizações. É ISTO que desarma o
+ * pop-up: daqui pra frente ele só volta quando existir novidade publicada
+ * depois desta marca.
+ *
+ * Separado de `marcarVistas` de propósito. Fechar o aviso não é o mesmo que ter
+ * lido cada novidade dele — se fosse, o selo "novo pra você" da barra sumiria
+ * de itens que a pessoa nunca abriu, e ele deixaria de significar qualquer coisa.
+ */
+export async function dispensarNovidades(realUserId) {
+  if (!realUserId) return
+  const agora = new Date().toISOString()
+
+  // Corrige o cache antes da rede: sair da Home e voltar não pode reabrir o
+  // pop-up enquanto o UPDATE ainda está em voo.
+  const pendente = cache.get(realUserId)
+  if (pendente) {
+    pendente.then((dados) => { dados.dispensadoEm = agora }).catch(() => {})
+  }
+
+  await supabase
+    .from('usuarios')
+    .update({ novidades_dispensadas_em: agora })
+    .eq('id', realUserId)
 }
 
 /**

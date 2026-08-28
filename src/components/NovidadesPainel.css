@@ -328,24 +328,45 @@
 }
 
 /* Mesma superfície branca do resto: o cinza fazia o modal ler como três blocos
-   soltos (topo escuro / miolo branco / rodapé cinza). Só a hairline separa. */
+   soltos (topo escuro / miolo branco / rodapé cinza). Só a hairline separa.
+
+   Empilhado, nunca lado a lado. Com `flex-wrap` numa linha só, o rodapé
+   dependia do comprimento do rótulo do CTA: cabendo, ficava CTA-esquerda /
+   navegação-direita; não cabendo ("Configurar formas de pagamento"), a
+   navegação quebrava pra baixo e o CTA subia sozinho pra uma linha própria
+   meia-vazia — quebra acidental, com aparência de bug. Em coluna, o resultado
+   é o mesmo layout pra qualquer rótulo. */
 .nov-modal-rodape {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
   padding: 14px 24px;
   border-top: 1px solid #f3f4f6;
   background: #ffffff;
 }
 
+/* O único botão do rodapé que pode receber texto de tamanho livre (quem publica
+   escreve o `cta_label` no /admin). O `.ds-btn` é `white-space: nowrap`, então
+   num rótulo muito longo em tela estreita ele vazaria a lateral em vez de
+   quebrar: aqui a linha pode virar duas, e a altura acompanha. */
+.nov-modal-cta {
+  white-space: normal;
+  height: auto;
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* Voltar/avançar nas pontas, padrão de wizard. Agrupados à direita — como
+   eram quando dividiam a linha com o CTA — eles ficariam espremidos num canto
+   embaixo de um botão de largura cheia, com um vazio grande à esquerda. */
 .nov-modal-nav {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-left: auto;
 }
 
 /* Dois problemas no mesmo botão:

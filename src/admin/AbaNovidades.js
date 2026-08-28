@@ -239,7 +239,7 @@ export default function AbaNovidades() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
             <strong style={{ fontSize: '14px', color: r.ativo ? '#1f2937' : '#9ca3af' }}>{r.titulo}</strong>
-            {r.destaque && <Badge variant="primary" size="xs" icon="mdi:star">abre modal</Badge>}
+            {r.destaque && <Badge variant="primary" size="xs" icon="mdi:star">primeira do modal</Badge>}
             {!r.ativo && <Badge variant="default" size="xs">oculta</Badge>}
             {new Date(r.publicado_em) > new Date() && (
               <Badge variant="info" size="xs" icon="mdi:clock-outline">agendada</Badge>
@@ -449,11 +449,14 @@ export default function AbaNovidades() {
                   display: 'grid', gap: '10px', padding: '12px 14px',
                   background: '#f9fafb', borderRadius: '10px',
                 }}>
+                  {/* O modal não depende mais desta chave: publicar já abre o
+                      aviso pra quem não fechou desde a última leva. O que ela
+                      faz agora é ordenar — a marcada encabeça o carrossel. */}
                   <Switch
                     checked={form.destaque}
                     onChange={(e) => alterar('destaque', e.target.checked)}
-                    label="Abrir o modal sozinho"
-                    description="Interrompe quem entrar na Home e ainda não viu. Guarde pra entrega grande."
+                    label="Encabeçar o modal"
+                    description="O modal abre sozinho a cada publicação. Ligue aqui pra esta ser o primeiro slide da leva."
                   />
                   <Switch
                     checked={form.ativo}
