@@ -126,7 +126,7 @@ function Relatorios() {
       ] = await Promise.all([
         supabase
           .from('mensalidades')
-          .select('id, valor, data_vencimento, status, devedor_id, is_mensalidade, updated_at, data_pagamento')
+          .select('id, valor, valor_pago, data_vencimento, status, devedor_id, is_mensalidade, updated_at, data_pagamento')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
@@ -176,12 +176,15 @@ function Relatorios() {
 
       todasMensalidades?.forEach(p => {
         const valor = parseFloat(p.valor || 0);
+        // O que entrou no caixa != valor da mensalidade: a baixa registra multa/juros
+        // e desconto em valor_pago. Base pra "a receber"/"em atraso", pago pra "recebido".
+        const recebido = p.valor_pago != null ? parseFloat(p.valor_pago) || 0 : valor;
         const dataVenc = p.data_vencimento;
         const mesAnoVenc = dataVenc?.substring(0, 7);
         const mesAnoUpdate = p.updated_at?.substring(0, 7);
 
         if (p.status === 'pago' && p.updated_at >= `${inicio}T00:00:00` && p.updated_at <= `${fim}T23:59:59`) {
-          recebidoMes += valor;
+          recebidoMes += recebido;
         }
 
         if (p.status === 'pendente' && dataVenc < hoje && clientesAtivosSet.has(p.devedor_id)) {
@@ -199,7 +202,7 @@ function Relatorios() {
 
         if (p.status === 'pago' && p.updated_at >= `${tresMesesAtrasInicio}T00:00:00` && p.updated_at <= `${mesAtualFim}T23:59:59`) {
           if (!recebidosPorMes[mesAnoUpdate]) recebidosPorMes[mesAnoUpdate] = 0;
-          recebidosPorMes[mesAnoUpdate] += valor;
+          recebidosPorMes[mesAnoUpdate] += recebido;
         }
 
         if (dataVenc >= tresMesesAtrasInicio && dataVenc <= mesAtualFim) {
@@ -221,7 +224,7 @@ function Relatorios() {
         // edicao posterior numa mensalidade ja paga a traria de volta como "paga hoje"
         if (p.status === 'pago' && p.data_pagamento?.substring(0, 10) === hoje) {
           pagamentosHojeCount++;
-          valorPagamentosHojeTotal += valor;
+          valorPagamentosHojeTotal += recebido;
         }
 
         if (p.is_mensalidade) {

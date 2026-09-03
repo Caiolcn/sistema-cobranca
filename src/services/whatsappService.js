@@ -198,6 +198,7 @@ class WhatsAppService {
       '{{valorParcela}}': dados.valorMensalidade || '', // Alias para valorMensalidade
       '{{valorMulta}}': dados.valorMulta || '',
       '{{valorJuros}}': dados.valorJuros || '',
+      '{{valorDesconto}}': dados.valorDesconto || '',
       '{{valorTotal}}': dados.valorTotal || dados.valorMensalidade || '',
       '{{dataVencimento}}': dados.dataVencimento || '',
       '{{diasAtraso}}': dados.diasAtraso || '0',
@@ -1511,12 +1512,16 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
         usuario?.asaas_multa_juros,
         mensalidade.data_pagamento || undefined
       )
-      const temAcrescimo = mj.temAcrescimo
+      const temAjuste = mj.temAcrescimo || mj.temDesconto
       const valorTotalFormatado = fmtBRL(mj.total)
       // Numa confirmação de pagamento, "o valor" é o que o aluno pagou de fato.
       // O template padrão (semeado em toda conta) só tem {{valorMensalidade}}, então
       // é ele que precisa carregar o total — senão a confirmação mente sobre o recibo.
-      const valorPrincipalFormatado = temAcrescimo ? valorTotalFormatado : valorFormatado
+      const valorPrincipalFormatado = temAjuste ? valorTotalFormatado : valorFormatado
+      // Quebra do que mudou em relacao a mensalidade, na ordem em que entra na conta
+      const partesAjuste = []
+      if (mj.temAcrescimo) partesAjuste.push(`+ ${fmtBRL(mj.acrescimo)} de multa/juros por atraso`)
+      if (mj.temDesconto) partesAjuste.push(`- ${fmtBRL(mj.desconto)} de desconto`)
 
       const dataVenc = mensalidade.data_vencimento
       const vencimentoFormatado = dataVenc
@@ -1544,20 +1549,21 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
           .replace(/\{\{valorBase\}\}/g, valorFormatado)
           .replace(/\{\{valorMulta\}\}/g, fmtBRL(mj.multa))
           .replace(/\{\{valorJuros\}\}/g, fmtBRL(mj.juros))
+          .replace(/\{\{valorDesconto\}\}/g, fmtBRL(mj.desconto))
           .replace(/\{\{valorTotal\}\}/g, valorTotalFormatado)
           .replace(/\{\{dataVencimento\}\}/g, vencimentoFormatado)
           .replace(/\{\{nomeEmpresa\}\}/g, empresa)
 
-        // O template mostrou o total sem explicar de onde veio o acréscimo: detalha embaixo.
+        // O template mostrou o total sem explicar de onde veio a diferença: detalha embaixo.
         // Se ele já usa as variáveis da quebra, respeita o texto do gestor.
-        const detalhaAcrescimo = /\{\{(valorMulta|valorJuros|valorTotal|valorBase)\}\}/.test(template.mensagem)
-        if (temAcrescimo && !detalhaAcrescimo) {
-          mensagemTexto += `\n\n_(mensalidade ${valorFormatado} + ${fmtBRL(mj.acrescimo)} de multa/juros por atraso)_`
+        const detalhaAjuste = /\{\{(valorMulta|valorJuros|valorDesconto|valorTotal|valorBase)\}\}/.test(template.mensagem)
+        if (temAjuste && !detalhaAjuste) {
+          mensagemTexto += `\n\n_(mensalidade ${valorFormatado} ${partesAjuste.join(' ')})_`
         }
       } else {
-        // Com multa/juros, mostra o total pago e detalha o acréscimo; sem atraso, só o valor.
-        const linhaValor = temAcrescimo
-          ? `💰 Valor pago: ${valorTotalFormatado}\n   (mensalidade ${valorFormatado} + multa/juros ${fmtBRL(mj.acrescimo)})`
+        // Com multa/juros ou desconto, mostra o total pago e detalha a diferença; sem ajuste, só o valor.
+        const linhaValor = temAjuste
+          ? `💰 Valor pago: ${valorTotalFormatado}\n   (mensalidade ${valorFormatado} ${partesAjuste.join(' ')})`
           : `💰 Valor: ${valorFormatado}`
         mensagemTexto = `Olá, ${nomeCliente}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n${linhaValor}\n📅 Vencimento: ${vencimentoFormatado}\n\nObrigado pela pontualidade! - ${empresa}`
       }

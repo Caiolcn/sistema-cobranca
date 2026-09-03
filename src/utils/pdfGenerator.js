@@ -68,12 +68,14 @@ function criarReciboPDF(dados, logo = null) {
     descricao,
     valorBase,
     valorMulta,
-    valorJuros
+    valorJuros,
+    valorDesconto
   } = dados
 
   const multaNum = parseFloat(valorMulta) || 0
   const jurosNum = parseFloat(valorJuros) || 0
-  const temAcrescimo = multaNum > 0 || jurosNum > 0
+  const descontoNum = parseFloat(valorDesconto) || 0
+  const temAjuste = multaNum > 0 || jurosNum > 0 || descontoNum > 0
 
   // Período de referência: se descrição for "Mensalidade" e houver vencimento,
   // anexa "- Mês/Ano" (ex: "Mensalidade - Maio/2026")
@@ -247,16 +249,19 @@ function criarReciboPDF(dados, logo = null) {
   doc.setFont('helvetica', 'bold')
   doc.text(formaPagamento || 'Não informado', pageWidth - margin - 50, yPos + 8)
 
-  // Detalhamento de multa/juros (só quando houver acréscimo por atraso)
-  if (temAcrescimo) {
+  // Detalhamento do valor (multa/juros por atraso e desconto concedido na baixa).
+  // Sinal escrito em cada parte: com desconto no meio, juntar tudo com "+" mentiria.
+  if (temAjuste) {
     const fmt = (v) => `R$ ${parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     const partes = [`Valor ${fmt(valorBase)}`]
-    if (multaNum > 0) partes.push(`Multa ${fmt(multaNum)}`)
-    if (jurosNum > 0) partes.push(`Juros ${fmt(jurosNum)}`)
+    if (multaNum > 0) partes.push(`+  Multa ${fmt(multaNum)}`)
+    if (jurosNum > 0) partes.push(`+  Juros ${fmt(jurosNum)}`)
+    // Hífen ASCII: helvetica do jsPDF não tem o sinal de menos tipográfico
+    if (descontoNum > 0) partes.push(`-  Desconto ${fmt(descontoNum)}`)
     doc.setTextColor(120, 120, 120)
     doc.setFontSize(7.5)
     doc.setFont('helvetica', 'normal')
-    doc.text(partes.join('  +  '), margin + 5, yPos + 21)
+    doc.text(partes.join('  '), margin + 5, yPos + 21)
   }
 
   // ============ DESCRIÇÃO ============

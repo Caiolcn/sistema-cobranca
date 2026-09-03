@@ -14,7 +14,7 @@ import AnamneseSection from './components/AnamneseSection'
 import ContratosSection from './ContratosSection'
 import { validarTelefone, validarCPF } from './utils/validators'
 import { criarMatcherBusca } from './utils/busca'
-import { valorEfetivoMensalidade } from './utils/multaJuros'
+import { valorEfetivoMensalidade, resumoValorEfetivo, corValorEfetivo } from './utils/multaJuros'
 import { SkeletonList, SkeletonTable } from './components/Skeleton'
 import useWindowSize from './hooks/useWindowSize'
 import { useUserPlan } from './hooks/useUserPlan'
@@ -1535,6 +1535,9 @@ Equipe ${nomeEmpresa}`
   const formatCurrency = (value) => {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
+
+  // Com o "R$" na frente — formato que os helpers de valor efetivo esperam receber
+  const fmtReal = (value) => `R$ ${formatCurrency(parseFloat(value) || 0)}`
 
   const formatDate = (dateString) => {
     const date = new Date(dateString + 'T00:00:00')
@@ -3505,11 +3508,9 @@ Equipe ${nomeEmpresa}`
                             </td>
                             <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600', color: '#333', textAlign: 'right' }}>
                               R$ {formatCurrency(efetivo.projetado ? efetivo.base : efetivo.total)}
-                              {efetivo.temAcrescimo && (
-                                <div style={{ fontSize: '11px', fontWeight: '500', color: '#b45309' }}>
-                                  {efetivo.projetado
-                                    ? `+ R$ ${formatCurrency(efetivo.acrescimo)} se pagar hoje`
-                                    : `R$ ${formatCurrency(efetivo.base)} + R$ ${formatCurrency(efetivo.acrescimo)} multa/juros`}
+                              {resumoValorEfetivo(efetivo, fmtReal) && (
+                                <div style={{ fontSize: '11px', fontWeight: '500', color: corValorEfetivo(efetivo) }}>
+                                  {resumoValorEfetivo(efetivo, fmtReal)}
                                 </div>
                               )}
                             </td>

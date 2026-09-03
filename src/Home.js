@@ -322,7 +322,7 @@ function Home() {
 
       todasMensalidades?.forEach(p => {
         const valor = parseFloat(p.valor || 0);
-        const valorRecebido = parseFloat(p.valor_pago || p.valor || 0);
+        const valorRecebido = parseFloat((p.valor_pago != null ? p.valor_pago : p.valor) || 0);
         const dataVenc = p.data_vencimento;
         const dataPag = p.data_pagamento || (p.status === 'pago' ? (p.updated_at || '').split('T')[0] : null);
 

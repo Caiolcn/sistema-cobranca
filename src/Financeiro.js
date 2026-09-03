@@ -11,7 +11,7 @@ import { useUser } from './contexts/UserContext'
 import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
 import { baixarRecibo, imprimirRecibo, gerarReciboBlob } from './utils/pdfGenerator'
 import { resolverDestinatario } from './utils/destinatario'
-import { calcularMultaJuros, valorEfetivoMensalidade } from './utils/multaJuros'
+import { calcularMultaJuros, valorEfetivoMensalidade, resumoValorEfetivo, corValorEfetivo } from './utils/multaJuros'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
@@ -130,6 +130,10 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [multaJurosConfig, setMultaJurosConfig] = useState({ ativo: false, multa_percent: 0, juros_mes_percent: 0 })
   const [baixaMulta, setBaixaMulta] = useState('0.00')
   const [baixaJuros, setBaixaJuros] = useState('0.00')
+  // Desconto concedido na baixa (sempre disponível, não só em parcela vencida).
+  // Nasce vazio de propósito: com '0.00' pré-preenchido, o gestor tem que apagar
+  // antes de digitar. Vazio conta como zero em todo o cálculo.
+  const [baixaDesconto, setBaixaDesconto] = useState('')
 
   // Paginação
   const [paginaAtual, setPaginaAtual] = useState(1)
@@ -612,6 +616,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setBaixaMulta('0.00')
       setBaixaJuros('0.00')
     }
+    // Desconto nunca é sugerido: é decisão do gestor, caso a caso
+    setBaixaDesconto('')
     setMostrarModalConfirmacao(true)
   }
 
@@ -622,6 +628,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     if (novoStatusPagamento && !formaPagamento) {
       showToast('Por favor, selecione a forma de pagamento', 'warning')
       return
+    }
+
+    // Desconto maior que a cobrança daria recibo negativo — 100% (cortesia) é o limite
+    if (novoStatusPagamento) {
+      const bruto = (parseFloat(mensalidadeParaAtualizar.valor) || 0)
+        + Math.max(0, parseFloat(baixaMulta) || 0)
+        + Math.max(0, parseFloat(baixaJuros) || 0)
+      if ((parseFloat(baixaDesconto) || 0) > bruto + 0.005) {
+        showToast('O desconto não pode ser maior que o valor da parcela', 'warning')
+        return
+      }
     }
 
     try {
@@ -637,15 +654,23 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
         const multa = Math.max(0, parseFloat(baixaMulta) || 0)
         const juros = Math.max(0, parseFloat(baixaJuros) || 0)
         const base = parseFloat(mensalidadeParaAtualizar.valor) || 0
+        // Desconto vai em coluna própria: `valor` é a base do plano e é dela que a
+        // próxima parcela nasce — abater ali propagaria o desconto pra sempre.
+        const desconto = Math.min(
+          Math.max(0, parseFloat(baixaDesconto) || 0),
+          base + multa + juros
+        )
         updateData.valor_multa = multa
         updateData.valor_juros = juros
-        updateData.valor_pago = Math.round((base + multa + juros) * 100) / 100
+        updateData.valor_desconto = desconto
+        updateData.valor_pago = Math.round((base + multa + juros - desconto) * 100) / 100
       } else {
         // Limpar forma e data se estiver desfazendo
         updateData.forma_pagamento = null
         updateData.data_pagamento = null
         updateData.valor_multa = 0
         updateData.valor_juros = 0
+        updateData.valor_desconto = 0
         updateData.valor_pago = null
       }
 
@@ -668,6 +693,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             data_pagamento: novoStatusPagamento ? updateData.data_pagamento : null,
             valor_multa: updateData.valor_multa,
             valor_juros: updateData.valor_juros,
+            valor_desconto: updateData.valor_desconto,
             valor_pago: updateData.valor_pago
           }
           atualizada.statusCalculado = calcularStatus(atualizada)
@@ -708,6 +734,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           data_pagamento: updateData.data_pagamento,
           valor_multa: updateData.valor_multa,
           valor_juros: updateData.valor_juros,
+          valor_desconto: updateData.valor_desconto,
           valor_pago: updateData.valor_pago
         })
         setMostrarModalRecibo(true)
@@ -718,6 +745,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setFormaPagamento('')
       setBaixaMulta('0.00')
       setBaixaJuros('0.00')
+      setBaixaDesconto('')
     } catch (error) {
       showToast('Erro ao atualizar: ' + error.message, 'error')
       setMostrarModalConfirmacao(false)
@@ -725,6 +753,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setFormaPagamento('')
       setBaixaMulta('0.00')
       setBaixaJuros('0.00')
+      setBaixaDesconto('')
     }
   }
 
@@ -747,7 +776,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     try {
       const { error } = await supabase
         .from('mensalidades')
-        .update({ status: 'pendente', data_pagamento: null, forma_pagamento: null })
+        // Zera o registro de dinheiro junto: desfazer e deixar multa/juros/desconto
+        // gravados faria a parcela voltar pra régua carregando a baixa antiga
+        .update({
+          status: 'pendente',
+          data_pagamento: null,
+          forma_pagamento: null,
+          valor_multa: 0,
+          valor_juros: 0,
+          valor_desconto: 0,
+          valor_pago: null
+        })
         .eq('id', mensalidade.id)
 
       if (error) throw error
@@ -1008,10 +1047,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     const dadosRecibo = {
       nomeCliente: mensalidade.devedor?.nome || mensalidade.devedores?.nome || 'Aluno',
       telefoneCliente: mensalidade.devedor?.telefone || mensalidade.devedores?.telefone || '',
-      valor: mensalidade.valor_pago || mensalidade.valor,
+      // != null, nao `||`: cortesia grava valor_pago = 0 e o zero e o valor real
+      valor: mensalidade.valor_pago != null ? mensalidade.valor_pago : mensalidade.valor,
       valorBase: mensalidade.valor,
       valorMulta: mensalidade.valor_multa,
       valorJuros: mensalidade.valor_juros,
+      valorDesconto: mensalidade.valor_desconto,
       dataVencimento: mensalidade.data_vencimento,
       dataPagamento: mensalidade.data_pagamento,
       formaPagamento: mensalidade.forma_pagamento,
@@ -1063,10 +1104,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       const dadosRecibo = {
         nomeCliente: devedor?.nome || 'Aluno',
         telefoneCliente: devedor?.telefone || '',
-        valor: mensalidade.valor_pago || mensalidade.valor,
+        valor: mensalidade.valor_pago != null ? mensalidade.valor_pago : mensalidade.valor,
         valorBase: mensalidade.valor,
         valorMulta: mensalidade.valor_multa,
         valorJuros: mensalidade.valor_juros,
+        valorDesconto: mensalidade.valor_desconto,
         dataVencimento: mensalidade.data_vencimento,
         dataPagamento: mensalidade.data_pagamento,
         formaPagamento: mensalidade.forma_pagamento,
@@ -2153,11 +2195,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                         <p style={{ fontSize: '20px', fontWeight: '700', color: '#333', margin: '0 0 4px 0' }}>
                           {formatarMoeda(efetivo.projetado ? efetivo.base : efetivo.total)}
                         </p>
-                        {efetivo.temAcrescimo && (
-                          <p style={{ fontSize: '12px', fontWeight: '500', color: '#b45309', margin: '0 0 4px 0' }}>
-                            {efetivo.projetado
-                              ? `+ ${formatarMoeda(efetivo.acrescimo)} se pagar hoje`
-                              : `${formatarMoeda(efetivo.base)} + ${formatarMoeda(efetivo.acrescimo)} multa/juros`}
+                        {resumoValorEfetivo(efetivo, formatarMoeda) && (
+                          <p style={{ fontSize: '12px', fontWeight: '500', color: corValorEfetivo(efetivo), margin: '0 0 4px 0' }}>
+                            {resumoValorEfetivo(efetivo, formatarMoeda)}
                           </p>
                         )}
                         <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
@@ -2211,11 +2251,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       <span style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
                         {formatarMoeda(destaque)}
                       </span>
-                      {efetivo.temAcrescimo && (
-                        <div style={{ fontSize: '11px', fontWeight: 500, color: '#b45309', marginTop: '2px', whiteSpace: 'nowrap' }}>
-                          {efetivo.projetado
-                            ? `+ ${formatarMoeda(efetivo.acrescimo)} se pagar hoje`
-                            : `${formatarMoeda(efetivo.base)} + ${formatarMoeda(efetivo.acrescimo)} multa/juros`}
+                      {resumoValorEfetivo(efetivo, formatarMoeda) && (
+                        <div style={{ fontSize: '11px', fontWeight: 500, color: corValorEfetivo(efetivo), marginTop: '2px', whiteSpace: 'nowrap' }}>
+                          {resumoValorEfetivo(efetivo, formatarMoeda)}
                         </div>
                       )}
                     </>
@@ -2433,12 +2471,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     return (
                       <>
                         <InfoRow isFirst big label="Valor" value={formatarMoeda(efetivo.base)} />
-                        {efetivo.temAcrescimo && (
+                        {(efetivo.temAcrescimo || efetivo.temDesconto) && (
                           <>
                             {efetivo.multa > 0 && <InfoRow label="Multa por atraso" valueColor="#b45309" value={`+ ${formatarMoeda(efetivo.multa)}`} />}
                             {efetivo.juros > 0 && <InfoRow label="Juros por atraso" valueColor="#b45309" value={`+ ${formatarMoeda(efetivo.juros)}`} />}
-                            {efetivo.multa === 0 && efetivo.juros === 0 && (
+                            {efetivo.temAcrescimo && efetivo.multa === 0 && efetivo.juros === 0 && (
                               <InfoRow label="Multa/juros" valueColor="#b45309" value={`+ ${formatarMoeda(efetivo.acrescimo)}`} />
+                            )}
+                            {efetivo.temDesconto && (
+                              <InfoRow label="Desconto concedido" valueColor="#0f766e" value={`− ${formatarMoeda(efetivo.desconto)}`} />
                             )}
                             <InfoRow
                               big
@@ -2620,6 +2661,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   setFormaPagamento('')
                   setBaixaMulta('0.00')
                   setBaixaJuros('0.00')
+                  setBaixaDesconto('')
                 }}
                 style={{
                   background: 'none',
@@ -2682,38 +2724,66 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 </div>
               )}
 
-              {/* Multa e juros - só ao confirmar pagamento de parcela vencida */}
-              {novoStatusPagamento && mensalidadeParaAtualizar && calcularStatus(mensalidadeParaAtualizar) === 'atrasado' && (() => {
+              {/* Ajustes do valor - só ao confirmar pagamento.
+                  Multa/juros aparecem apenas em parcela vencida (é o que a config calcula);
+                  desconto vale sempre, porque negociação acontece com parcela em dia também. */}
+              {novoStatusPagamento && mensalidadeParaAtualizar && (() => {
+                const atrasado = calcularStatus(mensalidadeParaAtualizar) === 'atrasado'
                 const base = parseFloat(mensalidadeParaAtualizar.valor) || 0
-                const multa = Math.max(0, parseFloat(baixaMulta) || 0)
-                const juros = Math.max(0, parseFloat(baixaJuros) || 0)
-                const total = Math.round((base + multa + juros) * 100) / 100
+                const multa = atrasado ? Math.max(0, parseFloat(baixaMulta) || 0) : 0
+                const juros = atrasado ? Math.max(0, parseFloat(baixaJuros) || 0) : 0
+                const bruto = Math.round((base + multa + juros) * 100) / 100
+                const descontoInformado = Math.max(0, parseFloat(baixaDesconto) || 0)
+                const excedeu = descontoInformado > bruto + 0.005
+                const total = Math.round((bruto - Math.min(descontoInformado, bruto)) * 100) / 100
+                const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', boxSizing: 'border-box', color: '#344848' }
                 return (
                   <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+                    {atrasado && (
+                      <>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
+                          Multa e juros por atraso
+                        </label>
+                        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Multa (R$)</span>
+                            <input
+                              type="number" min="0" step="0.01"
+                              value={baixaMulta}
+                              onChange={(e) => setBaixaMulta(e.target.value)}
+                              style={inputStyle}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Juros (R$)</span>
+                            <input
+                              type="number" min="0" step="0.01"
+                              value={baixaJuros}
+                              onChange={(e) => setBaixaJuros(e.target.value)}
+                              style={inputStyle}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-                      Multa e juros por atraso
+                      Desconto (opcional)
                     </label>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Multa (R$)</span>
-                        <input
-                          type="number" min="0" step="0.01"
-                          value={baixaMulta}
-                          onChange={(e) => setBaixaMulta(e.target.value)}
-                          style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', boxSizing: 'border-box', color: '#344848' }}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Juros (R$)</span>
-                        <input
-                          type="number" min="0" step="0.01"
-                          value={baixaJuros}
-                          onChange={(e) => setBaixaJuros(e.target.value)}
-                          style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', boxSizing: 'border-box', color: '#344848' }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', color: '#344848' }}>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={baixaDesconto}
+                      placeholder="0,00"
+                      onChange={(e) => setBaixaDesconto(e.target.value)}
+                      style={{ ...inputStyle, borderColor: excedeu ? '#dc2626' : '#ddd' }}
+                    />
+                    <span style={{ fontSize: '12px', color: excedeu ? '#dc2626' : '#666', display: 'block', marginTop: 4 }}>
+                      {excedeu
+                        ? `Máximo R$ ${bruto.toFixed(2)} — o desconto não pode passar do valor da parcela`
+                        : 'Abatido do valor recebido. Não altera a mensalidade dos próximos meses.'}
+                    </span>
+
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', color: '#344848' }}>
                       <span style={{ color: '#666' }}>Total a receber</span>
                       <strong style={{ fontSize: '16px' }}>R$ {total.toFixed(2)}</strong>
                     </div>
@@ -2737,6 +2807,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   setFormaPagamento('')
                   setBaixaMulta('0.00')
                   setBaixaJuros('0.00')
+                  setBaixaDesconto('')
                 }}
                 style={{
                   padding: '10px 20px',
@@ -2816,7 +2887,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
               {mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Aluno'} -{' '}
               <strong>
-                R$ {parseFloat(mensalidadePaga.valor_pago || mensalidadePaga.valor || 0).toLocaleString('pt-BR', {
+                R$ {parseFloat((mensalidadePaga.valor_pago != null ? mensalidadePaga.valor_pago : mensalidadePaga.valor) || 0).toLocaleString('pt-BR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
                 })}
