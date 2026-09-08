@@ -207,7 +207,7 @@ export default function FeatureLocked({
           <button
             onClick={() => {
               setShowTooltip(false)
-              navigate('/app/configuracao?aba=upgrade')
+              navigate('/app/configuracao?aba=assinatura')
             }}
             style={{
               padding: '10px 20px',

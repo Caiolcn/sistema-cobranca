@@ -1,9 +1,23 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+
+// `?next=` guarda a rota que a pessoa tentou abrir deslogada (o link de
+// renovação do WhatsApp, por exemplo). Só aceitamos caminho interno: um next
+// com host próprio viraria redirect aberto.
+//
+// Exportado porque a ROTA /login em App.js precisa usar exatamente o mesmo
+// destino. Enquanto ela redirecionava fixo pra /app/home, o `next` era
+// engolido: assim que onLogin marca a sessão, a rota re-renderiza e o
+// <Navigate> dela ganha a corrida contra o navigate() daqui de baixo.
+export function destinoPosLogin(search) {
+  const next = new URLSearchParams(search || '').get('next')
+  return next && next.startsWith('/app/') && !next.startsWith('//') ? next : '/app/home'
+}
 
 export default function Login({ onLogin }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -53,7 +67,7 @@ export default function Login({ onLogin }) {
 
       // Chamar callback e redirecionar
       if (onLogin) onLogin()
-      navigate('/app/home')
+      navigate(destinoPosLogin(`?${searchParams.toString()}`))
     } catch (error) {
       setMensagem({ texto: traduzirErro(error.message), tipo: 'erro' })
     } finally {

@@ -1,0 +1,558 @@
+/* ==========================================
+   Minha Assinatura
+
+   Um card, painéis dentro dele. O peso visual vem da tipografia (preço 34px,
+   valores 600, rótulos cinza) e do contraste branco x cinza dos painéis —
+   não de borda colorida nem de fundo verde. Cor aqui é semântica: só o badge
+   de status, a faixa de alerta e a barra de consumo quando aperta.
+
+   Tudo em tokens do DS; nenhum hex cravado.
+   ========================================== */
+
+.ma {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+}
+
+.ma-muted {
+  color: var(--color-text-muted);
+}
+
+/* ---------- Como rota (/app/assinatura, dentro do Dashboard) ----------
+   O Outlet do Dashboard é um flex com align-items:flex-start e sem padding —
+   cada página põe o seu, e precisa de width:100% pra não encolher. */
+
+.ma-pagina {
+  width: 100%;
+  padding: var(--space-6) var(--space-6) var(--space-10);
+}
+
+.ma-pagina__titulo {
+  margin: 0 0 var(--space-5);
+}
+
+/* ---------- O card ---------- */
+
+.ma-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---------- Cabeçalho: nome, preço, resumo ---------- */
+
+.ma-topo__nome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  flex-wrap: wrap;
+}
+
+.ma-topo__nome h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* O número que responde "quanto eu pago". Tabular pra não dançar entre
+   49,90 e 149,90. */
+.ma-topo__preco {
+  margin: var(--space-2) 0 0;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ma-topo__preco span {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.ma-topo__resumo {
+  margin: var(--space-2) 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Ficha: rótulo -> valor ---------- */
+
+.ma-ficha {
+  margin: 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.ma-ficha__linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.ma-ficha__linha dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.ma-ficha__linha dt svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.ma-ficha__linha dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* A nota fica embaixo do valor, menor e apagada: contexto não pode competir
+   com o dado. */
+.ma-ficha__nota {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Painéis internos ---------- */
+
+.ma-painel {
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.ma-painel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ma-painel__head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.ma-painel__head h3 svg {
+  color: var(--color-text-muted);
+}
+
+.ma-painel__meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ma-painel__acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  flex-wrap: wrap;
+}
+
+.ma-painel__nota {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ma-painel__nota svg {
+  flex-shrink: 0;
+}
+
+/* O painel do histórico segura a Table do DS, que já tem fundo branco e
+   borda própria — o painel só dá o título e o respiro. */
+.ma-painel .ds-table-container {
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Uso do plano ---------- */
+
+.ma-uso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ma-uso .ma-painel__head {
+  margin-bottom: 0;
+}
+
+.ma-uso__linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ma-uso__rotulo {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.ma-uso__numero {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ma-uso__sufixo {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.ma-uso__trilho {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--neutral-200);
+  overflow: hidden;
+}
+
+.ma-uso__preenchido {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-500) var(--ease-out);
+}
+
+.ma-uso__preenchido--ok      { background-color: var(--mensalli-green-500); }
+.ma-uso__preenchido--warning { background-color: var(--warning-500); }
+.ma-uso__preenchido--danger  { background-color: var(--danger-500); }
+
+/* ---------- Alerta ---------- */
+
+.ma-alerta {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-xl);
+}
+
+.ma-alerta svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ma-alerta strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ma-alerta p {
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.ma-alerta--info    { background-color: var(--info-50);    color: var(--info-700); }
+.ma-alerta--warning { background-color: var(--warning-50); color: var(--warning-700); }
+.ma-alerta--danger  { background-color: var(--danger-50);  color: var(--danger-700); }
+
+/* ---------- Rodapé do card ---------- */
+
+.ma-rodape {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ma-rodape span,
+.ma-rodape__suporte {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ma-rodape__suporte {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--mensalli-green-700);
+  text-decoration: none;
+}
+
+.ma-rodape__suporte:hover {
+  text-decoration: underline;
+}
+
+.ma-tabela__valor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---------- Grade de planos (trial na página, e dentro do modal) ---------- */
+
+.ma-secao__head {
+  margin-bottom: var(--space-4);
+}
+
+.ma-secao__head h3 {
+  margin: 0;
+}
+
+.ma-secao__head p {
+  margin: var(--space-1) 0 0;
+}
+
+.ma-planos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: var(--space-5);
+  /* Altura natural, não esticada: as listas têm 5, 8 e 11 itens e igualar as
+     alturas abria 230px de vazio embaixo do Starter. */
+  align-items: start;
+  max-width: 1080px;
+  padding-top: var(--space-3); /* respiro pro badge "MAIS POPULAR" */
+}
+
+/* ---------- Checkout (modal) ---------- */
+
+.ma-checkout__features {
+  list-style: none;
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ma-checkout__features li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.ma-checkout__features svg {
+  color: var(--mensalli-green-600);
+  flex-shrink: 0;
+}
+
+.ma-checkout__metodo {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  text-align: left;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color var(--duration-150) var(--ease-out),
+              background-color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+}
+
+/* App.css pinta TODO button de azul no :hover — sem sobrescrever background e
+   color aqui, o cartão do método vira um bloco azul. */
+.ma-checkout__metodo:hover:not(:disabled) {
+  background-color: var(--color-bg-muted);
+  border-color: var(--color-border-default);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.ma-checkout__metodo:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ma-checkout__metodo--destaque {
+  border-color: var(--mensalli-green-500);
+  background-color: var(--mensalli-green-50);
+}
+
+.ma-checkout__metodo--destaque:hover:not(:disabled) {
+  background-color: var(--mensalli-green-100);
+  border-color: var(--mensalli-green-600);
+  color: var(--color-text-primary);
+}
+
+.ma-checkout__metodo span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ma-checkout__metodo strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ma-checkout__metodo small {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.ma-checkout__pix {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ma-checkout__qr {
+  width: 200px;
+  height: 200px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-bg-surface);
+}
+
+.ma-checkout__pix-label {
+  margin: 0;
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ma-checkout__copiacola {
+  width: 100%;
+  max-height: 72px;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.ma-checkout__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background-color: var(--info-50);
+  color: var(--info-700);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ma-checkout__erro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg);
+  background-color: var(--danger-50);
+  color: var(--danger-700);
+  font-size: 13px;
+}
+
+.ma-checkout__sucesso {
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.ma-checkout__selo {
+  color: var(--mensalli-green-500);
+  margin-bottom: var(--space-3);
+}
+
+.ma-checkout__sucesso h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.ma-checkout__sucesso p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 720px) {
+  .ma {
+    gap: var(--space-6);
+  }
+
+  .ma-pagina {
+    padding: var(--space-5) var(--space-4) var(--space-10);
+  }
+
+  .ma-card {
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+  }
+
+  .ma-topo__preco {
+    font-size: 28px;
+  }
+
+  .ma-painel {
+    padding: var(--space-4);
+  }
+
+  /* Rótulo em cima, valor embaixo: lado a lado, "Último pagamento" e o valor
+     se espremiam em duas colunas de 100px. */
+  .ma-ficha__linha {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  .ma-ficha__linha dd {
+    text-align: left;
+    padding-left: calc(18px + var(--space-2-5));
+  }
+
+  .ma-painel__acoes > .ds-btn {
+    width: 100%;
+  }
+
+  .ma-rodape__suporte {
+    margin-left: 0;
+  }
+}

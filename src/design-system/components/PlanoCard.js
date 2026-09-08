@@ -38,8 +38,17 @@ import Badge from './Badge'
      />
    ============================================================ */
 
+// Preço redondo sai sem centavos (R$ 1.500); com centavos, sai com os DOIS
+// (R$ 49,90). Com minimumFractionDigits fixo em 0, 49.90 virava "R$ 49,9" —
+// o zero final some e o preço fica com cara de errado.
 function formatBRL(v) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+  const casas = Number.isInteger(v) ? 0 : 2
+  return v.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas
+  })
 }
 
 export default function PlanoCard({
@@ -62,6 +71,14 @@ export default function PlanoCard({
   const finalCtaVariant = ctaVariant || (destaque ? 'primary' : 'outline')
 
   return (
+    // Quem decide a altura é a grade que usa o card, não o card:
+    //   align-items: stretch (default do grid) → os cards se igualam e, como
+    //     a lista de features cresce (flex: 1) e o CTA fica em margin-top
+    //     auto, os botões alinham na mesma linha.
+    //   align-items: start → altura natural, sem vazio embaixo de quem tem
+    //     menos feature.
+    // Por isso NÃO há height fixa aqui: cravar 100% no root tirava a escolha
+    // da grade (em grid a área tem altura definida e a % resolve pra ela).
     <div style={{ position: 'relative', ...style }} className={className}>
       {destaque && (
         <div style={{
@@ -80,10 +97,12 @@ export default function PlanoCard({
       <Card
         elevation={destaque ? 'elevated' : 'flat'}
         padding="none"
-        style={destaque ? {
-          borderColor: 'var(--mensalli-green-500)',
-          borderWidth: 2,
-        } : undefined}
+        style={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          ...(destaque ? { borderColor: 'var(--mensalli-green-500)', borderWidth: 2 } : null),
+        }}
       >
         <div style={{ padding: 'var(--space-6) var(--space-5) var(--space-4)' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>
@@ -114,7 +133,7 @@ export default function PlanoCard({
 
         {features.length > 0 && (
           <ul style={{
-            listStyle: 'none', margin: 0,
+            listStyle: 'none', margin: 0, flex: 1,
             padding: 'var(--space-2) var(--space-5) var(--space-5)',
             display: 'flex', flexDirection: 'column', gap: 'var(--space-2-5)',
           }}>
@@ -140,7 +159,7 @@ export default function PlanoCard({
         )}
 
         {(cta || atual) && (
-          <div style={{ padding: 'var(--space-4) var(--space-5) var(--space-5)' }}>
+          <div style={{ padding: 'var(--space-4) var(--space-5) var(--space-5)', marginTop: 'auto' }}>
             {atual ? (
               <Button variant="outline" disabled fullWidth icon="mdi:check">Plano atual</Button>
             ) : (

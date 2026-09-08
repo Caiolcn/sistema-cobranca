@@ -5,6 +5,18 @@ import { supabase } from '../supabaseClient'
 
 const FUNCTIONS_URL = 'https://zvlnkkmcytjtridiojxx.supabase.co/functions/v1'
 
+// As leituras abaixo filtram por user_id explicitamente em vez de confiar só
+// na RLS. A política "Service role gerencia ..." dessas duas tabelas foi
+// criada como FOR ALL TO public USING (true) — service_role já ignora RLS, e
+// o que essa linha fez de fato foi liberar as duas tabelas pra qualquer um.
+// Sem este filtro, "meus pagamentos" trazia os pagamentos de todo mundo.
+// Ver sql-fix-rls-mercadopago.sql: quando as políticas forem corrigidas o
+// filtro vira redundante, e é pra ficar assim mesmo.
+async function usuarioAtualId() {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.user?.id || null
+}
+
 export const mercadoPagoService = {
   /**
    * Cria uma assinatura recorrente no Mercado Pago
@@ -130,13 +142,17 @@ export const mercadoPagoService = {
    */
   async verificarAssinaturaAtiva() {
     try {
+      const userId = await usuarioAtualId()
+      if (!userId) return null
+
       const { data, error } = await supabase
         .from('assinaturas_mercadopago')
         .select('*')
+        .eq('user_id', userId)
         .eq('status', 'authorized')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = no rows returned (não é erro)
@@ -157,9 +173,13 @@ export const mercadoPagoService = {
    */
   async buscarMinhasAssinaturas() {
     try {
+      const userId = await usuarioAtualId()
+      if (!userId) return []
+
       const { data, error } = await supabase
         .from('assinaturas_mercadopago')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -178,9 +198,13 @@ export const mercadoPagoService = {
    */
   async buscarMeusPagamentos() {
     try {
+      const userId = await usuarioAtualId()
+      if (!userId) return []
+
       const { data, error } = await supabase
         .from('pagamentos_mercadopago')
         .select('*')
+        .eq('user_id', userId)
         .order('data_pagamento', { ascending: false })
 
       if (error) throw error

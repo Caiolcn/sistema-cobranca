@@ -42,9 +42,9 @@ const TEMPERATURAS = {
 // Isto aqui é só o fallback de primeira carga (conta nova, template ainda não
 // semeado). Se aparecer na tela, é sinal de que a linha sumiu da tabela.
 const FALLBACK_LEMBRETE = {
-  venc_d3: 'Oi {{nome}}! Sua mensalidade do Mensalli vence em {{dias}} dias ({{vencimento}}). Valor: R$ {{valor}}. Pra renovar: https://www.mensalli.com.br/app/upgrade',
-  venc_hoje: 'Oi {{nome}}! Sua mensalidade do Mensalli vence hoje ({{vencimento}}). Valor: R$ {{valor}}. Pra renovar: https://www.mensalli.com.br/app/upgrade',
-  venc_vencido: 'Oi {{nome}}! Sua mensalidade do Mensalli venceu há {{dias_atraso}} dia(s) ({{vencimento}}). Valor: R$ {{valor}}. Pra reativar: https://www.mensalli.com.br/app/upgrade',
+  venc_d3: 'Oi {{nome}}! Sua mensalidade do Mensalli vence em {{dias}} dias ({{vencimento}}). Plano {{plano}} · R$ {{valor}}. Renove em segundos clicando no link abaixo: https://www.mensalli.com.br/app/assinatura?renovar=1',
+  venc_hoje: 'Oi {{nome}}! Sua mensalidade do Mensalli vence hoje ({{vencimento}}). Plano {{plano}} · R$ {{valor}}. Renove em segundos clicando no link abaixo: https://www.mensalli.com.br/app/assinatura?renovar=1',
+  venc_vencido: 'Oi {{nome}}! Sua mensalidade do Mensalli venceu em {{vencimento}} e ainda não identifiquei o pagamento. Plano {{plano}} · R$ {{valor}}. Reative em segundos clicando no link abaixo: https://www.mensalli.com.br/app/assinatura?renovar=1',
 }
 
 const OFERTAS = {

@@ -75,7 +75,7 @@ export default function NpsRelatorio({ userId, isLocked }) {
           <p style={{ margin: '0 0 20px', fontSize: '14px', color: '#666' }}>
             Acompanhe o NPS dos seus alunos e veja os comentários. Disponível no plano <strong>Premium</strong>.
           </p>
-          <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+          <button onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}
             style={{ padding: '10px 24px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
             Fazer Upgrade
           </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { UserProvider } from './contexts/UserContext'
 import { capturarAtribuicao } from './utils/metaAttribution'
@@ -9,7 +9,7 @@ import './design-system/tokens.css'
 
 // Componentes carregados imediatamente (rotas públicas)
 import LandingPage from './LandingPage'
-import Login from './Login'
+import Login, { destinoPosLogin } from './Login'
 import Signup from './Signup'
 import ResetPassword from './ResetPassword'
 import Privacidade from './pages/Privacidade'
@@ -24,7 +24,7 @@ const Financeiro = lazy(() => import('./Financeiro'))
 const Clientes = lazy(() => import('./Clientes'))
 const WhatsAppConexao = lazy(() => import('./WhatsAppConexao'))
 const Configuracao = lazy(() => import('./Configuracao'))
-const UpgradePage = lazy(() => import('./UpgradePage'))
+const MinhaAssinatura = lazy(() => import('./assinatura/MinhaAssinatura'))
 const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
 const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
 const PortalCliente = lazy(() => import('./pages/PortalCliente'))
@@ -88,6 +88,31 @@ const LoadingFallback = () => (
   </div>
 )
 
+// Deslogado tentando abrir uma rota do app. Antes ia direto pro /login e a
+// intenção morria ali: quem clicava no link de renovação do WhatsApp caía na
+// Home depois de entrar e tinha que caçar a tela de pagamento de novo.
+// Guarda o destino em ?next= e o Login devolve a pessoa pra lá.
+function RedirecionarParaLogin() {
+  const { pathname, search } = useLocation()
+  const destino = `${pathname}${search}`
+  return <Navigate to={`/login?next=${encodeURIComponent(destino)}`} replace />
+}
+
+// Link antigo (/app/upgrade) -> rota nova, com a query intacta.
+function RedirecionarParaAssinatura() {
+  const { search } = useLocation()
+  return <Navigate to={`/app/assinatura${search}`} replace />
+}
+
+// Já logado batendo em /login: respeita o ?next=. Sem isso, quem entrava pelo
+// link do WhatsApp caía na Home — esta rota re-renderiza no instante em que a
+// sessão aparece e o <Navigate> dela ganhava a corrida contra o redirect do
+// próprio formulário.
+function RedirecionarPosLogin() {
+  const { search } = useLocation()
+  return <Navigate to={destinoPosLogin(search)} replace />
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -129,7 +154,7 @@ function App() {
               {/* Rotas públicas */}
               <Route path="/" element={session ? <Navigate to="/app/home" replace /> : <LandingPage />} />
               <Route path="/signup" element={session && !cadastroEmCurso ? <Navigate to="/app/home" replace /> : <Signup onCadastroIniciado={() => setCadastroEmCurso(true)} />} />
-              <Route path="/login" element={session ? <Navigate to="/app/home" replace /> : <Login onLogin={() => setSession(true)} />} />
+              <Route path="/login" element={session ? <RedirecionarPosLogin /> : <Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
               <Route path="/portal/:token" element={<PortalCliente />} />
@@ -153,7 +178,19 @@ function App() {
                       da Home. A rota fica só redirecionando pra não quebrar
                       link antigo (Onboarding.js segue no repo, desligado). */}
                   <Route path="/app/onboarding" element={<Navigate to="/app/home" replace />} />
-                  <Route path="/app/upgrade" element={<UpgradePage />} />
+                  {/* /app/upgrade saiu, mas nao pode morrer: e o link que foi no
+                      WhatsApp dos lembretes de vencimento, e essas mensagens estao
+                      em conversas que ninguem reescreve. Redireciona PRESERVANDO a
+                      query — sem isso o ?renovar=1 se perde e a pessoa cai na tela
+                      sem o modal de pagamento aberto.
+                      A rota de destino, /app/assinatura, vive DENTRO do Dashboard
+                      (com o menu lateral) — ver o passe-livre no bloqueio de conta
+                      vencida em Dashboard.js. */}
+                  <Route path="/app/upgrade" element={<RedirecionarParaAssinatura />} />
+                  {/* Fica em /app/upgrade/success de proposito: e a URL de retorno
+                      do cartao, montada dentro da edge function create-subscription
+                      (`${origin}/app/upgrade/success`). Mexer aqui exigiria deploy
+                      da function pra ganhar nada que o cliente veja. */}
                   <Route path="/app/upgrade/success" element={<UpgradeSuccessPage />} />
                   <Route path="/app/design-system" element={<DSLayout />}>
                     <Route index element={<Navigate to="cores" replace />} />
@@ -190,6 +227,7 @@ function App() {
                     <Route path="horarios" element={<AgendaNova />} />
                     <Route path="relatorios" element={<Relatorios />} />
                     <Route path="whatsapp" element={<WhatsAppConexao />} />
+                    <Route path="assinatura" element={<MinhaAssinatura comoPagina />} />
                     <Route path="configuracao" element={<Configuracao secao="config" />} />
                     <Route path="marketing" element={<Configuracao secao="marketing" />} />
                     <Route path="ajuda" element={<Ajuda />} />
@@ -205,7 +243,7 @@ function App() {
                   </Route>
                 </>
               ) : (
-                <Route path="/app/*" element={<Navigate to="/login" replace />} />
+                <Route path="/app/*" element={<RedirecionarParaLogin />} />
               )}
 
               {/* Landing page publica da academia por slug raiz.

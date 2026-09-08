@@ -16,7 +16,7 @@ import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
 import { SITE_TEMPLATES } from './data/siteTemplates'
 import { SITE_FONTS } from './data/siteFonts'
-import { CONFIG_TABS, groupedConfigTabs, configTabIds } from './configTabs'
+import { CONFIG_TABS, groupedConfigTabs, configTabIds, resolverAba } from './configTabs'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
@@ -28,6 +28,8 @@ const PREVIEW_DEVICES = [
   { id: 'desktop', label: 'Computador', icon: 'mdi:monitor', width: null }
 ]
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
+// Aba "Minha Assinatura": mesmo componente que a rota /app/assinatura renderiza sozinha.
+const MinhaAssinatura = lazy(() => import('./assinatura/MinhaAssinatura'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
 // const Artes = lazy(() => import('./Artes')) // aba Artes temporariamente escondida — descomentar p/ reativar
 
@@ -172,7 +174,7 @@ function Configuracao({ secao = 'config' }) {
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   // Abas válidas desta seção (config = engrenagem; marketing = item lateral).
   const idsSecao = configTabIds(secao)
-  const abaSolicitada = searchParams.get('aba')
+  const abaSolicitada = resolverAba(searchParams.get('aba'))
   const [abaAtiva, setAbaAtiva] = useState(
     abaSolicitada && idsSecao.includes(abaSolicitada) ? abaSolicitada : idsSecao[0]
   )
@@ -223,10 +225,6 @@ function Configuracao({ secao = 'config' }) {
   })
   const [atualizarMensalidadesFuturas, setAtualizarMensalidadesFuturas] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState({ show: false, plano: null })
-
-  // Upgrade
-  const [planoAtual, setPlanoAtual] = useState('starter')
-  const [processandoCheckout, setProcessandoCheckout] = useState(false)
 
   // Integrações
   const [modoIntegracao, setModoIntegracao] = useState('manual') // 'asaas' ou 'manual'
@@ -342,7 +340,7 @@ function Configuracao({ secao = 'config' }) {
   // Atualizar aba quando URL mudar (vindo do menu mobile).
   // Só aceita abas que pertencem à seção atual (config x marketing).
   useEffect(() => {
-    const abaUrl = searchParams.get('aba')
+    const abaUrl = resolverAba(searchParams.get('aba'))
     if (abaUrl && configTabIds(secao).includes(abaUrl)) {
       setAbaAtiva(abaUrl)
     }
@@ -2040,317 +2038,6 @@ function Configuracao({ secao = 'config' }) {
   )
 
 
-  // Carregar plano atual do usuário
-  useEffect(() => {
-    const carregarPlanoAtual = async () => {
-      if (contextUserId) {
-        const { data } = await supabase
-          .from('usuarios')
-          .select('plano')
-          .eq('id', contextUserId)
-          .single()
-        if (data?.plano) {
-          setPlanoAtual(data.plano)
-        }
-      }
-    }
-    carregarPlanoAtual()
-  }, [contextUserId])
-
-  // Paleta e visual espelhados da seção de preços da LandingPage
-  const INK = '#0f1115'
-  const BODY = '#5b636e'
-  const MUTED = '#9aa1ab'
-  const BORDER = '#ececf0'
-  const GREEN = '#16a34a'
-  const GRAD = 'linear-gradient(135deg, #22c55e 0%, #0ea372 100%)'
-
-  const planosDisponiveis = [
-    {
-      id: 'starter',
-      nome: 'Starter',
-      preco: 49,
-      subtitulo: 'Ideal para começar',
-      perMsg: 'R$0,25 por mensagem',
-      destaque: false,
-      features: [
-        'Até 50 clientes ativos',
-        '200 mensagens/mês',
-        'Mensagem automática no vencimento',
-        '1 template personalizado',
-        'Dashboard básico'
-      ],
-      cta: 'Começar no Starter'
-    },
-    {
-      id: 'pro',
-      nome: 'Pro',
-      preco: 99,
-      subtitulo: 'Para negócios em crescimento',
-      perMsg: 'R$0,17 por mensagem',
-      destaque: false,
-      features: [
-        'Até 150 clientes ativos',
-        '600 mensagens/mês',
-        '3 templates personalizados',
-        'Régua de cobrança completa',
-        'Dashboard com gráficos',
-        'Contratos com assinatura',
-        'Anamnese / Ficha do aluno',
-        'Suporte via WhatsApp'
-      ],
-      cta: 'Escolher o Pro'
-    },
-    {
-      id: 'premium',
-      nome: 'Premium',
-      preco: 149,
-      subtitulo: 'Gestão profissional',
-      perMsg: 'R$0,05 por mensagem',
-      destaque: true,
-      features: [
-        'Até 500 clientes ativos',
-        '3.000 mensagens/mês',
-        'Tudo do plano Pro',
-        'Criador de Sites',
-        'CRM completo',
-        'Bot de WhatsApp',
-        'Agendamento online (link de agendamento)',
-        'Campanhas de WhatsApp',
-        'Templates ilimitados',
-        'Consultoria inicial (1h)',
-        'Suporte prioritário'
-      ],
-      cta: 'Ativar Premium'
-    }
-  ]
-
-  const handleUpgrade = (planoId) => {
-    if (planoId === planoAtual) {
-      showToast('Você já está neste plano', 'info')
-      return
-    }
-    // Reaproveita o fluxo de pagamento do /app/upgrade (escolha PIX x Cartão).
-    // O deep-link ?plano= já cai direto na tela de escolha do método.
-    navigate(`/app/upgrade?plano=${planoId}`)
-  }
-
-  const handleSuporteWhatsApp = () => {
-    window.open('https://wa.me/5562981618862?text=Olá! Preciso de ajuda com o MensalliZap', '_blank')
-  }
-
-  const renderUpgrade = () => (
-    <div>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h3 style={{
-          fontSize: isSmallScreen ? '28px' : '36px',
-          fontWeight: 'bold',
-          marginBottom: '12px',
-          color: '#333'
-        }}>
-          Faça upgrade do seu plano
-        </h3>
-        <p style={{
-          fontSize: '16px',
-          color: '#666',
-          maxWidth: '500px',
-          margin: '0 auto'
-        }}>
-          Desbloqueie mais recursos e automatize ainda mais suas cobranças
-        </p>
-      </div>
-
-      {/* Cards de Planos — visual espelhado da LandingPage */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)',
-        gap: '20px',
-        alignItems: 'start',
-        maxWidth: '1080px',
-        margin: '0 auto 40px'
-      }}>
-        {planosDisponiveis.map((plano) => {
-          const d = plano.destaque
-          const isAtual = plano.id === planoAtual
-          const bloqueado = isAtual || processandoCheckout
-
-          return (
-            <div
-              key={plano.id}
-              style={{
-                backgroundColor: 'white',
-                padding: '34px',
-                borderRadius: '22px',
-                border: d ? `2px solid ${GREEN}` : `1px solid ${BORDER}`,
-                position: 'relative',
-                transform: (d && !isSmallScreen) ? 'scale(1.04)' : 'none',
-                boxShadow: d ? '0 26px 60px rgba(22,163,74,0.18)' : '0 12px 30px rgba(16,24,40,0.05)'
-              }}
-            >
-              {/* Badge Melhor custo-benefício */}
-              {d && (
-                <div style={{
-                  position: 'absolute',
-                  top: '-13px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: GRAD,
-                  color: 'white',
-                  padding: '6px 16px',
-                  borderRadius: '100px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  whiteSpace: 'nowrap'
-                }}>
-                  Melhor custo-benefício
-                </div>
-              )}
-
-              {/* Badge Plano Atual */}
-              {isAtual && (
-                <div style={{
-                  position: 'absolute',
-                  top: '14px',
-                  right: '14px',
-                  backgroundColor: '#e8f5e9',
-                  color: '#2e7d32',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '700'
-                }}>
-                  SEU PLANO
-                </div>
-              )}
-
-              <p style={{ fontSize: '12px', fontWeight: '700', color: MUTED, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>
-                {plano.subtitulo}
-              </p>
-              <h4 style={{ fontSize: '22px', fontWeight: '700', color: INK, margin: '0 0 16px' }}>
-                {plano.nome}
-              </h4>
-
-              <div style={{ marginBottom: '24px' }}>
-                <span style={{ fontSize: '46px', fontWeight: '800', letterSpacing: '-1.5px', color: INK }}>R${plano.preco}</span>
-                <span style={{ fontSize: '16px', color: MUTED }}>/mês</span>
-                <p style={{ fontSize: '12px', color: MUTED, margin: '6px 0 0' }}>{plano.perMsg}</p>
-              </div>
-
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px' }}>
-                {plano.features.map((feature, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px', fontSize: '14px', color: BODY }}>
-                    <Icon icon="mdi:check" width="18" style={{ color: GREEN, flexShrink: 0, marginTop: '2px' }} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handleUpgrade(plano.id)}
-                disabled={bloqueado}
-                style={d
-                  ? { width: '100%', padding: '14px', fontSize: '15px', background: GRAD, color: 'white', border: 'none', borderRadius: '12px', fontWeight: '700', cursor: bloqueado ? 'not-allowed' : 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.28)', opacity: bloqueado ? 0.6 : 1, transition: 'all .2s' }
-                  : { width: '100%', padding: '14px', fontSize: '15px', backgroundColor: 'white', color: INK, border: `1px solid ${BORDER}`, borderRadius: '12px', fontWeight: '600', cursor: bloqueado ? 'not-allowed' : 'pointer', opacity: bloqueado ? 0.6 : 1, transition: 'all .2s' }
-                }
-                onMouseOver={(e) => {
-                  if (bloqueado) return
-                  if (d) e.currentTarget.style.opacity = '.9'
-                  else e.currentTarget.style.borderColor = '#cfd3da'
-                }}
-                onMouseOut={(e) => {
-                  if (bloqueado) return
-                  if (d) e.currentTarget.style.opacity = '1'
-                  else e.currentTarget.style.borderColor = BORDER
-                }}
-              >
-                {processandoCheckout ? 'Processando...' : isAtual ? 'Plano Atual' : plano.cta}
-              </button>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Garantias e Benefícios */}
-      <div style={{
-        backgroundColor: 'white',
-        padding: '40px',
-        borderRadius: '16px',
-        border: '1px solid #e0e0e0',
-        marginBottom: '40px'
-      }}>
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          gap: '32px',
-          marginBottom: '32px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
-            <span style={{ fontSize: '15px', color: '#333' }}>Cancele quando quiser, sem multa</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
-            <span style={{ fontSize: '15px', color: '#333' }}>Seus dados continuam salvos por 30 dias</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Icon icon="mdi:check-circle" width="24" style={{ color: '#4CAF50' }} />
-            <span style={{ fontSize: '15px', color: '#333' }}>Upgrade ou downgrade a qualquer momento</span>
-          </div>
-        </div>
-
-        <div style={{
-          textAlign: 'center',
-          paddingTop: '24px',
-          borderTop: '1px solid #e0e0e0'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Icon icon="mdi:shield-check" width="24" style={{ color: '#2196F3' }} />
-            <span style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
-              Pagamento 100% seguro via Mercado Pago
-            </span>
-          </div>
-          <p style={{ fontSize: '14px', color: '#666' }}>
-            Seus dados financeiros estão protegidos com criptografia SSL
-          </p>
-        </div>
-      </div>
-
-      {/* Botão de Suporte */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <button
-          onClick={handleSuporteWhatsApp}
-          style={{
-            padding: '14px 28px',
-            backgroundColor: '#25D366',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50px',
-            fontSize: '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
-          }}
-          onMouseOver={(e) => {
-            e.target.style.transform = 'translateY(-2px)'
-            e.target.style.boxShadow = '0 6px 16px rgba(37, 211, 102, 0.4)'
-          }}
-          onMouseOut={(e) => {
-            e.target.style.transform = 'translateY(0)'
-            e.target.style.boxShadow = '0 4px 12px rgba(37, 211, 102, 0.3)'
-          }}
-        >
-          <Icon icon="mdi:whatsapp" width="22" />
-          Dúvidas? Chama no WhatsApp
-        </button>
-      </div>
-    </div>
-  )
 
   // ==========================================
   // ASAAS (BOLETOS)
@@ -4049,7 +3736,7 @@ function Configuracao({ secao = 'config' }) {
             Tenha um site pronto pra sua empresa com planos, horários, depoimentos e botão direto pro WhatsApp.
             Disponível no plano <strong>Premium</strong>.
           </p>
-          <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
+          <button onClick={() => navigate('/app/configuracao?aba=assinatura')}
             style={{
               padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
               border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
@@ -5222,7 +4909,7 @@ function Configuracao({ secao = 'config' }) {
             Permita que seus alunos agendem e cancelem aulas por um link público.
             Disponível no plano <strong>Premium</strong>.
           </p>
-          <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
+          <button onClick={() => navigate('/app/configuracao?aba=assinatura')}
             style={{
               padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
               border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer'
@@ -5503,7 +5190,7 @@ function Configuracao({ secao = 'config' }) {
             Cadastre fichas de avaliação física dos seus alunos com histórico de evolução.
             Disponível no plano <strong>Pro</strong> ou superior.
           </p>
-          <button onClick={() => navigate('/app/configuracao?aba=upgrade')}
+          <button onClick={() => navigate('/app/configuracao?aba=assinatura')}
             style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
             Fazer Upgrade
           </button>
@@ -5771,7 +5458,11 @@ function Configuracao({ secao = 'config' }) {
               {abaAtiva === 'empresa' && renderDadosEmpresa()}
               {abaAtiva === 'planos' && renderPlanos()}
               {abaAtiva === 'integracoes' && renderIntegracoes()}
-              {abaAtiva === 'upgrade' && renderUpgrade()}
+              {abaAtiva === 'assinatura' && (
+                <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
+                  <MinhaAssinatura />
+                </Suspense>
+              )}
               {/* Aba "Artes" temporariamente escondida (feature em construção) — descomentar p/ reativar
               {abaAtiva === 'artes' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>

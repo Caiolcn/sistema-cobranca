@@ -549,7 +549,7 @@ export default function CRM() {
             Capture leads do bot e experimentais do link de agendamento em um funil visual.
             Disponível no plano <strong>Premium</strong>.
           </p>
-          <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+          <button onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}
             style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
             Fazer Upgrade
           </button>

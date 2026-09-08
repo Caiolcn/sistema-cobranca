@@ -3759,7 +3759,7 @@ export default function WhatsAppConexao() {
               <button
                 onClick={() => {
                   setUpgradeModal({ isOpen: false, featureName: '' })
-                  navigate('/app/configuracao?aba=upgrade')
+                  navigate('/app/configuracao?aba=assinatura')
                 }}
                 style={{
                   padding: '10px 20px',
@@ -3818,7 +3818,7 @@ export default function WhatsAppConexao() {
                 Envie mensagens em massa pra seus alunos — avisos, promoções, comunicados.
                 Disponível no plano <strong>Premium</strong>.
               </p>
-              <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+              <button onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}
                 style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
                 Fazer Upgrade
               </button>
@@ -3853,7 +3853,7 @@ export default function WhatsAppConexao() {
                 Atendimento automático com menu numérico — seus alunos consultam mensalidade, horários e agendam sozinhos.
                 Disponível no plano <strong>Premium</strong>.
               </p>
-              <button onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}
+              <button onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}
                 style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
                 Fazer Upgrade
               </button>

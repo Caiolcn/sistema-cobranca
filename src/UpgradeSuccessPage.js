@@ -208,7 +208,7 @@ export default function UpgradeSuccessPage() {
 
             {status === 'error' && (
               <button
-                onClick={() => navigate('/app/upgrade')}
+                onClick={() => navigate('/app/assinatura')}
                 style={{
                   padding: '14px 32px',
                   backgroundColor: 'transparent',

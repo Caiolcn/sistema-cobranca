@@ -90,7 +90,7 @@ export default function PlanExpirationBanner() {
       </span>
 
       <button
-        onClick={() => navigate(planoPago ? `/app/upgrade?plano=${userData.plano}` : '/app/upgrade')}
+        onClick={() => navigate(planoPago ? `/app/assinatura?plano=${userData.plano}` : '/app/assinatura')}
         style={{
           padding: '6px 18px',
           backgroundColor: config.bg,

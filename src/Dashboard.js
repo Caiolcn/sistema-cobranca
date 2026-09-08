@@ -200,7 +200,12 @@ export default function Dashboard() {
   // (quem está logado é o admin, `isAdmin` continua true). Para ver a conta
   // travada como o cliente vê, use o link "ver como cliente", que abre a
   // sessão real dele.
-  if (bloqueado && !loading && !isAdmin) {
+  // Passe-livre pra /app/assinatura: é a tela onde a pessoa PAGA. Bloquear
+  // quem está vencido justamente aqui seria trancar a porta e cobrar a chave —
+  // era por isso que a tela morava fora do Dashboard, sem menu lateral.
+  const naTelaDeAssinatura = location.pathname.startsWith('/app/assinatura')
+
+  if (bloqueado && !loading && !isAdmin && !naTelaDeAssinatura) {
     return (
       <>
         <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden', filter: 'blur(5px)', pointerEvents: 'none' }}>
@@ -210,7 +215,7 @@ export default function Dashboard() {
           diasRestantes={0}
           motivo={motivo}
           onClose={() => {}}
-          onUpgrade={() => navigate('/app/upgrade')}
+          onUpgrade={() => navigate('/app/assinatura')}
         />
       </>
     )
@@ -223,7 +228,7 @@ export default function Dashboard() {
         <TrialExpiredModal
           diasRestantes={diasRestantes}
           onClose={() => setMostrarModalTrial(false)}
-          onUpgrade={() => navigate('/app/upgrade')}
+          onUpgrade={() => navigate('/app/assinatura')}
         />
       )}
       {/* Overlay para fechar menu em mobile */}

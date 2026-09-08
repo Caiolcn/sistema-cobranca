@@ -653,7 +653,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
           Disponível no plano <strong>Pro</strong> ou superior.
         </p>
         <button
-          onClick={() => navigate('/app/configuracao?aba=upgrade')}
+          onClick={() => navigate('/app/configuracao?aba=assinatura')}
           style={{
             padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
             border: 'none', borderRadius: '8px', fontSize: '15px',

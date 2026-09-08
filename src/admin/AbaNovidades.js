@@ -51,7 +51,7 @@ const ROTAS = [
   { value: '/app/configuracao', label: 'Configurações' },
   { value: '/app/configuracao?aba=integracoes', label: 'Configurações › Integrações (inclui multa e juros)' },
   { value: '/app/configuracao?aba=colaboradores', label: 'Configurações › Colaboradores' },
-  { value: '/app/configuracao?aba=upgrade', label: 'Configurações › Meu plano' },
+  { value: '/app/configuracao?aba=assinatura', label: 'Configurações › Minha Assinatura' },
   { value: '/app/marketing?aba=agendamento', label: 'Marketing › Agendamento Online' },
 ]
 

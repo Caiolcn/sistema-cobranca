@@ -118,7 +118,7 @@ export default function RadarEvasao({ onAbrirPerfil }) {
         <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888' }}>
           Disponível no plano <strong>Premium</strong>.
         </p>
-        <Button variant="danger" size="lg" onClick={() => window.location.href = '/app/configuracao?aba=upgrade'}>
+        <Button variant="danger" size="lg" onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}>
           Fazer Upgrade
         </Button>
       </div>

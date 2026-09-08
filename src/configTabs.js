@@ -39,8 +39,17 @@ export const CONFIG_TABS = [
   { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline', group: 'modelos' },
   { id: 'contratos', label: 'Contratos', icon: 'mdi:file-document-outline', group: 'modelos' },
   // Sua conta
-  { id: 'upgrade', label: 'Upgrade de Plano', icon: 'mdi:rocket-launch-outline', group: 'conta' }
+  { id: 'assinatura', label: 'Minha Assinatura', icon: 'mdi:card-account-details-outline', group: 'conta' }
 ]
+
+// Ids que já circularam em link e ficaram pra trás. `?aba=upgrade` está em
+// novidade JÁ PUBLICADA no banco e em link antigo espalhado pelo app — some
+// da UI, mas não pode deixar de resolver.
+const ABAS_LEGADAS = { upgrade: 'assinatura' }
+
+export function resolverAba(id) {
+  return ABAS_LEGADAS[id] || id
+}
 
 // Agrupa CONFIG_TABS na ordem de CONFIG_GROUPS, descartando grupos vazios.
 // Passe `section` ('config' | 'marketing') para restringir a uma seção;
