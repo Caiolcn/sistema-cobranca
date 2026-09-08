@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roteiro do Dia 10</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#EEF1EB;
+    --surface:#FBFCF9;
+    --surface-2:#E4EADF;
+    --ink:#14201A;
+    --ink-soft:#2E3D36;
+    --muted:#62736B;
+    --rule:#D3DBCF;
+    --rule-strong:#B4C0AE;
+    --fala:#12694F;
+    --fala-soft:#D6E7DF;
+    --campo:#8F6205;
+    --campo-soft:#F2E6C6;
+    --tela:#2B5580;
+    --tela-soft:#DBE5F1;
+    --risk:#9C2B1E;
+    --risk-soft:#F4DBD6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0B120F;
+      --surface:#121C18;
+      --surface-2:#18241E;
+      --ink:#E6EDE8;
+      --ink-soft:#C2D0C9;
+      --muted:#8C9C94;
+      --rule:#233029;
+      --rule-strong:#35473E;
+      --fala:#4FC49F;
+      --fala-soft:#10322A;
+      --campo:#DDAF4E;
+      --campo-soft:#32270D;
+      --tela:#88AEDC;
+      --tela-soft:#152338;
+      --risk:#E68274;
+      --risk-soft:#391C17;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0B120F;
+    --surface:#121C18;
+    --surface-2:#18241E;
+    --ink:#E6EDE8;
+    --ink-soft:#C2D0C9;
+    --muted:#8C9C94;
+    --rule:#233029;
+    --rule-strong:#35473E;
+    --fala:#4FC49F;
+    --fala-soft:#10322A;
+    --campo:#DDAF4E;
+    --campo-soft:#32270D;
+    --tela:#88AEDC;
+    --tela-soft:#152338;
+    --risk:#E68274;
+    --risk-soft:#391C17;
+  }
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16.5px;
+    line-height:1.6;
+    margin:0;
+    padding:0 20px 110px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .spine{max-width:64ch;margin-left:auto;margin-right:auto}
+  .wide{max-width:1120px;margin-left:auto;margin-right:auto}
+  h1,h2,h3{
+    font-family:"Barlow Condensed","Barlow",system-ui,sans-serif;
+    text-transform:uppercase;font-weight:700;margin:0;
+    letter-spacing:.005em;text-wrap:balance;line-height:1.05;
+  }
+  h1{font-size:clamp(2.6rem,8vw,4.6rem)}
+  h2{font-size:clamp(1.5rem,4vw,2.15rem)}
+  h3{font-size:1.16rem;letter-spacing:.02em}
+  p{margin:0}
+  strong{font-weight:600}
+  a{color:var(--fala)}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.7rem;letter-spacing:.17em;text-transform:uppercase;color:var(--muted);
+  }
+
+  header{padding:72px 0 0;margin-bottom:64px}
+  header .stack{display:flex;flex-direction:column;gap:18px}
+  .lede{font-size:1.1rem;color:var(--ink-soft);max-width:56ch}
+  .stamp{
+    display:flex;flex-wrap:wrap;gap:8px 24px;padding:16px 0 22px;
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.735rem;color:var(--muted);
+  }
+  .stripe{
+    height:7px;border-radius:1px;
+    background:repeating-linear-gradient(90deg,var(--fala) 0 26px,var(--rule-strong) 26px 52px);
+    opacity:.85;
+  }
+
+  section{margin-bottom:74px}
+  .sec-head{display:flex;flex-direction:column;gap:9px;margin-bottom:26px}
+  .sec-head p{color:var(--ink-soft);max-width:60ch}
+  .prose{display:flex;flex-direction:column;gap:16px}
+  .prose ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:8px}
+
+  .shots{display:flex;flex-direction:column;gap:14px}
+  .shot{
+    background:var(--surface);border:1px solid var(--rule);border-radius:2px;
+    border-left:4px solid var(--lane);
+    display:grid;grid-template-columns:104px minmax(0,1.05fr) minmax(0,1fr);
+  }
+  .shot.fala{--lane:var(--fala);--lane-soft:var(--fala-soft)}
+  .shot.campo{--lane:var(--campo);--lane-soft:var(--campo-soft)}
+  .shot.tela{--lane:var(--tela);--lane-soft:var(--tela-soft)}
+  .rail{
+    padding:18px 14px;border-right:1px solid var(--rule);
+    display:flex;flex-direction:column;gap:8px;align-items:flex-start;
+  }
+  .tc{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.84rem;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;
+  }
+  .dur{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:.68rem;color:var(--muted)}
+  .lane-chip{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+    padding:3px 7px;border-radius:2px;background:var(--lane-soft);color:var(--lane);
+  }
+  .audio{padding:18px 22px;display:flex;flex-direction:column;gap:11px}
+  .video{padding:18px 22px;border-left:1px solid var(--rule);display:flex;flex-direction:column;gap:11px;background:var(--surface-2)}
+  .role{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+  }
+  .line{font-size:1.06rem;color:var(--ink);line-height:1.45}
+  .line em{font-style:normal;color:var(--muted)}
+  .dir{font-size:.94rem;color:var(--ink-soft)}
+  .super{
+    align-self:flex-start;
+    font-family:"Barlow Condensed","Barlow",sans-serif;text-transform:uppercase;
+    font-weight:600;font-size:1rem;letter-spacing:.03em;
+    padding:5px 11px;border-radius:2px;
+    background:var(--ink);color:var(--ground);
+  }
+  @media (max-width:860px){
+    .shot{grid-template-columns:1fr}
+    .rail{flex-direction:row;align-items:center;gap:12px;border-right:none;border-bottom:1px solid var(--rule);padding:12px 16px}
+    .video{border-left:none;border-top:1px solid var(--rule)}
+  }
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+  .card{
+    background:var(--surface);border:1px solid var(--rule);border-radius:2px;
+    padding:20px 22px;display:flex;flex-direction:column;gap:10px;
+  }
+  .card .why{font-size:.86rem;color:var(--muted)}
+  .tagline{font-size:1.05rem;line-height:1.4}
+  .hook-label{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--fala);
+  }
+
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:26px}
+  .list{margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+  .list li{
+    list-style:none;padding:11px 0;border-bottom:1px solid var(--rule);
+    display:flex;gap:12px;align-items:baseline;font-size:.96rem;
+  }
+  .list li:last-child{border-bottom:none}
+  .idx{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.72rem;color:var(--muted);flex:0 0 auto;
+  }
+  .li-sub{display:block;font-size:.86rem;color:var(--muted)}
+  .lane-head{margin-bottom:14px}
+  .lane-head.campo{color:var(--campo)}
+  .lane-head.tela{color:var(--tela)}
+
+  table{border-collapse:collapse;width:100%;font-size:.95rem}
+  .tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+  th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;
+    background:var(--surface-2);white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.mono{white-space:nowrap}
+
+  .copyblock{
+    background:var(--surface);border:1px solid var(--rule);border-radius:2px;
+    padding:24px 26px;display:flex;flex-direction:column;gap:18px;
+  }
+  .field{display:flex;flex-direction:column;gap:7px}
+  .field .role{color:var(--fala)}
+  .field p{font-size:1rem;color:var(--ink);white-space:pre-line}
+  .cta-line{
+    display:flex;flex-wrap:wrap;gap:8px 20px;padding-top:14px;border-top:1px solid var(--rule);
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:.76rem;color:var(--muted);
+  }
+
+  .rules{display:flex;flex-direction:column;gap:12px}
+  .rule-item{
+    background:var(--risk-soft);border-left:3px solid var(--risk);border-radius:2px;
+    padding:15px 20px;display:flex;flex-direction:column;gap:5px;
+  }
+  .rule-item strong{color:var(--risk)}
+  .rule-item p{font-size:.94rem;color:var(--ink-soft)}
+
+  footer{border-top:1px solid var(--rule);padding-top:26px;color:var(--muted);font-size:.9rem}
+  :focus-visible{outline:2px solid var(--fala);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<style>
+  :root{color-scheme:light dark}
+  html,body{margin:0}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="wide">
+  <div class="stack">
+    <span class="eyebrow">Mensalli · Criativo · Escolinhas de futebol · versão fundador</span>
+    <h1>Roteiro do Dia&nbsp;10</h1>
+    <p class="lede">Duas versões do mesmo anúncio, narradas por quem construiu o sistema. A <strong>A</strong> repete a estrutura do criativo que já trouxe os clientes do Mensalli, trocada para o vocabulário da escolinha. A <strong>B</strong> é a narrativa do dia 10, mais bonita e mais arriscada. Grave as duas na mesma sentada e deixe o tráfego decidir.</p>
+    <div class="stamp">
+      <span>9:16 · 1080×1920</span>
+      <span>45s · cortes de 30s e 15s</span>
+      <span>Narração do fundador + b-roll + screen capture</span>
+      <span>Destino: mensalli.com.br/escolinha</span>
+    </div>
+  </div>
+  <div class="stripe"></div>
+</header>
+
+<section class="spine">
+  <div class="sec-head">
+    <span class="eyebrow">01 — A ideia</span>
+    <h2>Duas versões, um narrador só</h2>
+  </div>
+  <div class="prose">
+    <p><strong>A versão A é a recomendada para começar</strong>, e o motivo não é gosto: ela copia o esqueleto do criativo que já converteu a base atual do Mensalli — duas perguntas de dor, a origem pessoal, a facilidade, a régua nomeada, uma demonstração só e o CTA. Ela chega no produto aos <strong>8 segundos</strong>. A versão B gasta 13 segundos contando a cena do dia 10 antes de nomear o Mensalli: é uma peça melhor de assistir e mais cara de rodar, porque perde quem sai no segundo 5. Rode a A no público frio e guarde a B para retargeting e orgânico.</p>
+    <p>A peça não abre falando de sistema, e também não finge ser um professor. Quem fala é <strong>você, que construiu o Mensalli</strong> — e a autoridade vem do que você faz o dia inteiro: liga pra dono de escolinha e pergunta como ele cobra a mensalidade. O anúncio é o relato dessas ligações.</p>
+    <p>Isso resolve o problema prático de não ter um professor disposto a gravar — e ganha uma coisa que depoimento atuado nunca tem: <strong>ninguém está fingindo</strong>. Você nunca diz “eu tinha uma escolinha”. Você diz “eu ouço isso todo dia”, que é verdade e soa como verdade.</p>
+    <p>O <strong>dia 10</strong> continua sendo o coração da peça: a data em que o professor larga o apito, senta no banco de reservas e manda quarenta vezes <em>“oi mãe, passando pra lembrar da mensalidade”</em>. Muda só quem descreve a cena — agora é quem ouviu ela cem vezes, não quem viveu.</p>
+    <p>Três camadas de imagem se alternam o tempo todo. <strong>Fala</strong> carrega a autoridade, <strong>campo</strong> carrega a verdade, <strong>tela</strong> carrega a prova. Nenhuma delas fica mais de sete segundos sozinha.</p>
+    <ul>
+      <li><strong>Quem fala:</strong> você. Plano fechado, celular na altura dos olhos, luz de janela. Sem cenário de escritório, sem camisa de time, sem slide atrás.</li>
+      <li><strong>Você nunca entra em quadro no campo.</strong> As imagens de treino são b-roll por baixo da sua voz. É o que evita a leitura de “dono de software brincando de professor”, que é exatamente o que mata esse tipo de anúncio.</li>
+      <li><strong>O que sustenta a autoridade é a especificidade:</strong> “escolinha de futebol”, “dia 10”, o nome do atleta dentro da mensagem. Quem fala genérico vira anúncio; quem fala específico vira conversa.</li>
+      <li><strong>Uma ação só:</strong> mandar a lista de atletas pra você montar a conta. Nada de “segue a gente”, nada de “comenta aí”.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">02 — Versão A &middot; recomendada</span>
+    <h2>A estrutura que já converteu</h2>
+    <p>Mesmo esqueleto do criativo campeão, palavra por palavra na estrutura, com o vocabulário trocado para a escolinha: <em>aluno</em> vira <em>atleta</em>, <em>quem paga</em> vira <em>o responsável</em>, e o fim volta para o campo. Cerca de 45 segundos.</p>
+  </div>
+  <div class="shots">
+
+    <div class="shot fala">
+      <div class="rail"><span class="tc">00:00</span><span class="dur">4s</span><span class="lane-chip">Fala</span></div>
+      <div class="audio">
+        <span class="role">Você · direto na câmera</span>
+        <p class="line">“Você ainda perde tempo mandando mensagem um por um pra cobrar a mensalidade dos pais?”</p>
+      </div>
+      <div class="video">
+        <span class="role">Imagem</span>
+        <p class="dir">Plano fechado, celular na altura dos olhos, luz de janela. <strong>Sem música nos 3 primeiros segundos</strong>. A pergunta é a dor funcional: o custo em tempo.</p>
+        <span class="super">Mensagem um por um, todo mês</span>
+      </div>
+    </div>
+
+    <div class="shot campo">
+      <div class="rail"><span class="tc">00:04</span><span class="dur">4s</span><span class="lane-chip">Campo</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“E ainda fica sem jeito de cobrar o pai do atleta na porta do treino?”</p>
+      </div>
+      <div class="video">
+        <span class="role">B-roll</span>
+        <p class="dir">Responsável buscando a criança no portão, o professor por perto com o apito na mão. É a dor emocional — o constrangimento — e ela vem <em>depois</em> da funcional, nunca antes.</p>
+      </div>
+    </div>
+
+    <div class="shot fala">
+      <div class="rail"><span class="tc">00:08</span><span class="dur">4s</span><span class="lane-chip">Fala</span></div>
+      <div class="audio">
+        <span class="role">Você · direto na câmera</span>
+        <p class="line">“Foi por isso que eu criei o Mensalli.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Imagem</span>
+        <p class="dir">Volta pro rosto. Diga o nome devagar e inteiro — <strong>Men-sa-lli</strong>. É a única vez que a marca aparece no vídeo, e nome comido não gruda.</p>
+      </div>
+    </div>
+
+    <div class="shot tela">
+      <div class="rail"><span class="tc">00:12</span><span class="dur">7s</span><span class="lane-chip">Tela</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“Você conecta o WhatsApp da escolinha em segundos e ele assume o trabalho chato por você. Cadastra o atleta uma vez, escolhe o dia do vencimento e pronto.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Screen capture</span>
+        <p class="dir">Duas telas em corte seco: o QR Code sendo escaneado (2s) e o cadastro do atleta com valor e dia de vencimento (4s). Sem mostrar menu, sem passear pelo sistema — só os dois gestos.</p>
+        <span class="super">Cadastra uma vez. Só uma.</span>
+      </div>
+    </div>
+
+    <div class="shot tela">
+      <div class="rail"><span class="tc">00:19</span><span class="dur">6s</span><span class="lane-chip">Tela</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“O sistema avisa três dias antes, no dia, e ainda cobra quem atrasou — sozinho.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Screen capture</span>
+        <p class="dir">A régua com os três marcadores acendendo <strong>no ritmo da fala</strong>: um em “antes”, um em “no dia”, um em “atrasou”. Três coisas concretas valem mais que a palavra “automação”.</p>
+      </div>
+    </div>
+
+    <div class="shot tela">
+      <div class="rail"><span class="tc">00:25</span><span class="dur">7s</span><span class="lane-chip">Tela</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“O responsável recebe assim: com o nome da escolinha e o Pix pra pagar na hora.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Celular real na mão</span>
+        <p class="dir"><strong>É o plano mais importante do vídeo.</strong> Celular de verdade, a mensagem chegando no WhatsApp com o nome da escolinha no topo, o dedo abrindo o link e o QR do Pix aparecendo. Filme em uma tomada só, sem corte — o corte aqui parece montagem.</p>
+        <span class="super">Sai do número que os pais já conhecem</span>
+      </div>
+    </div>
+
+    <div class="shot campo">
+      <div class="rail"><span class="tc">00:32</span><span class="dur">5s</span><span class="lane-chip">Campo</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“Ele paga mais rápido, e você não gasta um minuto do seu dia.”</p>
+      </div>
+      <div class="video">
+        <span class="role">B-roll · o melhor material do dia</span>
+        <p class="dir">Treino no contraluz do fim de tarde: apito, colete, correção de passe, comemoração de gol. <strong>Nenhum celular em quadro.</strong></p>
+      </div>
+    </div>
+
+    <div class="shot fala">
+      <div class="rail"><span class="tc">00:37</span><span class="dur">6s</span><span class="lane-chip">Fala</span></div>
+      <div class="audio">
+        <span class="role">Você · direto na câmera · CTA</span>
+        <p class="line">“Volta pro campo e deixa a mensalidade comigo. Clica no link aqui embaixo e testa três dias, de graça.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Imagem + end card</span>
+        <p class="dir">Volta pro plano de abertura. Nos últimos 2s o end card com a marca e o endereço. O CTA é duplo, como no campeão: devolve o tempo <em>e</em> resolve a inadimplência.</p>
+        <span class="super">Teste 3 dias grátis · mensalli.com.br/escolinha</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="prose narrow" style="margin-top:26px">
+    <p><strong>Cortes.</strong> O de <span class="num">30s</span> junta 00:12 e 00:19 num bloco só de 8s e corta o campo de 00:32. O de <span class="num">15s</span> é a primeira pergunta, a mensagem chegando com o Pix (00:25) e o CTA — nessa ordem, sem mais nada.</p>
+    <p class="note">A tentação aqui é acrescentar. Não acrescente: o criativo campeão mostra <strong>uma</strong> tela do produto pelo lado de quem paga, e é disso que ele vive. Painel, relatório e recibo entram em outra peça.</p>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">03 — Versão B</span>
+    <h2>O dia 10, em 45 segundos</h2>
+    <p>A coluna do meio é o que se ouve; a da direita é o que se vê. O texto em caixa escura é legenda queimada — entra e sai com a frase, não fica parada na tela.</p>
+  </div>
+  <div class="shots">
+
+    <div class="shot fala">
+      <div class="rail"><span class="tc">00:00</span><span class="dur">4s</span><span class="lane-chip">Fala</span></div>
+      <div class="audio">
+        <span class="role">Você · direto na câmera</span>
+        <p class="line">“Eu ligo pra dono de escolinha de futebol o dia inteiro. E quase toda ligação termina na mesma reclamação.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Imagem</span>
+        <p class="dir">Plano fechado, celular na altura dos olhos, luz de janela. Fundo simples e sem informação — o interesse está na frase, não no cenário. <strong>Sem música nos 3 primeiros segundos</strong> — só a sua voz.</p>
+        <span class="super">Toda ligação termina na mesma reclamação</span>
+      </div>
+    </div>
+
+    <div class="shot campo">
+      <div class="rail"><span class="tc">00:04</span><span class="dur">5s</span><span class="lane-chip">Campo</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“É sempre o dia 10. O professor larga o apito, senta no banco de reservas e vira secretária: ‘oi mãe, tudo bem? Passando pra lembrar da mensalidade do Cauã…’ Quarenta vezes.”</p>
+      </div>
+      <div class="video">
+        <span class="role">B-roll + insert de celular</span>
+        <p class="dir">O professor sentado no banco de reservas digitando, treino rolando ao fundo. Corta para a tela do celular: três conversas idênticas passando rápido, cada uma com um nome diferente.</p>
+        <span class="super">43 atletas · 43 mensagens</span>
+      </div>
+    </div>
+
+    <div class="shot campo">
+      <div class="rail"><span class="tc">00:09</span><span class="dur">4s</span><span class="lane-chip">Campo</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“E quem não responde fica pra depois. Depois vira o mês — e o dinheiro não entrou.”</p>
+      </div>
+      <div class="video">
+        <span class="role">B-roll · planilha</span>
+        <p class="dir">Notebook na mesa da secretaria, campo pela janela. Dedo rolando a coluna <em>PAGOU?</em> com metade das células vazias. Termina fechando o notebook.</p>
+      </div>
+    </div>
+
+    <div class="shot fala">
+      <div class="rail"><span class="tc">00:13</span><span class="dur">3s</span><span class="lane-chip">Fala</span></div>
+      <div class="audio">
+        <span class="role">Você · direto na câmera</span>
+        <p class="line">“Foi por isso que eu construí o Mensalli. Pra ninguém mais precisar mandar essa mensagem.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Imagem</span>
+        <p class="dir">Mesmo enquadramento do início. Diga essa frase mais devagar que o resto — é a única do vídeo em que você fala de você, e pressa aqui soa a pitch.</p>
+      </div>
+    </div>
+
+    <div class="shot tela">
+      <div class="rail"><span class="tc">00:16</span><span class="dur">6s</span><span class="lane-chip">Tela</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“Ele avisa o responsável três dias antes, no dia e depois do vencimento — pelo WhatsApp da própria escolinha. Não é número estranho de sistema: é o mesmo número que os pais já conhecem.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Screen capture + celular real</span>
+        <p class="dir">Tela 1: a régua de lembretes com os três marcadores sendo ligados. Corta para um celular de verdade na mão: a mensagem chegando no WhatsApp com o nome da escolinha no topo da conversa.</p>
+        <span class="super">Sai do número que os pais já conhecem</span>
+      </div>
+    </div>
+
+    <div class="shot tela">
+      <div class="rail"><span class="tc">00:22</span><span class="dur">5s</span><span class="lane-chip">Tela</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“O responsável paga no Pix pelo link e o sistema dá baixa sozinho. Pagou, para de cobrar.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Screen capture</span>
+        <p class="dir">Link de pagamento abrindo com Pix, cartão e boleto. Corte seco para a lista de mensalidades: a linha do atleta virando <em>Pago</em>. O check é o momento — deixa respirar meio segundo.</p>
+      </div>
+    </div>
+
+    <div class="shot campo">
+      <div class="rail"><span class="tc">00:27</span><span class="dur">5s</span><span class="lane-chip">Campo</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“E o professor volta pro lugar em que ele abriu a escolinha pra estar.”</p>
+      </div>
+      <div class="video">
+        <span class="role">B-roll · o melhor material do dia</span>
+        <p class="dir">Sequência rápida de treino no contraluz do fim de tarde: apito, colete, ele corrigindo um passe, um moleque comemorando gol. <strong>Nenhum celular em quadro.</strong></p>
+      </div>
+    </div>
+
+    <div class="shot tela">
+      <div class="rail"><span class="tc">00:32</span><span class="dur">6s</span><span class="lane-chip">Tela</span></div>
+      <div class="audio">
+        <span class="role">Sua voz por cima da imagem</span>
+        <p class="line">“No fim do dia ele abre o app e vê tudo: quem pagou, quem tá devendo e quanto já entrou no mês.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Screen capture no celular dele</span>
+        <p class="dir">O professor encostado no alambrado, celular na mão. Tela do painel: recebido do mês, a receber e a lista de quem está em atraso. Filme a tela real por cima do ombro — parece mais verdadeiro que captura limpa.</p>
+      </div>
+    </div>
+
+    <div class="shot fala">
+      <div class="rail"><span class="tc">00:38</span><span class="dur">7s</span><span class="lane-chip">Fala</span></div>
+      <div class="audio">
+        <span class="role">Você · direto na câmera · CTA</span>
+        <p class="line">“Se você tem escolinha e ainda cobra na mão, me manda a sua lista de atletas do jeito que ela estiver. Eu monto a sua conta, você conecta o WhatsApp e vê a primeira cobrança sair. Três dias grátis.”</p>
+      </div>
+      <div class="video">
+        <span class="role">Imagem + end card</span>
+        <p class="dir">Volta pro plano de abertura. Nos últimos 2s entra o end card sobre a imagem congelada, com a marca e o endereço. O som do campo continua por baixo — não corte o áudio no fim.</p>
+        <span class="super">Teste 3 dias grátis · mensalli.com.br/escolinha</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">04 — Cortes</span>
+    <h2>Três durações da versão B</h2>
+    <p>Grave o roteiro inteiro uma vez e monte os três. O de 15s é o que entra em Reels e Stories; o de 45s é o de conversão.</p>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Corte</th><th>Blocos</th><th>Onde usa</th><th>O que muda</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">45s</td>
+          <td class="mono">00:00 → 00:45 (todos)</td>
+          <td>Meta Ads · público frio, campanha de conversão</td>
+          <td>Versão completa. É a única que tem a planilha e o bloco de treino.</td>
+        </tr>
+        <tr>
+          <td class="mono">30s</td>
+          <td class="mono">tira 00:09 e 00:27</td>
+          <td>Meta Ads · retargeting de quem viu 50% do de 45s</td>
+          <td>Saem a planilha e a sequência de treino. Encurta o bloco da régua para 4s.</td>
+        </tr>
+        <tr>
+          <td class="mono">15s</td>
+          <td class="mono">00:00 + 00:16 + 00:38</td>
+          <td>Reels, Stories e teste de hook</td>
+          <td>Hook, a cobrança saindo pelo WhatsApp e CTA. Sem planilha, sem painel.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">05 — Variações da versão A</span>
+    <h2>Quatro aberturas para testar</h2>
+    <p>Na versão A o que muda são as <strong>duas perguntas</strong> dos primeiros 8 segundos; do “foi por isso que eu criei” em diante o vídeo é o mesmo. Grave as quatro seguidas.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="hook-label">A1 · padrão (a do campeão)</span>
+      <p class="tagline">“Você ainda perde tempo mandando mensagem um por um pra cobrar a mensalidade dos pais? E ainda fica sem jeito de cobrar o pai do atleta na porta do treino?”</p>
+      <p class="why">Custo em tempo seguido de constrangimento. É o par que já funcionou — comece por ele e só troque se perder.</p>
+    </div>
+    <div class="card">
+      <span class="hook-label">A2 · o número que ele não sabe</span>
+      <p class="tagline">“Quantos pais da sua escolinha estão devendo a mensalidade agora, neste exato momento? Se você travou pra responder, o problema não é a inadimplência.”</p>
+      <p class="why">Pergunta que ninguém responde de cabeça — e a incapacidade de responder já é o argumento. Boa quando o público já viu a A1.</p>
+    </div>
+    <div class="card">
+      <span class="hook-label">A3 · o dia 10 em uma frase</span>
+      <p class="tagline">“Todo dia 10 você vira secretária da sua própria escolinha. E ninguém abriu escolinha pra isso.”</p>
+      <p class="why">Salva o conceito da versão B sem gastar 13 segundos com ele. Se essa abertura ganhar, a narrativa longa provavelmente não vale a produção.</p>
+    </div>
+    <div class="card">
+      <span class="hook-label">A4 · a conta na frente dele</span>
+      <p class="tagline">“Quatro atletas de R$ 150 atrasados são R$ 600 parados. Todo mês. E quase sempre são os mesmos quatro.”</p>
+      <p class="why">O único hook com dinheiro na frente. Diga que é exemplo, nunca estatística — e ajuste o valor para a mensalidade média da região.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">06 — Variações da versão B</span>
+    <h2>Quatro hooks para a versão B</h2>
+    <p>Mesmo corpo de vídeo, só os quatro primeiros segundos mudam. Grave os quatro na mesma sentada — custa dois minutos e é o que decide o desempenho da campanha.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="hook-label">Hook A · principal</span>
+      <p class="tagline">“Eu ligo pra dono de escolinha de futebol o dia inteiro. E quase toda ligação termina na mesma reclamação.”</p>
+      <p class="why">Curiosidade e autoridade na mesma frase, sem vender nada nos quatro primeiros segundos. Nomeia o nicho já no primeiro, e quem não tem escolinha rola embora — o que é bom pro custo por cadastro.</p>
+    </div>
+    <div class="card">
+      <span class="hook-label">Hook B · número</span>
+      <p class="tagline">“Eu perguntei pra [N] escolinhas de futebol como elas cobram a mensalidade. Quase todas responderam a mesma coisa: no WhatsApp, na mão.”</p>
+      <p class="why">O mais forte dos quatro — se o número for real. Troque [N] pelo total que você de fato ligou. Número redondo e inflado é o que derruba a peça inteira.</p>
+    </div>
+    <div class="card">
+      <span class="hook-label">Hook C · construtor</span>
+      <p class="tagline">“Eu construí um sistema de cobrança que só serve pra escolinha de futebol. Vou te contar por quê.”</p>
+      <p class="why">Assume o lugar de fundador no primeiro segundo. Filtra pesado: quem tem escolinha fica, o resto sai. Bom pra retargeting, fraco pra público frio grande.</p>
+    </div>
+    <div class="card">
+      <span class="hook-label">Hook D · tese</span>
+      <p class="tagline">“Escolinha de futebol não perde dinheiro com pai caloteiro. Perde com esquecimento — o do pai e o do professor.”</p>
+      <p class="why">Opinião contra o senso comum do nicho, e a única que gera comentário. Rode no orgânico primeiro; se segurar, sobe como anúncio.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">07 — Captação</span>
+    <h2>O que precisa estar no cartão</h2>
+    <p>A coluna da direita você grava sozinho, com conta de demonstração — nunca com dados de aluno de verdade. A da esquerda é a que exige combinação: você não tem escolinha, então o campo precisa vir de algum lugar. <strong>A versão A consome bem menos:</strong> dois planos de campo (o portão e o treino) e quatro telas. A lista completa abaixo serve a versão B — grave tudo de uma vez, que sobra material para as duas.</p>
+  </div>
+  <div class="split">
+    <div>
+      <h3 class="lane-head campo">Campo · b-roll</h3>
+      <ul class="list">
+        <li><span class="idx">01</span><span>Professor no banco de reservas digitando no celular<span class="li-sub">Com treino nítido ao fundo. 20s — é o plano mais usado da peça.</span></span></li>
+        <li><span class="idx">02</span><span>Tela do celular com as conversas de cobrança<span class="li-sub">Conversas montadas, nomes fictícios, rolagem devagar.</span></span></li>
+        <li><span class="idx">03</span><span>Planilha no notebook, coluna “pagou?” vazia<span class="li-sub">Inclua o gesto de fechar o notebook no fim.</span></span></li>
+        <li><span class="idx">04</span><span>Apito, coletes empilhados, bolas no saco<span class="li-sub">Detalhes fechados. Servem de cola entre os cortes.</span></span></li>
+        <li><span class="idx">05</span><span>Treino no contraluz do fim de tarde<span class="li-sub">Passe, cone, comemoração de gol. O bloco mais bonito do vídeo.</span></span></li>
+        <li><span class="idx">06</span><span>Professor encostado no alambrado olhando o celular<span class="li-sub">Para casar com a tela do painel em 00:32.</span></span></li>
+        <li><span class="idx">07</span><span>Responsável entregando a criança no portão<span class="li-sub">Plano reserva, útil se o bloco da régua precisar de imagem.</span></span></li>
+        <li><span class="idx">08</span><span>Plano do escudo ou da faixa da escolinha<span class="li-sub">Fecha o end card sem parecer anúncio genérico.</span></span></li>
+      </ul>
+      <p style="margin-top:16px;font-size:.9rem;color:var(--muted)"><strong style="color:var(--campo)">De onde vem o campo.</strong> Três saídas, nesta ordem de preferência: uma escolinha cliente que deixe filmar um treino em troca de aparecer no vídeo — é o melhor material e o mais barato; o próprio cliente gravando no celular, com esta lista na mão; ou banco de imagens licenciado, como último recurso — e evite os planos de campo americano com uniforme gringo, o público percebe na hora.</p>
+    </div>
+    <div>
+      <h3 class="lane-head tela">Tela · sistema</h3>
+      <ul class="list">
+        <li><span class="idx">01</span><span>Régua de lembretes<span class="li-sub">Os três marcadores — antes, no dia, depois — acendendo no ritmo da fala.</span></span></li>
+        <li><span class="idx">02</span><span>Cadastro do atleta<span class="li-sub">Nome, valor e dia de vencimento sendo preenchidos. Versão A, 00:12.</span></span></li>
+        <li><span class="idx">03</span><span>Mensagem chegando no WhatsApp do responsável<span class="li-sub">Filmada num celular real, com o nome da escolinha no topo.</span></span></li>
+        <li><span class="idx">04</span><span>Link de pagamento com Pix, cartão e boleto<span class="li-sub">Até o QR do Pix aparecer. Use um valor de mensalidade plausível.</span></span></li>
+        <li><span class="idx">05</span><span>Mensalidade virando “Pago” na lista<span class="li-sub">O corte precisa cair no instante do check.</span></span></li>
+        <li><span class="idx">06</span><span>Painel: recebido, a receber e quem está devendo<span class="li-sub">Filme por cima do ombro, no celular dele — não use captura limpa aqui.</span></span></li>
+        <li><span class="idx">07</span><span>Conexão do WhatsApp por QR Code<span class="li-sub">Reserva, para a versão que ataca o “é difícil de configurar”.</span></span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="spine">
+  <div class="sec-head">
+    <span class="eyebrow">08 — Técnico</span>
+    <h2>Como gravar</h2>
+  </div>
+  <div class="prose">
+    <ul>
+      <li><strong>Vertical 9:16, 1080×1920, 30fps.</strong> Celular serve. Trave a exposição antes de gravar contra o sol.</li>
+      <li><strong>Áudio é o que separa UGC de amador.</strong> Lapela sem fio no colarinho, também na sua fala. O som do campo entra por baixo na edição, não como trilha.</li>
+      <li><strong>Grave sua fala inteira três vezes seguidas.</strong> A terceira quase sempre é a boa — você já sabe o texto e parou de recitar. Escolha na edição, não na hora.</li>
+      <li><strong>Fim de tarde para o b-roll</strong>, na hora do treino — é quando a escolinha está cheia e a luz está do lado de vocês. Sua fala pode ser gravada a qualquer hora, perto de uma janela.</li>
+      <li><strong>Legenda queimada</strong> em todos os cortes, embaixo mas acima da área de interface do Reels. Boa parte assiste sem som.</li>
+      <li><strong>Trilha só a partir de 00:04</strong>, baixa, sem letra, de biblioteca licenciada. Os três primeiros segundos são só a sua voz.</li>
+      <li><strong>Nada de zoom digital, nada de transição.</strong> Corte seco entre todos os blocos — é o que faz parecer UGC e não peça de agência.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="wide">
+  <div class="sec-head">
+    <span class="eyebrow">09 — Anúncio</span>
+    <h2>Copy que acompanha o vídeo</h2>
+  </div>
+  <div class="copyblock">
+    <div class="field">
+      <span class="role">Texto principal</span>
+      <p>Você não abriu uma escolinha de futebol pra correr atrás de mensalidade.
+
+O Mensalli cobra os responsáveis sozinho, pelo WhatsApp da sua escolinha: avisa 3 dias antes, no dia e depois do vencimento, manda o link do Pix e dá baixa quando o dinheiro cai.
+
+Você abre o app e vê quem pagou, quem está devendo e quanto entrou no mês.
+
+Teste 3 dias grátis — e a gente monta a sua conta com a sua lista de atletas.</p>
+    </div>
+    <div class="field">
+      <span class="role">Título</span>
+      <p>A mensalidade chega antes de você precisar pedir</p>
+    </div>
+    <div class="field">
+      <span class="role">Descrição</span>
+      <p>Cobrança automática pelo WhatsApp da escolinha. A partir de R$ 49,90/mês.</p>
+    </div>
+    <div class="cta-line">
+      <span>Botão: Saiba mais</span>
+      <span>Destino: mensalli.com.br/escolinha</span>
+      <span>Objetivo: cadastro no trial</span>
+    </div>
+  </div>
+</section>
+
+<section class="spine">
+  <div class="sec-head">
+    <span class="eyebrow">10 — Trava</span>
+    <h2>O que não pode entrar</h2>
+  </div>
+  <div class="rules">
+    <div class="rule-item">
+      <strong>Dado real de aluno na tela, nunca.</strong>
+      <p>Toda captura sai de conta de demonstração, com nomes e telefones fictícios. Nome de criança e telefone de responsável em anúncio é questão de LGPD, não detalhe de edição.</p>
+    </div>
+    <div class="rule-item">
+      <strong>Não coloque a experiência do cliente na sua boca.</strong>
+      <p>Você nunca diz “eu tinha uma escolinha” nem “eu recuperei R$ 3 mil”. Você diz o que ouviu e o que construiu — é essa a linha que separa anúncio de fundador de depoimento falso. Resultado de cliente só entra com nome, número real e autorização dele.</p>
+    </div>
+    <div class="rule-item">
+      <strong>Número que você diz é número que você tem.</strong>
+      <p>Se o hook citar quantas escolinhas você ligou, ou quantas usam o Mensalli hoje, use o dado real do banco. É o tipo de frase que concorrente confere e cliente lembra na primeira conversa.</p>
+    </div>
+    <div class="rule-item">
+      <strong>Não cite concorrente pelo nome.</strong>
+      <p>Nem ERP de academia, nem gateway. A peça compara com o jeito de hoje — planilha e WhatsApp na mão —, que é o concorrente real do nicho.</p>
+    </div>
+    <div class="rule-item">
+      <strong>Fora do vocabulário: “disparo”, “automação em massa”, “robô”.</strong>
+      <p>Levantam na hora o medo de banimento do número. Diga sempre “o sistema avisa”, “sai do seu WhatsApp”, “no ritmo normal, um por um”.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="spine">
+  <p>Complementa o <em>Roteiro das 300 escolinhas</em> e o <em>Funil de Vídeo Mensalli</em> — etapa 3, conversão: mata a objeção e leva ao trial.</p>
+</footer>
+</body>
+</html>

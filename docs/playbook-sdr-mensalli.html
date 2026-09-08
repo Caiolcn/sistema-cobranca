@@ -1,0 +1,2548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playbook de Follow-up — SDR Mensalli</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  color-scheme:light dark;
+  --bg:#f6f7f8; --surface:#ffffff; --surface-2:#f0f2f4; --code-bg:#f2f4f6;
+  --text:#15181d; --text-2:#495057; --text-3:#6b7280;
+  --border:#e0e4e8; --border-strong:#c7ced5;
+  --accent:#16a34a; --accent-ink:#127a39; --accent-soft:#edf9f0;
+  --warn-bg:#fff8ea; --warn-border:#e6bd74; --warn-ink:#875100;
+  --stop-bg:#fdf1f0; --stop-border:#e6aca7; --stop-ink:#a01d15;
+  --info-bg:#eef4fd; --info-border:#b6cbef; --info-ink:#1b4a9c;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.05);
+  --novo:#3b82f6; --novo-bg:#eff6ff; --novo-ink:#1d4ed8;
+  --conv:#8b5cf6; --conv-bg:#f5f3ff; --conv-ink:#6423d7;
+  --agu:#f59e0b; --agu-bg:#fffbeb; --agu-ink:#8a5300;
+  --conta:#06b6d4; --conta-bg:#ecfeff; --conta-ink:#0b6f85;
+  --pag:#16a34a; --pag-bg:#f0fdf4; --pag-ink:#14713a;
+  --perd:#94a3b8; --perd-bg:#f8fafc; --perd-ink:#4a5765;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f1116; --surface:#161a20; --surface-2:#1c2128; --code-bg:#11151a;
+    --text:#e7eaef; --text-2:#b4bbc5; --text-3:#8b93a0;
+    --border:#2a303a; --border-strong:#3b434f;
+    --accent:#4ade80; --accent-ink:#86efac; --accent-soft:#11251a;
+    --warn-bg:#241d0e; --warn-border:#6a5321; --warn-ink:#f5c14e;
+    --stop-bg:#2a1412; --stop-border:#7a2d26; --stop-ink:#f6a9a3;
+    --info-bg:#101c2e; --info-border:#27456f; --info-ink:#9dc4fb;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+    --novo-bg:#12233d; --novo-ink:#a3c7fb;
+    --conv-bg:#221a3a; --conv-ink:#cbb9fd;
+    --agu-bg:#2a1f0c; --agu-ink:#f6cd63;
+    --conta-bg:#0b2a30; --conta-ink:#7fe7f5;
+    --pag-bg:#0e2618; --pag-ink:#93eeb2;
+    --perd-bg:#1b2027; --perd-ink:#cdd5df;
+  }
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px; line-height:1.6;
+}
+h1,h2,h3,h4{line-height:1.25;margin:0 0 .4em}
+h1{font-size:1.7rem;letter-spacing:-.02em}
+h2{font-size:1.35rem;letter-spacing:-.01em;margin-top:2.4em;padding-bottom:.4rem;border-bottom:2px solid var(--border)}
+h3{font-size:1.1rem;margin-top:2em;color:var(--text)}
+h4{font-size:.95rem;margin-top:1.6em;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em}
+p{margin:0 0 1em}
+a{color:var(--accent-ink)}
+strong{font-weight:650}
+section{scroll-margin-top:16px}
+.page{display:grid;grid-template-columns:1fr;gap:0}
+header.top{background:var(--surface);border-bottom:1px solid var(--border);padding:26px 20px 22px}
+header.top .inner{max-width:74ch;margin:0 auto}
+.kicker{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent-ink);font-weight:700;margin:0 0 .5em}
+header.top p.sub{color:var(--text-2);margin:.2em 0 0;max-width:62ch}
+.stamp{margin-top:.9em;font-size:.82rem;color:var(--text-3)}
+main{padding:0 20px 90px;max-width:74ch;margin:0 auto;min-width:0}
+@media (min-width:1100px){
+  .page{grid-template-columns:280px minmax(0,1fr);align-items:start;max-width:1240px;margin:0 auto}
+  header.top{grid-column:1/-1}
+  main{margin:0;padding-left:34px}
+  nav.toc{position:sticky;top:0;max-height:100vh;overflow:auto;padding:26px 12px 40px 20px;border-right:1px solid var(--border)}
+  nav.toc summary{display:none}
+}
+nav.toc{font-size:.9rem;background:var(--bg)}
+nav.toc summary{cursor:pointer;list-style:none;padding:14px 20px;font-weight:650;border-bottom:1px solid var(--border);background:var(--surface);color:var(--text)}
+nav.toc summary::-webkit-details-marker{display:none}
+nav.toc summary::after{content:"\25be";float:right;color:var(--text-3)}
+nav.toc details[open] > summary::after{content:"\25b4"}
+nav.toc .tocbody{padding:14px 20px 22px}
+@media (min-width:1100px){nav.toc .tocbody{padding:0}}
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc ol ol{margin:.15em 0 .5em .1em;border-left:1px solid var(--border);padding-left:.7em}
+nav.toc li{margin:.1em 0}
+nav.toc a{display:block;padding:.28em .4em;border-radius:6px;color:var(--text-2);text-decoration:none}
+nav.toc a:hover{background:var(--surface-2);color:var(--text)}
+nav.toc > details > .tocbody > ol > li > a{font-weight:650;color:var(--text)}
+.lead{font-size:1.02rem;color:var(--text-2)}
+.msg{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 16px 14px;margin:18px 0;box-shadow:var(--shadow);break-inside:avoid}
+.msg-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.msg-title{font-weight:650;font-size:1rem;min-width:0}
+.badge{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:.74rem;font-weight:700;letter-spacing:.02em;padding:3px 9px 3px 7px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.badge::before{content:"";width:8px;height:8px;border-radius:50%;flex:none}
+.b-novo{background:var(--novo-bg);color:var(--novo-ink)}
+.b-novo::before{background:#3b82f6}
+.b-conversando{background:var(--conv-bg);color:var(--conv-ink)}
+.b-conversando::before{background:#8b5cf6}
+.b-aguardando{background:var(--agu-bg);color:var(--agu-ink)}
+.b-aguardando::before{background:#f59e0b}
+.b-criou{background:var(--conta-bg);color:var(--conta-ink)}
+.b-criou::before{background:#06b6d4}
+.b-pagante{background:var(--pag-bg);color:var(--pag-ink)}
+.b-pagante::before{background:#16a34a}
+.b-perdido{background:var(--perd-bg);color:var(--perd-ink);border-color:var(--border)}
+.b-perdido::before{background:#94a3b8}
+.meta{border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);padding:9px 0;margin:0 0 12px;font-size:.9rem}
+.meta > div{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;padding:2px 0}
+.meta .k{color:var(--text-3);font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700;padding-top:.22em}
+.meta .v{color:var(--text-2);min-width:0}
+.block{margin:0 0 10px}
+.block-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px}
+.block-label{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)}
+.block.b-alt .block-label{color:var(--conv-ink)}
+button.copy{font:inherit;font-size:.74rem;font-weight:650;line-height:1;padding:6px 10px;border-radius:7px;cursor:pointer;flex:none;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text-2)}
+button.copy:hover{border-color:var(--accent);color:var(--accent-ink);background:var(--surface-2)}
+button.copy.ok{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+pre.txt{margin:0;background:var(--code-bg);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 13px;font-family:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,"Liberation Mono",monospace;font-size:.875rem;line-height:1.6;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.block.b-alt pre.txt{border-left-color:#8b5cf6}
+.block.b-fall pre.txt{border-left-color:var(--border-strong);background:var(--surface-2);font-size:.83rem}
+.why{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border);font-size:.9rem;color:var(--text-2)}
+.why strong{color:var(--text)}
+.dest{display:block;margin-top:5px;font-size:.85rem;color:var(--text-3)}
+.dest b{color:var(--text-2)}
+.box{border:1px solid var(--border);border-left-width:4px;border-radius:10px;padding:13px 15px;margin:16px 0;font-size:.94rem;break-inside:avoid}
+.box p:last-child{margin-bottom:0}
+.box .bt{display:block;font-weight:700;margin-bottom:.35em;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em}
+.box.info{background:var(--info-bg);border-color:var(--info-border)}
+.box.info .bt{color:var(--info-ink)}
+.box.warn{background:var(--warn-bg);border-color:var(--warn-border)}
+.box.warn .bt{color:var(--warn-ink)}
+.box.stop{background:var(--stop-bg);border-color:var(--stop-border)}
+.box.stop .bt{color:var(--stop-ink)}
+.box.good{background:var(--accent-soft);border-color:var(--accent)}
+.box.good .bt{color:var(--accent-ink)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:16px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--surface-2);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+code{background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:.84em;font-family:ui-monospace,Consolas,monospace}
+details.obj{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin:10px 0;box-shadow:var(--shadow);break-inside:avoid}
+details.obj > summary{cursor:pointer;list-style:none;padding:13px 15px;font-weight:650;display:flex;gap:10px;align-items:baseline}
+details.obj > summary::-webkit-details-marker{display:none}
+details.obj > summary::before{content:"+";color:var(--accent-ink);font-weight:700;flex:none;width:1ch}
+details.obj[open] > summary::before{content:"\2013"}
+details.obj[open] > summary{border-bottom:1px solid var(--border)}
+details.obj .objbody{padding:14px 15px 16px}
+.behind{font-size:.92rem;color:var(--text-2);background:var(--surface-2);border-radius:8px;padding:10px 12px;margin:0 0 12px}
+.behind b{color:var(--text)}
+ul.tight{margin:0 0 1em;padding-left:1.2em}
+ul.tight li{margin:.25em 0}
+.small{font-size:.86rem;color:var(--text-3)}
+hr.sep{border:0;border-top:1px solid var(--border);margin:34px 0}
+.pill{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2)}
+@media (max-width:400px){
+  main{padding-left:14px;padding-right:14px}
+  header.top{padding:20px 14px}
+  .meta > div{grid-template-columns:70px minmax(0,1fr)}
+  pre.txt{font-size:.84rem;padding:11px}
+}
+@media print{
+  nav.toc,button.copy{display:none !important}
+  body{background:#fff;color:#000;font-size:11.5pt}
+  .page{display:block}
+  main{max-width:100%;padding:0}
+  header.top{border:0;background:#fff;padding:0 0 10px}
+  .msg,details.obj,.box,.tw{break-inside:avoid;box-shadow:none;background:#fff}
+  pre.txt{background:#fff;border:1px solid #999;border-left:3px solid #000;color:#000}
+  .badge{border:1px solid #000 !important;background:#fff !important;color:#000 !important}
+  .badge::before{background:#000 !important}
+  details.obj > summary::before{content:""}
+  details.obj .objbody{display:block !important}
+  h2{break-after:avoid}
+  a{color:#000;text-decoration:none}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <div class="inner">
+    <p class="kicker">Mensalli · Operação comercial</p>
+    <h1>Playbook de Follow-up — leads de tráfego pago no WhatsApp</h1>
+    <p class="sub">Todas as mensagens prontas para copiar, com o gatilho que dispara cada uma, o momento certo e para qual coluna do board o lead vai depois. Escrito em voz neutra, para servir a escolinha de futebol, CT, academia e estúdio — com a tradução de vocabulário de cada segmento na seção 1.5.</p>
+    <p class="stamp">Gerado em 01/09/2026 · versão 1 · quem atende assina sempre com o mesmo nome (aqui, <strong>Caio</strong>)</p>
+  </div>
+</header>
+
+<nav class="toc">
+<details class="toc-d" open>
+<summary>Índice</summary>
+<div class="tocbody">
+<ol>
+  <li><a href="#s1">1. Como usar este playbook</a>
+    <ol>
+      <li><a href="#s1-voz">Regras de voz</a></li>
+      <li><a href="#s1-board">Os seis estágios</a></li>
+      <li><a href="#s1-precos">Planos e preços</a></li>
+      <li><a href="#s1-vars">Variáveis e fallback</a></li>
+      <li><a href="#s1-segmento">Fale a língua do segmento</a></li>
+    </ol>
+  </li>
+  <li><a href="#s2">2. Primeira resposta</a>
+    <ol>
+      <li><a href="#s2-sla">SLA: 2min, 30min e 3h</a></li>
+      <li><a href="#s2-oi">Chegou só com "oi"</a></li>
+      <li><a href="#s2-preco">Chegou perguntando preço</a></li>
+      <li><a href="#s2-feature">Chegou perguntando feature</a></li>
+      <li><a href="#s2-fora">Fora do horário / madrugada</a></li>
+      <li><a href="#s2-fds">Fim de semana</a></li>
+      <li><a href="#s2-qualif">Qualificar sem parecer formulário</a></li>
+      <li><a href="#s2-plano">Recomendar o plano certo</a></li>
+      <li><a href="#s2-link">Entregar o link de cadastro</a></li>
+    </ol>
+  </li>
+  <li><a href="#s3">3. Cadência de quem não respondeu</a>
+    <ol>
+      <li><a href="#s3-mapa">Mapa das filas</a></li>
+      <li><a href="#s3-f1">Fila 1 — nunca respondeu</a></li>
+      <li><a href="#s3-f2">Fila 2 — sumiu no meio do papo</a></li>
+      <li><a href="#s3-f3">Fila 3 — sumiu depois do preço</a></li>
+      <li><a href="#s3-f4">Fila 4 — recebeu o link, não criou conta</a></li>
+      <li><a href="#s3-f5">Fila 5 — sumiu na hora de pagar</a></li>
+    </ol>
+  </li>
+  <li><a href="#s4">4. Banco de objeções</a></li>
+  <li><a href="#s5">5. Trial — cadência de ativação</a>
+    <ol>
+      <li><a href="#s5-boas">Acabou de criar a conta</a></li>
+      <li><a href="#s5-sumiu">Criou e não abriu mais</a></li>
+      <li><a href="#s5-qr">Abriu e não conectou o WhatsApp</a></li>
+      <li><a href="#s5-alunos">Conectou, zero alunos</a></li>
+      <li><a href="#s5-regua">Cadastrou, não ligou a régua</a></li>
+      <li><a href="#s5-bem">Está usando bem</a></li>
+      <li><a href="#s5-fim">D-3, D-1 e o dia de acabar</a></li>
+      <li><a href="#s5-venc">Trial vencido</a></li>
+      <li><a href="#s5-ancora">Como falar de plano</a></li>
+    </ol>
+  </li>
+  <li><a href="#s6">6. Lead fora do perfil</a></li>
+  <li><a href="#s7">7. Situações delicadas</a></li>
+  <li><a href="#s8">8. Regras de operação</a></li>
+  <li><a href="#s9">9. Os cinco números da semana</a></li>
+</ol>
+</div>
+</details>
+</nav>
+
+<main>
+
+<section id="s1">
+<h2>1. Como usar este playbook</h2>
+<p class="lead">Cada bloco cinza é uma mensagem pronta. Clique em <strong>Copiar</strong>, cole no WhatsApp, ajuste o que a variável não preencheu e mande. Nada aqui é rascunho.</p>
+
+<div class="box info">
+  <span class="bt">O contexto que muda tudo</span>
+  <p>O lead veio de anúncio no Instagram/Facebook e caiu direto no WhatsApp comercial. <strong>Ele mandou a primeira mensagem.</strong> Isso significa duas coisas: você tem permissão para conversar, e você nunca começa do zero — todo follow-up é continuação de um papo que ele iniciou. Nunca dispare para quem não falou primeiro.</p>
+</div>
+
+<div class="box good">
+  <span class="bt">O número que comanda a operação</span>
+  <p>Quem <strong>conecta o WhatsApp durante o trial vira pagante em 71% dos casos</strong>. Quem não conecta, 12%. Todo o resto — preço, feature, demo, desconto — é secundário. Se você só tiver energia para uma mensagem no dia, mande a que empurra o cara a escanear o QR Code.</p>
+</div>
+
+<h3 id="s1-voz">1.1 Regras de voz (inegociáveis)</h3>
+<ul class="tight">
+  <li><strong>Português falado.</strong> Frase curta. Sem "estarei enviando", sem "venho por meio desta", sem "prezado".</li>
+  <li><strong>Zero "Olá! Tudo bem? Espero que esteja ótimo!"</strong> A primeira linha é a única que aparece na notificação. Não desperdice com educação vazia.</li>
+  <li><strong>Uma pergunta por mensagem.</strong> No máximo uma.</li>
+  <li><strong>Até 4 linhas.</strong> Quebra de linha ajuda a leitura no celular.</li>
+  <li><strong>No máximo 1 emoji</strong>, e só quando somar. Zero é melhor que dois.</li>
+  <li><strong>Não prometa o que o produto não faz.</strong> Nada de "aumenta 30% do faturamento". Só os números deste documento.</li>
+  <li><strong>Sem urgência falsa.</strong> Não existe "última vaga" nem "promoção acaba hoje".</li>
+  <li><strong>Não peça desculpa por existir.</strong> Nada de "desculpa incomodar" ou "sei que você é ocupado".</li>
+  <li><strong>Fale de dinheiro sem rodeio.</strong> Esse público pergunta preço na primeira mensagem. "Depende" mata a conversa.</li>
+  <li><strong>Nunca dois follow-ups no mesmo dia.</strong> Nunca antes das 8h, nunca depois das 20h, nunca domingo.</li>
+  <li><strong>Uma pessoa só.</strong> Sempre a mesma voz, como se fosse o fundador atendendo. Trate por "você", nunca por "senhor".</li>
+</ul>
+
+<h3 id="s1-board">1.2 Os seis estágios do board</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Coluna</th><th>id</th><th>Significa</th><th>Quem move</th></tr></thead>
+<tbody>
+<tr><td><span class="badge b-novo">Novo</span></td><td><code>novo</code></td><td>Mandou mensagem, ninguém respondeu ainda</td><td>Entra sozinho</td></tr>
+<tr><td><span class="badge b-conversando">Conversando</span></td><td><code>conversando</code></td><td>Papo em andamento, ele já respondeu pelo menos uma vez</td><td>Na mão</td></tr>
+<tr><td><span class="badge b-aguardando">Aguardando</span></td><td><code>aguardando</code></td><td>Disse que ia pensar, ver com o sócio, esperar o mês virar</td><td>Na mão</td></tr>
+<tr><td><span class="badge b-criou">Criou conta</span></td><td><code>criou_conta</code></td><td>Está no trial</td><td>Automático (cruza telefone × base)</td></tr>
+<tr><td><span class="badge b-pagante">Pagante</span></td><td><code>pagante</code></td><td>Pagou o plano</td><td>Automático</td></tr>
+<tr><td><span class="badge b-perdido">Perdido</span></td><td><code>perdido</code></td><td>Sumiu de vez, disse não, ou pediu para parar</td><td>Na mão</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">Como <code>criou_conta</code> e <code>pagante</code> sobem sozinhos, seu trabalho manual é só entre <code>novo</code>, <code>conversando</code>, <code>aguardando</code> e <code>perdido</code>. Por isso todo cartão deste playbook termina dizendo para onde arrastar o lead conforme a resposta.</p>
+
+<h3 id="s1-precos">1.3 Planos e preços — decore isso</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Plano</th><th>Preço/mês</th><th>Alunos</th><th>Mensagens/mês</th><th>O que entra</th></tr></thead>
+<tbody>
+<tr><td><strong>Starter</strong></td><td>R$ 49</td><td>até 50</td><td>200</td><td>Cobrança automática no vencimento, 1 template, painel financeiro</td></tr>
+<tr><td><strong>Pro</strong> <span class="pill">mais vendido</span></td><td>R$ 99</td><td>até 150</td><td>600</td><td>Régua completa (antes, no dia, depois), turmas/grade/chamada, contrato com assinatura, ficha do aluno, suporte no WhatsApp</td></tr>
+<tr><td><strong>Premium</strong></td><td>R$ 149</td><td>até 500</td><td>3.000</td><td>Tudo do Pro + site do seu espaço, link de aula experimental, bot que responde o responsável, campanhas de WhatsApp, suporte prioritário</td></tr>
+</tbody>
+</table>
+</div>
+<p>Trial gratuito antes de pagar. Pix ou cartão. <strong>Sem fidelidade e sem multa de cancelamento.</strong> Fora disso, nada mais é preço — não invente desconto, não invente prazo.</p>
+
+<h3 id="s1-vars">1.4 Variáveis e a versão de fallback</h3>
+<p>Disponíveis: <code>{{primeiro_nome}}</code>, <code>{{nome_escolinha}}</code>, <code>{{cidade}}</code>, <code>{{modalidade}}</code>, <code>{{qtd_alunos}}</code>, <code>{{link_cadastro}}</code>, <code>{{link_demo}}</code>, <code>{{plano_sugerido}}</code>, <code>{{dias_restantes_trial}}</code>.</p>
+<div class="box warn">
+  <span class="bt">Regra do vazio</span>
+  <p>O lead chegou com "oi" — na prática você quase nunca tem nome, modalidade ou cidade no primeiro contato. <strong>Toda mensagem com variável tem, aqui, a versão sem ela.</strong> Mensagem com "Opa, !" ou "seu espaço em ." mata a credibilidade na primeira linha.</p>
+</div>
+
+<h3 id="s1-segmento">1.5 Fale a língua do segmento</h3>
+<p>O Mensalli atende <strong>escolinha de futebol, CT, academia e estúdio</strong>. Por isso as mensagens deste playbook estão em <strong>voz neutra</strong>: falam "aluno", "aula" e "seu espaço", que servem para todos. Assim que o lead disser a modalidade, <strong>troque para as palavras dele</strong> — é o que separa uma conversa de um template disparado.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Segmento</th><th>Ele chama de</th><th>A sessão é</th><th>Quem recebe a cobrança</th><th>Gancho que funciona</th></tr></thead>
+<tbody>
+<tr><td><strong>Escolinha / CT</strong></td><td>atleta</td><td>treino</td><td>o responsável (pai/mãe)</td><td>peneira, categoria (sub-9, sub-11), quem sumiu antes de pedir cancelamento</td></tr>
+<tr><td><strong>Academia</strong> <span class="small">(musculação, crossfit, funcional)</span></td><td>aluno</td><td>treino</td><td>o próprio aluno</td><td>plano mensal, quem parou de bater ponto na catraca</td></tr>
+<tr><td><strong>Estúdio</strong> <span class="small">(pilates, dança, yoga, ballet)</span></td><td>aluno</td><td>aula</td><td>o próprio aluno — ou o responsável, se for turma infantil</td><td>turma com horário fixo, reposição, aula experimental</td></tr>
+<tr><td><strong>Luta, natação, tênis, vôlei</strong></td><td>aluno ou atleta</td><td>aula ou treino</td><td>infantil: responsável · adulto: o próprio</td><td>graduação/faixa, turma por nível</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="box stop">
+  <span class="bt">A regra do "quem paga" — é ela que muda o texto</span>
+  <p>Não é sinônimo, é estrutura da mensagem. Na <strong>escolinha e em qualquer turma infantil</strong>, quem recebe a cobrança é o responsável: aí o portal do responsável e o "o pai lembra sozinho" são argumentos fortes. Na <strong>academia e no estúdio adulto</strong>, quem recebe é o próprio aluno — nesse caso fale "você cobra o aluno direto, e ele mesmo resolve 2ª via e histórico pelo link". Falar "o pai" com dona de estúdio de pilates entrega na hora que a mensagem é template.</p>
+</div>
+
+<div class="box warn">
+  <span class="bt">Enquanto você não souber</span>
+  <p>Nunca chute a modalidade. Use <strong>aluno</strong>, <strong>aula</strong> e <strong>seu espaço</strong> — as três palavras que servem para qualquer segmento. Nunca abra com "sua escolinha" antes de ele dizer que tem uma: o lead de academia lê isso como anúncio errado e some.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">1.5.a — P0: descobrir a modalidade</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Lead respondeu a abertura e ainda não disse o ramo. <strong>Vem antes do trilho de qualificação de 2.7.</strong></span></div>
+    <div><span class="k">Momento</span><span class="v">Na mesma conversa, logo depois da primeira resposta dele.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Antes de eu te falar de preço e plano: você tem escolinha, academia ou estúdio?
+Pergunto pra te falar do seu jeito e não do jeito errado.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — mais solta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Você trabalha com o quê aí — futebol, luta, pilates, musculação, dança?
+Muda o que eu vou te mostrar, por isso pergunto.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> preenche <code>{{modalidade}}</code> logo no começo e destrava todas as outras mensagens — a partir daqui você troca "aluno/aula" pelas palavras dele. E a justificativa ("pra te falar do seu jeito") faz a pergunta soar como cuidado, não como formulário.
+  <span class="dest">Respondeu → <b>Conversando</b>, siga para o trilho 2.7. Não respondeu → segue a Fila 1 normalmente.</span></p>
+</article>
+</section>
+
+<section id="s2">
+<h2>2. Primeira resposta</h2>
+<p class="lead">O lead pagou (você pagou) para ele clicar no anúncio. O que decide se esse dinheiro virou cliente é o tempo entre a mensagem dele e a sua. Nada neste playbook importa mais do que esta seção — exceto conectar o WhatsApp no trial.</p>
+
+<h3 id="s2-sla">2.1 SLA: o que muda entre 2 minutos, 30 minutos e 3 horas</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Tempo até responder</th><th>O que está acontecendo do outro lado</th><th>O que você faz</th></tr></thead>
+<tbody>
+<tr><td><strong>Até 2 min</strong><br><span class="small">meta</span></td><td>Ele ainda está com o celular na mão, ainda no clima do anúncio. É a única janela em que a conversa acontece de verdade, indo e voltando na hora.</td><td>Responde e já faz a pergunta de qualificação. Dá para fechar o papo inteiro numa sentada.</td></tr>
+<tr><td><strong>Até 30 min</strong><br><span class="small">aceitável</span></td><td>Ele saiu do app, mas lembra que mandou. Sua mensagem chega como notificação esperada.</td><td>Responde assumindo que ele esqueceu o contexto: diga em uma linha quem é você e o que o Mensalli faz, depois pergunte.</td></tr>
+<tr><td><strong>3h ou mais</strong><br><span class="small">recuperação</span></td><td>Ele já viu outros dois anúncios e talvez já tenha falado com um concorrente. A conversa virou fria e você precisa reabrir.</td><td>Responde reconhecendo a demora em <em>meia</em> linha (sem pedir desculpa três vezes) e entrega algo de valor imediato: preço ou o link. Não faça ele esperar de novo.</td></tr>
+<tr><td><strong>Mais de 24h</strong></td><td>Perdeu. Trate como reativação, não como primeira resposta.</td><td>Use a mensagem 2.4 (fora do horário) adaptada e não cobre resposta rápida dele.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="box stop">
+  <span class="bt">Regra dura</span>
+  <p>Lead de tráfego pago que fica <strong>mais de 1 hora</strong> em <code>novo</code> no horário comercial é dinheiro queimado. Se você não consegue segurar o SLA, é melhor reduzir a verba do anúncio do que acumular fila.</p>
+</div>
+
+<h3 id="s2-oi">2.2 Lead que chegou só com "oi"</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.2.a — Abertura padrão para "oi", "boa tarde", "info"</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Estágio <code>novo</code>, primeira mensagem do lead sem conteúdo (saudação, "quero saber", figurinha), nenhuma resposta minha ainda.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato — meta de 2 minutos, dentro de 8h–20h.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}! Aqui é o Caio, do Mensalli.
+A gente cobra as mensalidades automático, pelo seu próprio WhatsApp.
+Quantos alunos você tem pagando hoje?</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa! Aqui é o Caio, do Mensalli.
+A gente cobra as mensalidades automático, pelo seu próprio WhatsApp.
+Quantos alunos você tem pagando hoje?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — espelha o anúncio</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}! Caio aqui, do Mensalli.
+Você viu o anúncio da cobrança automática por WhatsApp, né?
+Me diz uma coisa: hoje você cobra mensalidade no grupo, no particular, ou o aluno lembra sozinho?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a primeira linha diz quem é você, a segunda entrega o produto inteiro em uma frase, e a terceira devolve a bola com uma pergunta que ele responde em 3 segundos. A variante B é melhor quando o volume de anúncio está alto, porque ancora o papo no que ele acabou de ver.
+  <span class="dest">Respondeu qualquer coisa → <b>Conversando</b>. Não respondeu em 4h → segue na <b>Fila 1</b>.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.2.b — "oi" que veio com áudio ou figurinha</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Primeira mensagem é áudio, figurinha ou emoji solto.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato. Ouça o áudio antes de responder — metade das vezes ele já contou tudo.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, ouvi seu áudio aqui. Caio, do Mensalli.
+Entendi: {{modalidade}} com {{qtd_alunos}} alunos.
+Te respondo por escrito pra você ler quando der — pode ser?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — responde no mesmo canal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa! Caio, do Mensalli.
+Vou te mandar um áudio curto respondendo, porque escrever tudo aqui vira textão.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> quem manda áudio quer áudio. Responder no mesmo formato dobra a taxa de resposta desse perfil, e o áudio de 30 segundos do dono soa muito mais real que qualquer texto.
+  <span class="dest">→ <b>Conversando</b>.</span></p>
+</article>
+
+<h3 id="s2-preco">2.3 Lead que chegou perguntando preço direto</h3>
+<div class="box warn">
+  <span class="bt">Não fuja</span>
+  <p>"Depende do seu caso", "vou te explicar como funciona primeiro" e "posso te ligar?" matam esse lead. Ele perguntou preço porque preço é a informação que ele usa para decidir se vale gastar mais 2 minutos com você. <strong>Dê a faixa inteira, ancore no Pro e devolva uma pergunta.</strong></p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.3.a — "Quanto custa?"</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Primeira mensagem contém preço, valor, quanto custa, quanto é, mensalidade de vocês.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato, 8h–20h.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">R$ 49, R$ 99 ou R$ 149 por mês, sem fidelidade.
+A maioria fica no de R$ 99: até 150 alunos, cobrança antes, no dia e depois do vencimento, turmas e chamada.
+Quantos alunos você tem? Te digo qual dá conta.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — ancora na conta dele</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vai de R$ 49 a R$ 149 por mês, sem fidelidade.
+O mais vendido é o de R$ 99 (até 150 alunos, régua completa de cobrança).
+Se a sua mensalidade for R$ 100, uma atrasada que voltar já paga o mês.
+Quantos alunos você tem hoje?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> preço na primeira linha compra confiança imediata nesse público. A âncora no Pro faz o R$ 49 parecer barato e o R$ 149 parecer completo, em vez de fazer o R$ 99 parecer caro.
+  <span class="dest">Respondeu com o número de alunos → <b>Conversando</b> (vai para 2.8). Sumiu depois do preço → <b>Aguardando</b> e entra na <b>Fila 3</b>.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.3.b — "É caro pra mim" já na primeira mensagem</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Ele reage ao preço na hora, antes de qualquer conversa.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato, na sequência.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se você tem poucos alunos, o de R$ 49 já cobra sozinho no vencimento e resolve.
+Dá menos de R$ 2 por dia.
+Quantos alunos você tem? Se der até 50, é esse.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — testa antes de pagar</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Entendo. Por isso tem teste grátis: você usa antes de pagar qualquer coisa.
+Se não fizer diferença no seu caixa, você não paga e a gente segue amigo.
+Quer o link pra criar a conta e testar com seus próprios alunos?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> não dá desconto e não discute valor — troca o eixo de "preço" para "tamanho" e para "testa de graça". Quem reclama de preço antes de conhecer o produto está reclamando de risco, não de dinheiro.
+  <span class="dest">Aceitou o link → <b>Conversando</b>. Sumiu → <b>Aguardando</b>, <b>Fila 3</b>.</span></p>
+</article>
+
+<h3 id="s2-feature">2.4 Lead que chegou perguntando uma feature específica</h3>
+<div class="box info">
+  <span class="bt">A fórmula de 3 partes</span>
+  <p><strong>1)</strong> Responde a pergunta em uma linha, começando com "Faz", "Dá" ou "Sim". <strong>2)</strong> Uma linha de prova concreta, com o detalhe que só quem tem o produto sabe. <strong>3)</strong> Uma pergunta que puxa o contexto dele. Nunca responda feature com catálogo de features.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.4.a — "As mensagens saem do meu número?"</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Primeira mensagem pergunta por uma feature. Este é o exemplo aplicado à pergunta mais comum.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Saem do seu número sim. Você conecta o seu WhatsApp por QR Code, igual WhatsApp Web.
+Quem paga recebe do mesmo número que já conhece e responde ali mesmo, como sempre fez.
+Você já usa um número só do trabalho ou é o seu pessoal?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — mostra a consequência</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Sai do seu próprio número — é a parte que mais muda o resultado.
+Cobrança que chega de número desconhecido a pessoa ignora. Do número que ele já conhece, ele lê e paga.
+Conecta por QR Code em menos de um minuto. Quer que eu te mande o link pra testar?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> responde sem rodeio e transforma a feature em consequência prática para ele. A pergunta final ainda serve de qualificação disfarçada.
+  <span class="dest">→ <b>Conversando</b>.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.4.b — "Tem controle de presença / turma / categoria?"</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Pergunta por gestão (chamada, turmas, categorias ou níveis, grade de horário).</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Tem. Cada aluno fica na turma dele — por idade, por nível, turma da manhã, da tarde — com horário e chamada por dia.
+E tem um radar que mostra quem começou a faltar, antes de virar cancelamento.
+Quantas turmas você roda hoje?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — liga gestão a dinheiro</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Tem chamada por turma e por dia, com as categorias separadas.
+O que os donos mais usam é o radar de evasão: o aluno que sumiu das aulas aparece antes de pedir cancelamento — dá tempo de ligar antes.
+Hoje você consegue saber quem faltou na semana passada?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> quem pergunta por presença já pensa em gestão, não só em cobrança — e esse lead costuma comprar o Pro sem discutir preço. Ligar chamada a evasão liga gestão a dinheiro.
+  <span class="dest">→ <b>Conversando</b>.</span></p>
+</article>
+
+<h3 id="s2-fora">2.5 Lead que chegou fora do horário ou de madrugada</h3>
+<div class="box stop">
+  <span class="bt">Janela de atendimento</span>
+  <p>Responda entre <strong>8h e 20h</strong>. Mensagem que chegou às 23h40 ou às 4h da manhã espera até as 8h. Motivo prático: <strong>o número comercial também é usado pessoalmente</strong> e resposta de madrugada gera conversa de madrugada. Motivo comercial: às 8h você aparece no topo da caixa dele, não enterrado.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.5.a — Chegou de madrugada, você responde às 8h</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Mensagem entrou entre 20h e 8h e continua em <code>novo</code>.</span></div>
+    <div><span class="k">Momento</span><span class="v">Entre 8h e 8h30 do dia seguinte (segunda a sábado).</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Bom dia, {{primeiro_nome}}. Caio, do Mensalli.
+Você mandou de madrugada e eu só vi agora.
+A gente cobra as mensalidades automático, pelo seu próprio WhatsApp. Quantos alunos você tem?</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Bom dia! Caio, do Mensalli.
+Você mandou de madrugada e eu só vi agora.
+A gente cobra as mensalidades automático, pelo seu próprio WhatsApp. Quantos alunos você tem?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — reconhece o perfil</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Bom dia, {{primeiro_nome}}. Caio, do Mensalli.
+Mensagem de 1h da manhã eu conheço bem: é a hora que sobra do dia.
+Se o assunto é cobrar mensalidade sem ter que ficar caçando aluno no particular, é isso que a gente faz. Quantos alunos você tem?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> assume a demora em meia linha e já reentrega o contexto, porque depois de 8 horas ele não lembra do anúncio. A variante B cria identificação real com dono de negócio pequeno, que fecha o caixa à noite.
+  <span class="dest">Respondeu → <b>Conversando</b>. Silêncio → <b>Fila 1</b>.</span></p>
+</article>
+
+<h3 id="s2-fds">2.6 Lead que chegou no fim de semana</h3>
+<div class="box info">
+  <span class="bt">Sábado é o melhor dia; domingo não existe</span>
+  <p><strong>Sábado</strong> é o dia mais cheio desse público — aula, turma extra, avaliação, jogo — e o dono está com o celular na mão falando de trabalho o dia inteiro. Responda normalmente, das 8h às 18h. <strong>Domingo</strong> você responde quem escrever (é a conversa dele), mas <strong>não manda nenhum follow-up</strong>. Follow-up de domingo é a maneira mais rápida de virar chatice e ser bloqueado.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.6.a — Chegou no sábado</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Primeira mensagem em sábado, 8h–18h.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato. Sábado o SLA é o mesmo de dia útil.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}! Caio, do Mensalli.
+Sei que sábado aí é dia cheio, então vou direto: a gente cobra as mensalidades sozinho, pelo seu próprio WhatsApp.
+Quantos alunos você tem?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — usa a rotina a favor</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}! Caio, do Mensalli.
+Tá dando aula agora? Me responde quando sentar.
+Resumo: cobrança de mensalidade automática, saindo do seu próprio número, sem fidelidade. A partir de R$ 49.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> mostra que você conhece a rotina dele e tira a pressão de responder na hora — o que, ironicamente, faz ele responder na hora. A variante B entrega preço sem ele pedir, para o caso de sumir no meio do treino.
+  <span class="dest">→ <b>Conversando</b>. Sem resposta no sábado → primeiro follow-up só na segunda de manhã (nunca domingo).</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">2.6.b — Chegou no domingo</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Primeira mensagem em domingo.</span></div>
+    <div><span class="k">Momento</span><span class="v">Responda uma vez, entre 9h e 18h. Se ele não responder, <strong>nada</strong> até segunda.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}! Caio, do Mensalli.
+Respondo rapidinho porque é domingo: a gente cobra as mensalidades automático, pelo seu próprio WhatsApp, a partir de R$ 49/mês.
+Te chamo amanhã cedo pra falar do seu caso, pode ser?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — entrega tudo e libera</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa! Caio, do Mensalli.
+Domingo não vou te tomar tempo: o link pra criar a conta e testar de graça é esse — {{link_cadastro}}
+Qualquer dúvida me chama aqui que amanhã eu te respondo cedo.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> respeitar o domingo dele constrói mais autoridade do que insistir, e a promessa de "amanhã cedo" cria um compromisso que legitima o seu follow-up de segunda.
+  <span class="dest">Respondeu → <b>Conversando</b>. Silêncio → <b>Novo</b>, retomar segunda 8h–10h.</span></p>
+</article>
+
+<h3 id="s2-qualif">2.7 A pergunta de qualificação sem parecer formulário</h3>
+<div class="box warn">
+  <span class="bt">Regra do trilho</span>
+  <p>Você precisa de três informações: <strong>quantos alunos</strong>, <strong>como cobra hoje</strong> e <strong>quanto atrasa</strong>. Nunca peça as três de uma vez. Uma pergunta por mensagem, e cada pergunta só depois de você ter entregado alguma coisa útil. Formulário é o que o concorrente faz.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">2.7.a — O trilho de três perguntas</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Lead respondeu a abertura. Faça uma pergunta por vez, cada uma depois de uma resposta dele.</span></div>
+    <div><span class="k">Momento</span><span class="v">Dentro da mesma conversa, sem intervalo.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">P1 — tamanho (define o plano)</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Quantos alunos pagando você tem hoje?</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">P2 — método atual (define a dor)</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">E hoje você cobra como: manda no grupo, chama um por um no particular, ou o aluno lembra sozinho?</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">P3 — a dor em número (define a urgência)</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Desses {{qtd_alunos}}, quantos costumam atrasar todo mês?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — qualificação embutida numa só</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Pra eu te falar o que faz sentido e não te enrolar: me conta em uma frase quantos alunos você tem e como cobra hoje.
+Tipo: "70 alunos, mando no grupo dia 5". Só isso.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> P2 é a pergunta mais poderosa — a resposta dele já é a dor descrita com as palavras dele, e você reusa essas palavras na proposta. A variante B serve quando o lead está apressado: dar o exemplo do formato faz ele copiar o formato.
+  <span class="dest">Respondeu as três → <b>Conversando</b>, siga para 2.8. Travou na P1 → ele provavelmente ainda não tem negócio rodando (ver seção 6).</span></p>
+</article>
+
+<h3 id="s2-plano">2.8 Recomendar o plano certo (depois do número de alunos)</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">2.8 — Recomendação por faixa</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Lead informou <code>{{qtd_alunos}}</code>.</span></div>
+    <div><span class="k">Momento</span><span class="v">Resposta imediata, na sequência.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Até 50 alunos</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Com {{qtd_alunos}} alunos o Starter de R$ 49 já resolve: cobra sozinho no vencimento e você vê tudo num painel.
+Se um dia quiser cobrar antes e depois do vencimento também, sobe pro de R$ 99 e pronto — sem fidelidade nenhuma.
+Te mando o link pra testar?</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">De 51 a 150 alunos — o coração da base</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Com {{qtd_alunos}} alunos é o Pro, R$ 99: até 150 alunos, cobrança 3 dias antes, no dia e depois do vencimento, turmas com chamada e contrato assinado digital.
+É o que quase todo mundo do seu tamanho usa.
+Te mando o link pra criar a conta e testar de graça?</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">De 151 a 500 alunos</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Com {{qtd_alunos}} alunos é o Premium, R$ 149 — até 500 alunos e 3.000 mensagens por mês.
+Nesse tamanho entram duas coisas que fazem diferença: o site do seu espaço em mensalli.com.br/{{nome_escolinha}} e o link de aula experimental pra você colar no Instagram.
+Quer o link pra testar?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — deixa ele escolher (funciona com quem resiste a venda)</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Com {{qtd_alunos}} alunos você cabe no {{plano_sugerido}}, mas quem decide é você depois de testar.
+Cria a conta, usa com seus alunos de verdade e no fim você escolhe o plano — ou não escolhe nenhum, sem multa.
+Mando o link?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> recomendar <em>um</em> plano (e não os três de novo) tira a carga de decisão. Citar "sem fidelidade" junto do upgrade elimina o medo de escolher errado, que é o que trava esse público.
+  <span class="dest">Disse sim → 2.9. Disse "vou pensar" → <b>Aguardando</b> + objeção 4.4.</span></p>
+</article>
+
+<h3 id="s2-link">2.9 Entregar o link de cadastro</h3>
+<div class="box good">
+  <span class="bt">O link é o fim da primeira conversa, não o começo do sumiço</span>
+  <p>Mandar o link sozinho é o erro mais caro da operação. Junto com o link vão sempre <strong>os três passos</strong> e <strong>o compromisso de acompanhar</strong>. O objetivo dessa mensagem não é o cadastro: é o <strong>QR Code escaneado</strong>.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">2.9 — Entrega do link com os três passos</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Lead aceitou receber o link, ou pediu ele.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato. Nunca prometa mandar depois.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">É aqui: {{link_cadastro}}
+Leva uns 5 minutos e são 3 passos: conecta o WhatsApp no QR Code, joga as turmas e os valores, liga a cobrança.
+Faz o primeiro passo agora e me manda um "ok" que eu te acompanho por aqui.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — compromisso de horário</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Link: {{link_cadastro}}
+Não precisa instalar nada e não pede cartão.
+Cria a conta e para no QR Code — eu fico aqui até você conectar. Consegue fazer agora ou prefere mais tarde?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> "me manda um ok" transforma um link solto num micro-compromisso, e ficar disponível "até você conectar" ataca exatamente o passo que separa 71% de 12%. Perguntar "agora ou mais tarde" evita o não.
+  <span class="dest">Criou conta → sobe sozinho para <b>Criou conta</b> e entra na seção 5. Não criou em 24h → <b>Aguardando</b> + <b>Fila 4</b>.</span></p>
+</article>
+</section>
+
+<section id="s3">
+<h2>3. Cadência de quem não respondeu</h2>
+<p class="lead">Cada ponto de parada tem uma fila própria, porque o motivo do silêncio é diferente em cada um. Quem sumiu depois do preço não precisa da mesma mensagem de quem sumiu antes de saber o preço.</p>
+
+<h3 id="s3-mapa">3.1 Mapa das filas</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Fila</th><th>Onde ele parou</th><th>Estágio</th><th>Tentativas</th><th>Dias</th><th>Encerra em</th></tr></thead>
+<tbody>
+<tr><td><strong>1</strong></td><td>Nunca respondeu depois da minha primeira mensagem</td><td><span class="badge b-novo">Novo</span></td><td>4</td><td>+4h · D+1 · D+3 · D+7</td><td>D+7</td></tr>
+<tr><td><strong>2</strong></td><td>Respondeu e sumiu no meio do papo</td><td><span class="badge b-conversando">Conversando</span></td><td>3</td><td>D+1 · D+3 · D+7</td><td>D+7</td></tr>
+<tr><td><strong>3</strong></td><td>Sumiu depois de receber o preço</td><td><span class="badge b-aguardando">Aguardando</span></td><td>4</td><td>D+1 · D+4 · D+8 · D+14</td><td>D+14</td></tr>
+<tr><td><strong>4</strong></td><td>Recebeu o link e não criou conta</td><td><span class="badge b-aguardando">Aguardando</span></td><td>3</td><td>D+1 · D+3 · D+7</td><td>D+7</td></tr>
+<tr><td><strong>5</strong></td><td>Sumiu na hora de pagar</td><td><span class="badge b-criou">Criou conta</span></td><td>4</td><td>+3h · D+1 · D+3 · D+7</td><td>D+7</td></tr>
+<tr><td><strong>6</strong></td><td>Criou conta e sumiu sem conectar o WhatsApp</td><td><span class="badge b-criou">Criou conta</span></td><td>4</td><td colspan="2">Fica na <a href="#s5-qr">seção 5.3</a> — gatilho de produto</td></tr>
+<tr><td><strong>7</strong></td><td>Conectou o WhatsApp e sumiu sem cadastrar aluno</td><td><span class="badge b-criou">Criou conta</span></td><td>2</td><td colspan="2">Fica na <a href="#s5-alunos">seção 5.4</a> — gatilho de produto</td></tr>
+</tbody>
+</table>
+</div>
+<div class="box info">
+  <span class="bt">Por que 6 e 7 vivem na seção 5</span>
+  <p>Filas 1 a 5 disparam por <strong>silêncio na conversa</strong>. As filas 6 e 7 disparam por <strong>evento dentro do produto</strong> (conta criada sem WhatsApp conectado, WhatsApp conectado sem aluno). São gatilhos diferentes, com mensagens diferentes, e por isso estão inteiras na seção do trial.</p>
+</div>
+
+<h3 id="s3-f1">3.2 Fila 1 — nunca respondeu depois da minha primeira mensagem</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">F1.1 — Reforço de 4 horas</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Estágio <code>novo</code>, minha primeira resposta entregue, 4h sem resposta dele, ainda dentro de 8h–20h.</span></div>
+    <div><span class="k">Momento</span><span class="v">Mesmo dia, 4h depois. Só uma vez no dia.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, te mandei aqui em cima e você deve ter entrado numa aula.
+Me responde só uma coisa quando der: quantos alunos você tem?
+Com esse número eu já te digo o preço certo e paro de te perguntar.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Te mandei aqui em cima e você deve ter entrado numa aula.
+Me responde só uma coisa quando der: quantos alunos você tem?
+Com esse número eu já te digo o preço certo e paro de te perguntar.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — resposta de um toque</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Pra facilitar, me responde só com um número:
+1 = quero saber o preço
+2 = quero testar de graça
+3 = agora não dá</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> reduz o custo da resposta a um dígito. A opção 3 é de propósito — quem responde "3" continua vivo e vai para <code>aguardando</code>, em vez de morrer sem você saber.
+  <span class="dest">Respondeu 1 ou 2 → <b>Conversando</b>. Respondeu 3 → <b>Aguardando</b>, reativação em 30 dias. Silêncio → F1.2.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">F1.2 — D+1, a pergunta que dói</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">24h sem resposta, última mensagem foi minha.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã (8h–11h). Nunca domingo.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, uma pergunta só e eu te deixo em paz:
+hoje tem aluno seu frequentando e devendo mensalidade?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — cena concreta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Dia 10 chega e você tem que decidir se manda mensagem no particular de quem tá devendo ou deixa passar mais um mês.
+É exatamente isso que o Mensalli tira do seu colo — a cobrança sai sozinha, do seu próprio número.
+Faz sentido pro seu caso?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a pergunta do texto principal encosta no incômodo real do dono (cobrar quem ele vê treinando toda semana). Constrangimento vende mais que feature nesse mercado.
+  <span class="dest">Respondeu → <b>Conversando</b>. Silêncio → F1.3.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">F1.3 — D+3, valor sem pedir nada</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias corridos desde a última mensagem minha, zero resposta em todo o histórico.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde (14h–18h).</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Não vou ficar te perguntando. Deixo o material aqui e você olha na hora que der:
+{{link_demo}}
+Tem o preço, o que faz e como conecta o WhatsApp. Qualquer dúvida é só responder aqui.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o link de demo</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Não vou ficar te perguntando. Deixo o resumo aqui e você olha quando der:
+cobrança automática de mensalidade saindo do seu próprio WhatsApp, Pix com baixa na hora, a partir de R$ 49/mês e sem fidelidade.
+Se fizer sentido, é só me chamar.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — prova de mercado</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Só pra você ter em mente: quem entra e conecta o WhatsApp no primeiro dia é quem realmente para de correr atrás de mensalidade.
+Leva menos de um minuto — é um QR Code.
+Link, caso queira testar sozinho: {{link_cadastro}}</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> tira a pressão e devolve controle. Boa parte desse público responde justamente quando você para de perguntar.
+  <span class="dest">Silêncio → F1.4 (encerramento).</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">F1.4 — D+7, encerramento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">7 dias, 3 tentativas, zero resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+7, manhã. É a <strong>última</strong> mensagem desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou encerrar seu atendimento aqui pra não virar chatice.
+Se um dia a inadimplência apertar ou você cansar de cobrar na mão, me chama nesse mesmo número que eu te atendo na hora.
+Sucesso aí, {{primeiro_nome}}.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou encerrar seu atendimento aqui pra não virar chatice.
+Se um dia a inadimplência apertar ou você cansar de cobrar na mão, me chama nesse mesmo número que eu te atendo na hora.
+Sucesso aí!</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — a porta fechando</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Posso fechar seu atendimento aqui?
+Se você só não teve tempo, me responde "ainda tenho interesse" que eu deixo aberto mais um pouco.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a mensagem de encerramento é, disparado, a que mais recebe resposta de toda a fila — some a pressão de comprar e sobra só a de responder um ser humano. A variante B é ainda mais forte, mas só use se você estiver disposto a de fato reabrir.
+  <span class="dest">Respondeu → <b>Conversando</b>. Silêncio → <b>Perdido</b> + fila de reativação em 30 dias (ver 8.6).</span></p>
+</article>
+
+<h3 id="s3-f2">3.3 Fila 2 — respondeu uma vez e sumiu no meio do papo</h3>
+<div class="box warn">
+  <span class="bt">Antes de mandar, releia</span>
+  <p>Este lead <strong>já te disse alguma coisa</strong>. Toda mensagem desta fila tem que citar o que ele disse — o nome do espaço, a modalidade, o número de alunos, a queixa. Follow-up genérico aqui é insulto: ele sabe que já falou.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">F2.1 — D+1, retoma o que ele falou</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Estágio <code>conversando</code>, 24h sem resposta, última mensagem foi minha.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, mesma faixa de horário em que ele respondeu da outra vez.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, voltando no que você falou dos {{qtd_alunos}} alunos:
+com esse tamanho, o {{plano_sugerido}} resolve e você testa antes de pagar.
+Quer que eu te mande o link ou prefere que eu te mostre funcionando primeiro?</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem os dados dele</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, voltando no nosso papo de ontem.
+Ficou faltando você me dizer quantos alunos você tem — com esse número eu te digo o plano e o preço exatos.
+Consegue me falar?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — assume o motivo do silêncio</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Sumiu ontem no meio — imagino que aula, trabalho ou família tenham entrado na frente.
+De onde a gente parou: faltava só você decidir se quer testar com seus alunos de verdade.
+Mando o link?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> reabre no ponto exato, sem repetir o pitch, e dá uma escolha entre dois "sins" (link ou demo) em vez de um sim/não.
+  <span class="dest">Respondeu → segue em <b>Conversando</b>. Silêncio → F2.2.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">F2.2 — D+3, uma pergunta só</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias sem resposta, 1 follow-up já enviado.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, o que travou: preço, tempo pra configurar, ou você achou que não é pra você?
+Me diz qual dos três que eu te respondo direto e sem enrolação.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — inverte o ônus</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se eu te mandei informação demais, me fala que eu resumo em duas linhas.
+Se foi de menos, me fala o que ficou faltando.
+Qualquer uma das duas eu resolvo agora.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> nomear as três objeções mais prováveis dá permissão para ele dizer a verdade, e "preço/tempo/não é pra mim" cobre quase todo o silêncio real desse funil.
+  <span class="dest">Respondeu com a objeção → seção 4. Silêncio → F2.3.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">F2.3 — D+7, encerramento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">7 dias, 2 follow-ups sem resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+7, manhã. Última desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou parar por aqui, {{primeiro_nome}} — você já tem gente demais te mandando mensagem.
+Guarda esse número: quando quiser parar de cobrar mensalidade na mão, é só me chamar que a gente retoma de onde parou.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — deixa a chave na porta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Encerrando por aqui pra não te encher.
+Deixo o link caso um dia você queira testar sozinho, sem falar comigo: {{link_cadastro}}
+Sucesso aí com a turma.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> encerra com dignidade e ainda entrega um caminho autônomo — parte desse público volta semanas depois, direto pelo link, sem responder nada.
+  <span class="dest">Silêncio → <b>Perdido</b> + reativação em 30 dias.</span></p>
+</article>
+
+<h3 id="s3-f3">3.4 Fila 3 — sumiu depois de receber o preço</h3>
+<div class="box info">
+  <span class="bt">Diagnóstico</span>
+  <p>Silêncio depois do preço quase nunca é "caro". É <strong>"não tenho certeza de que vai funcionar comigo"</strong>. Por isso esta fila não fala de desconto: fala de risco zero (teste antes de pagar, sem fidelidade) e de tamanho (Starter existe).</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F3.1 — D+1, nomeia o elefante</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Preço enviado, 24h de silêncio.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, o valor pesou ou foi só corrido o dia?
+Pode falar na lata que eu não me ofendo — se pesou, eu te mostro o que dá pra fazer.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — tira o risco da mesa</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Uma coisa que eu talvez não tenha deixado clara: você testa antes de pagar qualquer coisa.
+Cria a conta, usa com seus alunos, e só depois decide se vale os R$ 99.
+Quer o link?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> dar permissão explícita para falar de dinheiro destrava esse público, que costuma sumir por educação em vez de dizer "tá caro".
+  <span class="dest">Falou de preço → objeção 4.1. Silêncio → F3.2.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F3.2 — D+4, a conta na ponta do lápis</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">4 dias de silêncio depois do preço, 1 follow-up já enviado.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+4, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Faz essa conta comigo: quanto você deixa na mesa por mês em mensalidade atrasada?
+Se for uma mensalidade só, o plano já se paga.
+Se for zero, me fala que eu paro na hora — aí realmente não é pra você.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — o custo escondido</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">O caro não é o plano. É o tempo que você gasta todo mês olhando extrato e mandando mensagem pra aluno um por um.
+R$ 99 é menos de uma aula particular. Quanto vale a sua noite de domingo?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> "se for zero, me fala que eu paro" é honesto e desarma — e quase ninguém tem zero inadimplência, então a própria resposta dele constrói o argumento.
+  <span class="dest">Deu o número → <b>Conversando</b>. Silêncio → F3.3.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F3.3 — D+8, oferece o degrau menor</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">8 dias, 2 follow-ups sem resposta, lead tinha até 150 alunos.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+8, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se os R$ 99 não couberam agora, começa no Starter de R$ 49: cobra sozinho no vencimento e já resolve o básico.
+Quando você crescer, sobe de plano num clique — sem fidelidade e sem multa.
+Quer começar por ele?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — trial como resposta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Antes de você decidir qualquer valor: dá pra testar de graça primeiro.
+Link: {{link_cadastro}}
+Usa com seus alunos de verdade e depois a gente conversa sobre plano.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> o downsell para o Starter mantém a venda viva sem inventar desconto — e o upgrade sem fidelidade elimina o medo de começar pequeno.
+  <span class="dest">Aceitou → <b>Conversando</b>. Silêncio → F3.4.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F3.4 — D+14, encerramento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">14 dias, 3 follow-ups sem resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+14, manhã. Última desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou fechar seu atendimento, {{primeiro_nome}}.
+Fica o preço registrado pra quando fizer sentido: R$ 49, R$ 99 ou R$ 149 por mês, sem fidelidade.
+Me chama nesse número quando quiser — não precisa começar de novo.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pede o motivo</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Encerrando aqui. Só um favor, se puder: me responde em uma palavra o que faltou — preço, confiança ou tempo?
+Me ajuda a melhorar e não te custa nada.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B costuma trazer resposta de gente que ignorou tudo, porque pede ajuda em vez de pedir venda — e a resposta às vezes reabre o negócio.
+  <span class="dest">Silêncio → <b>Perdido</b> + reativação em 60 dias.</span></p>
+</article>
+
+<h3 id="s3-f4">3.5 Fila 4 — recebeu o link e não criou conta</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F4.1 — D+1, remove o obstáculo</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Link enviado há 24h, nenhuma conta criada com esse telefone, sem resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, vi que você ainda não criou a conta.
+Travou em alguma coisa ou foi só falta de tempo mesmo?
+Se for tempo: leva 5 minutos e não pede cartão em nenhum momento.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — marca hora</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Proposta: escolhe um horário hoje que eu fico aqui no WhatsApp com você enquanto cria a conta.
+Você faz, eu vou falando o que clicar. Dá 5 minutos.
+Manhã ou fim do dia?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> "não pede cartão" mata o medo silencioso que mais trava cadastro. A variante B transforma uma tarefa solitária em compromisso com uma pessoa, e é o que mais converte nesse público.
+  <span class="dest">Criou → sobe sozinho para <b>Criou conta</b>. Silêncio → F4.2.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F4.2 — D+3, faz por ele</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias com link enviado e sem conta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se o que está pesando é cadastrar os alunos: me manda a planilha (ou a lista mesmo) que eu te ajudo a importar.
+Você conecta o WhatsApp e eu cuido do resto com você.
+Topa?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — o mínimo viável</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Não precisa cadastrar todo mundo pra testar.
+Coloca 3 alunos, conecta o WhatsApp e vê a cobrança saindo do seu número.
+Se não te convencer em 10 minutos, some daqui que eu não insisto: {{link_cadastro}}</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B ataca a crença de que "só dá pra testar depois de cadastrar todo mundo" — que é a razão nº 1 de conta não criada nesse público.
+  <span class="dest">Silêncio → F4.3.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-aguardando">Aguardando</span><span class="msg-title">F4.3 — D+7, encerramento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">7 dias com link e sem conta, 2 follow-ups.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+7, manhã. Última desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou parar de te lembrar do cadastro.
+O link fica valendo do mesmo jeito: {{link_cadastro}}
+Se um dia você criar a conta e travar em algo, me chama que eu te destravo em 5 minutos.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta honesta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Encerrando por aqui.
+Só me tira uma dúvida antes, em uma linha: foi falta de tempo ou você desistiu da ideia?
+Qualquer resposta serve e eu não insisto depois.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> mantém o link vivo (uma parte cria conta semanas depois) e promete suporte no ponto exato onde ele imagina que vai travar.
+  <span class="dest">Silêncio → <b>Perdido</b> + reativação em 30 dias.</span></p>
+</article>
+
+<h3 id="s3-f5">3.6 Fila 5 — sumiu na hora de pagar</h3>
+<div class="box warn">
+  <span class="bt">Aqui a pressa é justificada</span>
+  <p>Quem chegou na tela de pagamento e não concluiu está a um empurrão da compra. É a única fila em que você responde em <strong>horas</strong>, não em dias. Mas continua valendo: um follow-up por dia, dentro de 8h–20h.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">F5.1 — +3h, checagem técnica</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Escolheu plano / abriu o pagamento e não concluiu em 3h.</span></div>
+    <div><span class="k">Momento</span><span class="v">Mesmo dia, 3h depois, dentro da janela.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, vi que o pagamento não completou.
+Deu erro no Pix/cartão ou você travou na escolha do plano?
+Me fala qual dos dois que eu resolvo agora.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — assume o técnico</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se o Pix não gerou ou o cartão recusou, me avisa que eu te mando outra forma.
+Tem Pix e cartão, você escolhe.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> metade dos abandonos de pagamento é problema técnico, não decisão. Perguntar "erro ou dúvida" separa os dois em uma mensagem.
+  <span class="dest">Pagou → sobe sozinho para <b>Pagante</b>. Respondeu dúvida → <b>Conversando</b>. Silêncio → F5.2.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">F5.2 — D+1, reforça o que ele já construiu</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">24h desde o abandono, conta ativa, sem pagamento.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, você já tem {{qtd_alunos}} alunos cadastrados e o WhatsApp conectado.
+Falta só liberar o plano pra cobrança continuar rodando sozinha no mês que vem.
+Prefere Pix ou cartão?</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem os dados de uso</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, sua conta já está configurada — falta só liberar o plano pra cobrança continuar rodando sozinha.
+Prefere Pix ou cartão?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — perda concreta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Seu trabalho de cadastrar tudo já está feito e salvo.
+Sem o plano, a cobrança do próximo vencimento não sai e você volta a mandar mensagem na mão.
+Te mando o link do pagamento?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> lembra o esforço já investido (ele não quer jogar fora) e a pergunta "Pix ou cartão" pressupõe a compra sem pressionar.
+  <span class="dest">Silêncio → F5.3.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">F5.3 — D+3, ajusta o plano</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias sem pagamento, 2 follow-ups.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se o plano que você escolheu ficou grande pro momento, dá pra começar no de baixo e subir depois — sem multa nenhuma.
+Com {{qtd_alunos}} alunos, o {{plano_sugerido}} é o que eu recomendaria.
+Quer que eu te mande o link desse?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta direta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Me diz com sinceridade: você desistiu ou só não deu tempo de pagar?
+As duas respostas estão ok, eu só preciso saber se paro de te chamar.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> quem abandona pagamento muitas vezes só travou na escolha do plano — oferecer o degrau menor resolve sem desconto.
+  <span class="dest">Silêncio → F5.4.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">F5.4 — D+7, encerramento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">7 dias sem pagamento, 3 follow-ups.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+7, manhã. Última desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou parar de te chamar sobre o pagamento.
+Sua conta e seus cadastros continuam salvos — quando quiser ligar de novo, é só liberar o plano e a cobrança volta a sair.
+Me chama aqui quando for a hora.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — porta aberta com prazo dele</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Encerrando o assunto pagamento.
+Se for questão de mês — tipo "só na virada do semestre" — me fala a data que eu te chamo nela e não antes.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B captura data futura e transforma um perdido em agendamento real, que é o melhor resultado possível dessa fila depois do pagamento.
+  <span class="dest">Deu uma data → <b>Aguardando</b> com lembrete na data. Silêncio → <b>Perdido</b> + reativação em 30 dias.</span></p>
+</article>
+</section>
+
+<section id="s4">
+<h2>4. Banco de objeções</h2>
+<p class="lead">Cada bloco abre com a tradução da frase — <strong>o que ele está dizendo de verdade</strong> —, depois a resposta pronta, uma variante e o próximo passo que você pede. Objeção respondida sem próximo passo vira conversa que morre educada.</p>
+
+<div class="box warn">
+  <span class="bt">A regra das objeções</span>
+  <p>Nunca comece com "entendo, mas". Comece concordando com o fato e discordando da conclusão. E <strong>toda resposta de objeção termina com um pedido</strong>: o link, uma data, um número. Sem isso você só informou.</p>
+</div>
+
+<details class="obj"><summary>4.1 — "Tá caro" / "Não tenho condição agora"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "não tenho certeza de que isso vai me dar retorno". Ele gasta mais que isso em bola e colete. O problema é risco percebido, não valor absoluto.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Entendi. Faz essa conta: quanto você deixou de receber de mensalidade atrasada no mês passado?
+Se for R$ 100 que seja, o plano de R$ 99 se pagou.
+E antes de pagar qualquer coisa você testa de graça com seus alunos. Quer o link?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Tem o de R$ 49 também — cobra sozinho no vencimento e resolve o básico pra até 50 alunos.
+Começa por ele, e se crescer você sobe de plano num clique.
+Quantos alunos você tem hoje?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> link de cadastro ou o número de alunos. <span class="dest">Aceitou → <b>Conversando</b>. Empacou → <b>Aguardando</b>, Fila 3.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.2 — "Tenho poucos alunos, não compensa"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "eu ainda dou conta na mão". E é meio verdade — com 15 alunos ele consegue. O ângulo certo não é hoje, é o gargalo que trava o crescimento dele.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Com poucos alunos você dá conta mesmo, é verdade.
+O problema aparece quando dobra: aí a cobrança vira o motivo de você não querer crescer.
+Com o Starter de R$ 49 você já deixa isso resolvido antes de virar problema. Quantos alunos você tem?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Justo. Mas me responde uma: dos seus alunos, algum atrasou o mês passado?
+Se atrasou um só, você já gastou mais tempo cobrando do que gastaria configurando isso aqui.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> número de alunos e de atrasos. <span class="dest">→ <b>Conversando</b>; se realmente tiver menos de 10 alunos, ver seção 6.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.3 — "Vou ver com meu sócio"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> ou o sócio existe e decide junto, ou é um "não" educado. Você precisa descobrir qual dos dois — e, se o sócio existe, armar ele com o argumento certo.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Fechado. Pra facilitar sua conversa com ele, o resumo é: R$ 99/mês, sem fidelidade, cobrança sai do WhatsApp de vocês e o teste é grátis antes de pagar.
+Que dia vocês se falam? Eu te chamo no dia seguinte.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Perfeito. Enquanto isso, cria a conta e conecta o WhatsApp — é grátis e não compromete nada.
+Aí você mostra funcionando pra ele em vez de explicar. Convence muito mais rápido.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> uma data. <span class="dest">Deu data → <b>Aguardando</b> com lembrete. Fugiu da data → é "não", trate como Fila 3.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.4 — "Vou pensar"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "tem alguma coisa que eu não perguntei e você não respondeu". "Vou pensar" quase nunca é sobre pensar.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Claro. Só me diz o que você vai pensar: se é o preço, se é o tempo pra configurar, ou se é confiar que funciona.
+Qualquer um dos três eu te respondo agora e você pensa com a informação completa.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Beleza. Pensar com a conta criada é mais fácil do que pensar no escuro — o teste é grátis e não pede cartão.
+{{link_cadastro}}
+Te chamo quinta pra saber o que você achou, pode ser?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> nomear a dúvida real ou marcar o dia do retorno. <span class="dest">→ <b>Aguardando</b> com data. Sem data → Fila 3.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.5 — "Me manda por escrito" / "manda tudo aí que eu leio depois"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "não quero conversar agora". Se você mandar um textão, ele não lê e você perde o lead. Mande pouco e mantenha uma pergunta viva.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Mando, e vai ser curto:
+Cobrança de mensalidade automática saindo do seu próprio WhatsApp, Pix com baixa na hora, turmas e chamada.
+R$ 49 (até 50 alunos), R$ 99 (até 150) ou R$ 149 (até 500). Sem fidelidade, teste grátis antes.
+Se fizer sentido, é só me responder aqui.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Te mando, mas escrito ninguém lê direito.
+Mais fácil: {{link_demo}} — tem tudo lá, preço incluso.
+Depois me diz só uma coisa: quantos alunos você tem?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> uma resposta curta dele. <span class="dest">→ <b>Aguardando</b>, Fila 3 se sumir.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.6 — "Já uso planilha e funciona"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "eu tenho orgulho do meu controle". Nunca ataque a planilha — ela funciona mesmo, para anotar. O que ela não faz é cobrar.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Planilha é ótima pra anotar. O problema é que ela não manda mensagem pra ninguém no dia do vencimento — quem manda é você.
+O Mensalli faz essa parte sozinho, do seu próprio número.
+E dá pra importar sua planilha pra cá, não perde nada. Quer testar com ela?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Continua usando a planilha se quiser, sem problema.
+Só me responde: quem lembra o aluno que venceu dia 10 — a planilha ou você?
+É exatamente essa parte que a gente tira do seu colo.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> a planilha dele, para importar. <span class="dest">Mandou a planilha → <b>Conversando</b> quente.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.7 — "Já uso outro sistema" (Sponte, Evo, Tecnofit, o sistema do sobrinho)</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "não quero migrar tudo de novo". Não brigue com o concorrente — pergunte se a cobrança por WhatsApp funciona lá. Na maioria das vezes é o pedaço mais fraco.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Boa, então você já é organizado. Me tira uma dúvida: lá a cobrança sai sozinha pelo WhatsApp, no seu próprio número?
+Essa é a parte que a maioria dos sistemas não faz — e é a que trava a inadimplência.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Se lá já resolve, ótimo, não vou te empurrar troca.
+Só me diz uma coisa: quanto você paga por mês e quantas mensalidades ainda atrasam?
+Se os dois números estiverem altos, vale a gente conversar 5 minutos.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> descobrir a lacuna do sistema atual. <span class="dest">Reclamou do atual → <b>Conversando</b>. Elogiou tudo → <b>Aguardando</b>, reativação em 60 dias.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.8 — "Meu número vai ser banido"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "já ouvi história de gente que perdeu o número e o meu número é meu negócio inteiro". Medo legítimo, e a resposta é técnica e honesta.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Usando como o sistema foi feito, não.
+O que derruba número é lista comprada e disparo em massa pra desconhecido. O Mensalli só manda cobrança e aviso pra quem você mesmo cadastrou — gente que já é seu aluno e já fala com você.
+Não existe disparo pra lista aqui.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Medo justo, seu número é seu negócio.
+A diferença é pra quem a mensagem vai: seus responsáveis cadastrados, que esperam sua mensagem, não uma lista de desconhecidos.
+É por isso que sai do seu número e não de um robô estranho.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> conectar e testar com poucos alunos. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.9 — "Meus alunos pagam em dinheiro na mão"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "meu sistema é analógico, isso não vai encaixar". Encaixa: baixa manual existe e o dinheiro continua sendo dinheiro.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Sem problema. Pagou em dinheiro, você dá baixa em dois toques e o sistema para de cobrar aquele aluno na hora.
+E quem quiser pagar por Pix pelo link, cai a baixa sozinha.
+Você continua recebendo do jeito que quiser — só não precisa mais lembrar quem pagou.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Dinheiro segue valendo. O que muda é o controle: você marca como pago e a cobrança para.
+Na prática, o dono que testa costuma ver metade dos alunos migrando pro Pix sozinhos, porque é mais fácil pra eles também.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> testar com 3 alunos. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.10 — "Não tenho tempo de cadastrar 80 alunos"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "isso vai me custar um domingo inteiro". É a objeção mais fácil de derrubar e a mais subestimada.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Não precisa digitar um por um: se você tiver planilha, dá pra importar de uma vez.
+Me manda a sua que eu te ajudo a subir.
+E pra testar nem precisa dos 80 — 3 alunos já mostram como funciona.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Faz o seguinte: cadastra só a turma que mais atrasa.
+Se a cobrança dessa turma melhorar, você cadastra o resto com vontade. Se não melhorar, não perdeu o domingo.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> a planilha ou o compromisso de cadastrar uma turma. <span class="dest">→ <b>Conversando</b> / trial.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.11 — "Não sei mexer em sistema"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "tenho medo de passar vergonha e de travar sozinho". Resposta: ninguém fica sozinho, e o produto tem 3 passos.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">São 3 telas: conectar o WhatsApp num QR Code, cadastrar as turmas e ligar a cobrança.
+Não instala nada, é tudo pelo navegador do celular.
+E você não faz sozinho: escolhe um horário que eu te acompanho por aqui enquanto você clica.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Se você usa WhatsApp, você sabe mexer nisso.
+O passo mais "técnico" é ler um QR Code com a câmera — igual você faz pra pagar Pix.
+Topa fazer esse primeiro passo agora comigo?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> um horário para fazer juntos. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.12 — "Tem fidelidade?"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "já me prenderam num contrato antes". Resposta curta é mais forte que resposta explicada.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Não tem. Mês a mês, sem fidelidade e sem multa de cancelamento.
+Se você quiser sair no segundo mês, sai e pronto.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Zero fidelidade. E antes disso tem teste grátis, então você nem precisa acreditar em mim: usa e vê.
+Quer o link?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> link. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.13 — "Tem taxa por transação? Vocês pegam % da mensalidade?"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "o preço da tabela é o preço mesmo, ou tem pegadinha?". Responda o que você sabe e não invente o resto.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">O que você paga pro Mensalli é o plano: R$ 49, R$ 99 ou R$ 149 por mês, com o limite de alunos e mensagens de cada um.
+Não tem porcentagem da mensalidade do seu aluno indo pra gente.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">É plano fechado por mês, não é comissão em cima do que você recebe.
+Você paga o mesmo valor cobrando 30 ou 130 mensalidades, dentro do limite do plano.</pre></div>
+<div class="box stop"><span class="bt">Atenção de quem atende</span><p>Se ele perguntar especificamente sobre <strong>taxa do meio de pagamento</strong> (o gateway que processa o Pix/cartão), <strong>não improvise</strong>: confirme internamente antes de responder. Uma resposta errada sobre taxa é a coisa que mais gera cancelamento no primeiro mês.</p></div>
+<p class="why"><strong>Próximo passo:</strong> link, ou "te confirmo isso em minutos". <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.14 — "E se eu quiser cancelar?"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "quero uma saída antes de entrar". Quem pergunta isso está perto de comprar — está planejando o pior cenário.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Cancela quando quiser, sem multa. Não tem fidelidade.
+É mês a mês: parou de fazer sentido, você para de pagar.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Sem multa e sem carência. E o teste é grátis antes de qualquer pagamento, então o risco de você entrar é praticamente zero.
+Quer testar essa semana?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> data para começar o teste. <span class="dest">→ <b>Conversando</b>, provavelmente fecha.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.15 — "Funciona no celular?" / "Preciso instalar alguma coisa?"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "eu não tenho computador" — o que é verdade para boa parte desse público, e é ótimo para você.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Funciona no celular e no computador, tudo pelo navegador.
+Não instala nada, não ocupa memória do aparelho.
+Dá pra fazer tudo do celular, entre uma aula e outra.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Só o navegador do celular. Nada de app pra baixar.
+Abre o link, entra e usa: {{link_cadastro}}</pre></div>
+<p class="why"><strong>Próximo passo:</strong> abrir o link no celular agora. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.16 — "Meu WhatsApp é Business" / "é API oficial"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "será que meu número específico dá certo?". Business é o caso comum e conecta igual.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta — WhatsApp Business</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Business funciona normal. A conexão é por QR Code, igual você faz no WhatsApp Web.
+Suas conversas continuam lá do mesmo jeito, você só autoriza o sistema a mandar as cobranças pelo mesmo número.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B — se ele disser "API oficial da Meta"</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Se o seu número já está numa API oficial da Meta, me fala qual é o serviço que você usa hoje que eu confiro o seu caso antes de te prometer qualquer coisa.
+Não quero te dar resposta errada e te dar trabalho depois.</pre></div>
+<div class="box warn"><span class="bt">Atenção de quem atende</span><p>Número em API oficial não é o caminho padrão do produto. <strong>Não afirme que funciona.</strong> Colete a informação e confirme internamente antes de responder.</p></div>
+<p class="why"><strong>Próximo passo:</strong> conectar (Business) ou coletar detalhe (API). <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.17 — "Vou esperar virar o ano / o semestre"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "não é prioridade agora". A saída é diminuir o custo de começar e capturar a data.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Faz sentido virar o ano com isso pronto — só que a virada é justamente o mês mais corrido.
+Deixa configurado agora, com calma, e no dia 1º você só liga.
+Te mando o link pra ir montando aos poucos?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Beleza. Me fala a data exata que você quer começar que eu te chamo nela — e não te encho antes disso.
+Combinado?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> uma data. <span class="dest">→ <b>Aguardando</b> com lembrete na data. Sem data → Fila 3.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.18 — "Vou esperar a temporada começar"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "só penso em dinheiro quando tem aluno entrando". Vale para quem fala em temporada, em semestre ou na virada do ano — o argumento é o mesmo: a captação vem antes.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Antes da temporada abrir é quando isso mais serve: o link de aula experimental você cola no Instagram e a pessoa marca direto na sua agenda.
+Chegar com a temporada começada é chegar tarde pra captação.
+Quando começa a sua?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Entendi. Só lembrando que o teste é grátis: dá pra deixar tudo pronto agora e começar a cobrar só quando a temporada abrir.
+Configurar no sufoco da primeira semana é o que costuma dar errado.</pre></div>
+<p class="why"><strong>Por que funciona:</strong> o link de experimental (Premium) é o único argumento que transforma "esperar a temporada" em "preciso disso antes da temporada". <span class="dest">→ <b>Aguardando</b> com data, ou <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.19 — "Meu contador cuida disso"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> confundiu cobrança com contabilidade. Separe os dois sem fazer ele se sentir burro.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">O contador cuida do imposto e do fechamento — isso continua com ele.
+O que a gente faz é antes disso: lembrar quem vence dia 10 e registrar quem pagou.
+Seu contador não manda mensagem pro responsável, né?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Ótimo, então a parte chata do imposto já está resolvida.
+O que sobra pra você é correr atrás de mensalidade atrasada — e é exatamente essa parte que some com o Mensalli.
+Quantas atrasam por mês aí?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> número de atrasos. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.20 — "Manda o contrato que eu vejo"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> ou ele quer legitimidade (empresa séria), ou está adiando com elegância. Trate como pedido legítimo e devolva para o teste.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Não tem contrato de fidelidade pra assinar — é assinatura mensal, você cancela quando quiser.
+Os termos ficam na hora de contratar o plano, dentro do sistema.
+Antes disso o teste é grátis e não te prende a nada. Quer criar a conta e ver por dentro?</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Contrato mesmo você vai usar aqui do outro lado: dá pra gerar contrato com assinatura digital pros seus alunos, no plano de R$ 99.
+Da nossa parte é mês a mês, sem amarra.
+Faz sentido pra você?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> criar a conta. <span class="dest">→ <b>Conversando</b>; se insistir em documento formal, ver seção 6 (pode ser rede grande).</span></p>
+</div></details>
+
+<details class="obj"><summary>4.21 — "O dinheiro cai onde? Vocês ficam com a mensalidade?"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "vou perder o controle do meu caixa". Medo legítimo e decisivo — responda com clareza total.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">O dinheiro cai na conta que você conectar — é sua, não passa pela gente.
+O que o sistema faz é registrar a baixa: pagou pelo link, ele marca como pago e para de cobrar aquele aluno.
+Você continua dono do caixa, só para de conferir extrato na mão.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">A gente não segura mensalidade de ninguém.
+Você recebe do jeito que já recebe; o Mensalli cobra, registra e para de cobrar quem pagou.
+Quer ver isso funcionando com 3 alunos seus?</pre></div>
+<p class="why"><strong>Próximo passo:</strong> teste com poucos alunos. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+
+<details class="obj"><summary>4.22 — "E se o pessoal não abrir o link? Meu público é simples"</summary><div class="objbody">
+<p class="behind"><b>O que ele está dizendo de verdade:</b> "meu pessoal não é de tecnologia". Só que eles já usam WhatsApp e Pix — que é exatamente onde a coisa acontece.</p>
+<div class="block"><div class="block-head"><span class="block-label">Resposta</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Eles não precisam aprender nada novo: recebem a mensagem no WhatsApp, do número que já conhecem, e pagam por Pix.
+Quem quiser ver histórico e 2ª via abre o portal e resolve sozinho, sem te perguntar.
+E quem preferir pagar em dinheiro, continua pagando.</pre></div>
+<div class="block b-alt"><div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+<pre class="txt">Seu público já paga Pix na padaria — é a mesma coisa.
+A diferença é que a mensagem chega do número que ele já conhece, não de um sistema estranho. Por isso funciona.</pre></div>
+<p class="why"><strong>Próximo passo:</strong> testar com a turma que mais atrasa. <span class="dest">→ <b>Conversando</b>.</span></p>
+</div></details>
+</section>
+
+<section id="s5">
+<h2>5. Trial — a cadência de ativação</h2>
+<p class="lead">Esta é a seção mais importante do documento. Um lead em <code>criou_conta</code> já custou anúncio, atendimento e tempo. O que decide se ele vira <code>pagante</code> não é o preço nem a demo: é <strong>escanear o QR Code</strong>.</p>
+
+<div class="box good">
+  <span class="bt">A única meta do trial</span>
+  <p><strong>71% de quem conecta o WhatsApp vira pagante. 12% de quem não conecta.</strong> Se o lead conectou, você já ganhou seis vezes mais chance. Toda mensagem desta seção existe para produzir esse único evento — e as mensagens de cadastro, régua e plano só entram <em>depois</em> que ele aconteceu.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Estado da conta</th><th>Mensagens</th><th>Dias</th><th>O que estamos comprando</th></tr></thead>
+<tbody>
+<tr><td>Acabou de criar</td><td>1</td><td>D0, até 10 min</td><td>O primeiro clique dentro do produto</td></tr>
+<tr><td>Criou e nunca mais abriu</td><td>3</td><td>D+1 · D+3 · D+5</td><td>Voltar ao produto</td></tr>
+<tr><td><strong>Abriu e não conectou o WhatsApp</strong></td><td><strong>4</strong></td><td>D+1 · D+2 · D+4 · D+6</td><td><strong>O QR Code</strong></td></tr>
+<tr><td>Conectou, zero alunos</td><td>2</td><td>D+1 · D+3</td><td>3 alunos cadastrados</td></tr>
+<tr><td>Tem alunos, régua desligada</td><td>2</td><td>D+1 · D+3</td><td>A primeira cobrança saindo</td></tr>
+<tr><td>Usando bem</td><td>2</td><td>quando houver resultado · D-3</td><td>A conversa de plano</td></tr>
+<tr><td>Trial acabando</td><td>3</td><td>D-3 · D-1 · dia 0</td><td>A decisão</td></tr>
+<tr><td>Trial vencido</td><td>3</td><td>D+1 · D+3 · D+7</td><td>Recuperação</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">Regra de sobreposição: <strong>uma mensagem por dia, no máximo</strong>. Se o lead cair em duas filas no mesmo dia (ex.: não conectou e o trial está acabando), vale sempre a fila do <strong>QR Code</strong>.</p>
+
+<h3 id="s5-boas">5.1 Acabou de criar a conta</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.1 — Boas-vindas com um único pedido</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Conta criada, telefone casou com o lead do board (promoção automática para <code>criou_conta</code>).</span></div>
+    <div><span class="k">Momento</span><span class="v">D0, até 10 minutos depois do cadastro, dentro de 8h–20h.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Boa, {{primeiro_nome}}! Conta criada.
+Faz só uma coisa agora, antes de fechar: conecta o WhatsApp no QR Code. É menos de um minuto e é o que faz a cobrança sair do seu número.
+Depois disso a gente cadastra os alunos com calma.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Boa, conta criada!
+Faz só uma coisa agora, antes de fechar: conecta o WhatsApp no QR Code. É menos de um minuto e é o que faz a cobrança sair do seu número.
+Depois disso a gente cadastra os alunos com calma.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — fica junto</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Conta criada, {{primeiro_nome}}.
+Tô aqui agora se você quiser fazer o passo do QR Code comigo — é abrir a tela de conexão e ler com a câmera.
+Me manda "ok" quando conectar que eu confiro daqui.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> um único pedido, e é o pedido certo. Adiar explicitamente o cadastro de alunos ("depois, com calma") tira o peso que faz o cara fechar a aba.
+  <span class="dest">Conectou → 5.4. Não conectou em 24h → 5.3.</span></p>
+</article>
+
+<h3 id="s5-sumiu">5.2 Criou conta e não abriu mais</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.2.a — D+1, zero atividade</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Conta criada há 24h, nenhum acesso além do cadastro, WhatsApp não conectado.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, sua conta tá criada mas parada.
+Não precisa de tempo livre pra isso: só o QR Code, um minuto, e a parte que importa já está de pé.
+Consegue agora ou te chamo mais tarde?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — remove a expectativa de esforço</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Você criou a conta ontem e não voltou — normal, o dia come a gente.
+Não precisa configurar tudo hoje. Só conecta o WhatsApp e deixa lá.
+O resto a gente faz junto quando você tiver 10 minutos.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a razão nº 1 do abandono é achar que "vai dar trabalho". Cortar a tarefa para um minuto muda a decisão dele.
+  <span class="dest">Abriu/conectou → 5.3 ou 5.4. Nada → 5.2.b.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.2.b — D+3, oferece companhia</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias de conta criada, zero atividade.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Escolhe um horário hoje ou amanhã que eu te acompanho por aqui enquanto você configura.
+Você clica, eu vou falando. Dá 10 minutos.
+Manhã ou fim do dia?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — descobre o motivo real</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Me diz o que travou: falta de tempo, dúvida em algum passo, ou você olhou e achou que não era o que esperava?
+Qualquer resposta serve — se for a terceira eu prefiro saber e te deixar em paz.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> acompanhamento ao vivo é a alavanca mais barata que existe nesse funil, e a variante B dá permissão para o "não", que é melhor que silêncio.
+  <span class="dest">Marcou horário → <b>Criou conta</b> ativo. Silêncio → 5.2.c.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.2.c — D+5, encerramento do trial abandonado</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">5 dias, conta zerada, 2 follow-ups sem resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+5, manhã. Última desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou parar de te lembrar da conta.
+Ela fica salva do jeito que está — quando você tiver 10 minutos, é só entrar e conectar o WhatsApp.
+Se precisar de ajuda nesse dia, me chama aqui.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Última mensagem sobre isso: você criou a conta e não voltou.
+Se foi porque não é o momento, tudo bem — me responde "agora não" que eu encerro e não te chamo mais.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> encerra sem culpa e mantém o ativo (a conta) vivo. Quem responde "agora não" pode voltar na reativação de 30 dias com contexto.
+  <span class="dest">Silêncio → <b>Perdido</b> + reativação em 30 dias.</span></p>
+</article>
+
+<h3 id="s5-qr">5.3 Abriu o sistema e não conectou o WhatsApp</h3>
+<div class="box stop">
+  <span class="bt">A fila mais importante do playbook</span>
+  <p>Este lead está a <strong>um QR Code</strong> de multiplicar por seis a chance de virar cliente. Nenhuma outra mensagem passa na frente desta. Se você tiver que escolher o que enviar hoje, envie esta.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.3.a — D+1, o passo único</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Conta com acesso registrado, WhatsApp não conectado há 24h.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, vi que você entrou mas não conectou o WhatsApp ainda.
+Sem esse passo o sistema não manda nada — é ele que faz a cobrança sair do seu próprio número.
+Abre a tela de conexão e lê o QR Code com a câmera. Um minuto.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vi que você entrou no sistema mas não conectou o WhatsApp ainda.
+Sem esse passo nada é enviado — é ele que faz a cobrança sair do seu próprio número.
+Abre a tela de conexão e lê o QR Code com a câmera. Um minuto.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta de diagnóstico</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Faltou só conectar o WhatsApp.
+Você não conectou por falta de tempo ou por dúvida de qual número usar?
+Se for dúvida, me fala e eu te oriento antes de você fazer.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> deixa explícito que sem o QR Code <em>nada acontece</em> — a maioria acha que a cobrança já está rodando. A variante B captura o medo silencioso de "conectar o número errado".
+  <span class="dest">Conectou → 5.4. Não → 5.3.b.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.3.b — D+2, mata o medo do banimento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">48h sem conectar, 1 follow-up já enviado.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+2, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se o que está te segurando é medo de dar problema no seu número, pode ficar tranquilo.
+A conexão é por QR Code, igual WhatsApp Web: suas conversas continuam suas e as mensagens vão só pra quem você cadastrar.
+O que derruba número é disparo pra lista de desconhecido — e isso o sistema não faz.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — reduz o risco a zero</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Dá pra conectar e não mandar nada pra ninguém ainda — a cobrança só sai quando você ligar.
+Conecta hoje só pra deixar de pé, e você decide depois quando liberar as mensagens.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B separa "conectar" de "disparar", que na cabeça dele são a mesma coisa. Essa separação destrava boa parte de quem travou por medo.
+  <span class="dest">Conectou → 5.4. Não → 5.3.c.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.3.c — D+4, faz junto agora</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">4 dias sem conectar, 2 follow-ups.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+4, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vamos fazer juntos agora: abre o sistema no computador ou em outro celular, vai na tela de conexão e me avisa quando o QR aparecer.
+Eu te falo o que clicar no seu WhatsApp. Leva um minuto de verdade.
+Consegue agora?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — o dado, sem enfeite</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Te falo com sinceridade: de cada 10 donos que conectam o WhatsApp, 7 seguem com a gente. Dos que não conectam, quase nenhum.
+Não é venda, é o que a gente vê todo mês.
+Conecta hoje e vê funcionando — se não valer, você some daqui sem me dever nada.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B usa o número real (71% × 12%) sem parecer discurso de vendedor, porque entrega junto a saída ("você some sem me dever nada").
+  <span class="dest">Conectou → 5.4. Não → 5.3.d.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.3.d — D+6, encerramento da fila do QR</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">6 dias sem conectar, 3 follow-ups sem resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+6, manhã. Última desta fila.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou parar de falar do QR Code.
+Sua conta continua lá e o passo é o mesmo quando você quiser: tela de conexão, câmera, um minuto.
+Se travar nesse dia, me chama que eu resolvo com você na hora.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta final</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Antes de eu encerrar: teve alguma coisa que te fez desconfiar de conectar o WhatsApp?
+Se teve, me fala — me ajuda a melhorar e talvez eu consiga te tranquilizar em uma linha.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B costuma trazer a objeção verdadeira ("achei que ia perder minhas conversas", "meu número é pessoal") — que você responde e reabre o caso.
+  <span class="dest">Silêncio → <b>Perdido</b> + reativação em 30 dias.</span></p>
+</article>
+
+<h3 id="s5-alunos">5.4 Conectou o WhatsApp e não cadastrou nenhum aluno</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.4.a — D+1, comemora e pede 3</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">WhatsApp conectado, zero alunos cadastrados há 24h.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">WhatsApp conectado — a parte chata acabou.
+Agora cadastra 3 alunos só pra você ver a cobrança saindo do seu número. Não precisa cadastrar todo mundo hoje.
+Se tiver planilha, me manda que eu te ajudo a importar de uma vez.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — usa a turma que dói</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Conectado. Agora escolhe a turma que mais te dá dor de cabeça pra receber e cadastra só ela.
+Se a cobrança dessa turma melhorar, você cadastra o resto com vontade.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> reconhece a vitória e reduz o próximo passo a algo trivial. Pedir "todo mundo de uma vez" é o que congela esse lead.
+  <span class="dest">Cadastrou → 5.5. Não → 5.4.b.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.4.b — D+3, tira a tarefa da mão dele</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias conectado, zero alunos.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Me manda a lista dos alunos do jeito que você tiver — planilha, print do caderno, o que for.
+Eu te digo exatamente como subir isso sem digitar um por um.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — começa por um</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Cadastra 1 aluno só. Pode ser o seu próprio número como teste.
+Você vê a mensagem chegando do seu próprio WhatsApp e entende em 30 segundos por que isso muda a cobrança.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a variante B produz o momento "aha" com custo zero — ele vê a cobrança chegando no próprio celular, saindo do número dele.
+  <span class="dest">Cadastrou → 5.5. Silêncio → segue nas mensagens de fim de trial (5.7).</span></p>
+</article>
+
+<h3 id="s5-regua">5.5 Cadastrou alunos e não ligou a régua de cobrança</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.5.a — D+1, o último interruptor</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">WhatsApp conectado + alunos cadastrados + régua desligada há 24h.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Tá tudo pronto aí: WhatsApp conectado e {{qtd_alunos}} alunos cadastrados.
+Falta ligar a régua — é o que faz a cobrança sair sozinha no vencimento.
+Liga hoje que amanhã você já vê acontecendo sem mexer em nada.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem a contagem</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Tá tudo pronto aí: WhatsApp conectado e alunos cadastrados.
+Falta ligar a régua — é o que faz a cobrança sair sozinha no vencimento.
+Liga hoje que amanhã você já vê acontecendo sem mexer em nada.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — começa pelo mais leve</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se você tá com receio de mandar mensagem demais, liga só o aviso do dia do vencimento.
+É o mais leve e já resolve boa parte do atraso. Depois você decide se quer avisar antes e depois também.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> quem cadastrou e não ligou está com medo de incomodar os responsáveis. Oferecer a versão mais suave da régua remove exatamente esse freio.
+  <span class="dest">Ligou → 5.6. Não → 5.5.b.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.5.b — D+3, mostra o texto antes</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias com alunos cadastrados e régua desligada.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se o receio é o texto que vai chegar pro aluno, dá pra ler e editar antes de ligar — a mensagem é sua, escrita do seu jeito.
+Abre lá, ajusta as palavras e liga só depois que você gostar do texto.
+Quer que eu olhe com você?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — teste no próprio número</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Manda a cobrança de teste pro seu próprio WhatsApp antes de mandar pra qualquer aluno.
+Você lê como chega, ajusta o que não gostou, e aí liga pra valer.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> devolve o controle editorial. Quem tem negócio pequeno tem relação pessoal com o aluno e não vai deixar um sistema falar por ele sem ler antes.
+  <span class="dest">Ligou → 5.6. Silêncio → 5.7.</span></p>
+</article>
+
+<h3 id="s5-bem">5.6 Está usando bem — abrir a conversa de plano sem quebrar o clima</h3>
+<div class="box info">
+  <span class="bt">Regra de ouro</span>
+  <p>Com quem está usando bem, <strong>não venda: reporte</strong>. Traga o resultado que ele produziu e faça o plano parecer a consequência natural, não uma cobrança sua. E fale de plano <strong>antes</strong> do trial acabar — nunca no susto do último dia.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.6.a — Quando aconteceu um resultado</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Régua ligada + cobranças enviadas + pelo menos um pagamento registrado no período.</span></div>
+    <div><span class="k">Momento</span><span class="v">No dia seguinte ao resultado, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, a cobrança rodou e já teve gente pagando pelo link, sem você mandar mensagem pra ninguém.
+Era exatamente isso que a gente queria testar.
+Te faltam {{dias_restantes_trial}} dias de teste — quer que eu já deixe o {{plano_sugerido}} separado pra não parar no meio?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta antes de oferecer</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Como foi a primeira leva de cobrança? Alguém reclamou ou estranhou a mensagem?
+Se rolou tranquilo, a gente já resolve a parte do plano e você segue sem interrupção.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a compra vira continuidade de algo que já está funcionando. "Não parar no meio" é uma urgência verdadeira, não inventada.
+  <span class="dest">Aceitou → link de pagamento; pagou → <b>Pagante</b>. Adiou → 5.7.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.6.b — Usando bem, mas não falou de plano ainda</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Uso ativo, trial em D-5 a D-3, assunto plano nunca aberto.</span></div>
+    <div><span class="k">Momento</span><span class="v">D-3, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Você está usando direitinho, então vou tratar do chato agora e não em cima da hora: faltam {{dias_restantes_trial}} dias de teste.
+Com {{qtd_alunos}} alunos, o seu é o {{plano_sugerido}}.
+Prefere Pix ou cartão?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — checa antes de cobrar</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Antes de eu te falar de plano: tem alguma coisa que você esperava e não achou no sistema?
+Se tiver, me fala primeiro. Se estiver tudo certo, eu te mando o link do {{plano_sugerido}} e você segue sem interrupção.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> avisar cedo e chamar a conversa de "chata" desarma. A variante B compra confiança perguntando o que falta antes de pedir dinheiro.
+  <span class="dest">→ pagamento, ou <b>Aguardando</b> com objeção da seção 4.</span></p>
+</article>
+
+<h3 id="s5-fim">5.7 Trial acabando: D-3, D-1 e o dia de acabar</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.7.a — D-3</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Faltam 3 dias de trial, qualquer nível de uso.</span></div>
+    <div><span class="k">Momento</span><span class="v">D-3, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, seu teste acaba em {{dias_restantes_trial}} dias.
+Sem drama: se quiser continuar, é escolher o plano; se não quiser, não paga nada e a gente segue amigo.
+Quer continuar?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — para quem usou pouco</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Faltam {{dias_restantes_trial}} dias do seu teste e você mal usou.
+Dá tempo de fazer o que importa: conectar o WhatsApp e mandar uma cobrança de verdade.
+Quer fazer isso hoje comigo, antes de decidir qualquer coisa?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> avisa com folga e sem chantagem. A variante B reconhece que pedir decisão a quem não experimentou é perder o lead à toa.
+  <span class="dest">Quer continuar → pagamento. Usou pouco → volta para 5.3/5.4.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.7.b — D-1</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Falta 1 dia de trial, sem plano contratado.</span></div>
+    <div><span class="k">Momento</span><span class="v">D-1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Amanhã seu teste acaba, {{primeiro_nome}}.
+Se você liberar o {{plano_sugerido}} hoje, a cobrança do próximo vencimento sai normal e ninguém percebe diferença.
+Te mando o link do pagamento?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta binária</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Amanhã acaba o teste. Me responde só sim ou não: continua?
+Se for não, tudo bem — só me fala o motivo em uma palavra que eu encerro sem insistir.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a consequência é concreta e verdadeira (a cobrança do mês não sai). A variante B força a decisão sem pressionar e ainda coleta o motivo da perda.
+  <span class="dest">Sim → <b>Pagante</b>. Não → <b>Perdido</b> com motivo. Silêncio → 5.7.c.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.7.c — No dia em que acaba</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Último dia do trial, sem plano.</span></div>
+    <div><span class="k">Momento</span><span class="v">Dia 0, entre 9h e 11h (dá o dia inteiro para ele reagir).</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Hoje é o último dia do seu teste.
+Seus cadastros e sua conexão ficam salvos — se você liberar o plano depois, volta tudo do jeito que estava.
+Quer liberar hoje pra não ter corte?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — sem susto</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Último dia do teste hoje. Nada é apagado e ninguém vai te cobrar automaticamente.
+Se quiser seguir, me fala que eu te mando o link. Se não, encerro por aqui e fica tudo certo entre a gente.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> tirar o medo de perder os dados aumenta a conversão, ao contrário do que parece — o lead que teme perder tudo trava e não decide.
+  <span class="dest">→ <b>Pagante</b> ou fila 5.8.</span></p>
+</article>
+
+<h3 id="s5-venc">5.8 Trial vencido</h3>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.8.a — D+1 do vencimento</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Trial vencido ontem, sem plano contratado.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+1, manhã.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Seu teste venceu ontem e a cobrança automática parou.
+Pra religar é só liberar o plano — tudo que você configurou está lá do mesmo jeito.
+Prefere Pix ou cartão?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — pergunta o que faltou</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Venceu ontem e você não liberou o plano.
+Foi decisão ou foi só passar batido no meio da correria?
+Se foi decisão, me fala o motivo que eu respeito e encerro.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> boa parte simplesmente esqueceu. A variante B separa esquecimento de recusa em uma mensagem, e você para de gastar fôlego com quem já decidiu.
+  <span class="dest">Religou → <b>Pagante</b>. Silêncio → 5.8.b.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.8.b — D+3, o vencimento chegando</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">3 dias de trial vencido, sem plano.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+3, tarde.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">O vencimento das suas mensalidades tá chegando e a cobrança não vai sair sozinha esse mês.
+Se quiser evitar de mandar tudo na mão de novo, dá pra religar hoje em 2 minutos.
+Quer o link?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — ajusta o plano</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Se o que travou foi o valor, começa no Starter de R$ 49 e sobe depois — sem multa.
+Com o seu número de alunos dá pra fazer isso tranquilo.
+Quer que eu te mande esse?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a dor volta a ser concreta na semana do vencimento — é o melhor momento do mês para recuperar um trial perdido.
+  <span class="dest">Silêncio → 5.8.c.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.8.c — D+7, encerramento e critério de parar</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">7 dias de trial vencido, 2 follow-ups sem resposta.</span></div>
+    <div><span class="k">Momento</span><span class="v">D+7, manhã. Última mensagem do ciclo de trial.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Encerrando por aqui.
+Sua conta fica salva com tudo que você montou — se um dia quiser religar, é só me chamar nesse número que eu te ponho pra rodar no mesmo dia.
+Sucesso aí, {{primeiro_nome}}.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — agenda o retorno</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou encerrar seu acompanhamento.
+Se for questão de mês — tipo "só quando a temporada abrir" — me fala a data que eu te chamo nela e não antes.</pre>
+  </div>
+  <div class="box warn"><span class="bt">Critério objetivo para parar</span><p>Pare quando: <strong>(a)</strong> 3 follow-ups sem nenhuma resposta depois do vencimento, <strong>ou (b)</strong> ele disse "não" de forma clara, <strong>ou (c)</strong> ele pediu para parar. Nos três casos: <span class="badge b-perdido">Perdido</span> e reativação só em 30 dias (60 se ele já tinha dito não).</p></div>
+  <p class="why"><strong>Por que funciona:</strong> encerra deixando o ativo (conta configurada) e a porta abertos, e a variante B converte perda em agendamento.
+  <span class="dest">→ <b>Perdido</b> + reativação.</span></p>
+</article>
+
+<h3 id="s5-ancora">5.9 Como falar de plano</h3>
+<div class="box info">
+  <span class="bt">Ancorar no Pro, sempre</span>
+  <p>Cite os três preços, mas <strong>recomende um</strong>. O Pro é a âncora porque faz o Starter parecer barato e o Premium parecer completo. Nunca apresente os três como iguais e peça para ele escolher — decisão demais trava esse público.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">5.9 — Qual plano, quando</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Conversa de plano aberta, número de alunos conhecido.</span></div>
+    <div><span class="k">Momento</span><span class="v">Qualquer ponto do trial a partir do primeiro resultado.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Pro (R$ 99) — a recomendação padrão</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">No seu caso é o Pro, R$ 99: até 150 alunos, cobrança antes, no dia e depois do vencimento, turmas com chamada e contrato assinado digital.
+É o que a maioria de quem tem o seu tamanho usa.
+Pix ou cartão?</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Starter (R$ 49) — quando é a escolha certa</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Com até 50 alunos e o objetivo de só parar de esquecer quem deve, o Starter de R$ 49 dá conta: cobra no vencimento e mostra tudo no painel.
+Se um dia você quiser avisar antes e depois também, sobe pro Pro — sem multa.</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Premium (R$ 149) — quando se justifica</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">O Premium (R$ 149) faz sentido quando você passa de 150 alunos ou quando quer captar aluno novo:
+entra o site do seu espaço, o link de aula experimental pro Instagram e as campanhas de WhatsApp.
+Se hoje seu gargalo é entrar aluno e não só receber, é esse.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — comparação em uma linha</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Resumo pra decidir rápido:
+R$ 49 = cobra no vencimento, até 50 alunos.
+R$ 99 = cobra antes, no dia e depois + turmas e chamada, até 150. (é o seu)
+R$ 149 = tudo isso + site e captação, até 500.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> cada plano tem um critério objetivo de escolha (tamanho e objetivo), então a recomendação soa técnica em vez de comercial. O "(é o seu)" na variante B fecha a decisão sem pedir nada.
+  <span class="dest">Escolheu → link de pagamento → <b>Pagante</b>. Adiou → Fila 5.</span></p>
+</article>
+</section>
+
+<section id="s6">
+<h2>6. Lead fora do perfil</h2>
+<p class="lead">Tráfego pago traz gente que não é cliente. O objetivo aqui é <strong>sair rápido, educado e sem queimar ponte</strong> — porque o cara que não é cliente hoje conhece três donos de escolinha.</p>
+<div class="box warn">
+  <span class="bt">Não force</span>
+  <p>Lead fora do perfil que você empurra vira trial abandonado, suporte caro e cancelamento no primeiro mês. Reconhecer rápido que não é cliente é ganho de operação, não perda de venda.</p>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">6.1 — Não é escolinha nem academia (loja, MEI de outro ramo, prestador)</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Ele descreve um negócio que não cobra mensalidade recorrente de aluno.</span></div>
+    <div><span class="k">Momento</span><span class="v">Assim que ficar claro. Não faça mais perguntas.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vou ser direto pra não te fazer perder tempo: o Mensalli é feito pra quem cobra mensalidade de aluno — escolinha, CT, academia, estúdio.
+No seu caso não vai encaixar direito.
+Se você conhecer alguém que cobra mensalidade de aluno, aí sim vale me indicar. Sucesso aí!</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — checa antes de descartar</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Só pra eu entender antes de te responder: você cobra alguma coisa todo mês do mesmo cliente?
+Se cobrar, pode encaixar. Se for venda avulsa, aí não é pra você e eu te falo na hora.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> honestidade rápida gera indicação; enrolação gera bloqueio. A variante B evita descartar cedo demais alguém que cobra recorrência sem se chamar de escolinha.
+  <span class="dest">→ <b>Perdido</b> (motivo: fora do perfil). Não entra em fila de reativação.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">6.2 — Rede grande, acima de 500 alunos</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Ele informa mais de 500 alunos, ou várias unidades/franquias.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato, com respeito ao tamanho dele.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Com esse tamanho você já passou do maior plano, que vai até 500 alunos.
+Me fala quantas unidades e quantos alunos no total que eu levo seu caso internamente e te retorno com uma resposta certa — não quero te prometer o que não vou entregar.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — começa por uma unidade</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Nesse volume o certo é a gente conversar antes de você sair contratando.
+Uma saída que costuma funcionar: testar com uma unidade só e ver se o modelo serve pra rede inteira.
+Faz sentido pra você?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> não inventa plano enterprise que não existe e não perde um lead grande — captura os dados e leva para dentro.
+  <span class="dest">→ <b>Aguardando</b>, marcado como caso especial. Nunca <b>Perdido</b> sem retorno interno.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">6.3 — Pessoa física curiosa, sem negócio</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">"Quero abrir uma escolinha ano que vem", "sou pai de aluno e queria saber", "tô estudando o mercado".</span></div>
+    <div><span class="k">Momento</span><span class="v">Assim que ficar claro que não há negócio rodando.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Boa sorte com o projeto — esse ramo é bom quando organizado.
+Enquanto você não tiver os primeiros alunos, o sistema não vai te servir de muita coisa.
+Quando bater 10 alunos pagando, me chama aqui que a gente monta a cobrança certinha.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — se ele já tem data de abertura</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Legal! Quando você pretende abrir?
+Me fala o mês que eu te chamo perto da data — aí a cobrança já nasce organizada, em vez de você arrumar bagunça depois.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> dá um critério objetivo de volta ("10 alunos pagando") e deixa a porta aberta sem gastar follow-up com quem não tem negócio.
+  <span class="dest">Com data → <b>Aguardando</b> com lembrete. Sem data → <b>Perdido</b>, reativação em 60 dias.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">6.4 — Concorrente ou curioso de mercado</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Perguntas sobre arquitetura, quantidade de clientes, como a integração funciona por dentro, pedido de acesso "só pra ver".</span></div>
+    <div><span class="k">Momento</span><span class="v">Assim que o padrão aparecer. Sem hostilidade.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Tudo que é público está no nosso site e nos planos: R$ 49, R$ 99 e R$ 149, sem fidelidade.
+Detalhe de bastidor eu não passo, você entende.
+Se você tiver alunos de verdade e quiser testar como cliente, é só falar.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — cordial e curta</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Sem problema em conversar, mas informação de operação eu não compartilho.
+Boa sorte no seu projeto — mercado tem espaço pra todo mundo.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> firme sem ser grosseiro. Ninguém ganha nada com atrito e esse mercado é pequeno — todo mundo se conhece.
+  <span class="dest">→ <b>Perdido</b> (motivo: concorrente). Fora de qualquer fila.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">6.5 — Vendedor querendo te vender algo</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Ofertas de tráfego, design, ERP, lista de leads, "parceria estratégica".</span></div>
+    <div><span class="k">Momento</span><span class="v">Uma resposta só. Não negocie.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Obrigado pelo contato, mas esse número é de atendimento a cliente, não de compras.
+Não vamos avançar por aqui. Sucesso!</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — se for oferta de lista/disparo</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">A gente não trabalha com lista comprada nem disparo em massa — é o oposto do que a gente faz aqui.
+Obrigado e sucesso.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> encerra em uma mensagem e não abre espaço para insistência. A variante B ainda reforça a posição da empresa sobre disparo, que é a nossa própria resposta de objeção.
+  <span class="dest">→ <b>Perdido</b>. Se insistir, bloqueie.</span></p>
+</article>
+</section>
+
+<section id="s7">
+<h2>7. Situações delicadas</h2>
+<p class="lead">Aqui o assunto não é conversão: é não estragar a marca, não queimar o número e tratar gente como gente. Uma dessas situações mal conduzida vira print no grupo de donos de academia e escolinha da cidade.</p>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">7.1 — Lead irritado ou grosseiro</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Resposta agressiva, ironia pesada, "para de me mandar mensagem" com xingamento.</span></div>
+    <div><span class="k">Momento</span><span class="v">Uma resposta, curta, sem revidar. Depois, silêncio.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Entendido, encerro aqui e não te chamo mais.
+Se um dia precisar, o número continua o mesmo.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — se a irritação for por excesso de mensagem</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Você tem razão, foi mensagem demais. Parei.
+Não vou te escrever de novo.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> não discutir é a única jogada. Dar razão quando ele tem razão encerra o atrito na hora e evita print circulando.
+  <span class="dest">→ <b>Perdido</b>. Marcar como <strong>não contatar</strong>. Fora de qualquer reativação.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-perdido">Perdido</span><span class="msg-title">7.2 — Pediu para parar de receber mensagem</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Qualquer variação de "para", "não quero mais", "me tira da lista", "sai".</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato, uma linha. E acabou.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Fechado, parei por aqui. Não te mando mais nada.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Combinado. Removi você do meu acompanhamento agora.</pre>
+  </div>
+  <div class="box stop">
+    <span class="bt">Regra que não se quebra</span>
+    <p><strong>Pare na hora.</strong> Confirme em uma linha, mova para <span class="badge b-perdido">Perdido</span> com marcação de <strong>não contatar</strong>, e <strong>nunca mais escreva</strong> — nem na reativação de 30 dias, nem em campanha, nem em "novidade do produto". Isso não é etiqueta: é o que protege o número da operação. Quem foi ignorado depois de pedir para parar denuncia, e denúncia derruba número.</p>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> confirmação curta encerra sem dar espaço para nova irritação. Qualquer palavra a mais soa como tentativa de reter.
+  <span class="dest">→ <b>Perdido</b> · não contatar · permanente.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">7.3 — Ex-cliente que cancelou e voltou a falar</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Telefone bate com conta cancelada. Confira o histórico <strong>antes</strong> de responder.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato, e sem fingir que não sabe quem é.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}, bom te ver de volta.
+Antes de qualquer coisa: o que te fez sair da última vez? Quero saber se aquilo já está resolvido antes de você entrar de novo.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — se o motivo antigo já foi resolvido</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Lembro do seu caso. Sua conta e seus cadastros continuam salvos do jeito que você deixou.
+Pra religar é só escolher o plano — não precisa refazer nada.
+Quer que eu te mande o link?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> perguntar o motivo da saída antes de vender de novo evita o segundo cancelamento, que é muito mais caro que o primeiro.
+  <span class="dest">→ <b>Conversando</b>. Se o motivo antigo não foi resolvido, seja honesto e diga.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-criou">Criou conta</span><span class="msg-title">7.4 — Teve problema técnico e está reclamando</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Relato de erro: WhatsApp desconectou, cobrança não saiu, pagamento não deu baixa.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato, prioridade máxima. Reclamação de cliente passa na frente de qualquer lead novo.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Vi aqui, e você tem razão em reclamar.
+Vou olhar sua conta agora e te dou uma resposta ainda hoje — se for coisa nossa, eu falo que é coisa nossa.
+Só me confirma: parou de funcionar em que dia?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — quando você já sabe a causa</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Achei: seu WhatsApp desconectou no dia [DIA] — por isso a cobrança não saiu.
+Reconecta pelo QR Code que eu confiro daqui se voltou. Depois eu te falo o que dá pra fazer com as cobranças que ficaram pra trás.</pre>
+  </div>
+  <div class="box warn"><span class="bt">Antes de mandar a variante B</span><p>Troque o trecho da data pelo dia real e <strong>confirme o diagnóstico antes de afirmar</strong>. Prometer causa errada para cliente irritado piora tudo. Se não souber, use o texto principal.</p></div>
+  <p class="why"><strong>Por que funciona:</strong> dar razão na primeira linha e assumir prazo ("ainda hoje") reduz a temperatura. Cliente irritado quer ser levado a sério, não receber desculpa formatada.
+  <span class="dest">Mantém em <b>Criou conta</b>/<b>Pagante</b> com marcação de incidente. Nunca mande follow-up comercial antes de resolver.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">7.5 — Lead duplicado (mesmo dono, dois números)</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Mesmo nome de negócio, mesma cidade ou mesmo dono aparecendo em dois cards.</span></div>
+    <div><span class="k">Momento</span><span class="v">Ao identificar. Responda só em um número.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, acho que a gente já está conversando pelo outro número do seu espaço.
+Prefere seguir por aqui ou por lá? Escolhe um que eu sigo só nele e paro de te duplicar mensagem.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — decide você</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Pra não te encher em dois lugares, vou seguir só por este número.
+Se preferir o outro, me avisa que eu troco.</pre>
+  </div>
+  <div class="box warn"><span class="bt">Higiene do board</span><p>Deixe <strong>um</strong> card ativo e marque o outro como duplicado em <span class="badge b-perdido">Perdido</span> (motivo: duplicado). Dois cards vivos = dois follow-ups no mesmo dia para a mesma pessoa, que é exatamente a regra que a gente não quebra.</p></div>
+  <p class="why"><strong>Por que funciona:</strong> mostra organização e evita o pior sintoma de operação amadora, que é a mesma empresa te mandando a mesma mensagem duas vezes.
+  <span class="dest">Card principal segue no estágio atual; o outro vai para <b>Perdido</b> (duplicado).</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-novo">Novo</span><span class="msg-title">7.6 — Lead que veio por indicação de cliente</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">Ele cita o nome de um cliente atual, ou o cliente avisa que vai indicar.</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato. Este lead tem o maior valor do funil — trate como tal.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Opa, {{primeiro_nome}}! Ele me falou de você, sim.
+Então vou direto ao ponto, do jeito que ele já conhece: quantos alunos você tem e como cobra hoje?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — usa a prova social do amigo</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Boa, indicação de quem já usa vale mais que qualquer anúncio.
+Se você quiser, pergunta pra ele como ficou a cobrança depois que ligou — a resposta dele te convence melhor que eu.
+Quantos alunos você tem?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> mandar o lead conferir com o indicador é contraintuitivo e altamente eficaz — passa segurança total e o indicador vende por você.
+  <span class="dest">→ <b>Conversando</b>, com prioridade de SLA (responder em minutos).</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-conversando">Conversando</span><span class="msg-title">7.7 — Lead pedindo desconto</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">"Faz por menos", "tem desconto?", "meu amigo pagou menos".</span></div>
+    <div><span class="k">Momento</span><span class="v">Imediato. Nunca ceda na primeira mensagem.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">1ª resposta — não dá desconto, remove o risco</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">O preço é esse mesmo pra todo mundo — é o que mantém barato pra você também.
+O que eu tenho de melhor que desconto é: teste grátis antes de pagar e nenhuma fidelidade.
+Você entra sem risco e sai quando quiser.</pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">2ª resposta — se ele insistir e o negócio for real</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Consigo fazer uma coisa: seu primeiro mês por nossa conta, você paga só a partir do segundo.
+Assim você usa de verdade, com seus alunos, e decide com a coisa rodando.
+Fecha assim?</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — desconto por tamanho, não por pressão</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Em vez de desconto, ajusto o plano: com os seus alunos, o Starter de R$ 49 já resolve o essencial.
+Prefiro te colocar no plano certo do que te dar desconto num plano grande demais.</pre>
+  </div>
+  <div class="box info">
+    <span class="bt">Por que "primeiro mês grátis" é melhor que "10% pra sempre"</span>
+    <p><strong>1)</strong> O desconto permanente corrói a receita todo mês, para sempre; o mês grátis custa uma vez. <strong>2)</strong> "10% pra sempre" ensina que o preço de tabela é mentira — e ele conta para os outros donos. <strong>3)</strong> O mês grátis empurra para o que realmente importa: usar o produto. Se ele conectar o WhatsApp e cobrar de verdade nesse mês, ele fica. <strong>Regra:</strong> só ofereça na segunda insistência, só para negócio real, e nunca invente porcentagem que não existe na tabela.</p>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> defender o preço uma vez aumenta o valor percebido; ceder de imediato destrói. E o mês grátis converte pedido de desconto em ativação.
+  <span class="dest">Aceitou → <b>Conversando</b> → trial. Continua pressionando por % → <b>Aguardando</b>, não ceda.</span></p>
+</article>
+</section>
+
+<section id="s8">
+<h2>8. Regras de operação</h2>
+
+<h3 id="s8-sla">8.1 SLA por estágio</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Estágio</th><th>Prazo de resposta</th><th>Frequência de revisão</th><th>Quem sai daqui vai para</th></tr></thead>
+<tbody>
+<tr><td><span class="badge b-novo">Novo</span></td><td><strong>Até 2 min</strong> (aceitável até 30 min). Nunca mais de 1h no horário comercial.</td><td>Fila zerada 3× ao dia: 9h, 13h, 18h</td><td>Conversando ou Perdido</td></tr>
+<tr><td><span class="badge b-conversando">Conversando</span></td><td>Até 15 min enquanto o papo está vivo</td><td>Todo dia de manhã</td><td>Aguardando, Criou conta ou Perdido</td></tr>
+<tr><td><span class="badge b-aguardando">Aguardando</span></td><td>Sem SLA de resposta; segue a cadência da fila</td><td>2× por semana (segunda e quinta)</td><td>Conversando, Criou conta ou Perdido</td></tr>
+<tr><td><span class="badge b-criou">Criou conta</span></td><td>Até 10 min após o cadastro; depois, cadência de ativação</td><td>Todo dia de manhã — <strong>é a fila mais valiosa</strong></td><td>Pagante ou Perdido</td></tr>
+<tr><td><span class="badge b-pagante">Pagante</span></td><td>Reclamação técnica: imediato, na frente de tudo</td><td>Semanal</td><td>—</td></tr>
+<tr><td><span class="badge b-perdido">Perdido</span></td><td>Sem contato</td><td>Mensal, só para montar a reativação</td><td>Novo (se ele voltar a falar)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="s8-tent">8.2 Máximo de tentativas antes de marcar Perdido</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Situação</th><th>Tentativas</th><th>Janela total</th><th>Depois</th></tr></thead>
+<tbody>
+<tr><td>Nunca respondeu (Fila 1)</td><td>4</td><td>7 dias</td><td>Perdido → reativação 30d</td></tr>
+<tr><td>Sumiu no meio do papo (Fila 2)</td><td>3</td><td>7 dias</td><td>Perdido → reativação 30d</td></tr>
+<tr><td>Sumiu depois do preço (Fila 3)</td><td>4</td><td>14 dias</td><td>Perdido → reativação 60d</td></tr>
+<tr><td>Não criou conta (Fila 4)</td><td>3</td><td>7 dias</td><td>Perdido → reativação 30d</td></tr>
+<tr><td>Não pagou (Fila 5)</td><td>4</td><td>7 dias</td><td>Perdido → reativação 30d</td></tr>
+<tr><td>Trial sem conectar WhatsApp (5.3)</td><td>4</td><td>6 dias</td><td>Perdido → reativação 30d</td></tr>
+<tr><td>Disse "não" de forma clara</td><td>0</td><td>—</td><td>Perdido → reativação 60d</td></tr>
+<tr><td>Pediu para parar</td><td>0</td><td>—</td><td>Perdido · <strong>não contatar nunca mais</strong></td></tr>
+</tbody>
+</table>
+</div>
+<div class="box warn">
+  <span class="bt">Teto absoluto</span>
+  <p><strong>Nunca mais de 4 follow-ups sem nenhuma resposta.</strong> A partir do quinto você não está vendendo, está sendo denunciado. E follow-up para quem nunca respondeu nada é o tipo de mensagem que mais gera denúncia no WhatsApp.</p>
+</div>
+
+<h3 id="s8-janela">8.3 Janela de horário e dias</h3>
+<div class="box stop">
+  <span class="bt">Não se quebra</span>
+  <ul class="tight" style="margin-bottom:0">
+    <li><strong>8h às 20h.</strong> Nada antes, nada depois — nem "só um lembrete rápido".</li>
+    <li><strong>Segunda a sábado.</strong> Domingo: só responde quem escrever, nunca inicia.</li>
+    <li><strong>Um follow-up por lead por dia.</strong> Sem exceção, mesmo que ele esteja em duas filas.</li>
+    <li><strong>Feriado nacional</strong> conta como domingo: responde, não inicia.</li>
+    <li><strong>Melhores janelas</strong> deste público: 8h–10h (antes da primeira aula) e 14h–17h. Evite 11h–13h e 18h–20h, que é hora de aula.</li>
+  </ul>
+</div>
+
+<h3 id="s8-numero">8.4 Como não queimar o número</h3>
+<div class="box stop">
+  <span class="bt">Esse número também é pessoal</span>
+  <p>O WhatsApp comercial que recebe os leads <strong>é usado pessoalmente</strong>. Perder ele não é perder uma ferramenta: é perder o canal e a conversa com clientes ativos ao mesmo tempo. Trate volume como risco, não como produtividade.</p>
+</div>
+<div class="tw">
+<table>
+<thead><tr><th>Regra</th><th>Limite</th><th>Por quê</th></tr></thead>
+<tbody>
+<tr><td>Mensagens iniciadas por você no dia</td><td><strong>Até 40</strong>, todas para gente que já te escreveu</td><td>Volume alto de conversas novas é o principal sinal de spam</td></tr>
+<tr><td>Intervalo entre envios</td><td><strong>30 a 90 segundos</strong>, nunca em rajada</td><td>Envio em bloco tem cara de robô</td></tr>
+<tr><td>Mesmo texto repetido</td><td>Nunca literalmente igual em sequência</td><td>Por isso todo cartão aqui tem variante B — <strong>alterne</strong></td></tr>
+<tr><td>Link em toda mensagem</td><td>Não. Link só quando ele pediu ou aceitou</td><td>Conversa nova cheia de link é padrão clássico de spam</td></tr>
+<tr><td>Disparo para quem não escreveu</td><td><strong>Zero. Nunca.</strong></td><td>É a coisa que derruba número — e contradiz o que a gente vende</td></tr>
+<tr><td>Quem pediu para parar</td><td>Remoção imediata e permanente</td><td>Insistir depois do "para" é a denúncia mais provável de todas</td></tr>
+</tbody>
+</table>
+</div>
+<h4>Sinais de alerta — pare e reduza volume no mesmo dia</h4>
+<ul class="tight">
+  <li>Mensagens ficando com <strong>um tique só</strong> em vários contatos diferentes.</li>
+  <li>Queda repentina na taxa de resposta do D+1 (de ~20% para menos de 10%).</li>
+  <li>Aviso do próprio WhatsApp sobre uso ou denúncia.</li>
+  <li>Dois ou mais leads reclamando de "mensagem demais" na mesma semana.</li>
+  <li>Sessão caindo com frequência e precisando reconectar.</li>
+</ul>
+<p class="small">Diante de qualquer um: corte o volume iniciado pela metade por 3 dias, responda só quem falar com você e revise se alguém está recebendo follow-up duplicado.</p>
+
+<h3 id="s8-demo">8.5 Demo ao vivo × link de cadastro</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Marque demo ao vivo quando…</th><th>O link basta quando…</th></tr></thead>
+<tbody>
+<tr><td>Mais de 100 alunos ou mais de uma unidade</td><td>Até 100 alunos, dono decide sozinho</td></tr>
+<tr><td>Ele disse "não sei mexer em sistema"</td><td>Ele já perguntou o preço e o link sem rodeio</td></tr>
+<tr><td>Vem de outro sistema e teme a migração</td><td>Está em caderno ou planilha</td></tr>
+<tr><td>Tem sócio decidindo junto</td><td>Está com pressa e quer testar agora</td></tr>
+<tr><td>Já criou conta e travou duas vezes</td><td>Já criou conta e está andando sozinho</td></tr>
+</tbody>
+</table>
+</div>
+<div class="box info">
+  <span class="bt">O melhor dos dois</span>
+  <p>A "demo" que mais converte nesse público não é apresentação: é <strong>acompanhar por WhatsApp enquanto ele mesmo configura</strong>. Ele clica, você narra. Dá 10 minutos, não precisa de agenda, e termina com o WhatsApp conectado — que é a única coisa que importa.</p>
+</div>
+
+<h3 id="s8-desistir">8.6 Quando desistir e como reativar</h3>
+<p><strong>Critério objetivo para desistir:</strong> estourou o número de tentativas da fila <em>e</em> zero resposta em toda a janela, <em>ou</em> ele disse não, <em>ou</em> pediu para parar. Fora isso, você ainda tem lead.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Motivo da perda</th><th>Reativação</th><th>Ângulo</th></tr></thead>
+<tbody>
+<tr><td>Sumiu sem responder</td><td>30 dias</td><td>Virada de mês / vencimento chegando</td></tr>
+<tr><td>Sumiu depois do preço</td><td>60 dias</td><td>Starter como porta de entrada</td></tr>
+<tr><td>Trial abandonado</td><td>30 dias</td><td>A conta dele ainda está salva</td></tr>
+<tr><td>Disse "não é o momento"</td><td>Na data que ele deu</td><td>O compromisso que ele mesmo marcou</td></tr>
+<tr><td>Disse não / concorrente / fora do perfil</td><td>Não reativa</td><td>—</td></tr>
+<tr><td>Pediu para parar</td><td><strong>Nunca</strong></td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-perdido">Perdido</span><span class="msg-title">8.6.a — Reativação 30 dias</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">30 dias em <code>perdido</code>, sem marcação de "não contatar", tinha respondido pelo menos uma vez.</span></div>
+    <div><span class="k">Momento</span><span class="v">Entre os dias 1 e 5 do mês, manhã — a semana em que a inadimplência aparece.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, mês virou e eu lembrei da gente ter falado por aqui.
+Como ficou a cobrança das mensalidades desse mês — todo mundo em dia?
+Se ainda tiver atrasado, a gente resolve em 10 minutos.</pre>
+  </div>
+  <div class="block b-fall">
+    <div class="block-head"><span class="block-label">Sem o nome</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Mês virou e eu lembrei da gente ter falado por aqui.
+Como ficou a cobrança das mensalidades desse mês — todo mundo em dia?
+Se ainda tiver atrasado, a gente resolve em 10 minutos.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — para trial abandonado</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Sua conta continua salva do jeito que você deixou, com os cadastros e tudo.
+Se quiser retomar, é só conectar o WhatsApp e ligar — não precisa refazer nada.
+Quer tentar de novo esse mês?</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> a virada do mês é o único momento em que a dor volta sozinha. Perguntar pelo resultado dele (e não vender) faz a mensagem passar por interesse real.
+  <span class="dest">Respondeu → <b>Conversando</b>. Silêncio → volta para <b>Perdido</b>, <strong>uma única tentativa</strong> nesta rodada.</span></p>
+</article>
+
+<article class="msg">
+  <div class="msg-head"><span class="badge b-perdido">Perdido</span><span class="msg-title">8.6.b — Reativação 60 dias (quem sumiu no preço)</span></div>
+  <div class="meta">
+    <div><span class="k">Gatilho</span><span class="v">60 dias em <code>perdido</code> com motivo "preço", sem marcação de não contatar.</span></div>
+    <div><span class="k">Momento</span><span class="v">Manhã, dia útil. Uma tentativa só.</span></div>
+  </div>
+  <div class="block">
+    <div class="block-head"><span class="block-label">Texto principal</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">{{primeiro_nome}}, faz um tempo que a gente falou e na época o valor não coube.
+Só pra deixar registrado: dá pra começar no Starter de R$ 49, cobrando sozinho no vencimento, e subir depois sem multa.
+Se quiser testar de graça antes, é só falar.</pre>
+  </div>
+  <div class="block b-alt">
+    <div class="block-head"><span class="block-label">Variante B — sem pitch</span><button class="copy" type="button">Copiar</button></div>
+    <pre class="txt">Passando só pra saber: você resolveu a parte da cobrança aí?
+Se resolveu, fico feliz de verdade. Se não, me fala que eu te mostro o caminho mais barato.</pre>
+  </div>
+  <p class="why"><strong>Por que funciona:</strong> volta com informação nova (o degrau menor) em vez de repetir a mesma oferta que já foi recusada.
+  <span class="dest">Silêncio → <b>Perdido</b> definitivo, sem novas reativações.</span></p>
+</article>
+</section>
+
+<section id="s9">
+<h2>9. Os cinco números da semana</h2>
+<p class="lead">Toda segunda de manhã, 15 minutos. Se algum estiver fora da faixa, a ação já está escrita — não invente diagnóstico novo antes de aplicar o óbvio.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>Métrica</th><th>Como calcular</th><th>Número bom</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Tempo médio da primeira resposta</strong></td><td>Média de (hora da minha 1ª resposta − hora da 1ª mensagem dele), só leads em horário comercial</td><td>Abaixo de <strong>5 min</strong>; alerta acima de 30 min</td></tr>
+<tr><td>2</td><td><strong>Taxa de resposta do D+1</strong></td><td>Leads que responderam ao 1º follow-up ÷ leads que receberam o 1º follow-up</td><td><strong>20% ou mais</strong>; alerta abaixo de 10%</td></tr>
+<tr><td>3</td><td><strong>% que cria conta</strong></td><td>Leads que chegaram em <code>criou_conta</code> ÷ total de leads que entraram na semana</td><td><strong>25% a 35%</strong> do total de leads</td></tr>
+<tr><td>4</td><td><strong>% que conecta o WhatsApp</strong> <span class="pill">a métrica-mãe</span></td><td>Contas com WhatsApp conectado ÷ contas criadas na semana</td><td><strong>60% ou mais</strong>; abaixo de 45% é emergência</td></tr>
+<tr><td>5</td><td><strong>Criou conta → Pagante</strong></td><td>Contas que viraram <code>pagante</code> ÷ contas criadas no mesmo período (medido no fim do trial)</td><td>Perto de <strong>50%</strong> — combinação natural de 71% de quem conecta com 12% de quem não conecta</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>O que fazer quando cada uma está ruim</h4>
+
+<div class="box warn">
+  <span class="bt">1. Primeira resposta lenta</span>
+  <p>É o vazamento mais caro e o mais fácil de tapar. <strong>Ações:</strong> concentre o atendimento nas duas janelas boas (8h–10h e 14h–17h); zere a coluna <code>novo</code> três vezes por dia num horário fixo; e, se ainda assim não fechar, <strong>reduza a verba do anúncio</strong> até o SLA voltar. Lead parado em <code>novo</code> é pior do que lead que não entrou.</p>
+</div>
+<div class="box warn">
+  <span class="bt">2. Taxa de resposta do D+1 baixa</span>
+  <p>Problema de <em>mensagem</em>, não de volume. <strong>Ações:</strong> troque para as variantes B por uma semana inteira e compare; verifique se a primeira linha está entregando conteúdo (é só ela que aparece na notificação); e corte qualquer follow-up que comece com saudação vazia. Se caiu de repente, suspeite do número (ver 8.4) antes de suspeitar do texto.</p>
+</div>
+<div class="box warn">
+  <span class="bt">3. Poucos criam conta</span>
+  <p>Ou o lead é ruim, ou você está entregando o link tarde demais. <strong>Ações:</strong> mande o link ainda na primeira conversa, sempre com os 3 passos (5.1 / 2.9); ofereça acompanhar ao vivo enquanto ele cria; e olhe a origem do anúncio — se o criativo promete algo que o produto não faz, o problema está antes de você.</p>
+</div>
+<div class="box stop">
+  <span class="bt">4. Poucos conectam o WhatsApp</span>
+  <p><strong>É a emergência que anula todas as outras.</strong> Cada conta que não conecta cai de 71% para 12% de chance. <strong>Ações:</strong> a fila 5.3 vira prioridade absoluta do dia, antes de qualquer lead novo; use a mensagem que separa "conectar" de "disparar" (5.3.b variante B), que é a que destrava o medo de banimento; e ofereça fazer junto por WhatsApp em todos os casos parados há mais de 2 dias.</p>
+</div>
+<div class="box warn">
+  <span class="bt">5. Criou conta mas não vira pagante</span>
+  <p>Antes de mexer em preço, olhe o nº 4 — quase sempre a causa é conexão, não valor. <strong>Ações:</strong> se quem não paga é justamente quem não conectou, o problema é ativação; se quem não paga <em>conectou e usou</em>, aí sim é conversa de plano — antecipe o assunto para D-3 (5.6.b) e ancore no Pro. E confira se alguém está deixando o trial vencer sem nenhuma mensagem de D-1.</p>
+</div>
+
+<div class="box info">
+  <span class="bt">Como fechar a semana</span>
+  <p>Anote os cinco números num lugar só, toda segunda, sempre no mesmo formato. O valor não está no número da semana: está na <strong>linha do tempo</strong> — é ela que mostra se a mudança que você fez funcionou ou se você só trocou de mensagem por gosto.</p>
+</div>
+</section>
+
+</main>
+</div>
+
+<script>
+(function () {
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest ? ev.target.closest('button.copy') : null;
+    if (!btn) return;
+    var block = btn.closest('.block');
+    if (!block) return;
+    var pre = block.querySelector('pre.txt');
+    if (!pre) return;
+    var texto = pre.textContent.replace(/\s+$/, '');
+    var original = btn.getAttribute('data-label') || btn.textContent;
+    btn.setAttribute('data-label', original);
+
+    function ok() {
+      btn.textContent = 'Copiado!';
+      btn.classList.add('ok');
+      setTimeout(function () {
+        btn.textContent = btn.getAttribute('data-label') || 'Copiar';
+        btn.classList.remove('ok');
+      }, 2000);
+    }
+    function falhou() {
+      btn.textContent = 'Selecione e copie';
+      setTimeout(function () {
+        btn.textContent = btn.getAttribute('data-label') || 'Copiar';
+      }, 2000);
+    }
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = texto;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        document.body.appendChild(ta);
+        ta.select();
+        var deu = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (deu) { ok(); } else { falhou(); }
+      } catch (e) { falhou(); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(ok, fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  var toc = document.querySelector('nav.toc details');
+  if (toc) {
+    var largo = window.matchMedia('(min-width: 1100px)');
+    function ajustaToc(mq) { if (mq.matches) { toc.open = true; } }
+    ajustaToc(largo);
+    if (largo.addEventListener) {
+      largo.addEventListener('change', ajustaToc);
+    } else if (largo.addListener) {
+      largo.addListener(ajustaToc);
+    }
+    toc.addEventListener('click', function (ev) {
+      if (ev.target.tagName === 'A' && !largo.matches) { toc.open = false; }
+    });
+  }
+})();
+</script>
+</body>
+</html>

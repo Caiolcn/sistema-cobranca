@@ -78,3 +78,11 @@ credentials.json
 /sql-trocar-email-senha-cliente.sql
 # Analise de crescimento: nomes de clientes, faturamento e chave Pix.
 /plano-crescimento-mensalli.html
+
+# Planilhas e extracoes de base de cliente enviadas para analise local.
+# Ignora TUDO dentro da pasta, menos o README que explica a regra.
+/dados-clientes/*
+!/dados-clientes/README.md
+
+# Relatorio de auditoria de seguranca: mapa de exploracao, NUNCA publicar.
+/docs/security-audit/

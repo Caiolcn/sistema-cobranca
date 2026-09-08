@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do anúncio ao pagante</title>
+
+<style>
+  :root{
+    --ground:#F4F3EF; --surface:#FCFBF8; --surface-2:#EDEBE4; --bubble:#FFFFFF;
+    --ink:#17171B; --ink-soft:#3A3A42; --muted:#6B6B76;
+    --rule:#DEDBD2; --rule-strong:#C3BFB2;
+    --accent:#2E4B6B; --accent-soft:#E0E7F0;
+    --hot:#A8531B; --hot-soft:#F6E6D6;
+    --warm:#8E5245; --warm-soft:#F4E3DF;
+    --cold:#46606F; --cold-soft:#DFE8ED;
+    --good:#3D5F33; --good-soft:#E2EBDD;
+    --alert:#9A2B20; --alert-soft:#F6DED9;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#121215; --surface:#1A1A1F; --surface-2:#212127; --bubble:#24242B;
+      --ink:#ECEBE6; --ink-soft:#C8C6BF; --muted:#918F99;
+      --rule:#2D2D35; --rule-strong:#42424D;
+      --accent:#88AEDA; --accent-soft:#1B2632;
+      --hot:#E4924F; --hot-soft:#2E2013;
+      --warm:#D68F80; --warm-soft:#2D1D19;
+      --cold:#93AEC0; --cold-soft:#182429;
+      --good:#93BC84; --good-soft:#1A2517;
+      --alert:#E5806F; --alert-soft:#301613;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#121215; --surface:#1A1A1F; --surface-2:#212127; --bubble:#24242B;
+    --ink:#ECEBE6; --ink-soft:#C8C6BF; --muted:#918F99;
+    --rule:#2D2D35; --rule-strong:#42424D;
+    --accent:#88AEDA; --accent-soft:#1B2632;
+    --hot:#E4924F; --hot-soft:#2E2013;
+    --warm:#D68F80; --warm-soft:#2D1D19;
+    --cold:#93AEC0; --cold-soft:#182429;
+    --good:#93BC84; --good-soft:#1A2517;
+    --alert:#E5806F; --alert-soft:#301613;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:16.5px; line-height:1.6; margin:0; padding:0 20px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:840px;margin:0 auto}
+  .narrow{max-width:64ch}
+
+  h1,h2,h3{margin:0;text-wrap:balance;font-weight:700;letter-spacing:-.028em}
+  h1{font-size:clamp(2rem,5vw,2.85rem);line-height:1.06}
+  h2{font-size:clamp(1.4rem,3vw,1.8rem);line-height:1.15;letter-spacing:-.024em}
+  h3{font-size:1.06rem;line-height:1.3;letter-spacing:-.014em;font-weight:650}
+  p{margin:0}
+  strong{font-weight:650}
+  .num{font-variant-numeric:tabular-nums}
+  .note{font-family:Georgia,ui-serif,serif;font-style:italic;color:var(--muted);font-size:.94rem;line-height:1.55}
+
+  .eyebrow{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  }
+
+  header{border-bottom:1px solid var(--rule);padding:72px 0 38px;margin-bottom:52px}
+  header .stack{display:flex;flex-direction:column;gap:18px}
+  .lede{font-size:1.09rem;color:var(--ink-soft);max-width:58ch}
+  .stamp{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.73rem;color:var(--muted);padding-top:4px}
+
+  section{margin-bottom:68px}
+  .sec-head{display:flex;flex-direction:column;gap:9px;margin-bottom:24px}
+  .prose{display:flex;flex-direction:column;gap:16px}
+  .prose ul{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:8px}
+
+  .seg{margin-bottom:56px}
+  .seg-bar{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:16px 20px;background:var(--seg-soft);border-radius:4px;
+    border-left:4px solid var(--seg);margin-bottom:6px;
+  }
+  .seg-count{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;
+    font-size:1.9rem;font-weight:700;color:var(--seg);line-height:1;letter-spacing:-.03em;
+  }
+  .seg-name{display:flex;flex-direction:column;gap:1px}
+  .seg-name .t{font-weight:650;font-size:1.02rem}
+  .seg-name .s{font-size:.85rem;color:var(--muted)}
+  .seg-when{
+    margin-left:auto;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--seg);
+    border:1px solid var(--seg);padding:4px 9px;border-radius:2px;white-space:nowrap;
+  }
+  .seg-why{padding:14px 20px 22px;max-width:62ch}
+
+  .touch{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+  .touch-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-left:2px}
+  .touch-n{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.7rem;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--seg,var(--accent));font-weight:600;
+  }
+  .touch-when{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.7rem;color:var(--muted)}
+  .bubble{
+    background:var(--bubble);border:1px solid var(--rule);
+    border-radius:16px 16px 16px 4px;padding:18px 20px 16px;
+    position:relative;max-width:56ch;
+  }
+  .bubble .msg{white-space:pre-line;font-size:1rem;line-height:1.58;color:var(--ink)}
+  .bubble .slot{
+    background:var(--accent-soft);color:var(--accent);
+    padding:1px 5px;border-radius:3px;font-weight:600;
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.87em;
+  }
+  .copy{
+    margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);
+    display:flex;justify-content:flex-end;
+  }
+  .copy button{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;
+    background:transparent;color:var(--muted);border:1px solid var(--rule-strong);
+    padding:5px 11px;border-radius:2px;cursor:pointer;transition:.15s;
+  }
+  .copy button:hover{background:var(--surface-2);color:var(--ink);border-color:var(--ink-soft)}
+  .copy button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .copy button.done{color:var(--good);border-color:var(--good)}
+
+  .why{
+    margin-top:10px;padding:12px 16px;background:var(--surface);
+    border:1px solid var(--rule);border-radius:3px;max-width:56ch;
+  }
+  .why .lbl{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.66rem;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px;
+  }
+  .why p{font-size:.9rem;color:var(--ink-soft);line-height:1.5}
+
+  .heard{
+    max-width:56ch;margin-bottom:14px;padding:12px 16px;border-radius:16px 16px 4px 16px;
+    background:var(--surface-2);border:1px dashed var(--rule-strong);
+    font-family:Georgia,ui-serif,serif;font-style:italic;color:var(--ink-soft);font-size:.96rem;
+  }
+  .heard .lbl{
+    display:block;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-style:normal;
+    font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;
+  }
+
+  .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.925rem}
+  th,td{text-align:left;padding:13px 17px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.68rem;
+    letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:500;
+    background:var(--surface-2);white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+  td.said{font-style:italic;color:var(--ink-soft)}
+  td.said strong{font-style:normal}
+
+  .rails{display:flex;flex-direction:column;gap:12px}
+  .rail{
+    display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    padding:15px 18px;background:var(--surface);border:1px solid var(--rule);
+    border-left:3px solid var(--alert);border-radius:3px;
+  }
+  .rail.ok{border-left-color:var(--good)}
+  .rail .rn{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.78rem;color:var(--alert);padding-top:2px}
+  .rail.ok .rn{color:var(--good)}
+  .rail strong{display:block;margin-bottom:2px}
+  .rail p{font-size:.92rem;color:var(--ink-soft)}
+
+  .stages{display:flex;flex-direction:column;gap:2px}
+  .stage{
+    display:grid;grid-template-columns:64px 1fr;gap:18px;align-items:start;
+    padding:16px 18px;background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+  }
+  .stage-id{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.72rem;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;padding-top:3px;
+  }
+  .stage-body{display:flex;flex-direction:column;gap:4px}
+  .stage-body .t{font-weight:650}
+  .stage-body .d{font-size:.92rem;color:var(--ink-soft)}
+  .stage-body .m{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.72rem;color:var(--muted);padding-top:3px}
+
+  footer{border-top:1px solid var(--rule);padding-top:24px;color:var(--muted);font-size:.86rem;max-width:64ch}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+  @media (max-width:600px){
+    header{padding-top:44px}
+    .seg-when{margin-left:0}
+    .bubble,.heard,.why{max-width:100%}
+    .stage{grid-template-columns:1fr;gap:6px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="stack">
+    <span class="eyebrow">Mensalli &middot; Playbook de atendimento</span>
+    <h1>Do anúncio<br>ao pagante</h1>
+    <p class="lede">Toda mensagem que sai do seu WhatsApp para um lead da campanha, na ordem em que ela sai — com as bifurcações mapeadas, o banco de objeções e a cadência de quando ele some. <strong>100% dos seus clientes entraram por aqui</strong>, e a mediana entre o cadastro e o primeiro pagamento é de <strong>27 dias</strong>. Esta página existe para nenhum lead morrer nesse intervalo.</p>
+    <div class="stamp">
+      <span>Lead → pagante: 29%</span>
+      <span>Conectou WhatsApp: 51% · não conectou: 1,9%</span>
+      <span>Board: /app/admin/leads</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Antes de tudo</span>
+    <h2>Seis regras que valem pra toda mensagem daqui pra frente</h2>
+  </div>
+  <div class="rails">
+    <div class="rail ok">
+      <span class="rn">01</span>
+      <div><strong>Responda antes de perguntar.</strong>
+      <p>Quem chega pelo anúncio fez uma pergunta. Devolver outra pergunta antes de responder a dele é o erro que já custou 11 dos seus 15 leads de campanha. Entregue o que ele veio buscar — o que é, o que faz, quanto custa — e só então qualifique.</p></div>
+    </div>
+    <div class="rail ok">
+      <span class="rn">02</span>
+      <div><strong>Velocidade é a maior alavanca que você tem.</strong>
+      <p>Quem clicou num anúncio está com o celular na mão agora. Responder em 5 minutos e responder em 2 horas são dois negócios diferentes. Se você não puder atender, a resposta automática precisa dar conta sozinha — é para isso que ela existe.</p></div>
+    </div>
+    <div class="rail ok">
+      <span class="rn">03</span>
+      <div><strong>Uma pergunta por mensagem, e sempre de resposta curta.</strong>
+      <p>"Qual seu negócio e quantos alunos" ele responde em cinco palavras. "Me conta um pouco sobre sua operação" ele não responde nunca. Toda pergunta sua precisa caber numa resposta digitada no semáforo.</p></div>
+    </div>
+    <div class="rail ok">
+      <span class="rn">04</span>
+      <div><strong>Nunca termine em "te mando o link do teste".</strong>
+      <p>É a diferença entre 51% e 1,9%. Quem recebe só o login não digita 40 alunos numa terça-feira — ele some, e você acha que ele não quis. Toda conversa termina em <em>"me manda a sua lista que eu monto"</em>. O teste continua existindo; ele só começa com a conta pronta.</p></div>
+    </div>
+    <div class="rail ok">
+      <span class="rn">05</span>
+      <div><strong>Preço nunca se esconde.</strong>
+      <p>Fugir do preço custa a confiança da conversa inteira, e quem clicou em anúncio pergunta cedo. Diga o número, diga que não tem fidelidade, e siga. O preço não perde venda — o mistério perde.</p></div>
+    </div>
+    <div class="rail ok">
+      <span class="rn">06</span>
+      <div><strong>Todo silêncio tem prazo e fim.</strong>
+      <p>Dois toques depois do último contato e a conversa encerra limpa, com uma despedida que não cobra nada. Ninguém fica em limbo, e cada card sai da coluna com "criou conta" ou "perdido — motivo". Foi limbo que criou a fila de 42 conversas paradas.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">O mapa</span>
+    <h2>Seis estágios, e o que você quer em cada um</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:22px">
+    <p>Um lead só anda para frente quando você sabe qual é a <em>única</em> coisa que falta. Antes de mandar qualquer mensagem, olhe em que estágio ele está e peça só o próximo passo — nunca dois.</p>
+  </div>
+  <div class="stages">
+    <div class="stage">
+      <span class="stage-id">E0</span>
+      <div class="stage-body">
+        <span class="t">Chegou</span>
+        <span class="d">Ele mandou "quero saber mais" e recebeu a resposta automática. Você quer que ele entenda o produto e devolva o tamanho da operação.</span>
+        <span class="m">Passou quando: respondeu qualquer coisa · Prazo: 5 min · Board: novo</span>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="stage-id">E1</span>
+      <div class="stage-body">
+        <span class="t">Qualificou</span>
+        <span class="d">Você sabe o nicho e o número de alunos. Acima de 30 alunos, 80% viram pagantes; abaixo de 20, quase ninguém. É o dado que decide quanto do seu tempo esse lead merece.</span>
+        <span class="m">Passou quando: você tem nicho + número · Prazo: mesmo dia · Board: conversando</span>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="stage-id">E2</span>
+      <div class="stage-body">
+        <span class="t">Recebeu a oferta certa</span>
+        <span class="d">Não é "quer testar?". É "me manda sua lista que eu monto". O obstáculo dele nunca foi entender o sistema — é o trabalho de começar.</span>
+        <span class="m">Passou quando: ele disse sim ou pediu para ver antes · Board: conversando</span>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="stage-id">E3</span>
+      <div class="stage-body">
+        <span class="t">Mandou a lista</span>
+        <span class="d">O momento mais frágil de todos: ele fez a parte dele e está esperando. Devolver em 24h com a conta montada é o que separa esse playbook de um funil qualquer.</span>
+        <span class="m">Passou quando: você devolveu a conta pronta · Prazo: 24h · Board: conversando</span>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="stage-id">E4</span>
+      <div class="stage-body">
+        <span class="t">Conectou o WhatsApp</span>
+        <span class="d">A única métrica de ativação que importa. Daqui em diante ele converte a 51%. Se travar em algum lugar, é aqui — e aqui você liga, não manda mensagem.</span>
+        <span class="m">Passou quando: primeira cobrança saiu · Board: criou conta</span>
+      </div>
+    </div>
+    <div class="stage">
+      <span class="stage-id">E5</span>
+      <div class="stage-body">
+        <span class="t">Virou pagante</span>
+        <span class="d">O trial acaba e a conversa é sobre continuar rodando, não sobre "gostou?". Você já tem números dele para mostrar — use os dele, nunca os seus.</span>
+        <span class="m">Mediana histórica: 27 dias desde o cadastro · Board: pagante</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--accent);--seg-soft:var(--accent-soft)">
+  <div class="seg-bar">
+    <span class="seg-count">E0</span>
+    <div class="seg-name">
+      <span class="t">A resposta automática</span>
+      <span class="s">todo lead que chega pelo anúncio, sem exceção</span>
+    </div>
+    <span class="seg-when">na hora</span>
+  </div>
+  <div class="seg-why prose">
+    <p>O anúncio preenche a mensagem por ele — quase todos chegam com o mesmo texto, sem ter digitado nada. Isso significa que o vínculo é zero e a memória é curta: em dez minutos ele já não lembra que clicou.</p>
+    <p>Por isso a primeira resposta precisa fazer três coisas antes de pedir qualquer coisa: dizer o que é, dizer o que faz e dizer quanto custa.</p>
+  </div>
+
+  <div class="heard">
+    <span class="lbl">Ele mandou</span>
+    "Olá! Vi o anúncio e quero saber mais sobre o Mensalli."
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 0</span><span class="touch-when">automática, imediata</span></div>
+    <div class="bubble">
+      <div class="msg">Olá! Tudo bem? Aqui é o Caio, do Mensalli 😊
+
+Respondendo direto ao que você perguntou: o Mensalli cobra a mensalidade dos seus alunos automaticamente pelo WhatsApp. Ele avisa antes de vencer, cobra quem atrasou e te mostra quem já pagou — sem você precisar lembrar de nada. A partir de R$ 49,90/mês.
+
+Pra eu te dizer se compensa no seu caso: qual seu tipo de negócio e quantos alunos você tem mais ou menos?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>A pergunta de qualificação é a mesma de sempre — mas vem <em>depois</em> de três linhas que entregam o que ele foi buscar no anúncio. Ele responde porque já foi atendido, não para ser atendido. E a justificativa ("pra eu te dizer se compensa") transforma a pergunta em favor, não em triagem.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">E1 &middot; as bifurcações</span>
+    <h2>Ele respondeu. Nove caminhos possíveis</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:26px">
+    <p>Ache o caso dele, mande a mensagem, siga. Em todas as nove, o destino é o mesmo: <strong>a oferta de montar a conta</strong>. O que muda é quanto caminho falta até ela e quanto do seu tempo esse lead merece.</p>
+    <p class="note">Faixas de plano, para você não errar o número na hora: até 50 alunos, Starter R$ 49,90. Até 150, Pro R$ 99,90. Acima disso, Premium R$ 149,90.</p>
+  </div>
+
+  <div class="seg" style="--seg:var(--good);--seg-soft:var(--good-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">1</span>
+      <div class="seg-name">
+        <span class="t">Deu o nicho e o número — 30 alunos ou mais</span>
+        <span class="s">o caso que paga a campanha</span>
+      </div>
+      <span class="seg-when">responda na hora</span>
+    </div>
+    <div class="heard"><span class="lbl">Ele disse</span>"Personal, 60 alunos."</div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Boa, <span class="slot">Nome</span>. <span class="slot">60</span> alunos é justo o ponto em que cobrar na mão para de caber — dá quase duas horas por mês só mandando lembrete.
+
+No seu caso é o plano <span class="slot">Pro, R$ 99,90/mês</span> (até <span class="slot">150</span> alunos), com o aviso antes de vencer, a cobrança de quem atrasou e a baixa automática quando o Pix cai.
+
+Faço o seguinte: me manda a sua lista de alunos do jeito que ela estiver — planilha, print, foto do caderno, tanto faz. Eu cadastro tudo, escrevo as mensagens no seu tom e te devolvo pronto. Não precisa organizar nada antes.
+
+Aí a gente conecta seu WhatsApp em 5 minutos e você vê a primeira cobrança saindo. Pode me mandar?</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Três decisões dentro de uma mensagem. O <strong>preço vem antes de ele perguntar</strong>, porque 60 alunos estoura o Starter e descobrir isso depois destrói a confiança que você acabou de ganhar. O <strong>"do jeito que ela estiver"</strong> derruba a desculpa mais comum, que é achar que precisa arrumar a planilha primeiro. E o pedido final custa <strong>uma palavra</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--cold);--seg-soft:var(--cold-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">2</span>
+      <div class="seg-name">
+        <span class="t">Entre 20 e 30 alunos</span>
+        <span class="s">cabe, mas o argumento é outro</span>
+      </div>
+      <span class="seg-when">responda na hora</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Show, <span class="slot">Nome</span>. Com <span class="slot">25</span> alunos você fica no Starter, R$ 49,90/mês.
+
+Vou te falar com sinceridade: nesse tamanho o que pesa não é tanto a inadimplência, é o tempo e o desconforto. São <span class="slot">25</span> mensagens por mês que você não manda mais, e ninguém precisa ser cobrado na cara por você.
+
+Me manda a sua lista do jeito que estiver que eu monto pra você e te devolvo rodando — você vê funcionando antes de decidir qualquer coisa. Pode ser?</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Nessa faixa o argumento financeiro é fraco e ele sabe disso — insistir nele soa a vendedor. O que converte aqui é <strong>tempo e constrangimento</strong>, que é exatamente a dor que ele tem. "Vou te falar com sinceridade" antes de baixar o próprio argumento compra mais credibilidade do que qualquer número.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--cold);--seg-soft:var(--cold-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">3</span>
+      <div class="seg-name">
+        <span class="t">Menos de 20 alunos</span>
+        <span class="s">não force — colha a indicação</span>
+      </div>
+      <span class="seg-when">responda, e encerre bem</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Vou ser honesto contigo, <span class="slot">Nome</span>: com <span class="slot">12</span> alunos o Mensalli funciona, mas ele se paga de verdade a partir de umas 25, 30 mensalidades. Não quero te empurrar uma coisa que ainda não é a sua prioridade.
+
+Fico salvo aqui. Quando sua turma crescer, me chama que eu monto tudo pra você em 20 minutos, sem custo pra ver.
+
+E se você conhece alguém com turma maior que sofre pra cobrar, me indica? Ajuda demais.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Seu próprio banco diz que abaixo de 20 alunos quase ninguém vira pagante. Forçar aqui fecha uma venda que cancela em dois meses e vira churn. Recusar de forma honesta faz três coisas melhores: gera indicação, garante que ele volta quando crescer, e libera seu tempo para o lead de 60 alunos que está esperando resposta.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--accent);--seg-soft:var(--accent-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">4</span>
+      <div class="seg-name">
+        <span class="t">Respondeu só o nicho, sem o número</span>
+        <span class="s">"sou personal", "tenho um studio"</span>
+      </div>
+      <span class="seg-when">responda na hora</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Boa! E quantos alunos você atende hoje, mais ou menos?
+
+É só pra eu te dizer o plano certo e não te empurrar o maior.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Duas linhas, uma pergunta, e a justificativa junto. "Pra não te empurrar o maior" é o que faz ele responder: você acabou de dizer que está trabalhando contra o seu próprio ticket. Não repita o pitch aqui — ele já leu.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--hot);--seg-soft:var(--hot-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">5</span>
+      <div class="seg-name">
+        <span class="t">Perguntou o preço antes de responder qualquer coisa</span>
+        <span class="s">"quanto custa?"</span>
+      </div>
+      <span class="seg-when">responda na hora, sem rodeio</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Claro, sem mistério: R$ 49,90 até 50 alunos, R$ 99,90 até 150 e R$ 149,90 acima disso. Sem fidelidade, cancela quando quiser.
+
+Pra eu te dizer qual serve pra você: quantos alunos você tem hoje?</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Diz o número, mata a objeção da fidelidade antes que ela nasça, e devolve a conversa para a qualificação na mesma mensagem. Quem responde "depende do seu caso" a essa pergunta perde o lead ali — ele lê como enrolação, e é.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--warm);--seg-soft:var(--warm-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">6</span>
+      <div class="seg-name">
+        <span class="t">Já usa gateway ou só Pix</span>
+        <span class="s">"uso Asaas", "InfinitePay", "eles pagam no meu Pix"</span>
+      </div>
+      <span class="seg-when">não ataque o gateway</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Perfeito — e o <span class="slot">Asaas</span> continua sendo o seu recebimento, eu não substituo isso. Eu me conecto nele.
+
+O que falta ali é <em>quem avisa</em>: ele manda e-mail e boleto, e aluno não abre e-mail. Eu ponho o lembrete no WhatsApp com o link de pagamento junto, e a baixa cai sozinha quando ele paga.
+
+Quantos alunos você tem hoje? Se fizer sentido, eu monto a sua conta e você vê rodando antes de decidir.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Ele escolheu o gateway e não vai admitir que escolheu errado. Atacar a escolha dele é atacar ele. Você não compete com o recebimento — compete com o <strong>silêncio entre a cobrança e o pagamento</strong>, que é um buraco que ele reconhece na hora.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--warm);--seg-soft:var(--warm-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">7</span>
+      <div class="seg-name">
+        <span class="t">Já tem sistema de gestão</span>
+        <span class="s">NextFit, TecnoFit, Sponte, Pacto</span>
+      </div>
+      <span class="seg-when">procure a fresta</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Legal — e a cobrança dele avisa o aluno pelo WhatsApp automático, ou só gera o boleto?
+
+Pergunto porque é onde quase todos furam: bons de cadastro, fracos de cobrança. Tem cliente meu que mantém o sistema e usa o Mensalli só pra régua de mensagem, porque é ali que dói.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Você não tem ficha de treino nem catraca, e nem quer ter — brigar de frente com o ERP é uma comparação que você perde. A pergunta abre a única porta que existe. Se ele estiver genuinamente satisfeito, <strong>encerre bem e volte em três meses</strong>: escolinha e academia trocam de sistema em janeiro, e porta queimada não reabre.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--accent);--seg-soft:var(--accent-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">8</span>
+      <div class="seg-name">
+        <span class="t">Veio com pergunta técnica</span>
+        <span class="s">"funciona no meu WhatsApp?", "manda pelo meu número?"</span>
+      </div>
+      <span class="seg-when">responda e volte pra oferta</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Funciona sim — você conecta o seu próprio número por QR Code, igual WhatsApp Web, e as mensagens saem dele. O aluno recebe do número que já conhece e te responde ali mesmo, como sempre.
+
+Quantos alunos você tem hoje? Com esse número eu já te digo o plano e, se quiser, monto a sua conta pra você ver rodando.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Pergunta técnica é sinal de compra, não de dúvida — quem pergunta como funciona já se imaginou usando. Responda em uma frase concreta ("igual WhatsApp Web") e volte imediatamente para a qualificação. Aprofundar em tecnologia aqui esfria o que estava quente.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--alert);--seg-soft:var(--alert-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">9</span>
+      <div class="seg-name">
+        <span class="t">Fora do perfil</span>
+        <span class="s">aula avulsa, sem mensalidade recorrente</span>
+      </div>
+      <span class="seg-when">encerre em 20 segundos</span>
+    </div>
+    <div class="touch">
+      <div class="bubble">
+        <div class="msg">Ah, então o meu não serve pra você — eu resolvo mensalidade recorrente mesmo. Não vou te tomar tempo.
+
+Só uma coisa: se você conhece alguém que tem turma fixa e sofre pra cobrar todo mês, me indica? Bom trabalho aí!</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Sem mensalidade recorrente não existe produto, e insistir aqui gasta a única coisa que não volta: seu tempo. Encerrar rápido e bem transforma um não-lead em canal de indicação — ele conhece gente do ramo dele.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--good);--seg-soft:var(--good-soft)">
+  <div class="seg-bar">
+    <span class="seg-count">E2</span>
+    <div class="seg-name">
+      <span class="t">Os três degraus da oferta</span>
+      <span class="s">ofereça nesta ordem, e só desça quando o de cima for recusado</span>
+    </div>
+    <span class="seg-when">mesma conversa</span>
+  </div>
+  <div class="seg-why prose">
+    <p>O degrau 1 já está dentro das mensagens acima — é a oferta de montar a conta. Os outros dois existem para você <strong>nunca terminar uma conversa sem próximo passo</strong>. Descer um degrau não é perder: é trocar um pedido grande por um pedido menor que ele aceita.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Degrau 2</span><span class="touch-when">se ele quiser ver antes de mandar a lista</span></div>
+    <div class="bubble">
+      <div class="msg">Tranquilo. A gente faz 20 minutos por vídeo e eu te mostro com dados de <span class="slot">personal</span> mesmo, não com exemplo genérico.
+
+Amanhã às 10h ou quinta às 15h?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p><strong>Sempre duas opções de horário.</strong> "Quando você pode?" devolve o trabalho para ele e a reunião nunca acontece. Mande o convite ainda na conversa, antes de sair do WhatsApp — combinação sem convite é combinação que evapora.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Degrau 3</span><span class="touch-when">se ele recusar os dois</span></div>
+    <div class="bubble">
+      <div class="msg">Sem problema nenhum. Posso te deixar aqui um resumo de uma linha e um vídeo de 1 minuto?
+
+Fica salvo aí, e se um dia a cobrança dos seus alunos estiver te dando trabalho, você me chama.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Não é prêmio de consolação. 100% dos seus clientes atuais entraram pelo WhatsApp, e a mediana entre o primeiro contato e o primeiro pagamento é de 27 dias — o "não" de hoje que virou contato salvo é o cliente de dois meses adiante. O que mata esse lead não é o não: é você apagá-lo do board.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--hot);--seg-soft:var(--hot-soft)">
+  <div class="seg-bar">
+    <span class="seg-count">E3</span>
+    <div class="seg-name">
+      <span class="t">Ele mandou a lista</span>
+      <span class="s">o momento mais frágil do funil inteiro</span>
+    </div>
+    <span class="seg-when">devolva em 24h</span>
+  </div>
+  <div class="seg-why prose">
+    <p>Ele fez a parte dele e agora está esperando você. Nesse intervalo ele não tem nada para olhar e todo o entusiasmo é seu para perder. Confirme em minutos, ancore um prazo, e cumpra antes dele.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">até 5 minutos depois de receber</span></div>
+    <div class="bubble">
+      <div class="msg">Recebi, <span class="slot">Nome</span>. Vou montar aqui e te devolvo até <span class="slot">amanhã às 12h</span>.
+
+Se eu tiver dúvida em algum aluno eu te chamo — no resto pode esquecer que eu resolvo.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>"Pode esquecer que eu resolvo" é a frase que ele comprou. E o prazo com hora marcada faz duas coisas: tira a ansiedade dele e cria um compromisso público seu — que é o que garante que você vai montar hoje e não sexta.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">na entrega, dentro do prazo prometido</span></div>
+    <div class="bubble">
+      <div class="msg">Pronto, <span class="slot">Nome</span>. Seus <span class="slot">60</span> alunos estão cadastrados, cada um com valor e dia de vencimento, e as mensagens já escritas do seu jeito.
+
+Uma coisa que já dá pra ver: <span class="slot">14</span> alunos estão com a mensalidade em atraso, somando <span class="slot">R$ 2.100</span>.
+
+Falta só uma etapa, e é de 2 minutos: conectar o seu WhatsApp. Abre a tela, aparece um QR Code e você escaneia igual WhatsApp Web.
+
+Te mando o passo a passo agora ou prefere que eu te ligue e a gente faz junto?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>O número do atraso é o pico emocional da conversa inteira — é a primeira vez que ele vê o próprio prejuízo somado, e foi você quem mostrou. Nunca entregue a conta sem esse número. O fecho oferece <strong>duas opções em que nenhuma é "não"</strong>, e a segunda é a que você quer: no telefone, a conexão acontece.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--good);--seg-soft:var(--good-soft)">
+  <div class="seg-bar">
+    <span class="seg-count">E4</span>
+    <div class="seg-name">
+      <span class="t">Conectar o WhatsApp e ver a primeira cobrança</span>
+      <span class="s">a etapa que decide tudo: 51% contra 1,9%</span>
+    </div>
+    <span class="seg-when">no mesmo dia</span>
+  </div>
+  <div class="seg-why prose">
+    <p>Todo lead que morre depois de mandar a lista morre aqui. Não é dúvida nem preço — é uma tarefa de dois minutos que ninguém faz sozinho no meio do dia. Trate essa etapa como ligação, não como mensagem.</p>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Assim que conectar</span><span class="touch-when">na hora</span></div>
+    <div class="bubble">
+      <div class="msg">Conectado! 🎉
+
+A partir de agora as cobranças saem sozinhas do seu número, todo dia às 9h. A primeira leva sai <span class="slot">amanhã</span> e você não precisa fazer nada.
+
+Depois que sair, me diz se o texto ficou do seu jeito que eu ajusto em 2 minutos.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Fecha o ciclo com um "você não precisa fazer nada" e já abre a próxima conversa com um pedido leve, que é o que te dá pretexto para voltar amanhã sem parecer cobrança.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Dia seguinte</span><span class="touch-when">depois da primeira leva sair</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, saiu a primeira: <span class="slot">18</span> alunos avisados hoje de manhã, e <span class="slot">5</span> já abriram o link de pagamento.
+
+Você não digitou nenhuma delas. É isso todo mês, no automático.
+
+Quer que eu ajuste alguma coisa no texto antes de virar rotina?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>"Você não digitou nenhuma delas" é a prova do produto contada com os dados dele. É o momento de maior convicção do funil inteiro — e é por isso que a conversa de plano vem <em>depois</em> desta mensagem, nunca antes.</p>
+    </div>
+  </div>
+</section>
+
+<section class="seg" style="--seg:var(--accent);--seg-soft:var(--accent-soft)">
+  <div class="seg-bar">
+    <span class="seg-count">E5</span>
+    <div class="seg-name">
+      <span class="t">Do teste para o plano</span>
+      <span class="s">a conversa é sobre continuar rodando, não sobre "gostou?"</span>
+    </div>
+    <span class="seg-when">no fim do teste</span>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">último dia do teste</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, seu teste acaba <span class="slot">hoje</span>. Nesses dias saíram <span class="slot">32</span> cobranças pelo seu WhatsApp e <span class="slot">9</span> alunos já pagaram — <span class="slot">R$ 1.350</span> que entraram sem você pedir.
+
+Pra continuar rodando é o <span class="slot">Pro</span>, R$ <span class="slot">99,90</span>/mês, sem fidelidade e cancela quando quiser.
+
+Te mando o link de pagamento?</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>Não pergunta se ele gostou — mostra o que aconteceu. O contraste entre o valor que entrou e a mensalidade do plano faz a conta sozinho, sem você precisar dizer "se paga". "Te mando o link?" é um sim de uma palavra, não uma decisão de compra.</p>
+    </div>
+  </div>
+
+  <div class="touch">
+    <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">3 dias depois, se não pagou</span></div>
+    <div class="bubble">
+      <div class="msg"><span class="slot">Nome</span>, suas cobranças estão paradas desde <span class="slot">sexta</span> — seus alunos deixaram de receber os lembretes.
+
+Prefere que eu religue agora, ou que eu deixe parado por enquanto? As duas respostas tão certas comigo.</div>
+      <div class="copy"><button type="button">Copiar</button></div>
+    </div>
+    <div class="why">
+      <span class="lbl">Por que funciona</span>
+      <p>A perda é concreta e já está acontecendo — não é uma ameaça, é um relatório. Oferecer a saída ("deixe parado") na mesma frase remove a pressão e é justamente o que faz muita gente responder "não, religa".</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">O silêncio</span>
+    <h2>Ele não respondeu. Quatro filas, por onde ele parou</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:26px">
+    <p>A cadência muda conforme o quanto ele já investiu na conversa. Quem nunca respondeu nada aguenta menos toques; quem já mandou a lista merece uma ligação. <strong>Em todas as filas: no máximo três toques, e o último não pede nada.</strong></p>
+    <p class="note">Regra de canal: a partir do segundo toque sem resposta de quem já conversou com você, tente ligar uma vez antes de mandar a terceira mensagem. Mensagem ignorada duas vezes não vira resposta na terceira.</p>
+  </div>
+
+  <div class="seg" style="--seg:var(--cold);--seg-soft:var(--cold-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">A</span>
+      <div class="seg-name">
+        <span class="t">Sumiu sem responder a qualificação</span>
+        <span class="s">recebeu o toque 0 e não voltou</span>
+      </div>
+      <span class="seg-when">3 toques &middot; 8 dias</span>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia +1</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, só pra não te deixar no vácuo: se for mais fácil, me diz só o número de alunos que eu já te digo se compensa pro seu caso.
+
+E se não for a hora, sem problema nenhum também — é só me falar.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">dia +4</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, uma pergunta rápida e sincera: quantos alunos seus atrasaram a mensalidade este mês?
+
+Pergunto porque é o número que mais assusta o pessoal quando a gente senta pra ver. Se forem 4 alunos de R$ 150, são R$ 600 parados. Todo mês, e quase sempre é o mesmo aluno.
+
+Se quiser, eu cadastro os seus alunos e te mostro exatamente quem tá devendo. Leva uns 20 minutos do meu lado e você não precisa decidir nada pra ver.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Abre com uma pergunta que ele provavelmente não sabe responder de cabeça — e essa incapacidade já é o argumento. A conta de R$ 600 é explicitamente um exemplo, não uma estatística inventada, e "você não precisa decidir nada pra ver" remove o medo de entrar num funil de vendas.</p>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 3 &middot; despedida</span><span class="touch-when">dia +8</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, vou parar de te chamar pra não encher.
+
+Fico salvo aqui — se um dia correr atrás de mensalidade atrasada virar dor de cabeça aí, me chama que eu monto tudo pra você em 20 minutos.
+
+Boa semana!</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Mensagem de despedida costuma ter a maior taxa de resposta de qualquer sequência, porque é a única que não pede nada. Depois dela, o card vira "perdido" com motivo escrito — e você não volta a esse lead antes de 60 dias.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--hot);--seg-soft:var(--hot-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">B</span>
+      <div class="seg-name">
+        <span class="t">Ouviu a oferta e não mandou a lista</span>
+        <span class="s">conversou, entendeu, travou na hora de fazer</span>
+      </div>
+      <span class="seg-when">3 toques &middot; 9 dias</span>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia +2</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, pra facilitar: não precisa ser planilha.
+
+Me manda um print da sua agenda, uma foto do caderno, o que você tiver. É sério, do jeito que estiver — eu transformo em cadastro aqui e te devolvo pronto.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Quem some depois da oferta quase nunca some por falta de interesse: some porque achou que precisa organizar tudo antes. Esse toque não repete a oferta — ele <strong>diminui o pedido</strong>, que é a única coisa que destrava esse lead.</p>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">dia +5</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, prometo que é a última vez que te chamo. Me responde só com o número que eu me organizo aqui:
+
+1 — Quero, mas essa semana tá corrida
+2 — Quero entender melhor antes
+3 — Não é pra mim agora
+
+Qualquer uma das três tá ótima pra mim.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Responder custa um caractere. A opção 3 é a peça central: dar saída fácil aumenta a taxa de resposta do conjunto, e um "não" claro vale mais que um card parado no board. Se ele responder 1, combine data e volte <em>nela</em>, não antes.</p>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 3 &middot; despedida</span><span class="touch-when">dia +9</span></div>
+      <div class="bubble">
+        <div class="msg">Sem resposta eu entendo como "não é o momento" e paro por aqui, <span class="slot">Nome</span> — sem problema nenhum.
+
+Se mudar de ideia, é só me chamar. Fica salvo.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--alert);--seg-soft:var(--alert-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">C</span>
+      <div class="seg-name">
+        <span class="t">Conta montada e não conectou o WhatsApp</span>
+        <span class="s">a fila mais cara de todas — ele parou no último centímetro</span>
+      </div>
+      <span class="seg-when">4 toques &middot; ligue no segundo</span>
+    </div>
+    <div class="seg-why prose">
+      <p>Aqui você já gastou tempo montando a conta dele e ele já gastou tempo mandando a lista. Perder esse lead é perder o investimento dos dois lados por causa de uma tarefa de dois minutos. <strong>Esta é a fila em que você liga.</strong></p>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia +1</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, sua conta tá montada e parada esperando 1 minuto seu — é só escanear o QR Code, igual WhatsApp Web.
+
+Quer que eu te ligue agora e a gente faz junto? Leva 2 minutos e aí você já vê a primeira cobrança sair.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 2 &middot; ligação</span><span class="touch-when">dia +3</span></div>
+      <div class="bubble">
+        <div class="msg">Te liguei agora e não consegui te pegar, <span class="slot">Nome</span> — imagino que esteja no meio de atendimento.
+
+Te ligo hoje às 14h ou amanhã às 10h? É só pra gente conectar e ligar as cobranças, não te tomo mais que 5 minutos.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Ligue de verdade antes de mandar — a mensagem só funciona como recado de uma ligação que existiu. Duas opções de horário, e as duas curtas: "5 minutos" é a promessa que faz ele aceitar.</p>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 3</span><span class="touch-when">dia +7</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, deixo sua conta salva aqui do jeito que está — seus <span class="slot">60</span> alunos continuam cadastrados, nada se perde.
+
+Quando quiser ligar, me chama que a gente termina em 5 minutos.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 4 &middot; despedida com pergunta</span><span class="touch-when">dia +15</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, faz um tempo que a gente montou sua conta e acabou não indo pra frente. Imagino que você tenha resolvido de outro jeito.
+
+Só pra eu organizar meus contatos: prefere que eu te avise quando tiver novidade, ou que eu não te chame mais? As duas respostas tão certas comigo.
+
+(e se rolou alguma coisa que te fez desistir, me fala sem dó — me ajuda demais)</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>O parêntese final é a parte mais valiosa do playbook inteiro. Se dois leads desta fila derem o mesmo motivo, você achou um problema de produto ou de onboarding que está te custando muito mais que estes dois.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="seg" style="--seg:var(--warm);--seg-soft:var(--warm-soft)">
+    <div class="seg-bar">
+      <span class="seg-count">D</span>
+      <div class="seg-name">
+        <span class="t">Usou o teste e não virou plano</span>
+        <span class="s">conectou, viu funcionando, e parou</span>
+      </div>
+      <span class="seg-when">3 toques &middot; 10 dias</span>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 1</span><span class="touch-when">dia +3 &middot; texto do E5 acima</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, suas cobranças estão paradas desde <span class="slot">sexta</span> — seus alunos deixaram de receber os lembretes.
+
+Prefere que eu religue agora, ou que eu deixe parado por enquanto?</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 2</span><span class="touch-when">dia +6</span></div>
+      <div class="bubble">
+        <div class="msg"><span class="slot">Nome</span>, me tira uma dúvida sincera, sem compromisso nenhum: foi o preço, foi alguma coisa que faltou no sistema, ou simplesmente não era a hora?
+
+Pergunto porque me ajuda a melhorar de verdade — e se for preço, me fala que a gente vê o que dá pra fazer.</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+      <div class="why">
+        <span class="lbl">Por que funciona</span>
+        <p>Três alternativas fechadas são mais fáceis de responder que uma pergunta aberta, e a última ("não era a hora") dá uma saída sem constrangimento. "Se for preço, a gente vê o que dá pra fazer" abre negociação sem você ter dado desconto — o desconto só existe se ele pedir.</p>
+      </div>
+    </div>
+    <div class="touch">
+      <div class="touch-meta"><span class="touch-n">Toque 3 &middot; despedida</span><span class="touch-when">dia +10</span></div>
+      <div class="bubble">
+        <div class="msg">Tranquilo, <span class="slot">Nome</span> — paro por aqui pra não te encher.
+
+Sua conta fica salva com os alunos cadastrados. Se um dia quiser religar, é só me chamar que em 5 minutos tá rodando de novo.
+
+Sucesso aí!</div>
+        <div class="copy"><button type="button">Copiar</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Consulta rápida</span>
+    <h2>Banco de objeções</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:22px">
+    <p>Responda curto e <strong>devolva a conversa para onde ela estava</strong>. Objeção respondida com parágrafo vira debate; objeção respondida com duas frases vira próximo passo.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Ele diz</th><th>Você responde</th><th>Cuidado</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="said">"Tá caro."</td>
+          <td>"Entendo. Deixa eu te fazer uma conta: um aluno seu que esquece de pagar um mês já custa mais que o plano do ano inteiro. O sistema não precisa recuperar muita coisa pra se pagar — precisa recuperar um."</td>
+          <td>Não dê desconto na primeira objeção de preço. Requadre primeiro.</td>
+        </tr>
+        <tr>
+          <td class="said">"Meu WhatsApp vai ser banido?"</td>
+          <td>"Não. Só sai mensagem pra aluno que você mesmo cadastrou, no ritmo normal, sem lista fria e sem disparo em massa. É o mesmo que você já faz na mão — a diferença é que não é você digitando."</td>
+          <td>Responda rápido e sem defensiva. Hesitar aqui confirma o medo dele.</td>
+        </tr>
+        <tr>
+          <td class="said">"Não entendo nada de tecnologia."</td>
+          <td>"E não precisa entender. Você não vai configurar nada — quem monta sou eu. O que sobra pra você é abrir o app e ver quem pagou."</td>
+          <td>É a objeção mais fácil de virar fechamento: ela <em>pede</em> a oferta de montar.</td>
+        </tr>
+        <tr>
+          <td class="said">"Vou pensar."</td>
+          <td>"Claro. Só pra eu não ficar te enchendo: te chamo na quinta, ou prefere que eu deixe quieto e você me procura?"</td>
+          <td>Saia com data marcada ou com um "não" limpo. O limbo é o que não serve.</td>
+        </tr>
+        <tr>
+          <td class="said">"Me manda um vídeo que eu vejo depois."</td>
+          <td>"Mando agora. Só me diz uma coisa antes, pra eu te mandar a coisa certa e não um material genérico: hoje você controla em planilha, caderno ou algum sistema?"</td>
+          <td>Nunca encerre sem essa resposta — é o dado que orienta tudo o que vem depois.</td>
+        </tr>
+        <tr>
+          <td class="said">"Preciso falar com meu sócio."</td>
+          <td>"Faz todo sentido. Chama ele numa call de 20 minutos comigo, aí vocês decidem juntos e ninguém fica no telefone sem fio. Quinta às 10h serve pros dois?"</td>
+          <td>Nunca mande material para o sócio ver sozinho. Material sem você não vende.</td>
+        </tr>
+        <tr>
+          <td class="said">"Meus alunos vão achar ruim receber cobrança automática."</td>
+          <td>"É o contrário do que parece: a mensagem sai do seu número, com o nome do seu trabalho, três dias <em>antes</em> de vencer. Todo mundo gosta de ser lembrado antes — chato é ser cobrado depois."</td>
+          <td>Aqui você vende dignidade, não automação. É o argumento mais forte que existe.</td>
+        </tr>
+        <tr>
+          <td class="said">"Já usei sistema e não deu certo."</td>
+          <td>"O que aconteceu? […ouça inteiro…] Pois é, é quase sempre isso: entregam o login e somem. Eu faço o contrário — eu monto, e só te chamo quando estiver rodando."</td>
+          <td>Deixe ele contar a história toda. A resposta dele é o roteiro da sua diferenciação.</td>
+        </tr>
+        <tr>
+          <td class="said">"Tem fidelidade? Como cancelo?"</td>
+          <td>"Não tem fidelidade nenhuma. É mês a mês e você cancela quando quiser, sem multa e sem ligar pra ninguém."</td>
+          <td>Resposta de uma frase. Alongar aqui levanta suspeita onde não havia.</td>
+        </tr>
+        <tr>
+          <td class="said">"O dinheiro passa por vocês?"</td>
+          <td>"Não. O pagamento vai direto pra sua conta — a gente só manda o link e registra quando cai. Seu dinheiro não passa em nenhum momento pela nossa mão."</td>
+          <td>Objeção legítima e cara. Responda com clareza total, sem termo técnico.</td>
+        </tr>
+        <tr>
+          <td class="said">"Tem ficha de treino / controle de acesso?"</td>
+          <td>"Não tenho, e nem quero ter — eu resolvo a parte do dinheiro, bem feita. É por isso que custa R$ 99 e não R$ 400."</td>
+          <td>Dizer o que você <strong>não</strong> faz vende mais que listar feature. E reposiciona o preço.</td>
+        </tr>
+        <tr>
+          <td class="said">"E se eu quiser mudar as mensagens?"</td>
+          <td>"Você muda quando quiser, é texto livre. E na montagem eu já escrevo do seu jeito — me diz como você fala com seu aluno que eu deixo igual."</td>
+          <td>Ótimo sinal de compra: ele já está imaginando o dia a dia. Feche logo depois disso.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Decisão rápida</span>
+    <h2>Ele respondeu — o que você faz, e em quanto tempo</h2>
+  </div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Se ele disser</th><th>Você faz</th><th>Prazo</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="said">"Quero sim"</td><td>Peça a lista <strong>na mesma mensagem</strong>, sem marcar reunião. Monte e devolva pronto.</td><td class="n">24h</td></tr>
+        <tr><td class="said">"Quanto custa?"</td><td>Responda o preço direto, sem rodeio. Depois ofereça montar.</td><td class="n">na hora</td></tr>
+        <tr><td class="said">"Tô sem tempo"</td><td>Ofereça dia e hora específicos ("terça 10h?"). Nunca "semana que vem".</td><td class="n">na hora</td></tr>
+        <tr><td class="said">"Já uso outro"</td><td>Pergunte qual e o que mais incomoda. Anote — é sua melhor fonte sobre concorrência.</td><td class="n">na hora</td></tr>
+        <tr><td class="said">"1" (tá corrido)</td><td>Combine data e volte nela, não antes. Anote no board.</td><td class="n">na data</td></tr>
+        <tr><td class="said">Mandou a lista</td><td>Confirme o recebimento com prazo, monte, devolva com o número do atraso dele.</td><td class="n">24h</td></tr>
+        <tr><td class="said">Conta pronta e sumiu</td><td>Fila C. Ligue no segundo toque, não mande terceira mensagem antes disso.</td><td class="n">D+1, D+3</td></tr>
+        <tr><td class="said">"Não"</td><td>Agradeça em uma linha. Marque perdido <strong>com o motivo escrito</strong> e tire do board.</td><td class="n">na hora</td></tr>
+        <tr><td class="said">Nada</td><td>Entre na fila de silêncio correspondente. Depois do último toque, perdido — sem quarto contato.</td><td class="n">ver filas</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Cuidados</span>
+    <h2>Como não queimar o número (nem o lead)</h2>
+  </div>
+  <div class="rails">
+    <div class="rail">
+      <span class="rn">01</span>
+      <div><strong>Nenhum link no primeiro toque.</strong>
+      <p>Link na mensagem inicial derruba a entrega e faz a mensagem parecer disparo em massa. Mande o link só depois que a pessoa responder.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">02</span>
+      <div><strong>Nada de automação nesta fila.</strong>
+      <p>Os leads entram todos por um único WhatsApp, que também é o seu pessoal. Disparar mensagens iguais em sequência é o padrão exato que o WhatsApp pune com bloqueio — e perder esse número é perder 100% da sua aquisição.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">03</span>
+      <div><strong>Varie o texto de verdade.</strong>
+      <p>Use os roteiros como base, não como copy-paste. Troque a saudação, cite algo da conversa anterior de cada um, mude a ordem das frases. Ajuda com o WhatsApp e converte melhor — a pessoa percebe quando recebeu um molde.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">04</span>
+      <div><strong>Nunca duas mensagens seguidas sem resposta no mesmo dia.</strong>
+      <p>Duas mensagens suas empilhadas sem nada entre elas leem como desespero e derrubam a resposta das duas. Um toque por dia, no máximo, e sempre dentro da cadência da fila.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">05</span>
+      <div><strong>Horário: 9h–11h30 e 14h–17h, dias úteis.</strong>
+      <p>Quem trabalha com turma está em quadra ou em atendimento no fim da tarde e à noite. Nada de fim de semana, nada de madrugada — e no máximo 15 mensagens de prospecção por dia.</p></div>
+    </div>
+    <div class="rail">
+      <span class="rn">06</span>
+      <div><strong>Todo card sai da coluna com motivo escrito.</strong>
+      <p>No fim da semana, "conversando" precisa estar perto de zero: cada lead vira "criou conta" ou "perdido — motivo". Board com dezenas de cards parados não é funil, é lista de tarefa ignorada. Foi exatamente assim que se formou a fila de 42 conversas paradas.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <span class="eyebrow">Termômetro</span>
+    <h2>Cinco números para olhar toda sexta</h2>
+  </div>
+  <div class="prose narrow" style="margin-bottom:22px">
+    <p>Se a conversão cair, é um destes cinco que quebrou — e cada um tem um conserto diferente. Medir o total ("quantos viraram clientes") não te diz onde consertar.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Número</th><th>Onde está bom</th><th>Se estiver ruim, o problema é</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tempo até sua primeira resposta</td><td class="n">&lt; 5 min</td><td>Sua rotina de atendimento — ou a resposta automática, que precisa dar conta sozinha.</td></tr>
+        <tr><td>% que responde a qualificação</td><td class="n">acima de 60%</td><td>O texto do toque 0. Se voltou a virar pergunta seca, a fila de parados se refaz.</td></tr>
+        <tr><td>% que manda a lista</td><td class="n">o gargalo real</td><td>A oferta. Você provavelmente ofereceu teste em vez de oferecer montar.</td></tr>
+        <tr><td>% que conecta o WhatsApp</td><td class="n">quanto mais, melhor</td><td>Fila C. Este número é o preditor de receita: quem conecta paga a 51%.</td></tr>
+        <tr><td>Lead → pagante</td><td class="n">29% histórico</td><td>Se cair muito, olhe o público da campanha antes de culpar o atendimento.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose narrow" style="margin-top:20px">
+    <p class="note">E o número que evita o erro mais caro: a mediana entre o primeiro contato e o primeiro pagamento é de 27 dias. Não marque ninguém como perdido por "demorou" antes disso — só por ter chegado ao fim de uma fila de silêncio.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>Complementa o <em>Playbook de reativação</em> (as 42 conversas paradas) e o <em>Roteiro das 300 escolinhas</em> (prospecção ativa por telefone). Este documento cobre o lead que chega sozinho pela campanha, do primeiro "oi" ao primeiro pagamento. Faixas de plano conferidas em <span class="num">criar-planos-sistema.sql</span>: Starter R$ 49,90 (50 alunos), Pro R$ 99,90 (150 alunos), Premium R$ 149,90 (500 alunos).</p>
+</footer>
+
+</div>
+
+<script>
+document.querySelectorAll(".copy button").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var msg = btn.closest(".bubble").querySelector(".msg");
+    var text = msg.innerText.replace(/ /g, " ");
+    navigator.clipboard.writeText(text).then(function () {
+      var old = btn.textContent;
+      btn.textContent = "Copiado";
+      btn.classList.add("done");
+      setTimeout(function () {
+        btn.textContent = old;
+        btn.classList.remove("done");
+      }, 1600);
+    });
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,325 @@
+<title>Sete Fechamentos de Setembro</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  :root{
+    --ground:#F2F4F3; --panel:#FFFFFF; --panel-2:#E9EDEB;
+    --ink:#141C1A; --ink-2:#3D4B47; --ink-3:#6C7C77;
+    --rule:#D3DAD7; --rule-2:#BFC9C5;
+    --accent:#0E5A48; --accent-soft:#DCEAE4;
+    --hot:#A93C16; --hot-soft:#F6E3DA;
+    --warn:#7C6111; --warn-soft:#F2EAD2;
+    --shadow:0 1px 0 rgba(20,28,26,.05), 0 8px 24px -18px rgba(20,28,26,.5);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1413; --panel:#161E1C; --panel-2:#1D2624;
+      --ink:#E8EEEB; --ink-2:#AFBDB8; --ink-3:#7C8B86;
+      --rule:#28332F; --rule-2:#36433E;
+      --accent:#5FC5A6; --accent-soft:#16302A;
+      --hot:#E88A62; --hot-soft:#332016;
+      --warn:#D6B45C; --warn-soft:#2C2513;
+      --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 24px -18px #000;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1413; --panel:#161E1C; --panel-2:#1D2624;
+    --ink:#E8EEEB; --ink-2:#AFBDB8; --ink-3:#7C8B86;
+    --rule:#28332F; --rule-2:#36433E;
+    --accent:#5FC5A6; --accent-soft:#16302A;
+    --hot:#E88A62; --hot-soft:#332016;
+    --warn:#D6B45C; --warn-soft:#2C2513;
+    --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 24px -18px #000;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size:16px; line-height:1.6; margin:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:0 24px 96px}
+
+  h1,h2,h3{font-family:Archivo, "IBM Plex Sans", sans-serif; text-wrap:balance; margin:0}
+  h1{font-size:clamp(34px,5.5vw,54px); font-weight:800; letter-spacing:-.025em; line-height:1.04}
+  h2{font-size:clamp(22px,2.6vw,28px); font-weight:700; letter-spacing:-.015em; line-height:1.15}
+  h3{font-size:17px; font-weight:700; letter-spacing:-.005em}
+  p{margin:0 0 1em}
+  a{color:var(--accent)}
+  strong{font-weight:600; color:var(--ink)}
+  code{font-family:"IBM Plex Mono", monospace; font-size:.86em}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono", monospace; font-size:11.5px; font-weight:500;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3);
+  }
+
+  header{padding:56px 0 40px; border-bottom:1px solid var(--rule)}
+  .lede{font-size:19px; line-height:1.55; color:var(--ink-2); margin-top:20px; max-width:64ch}
+  .lede em{font-style:normal; color:var(--ink); font-weight:600; box-shadow:inset 0 -.4em 0 var(--accent-soft)}
+
+  .placar{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1px;
+    background:var(--rule); border:1px solid var(--rule);
+    border-radius:3px; overflow:hidden; margin:32px 0 0; box-shadow:var(--shadow);
+  }
+  .placar div{background:var(--panel); padding:16px 18px}
+  .placar .n{
+    font-family:Archivo, sans-serif; font-size:30px; font-weight:800;
+    letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums;
+  }
+  .placar .k{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-top:8px}
+
+  section{padding-top:56px}
+  .prosa{color:var(--ink-2); max-width:66ch}
+
+  .janelas{display:flex; flex-direction:column; gap:9px; margin:20px 0 0; max-width:600px}
+  .janela{display:grid; grid-template-columns:82px 1fr 34px; align-items:center; gap:12px}
+  .janela span:first-child{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-2)}
+  .janela b{font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600; text-align:right; font-variant-numeric:tabular-nums}
+  .bar{height:12px; border-radius:2px; background:var(--accent); display:block}
+  .bar.dim{background:var(--rule-2)}
+
+  .alerta{
+    border:1px solid var(--hot); border-left-width:4px; border-radius:3px;
+    background:var(--hot-soft); padding:20px 22px; margin-top:28px;
+  }
+  .alerta .eyebrow{color:var(--hot)}
+  .alerta h3{margin:6px 0 10px; color:var(--ink)}
+  .alerta p{color:var(--ink-2); margin-bottom:0; max-width:66ch}
+  .alerta p + p{margin-top:.85em}
+
+  .frente{border-top:1px solid var(--rule); padding-top:28px; margin-top:44px}
+  .frente-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:8px}
+  .frente-head .eyebrow{color:var(--accent)}
+  .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500;
+    padding:3px 8px; border-radius:2px; letter-spacing:.05em;
+    background:var(--panel-2); color:var(--ink-2); white-space:nowrap;
+  }
+  .tag.hot{background:var(--hot-soft); color:var(--hot)}
+  .tag.warn{background:var(--warn-soft); color:var(--warn)}
+
+  .tabela-wrap{overflow-x:auto; margin:20px 0 0; border:1px solid var(--rule); border-radius:3px; background:var(--panel); box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14px}
+  th{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:500;
+    letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3);
+    text-align:left; padding:11px 14px; border-bottom:1px solid var(--rule); white-space:nowrap;
+  }
+  td{padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.num, th.num{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
+  td.tel{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--ink-2); white-space:nowrap}
+  td.nome{font-weight:600; white-space:nowrap}
+  td.por{color:var(--ink-2); min-width:240px}
+  td.nota{color:var(--ink-3)}
+  td.nota.q{color:var(--hot)}
+  .dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--accent); margin-right:7px; vertical-align:1px}
+  .dot.off{background:var(--rule-2)}
+
+  ol.passos{counter-reset:p; list-style:none; padding:0; margin:20px 0 0; display:flex; flex-direction:column; gap:14px; max-width:66ch}
+  ol.passos li{counter-increment:p; display:grid; grid-template-columns:26px 1fr; gap:12px; color:var(--ink-2)}
+  ol.passos li::before{
+    content:counter(p); font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    color:var(--accent); padding-top:3px;
+  }
+
+  .semana{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; margin-top:24px; box-shadow:var(--shadow)}
+  .dia{background:var(--panel); padding:16px 18px; display:grid; grid-template-columns:104px 1fr; gap:16px; align-items:start}
+  .dia .d{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3); letter-spacing:.06em; text-transform:uppercase; padding-top:2px}
+  .dia .t{color:var(--ink-2)}
+  .dia .t b{color:var(--ink); font-weight:600}
+
+  footer{margin-top:64px; padding-top:24px; border-top:1px solid var(--rule); color:var(--ink-3); font-size:13.5px; max-width:70ch}
+
+  @media (max-width:620px){
+    .dia{grid-template-columns:1fr; gap:6px}
+    header{padding-top:40px}
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Mensalli &middot; Setembro de 2026 &middot; dia 2 de 30</div>
+  <h1>Sete fechamentos<br>de setembro</h1>
+  <p class="lede">Dois dias sem cliente não é sinal de nada — <em>desde fevereiro, só 1 dos 40 fechamentos caiu entre os dias 1 e 5</em>. O que exige reação hoje é outra coisa: a torneira de leads secou em agosto e o follow-up do board parou no dia 19.</p>
+
+  <div class="placar">
+    <div><div class="n">0<span style="color:var(--ink-3)">/7</span></div><div class="k">meta do mês</div></div>
+    <div><div class="n">6,2</div><div class="k">média mensal 2026</div></div>
+    <div><div class="n">60</div><div class="k">leads vivos no board</div></div>
+    <div><div class="n">14</div><div class="k">dias sem follow-up</div></div>
+  </div>
+</header>
+
+<section>
+  <h2>O que os números dizem</h2>
+
+  <p class="prosa" style="margin-top:18px">A meta cabe na capacidade histórica: janeiro fez 1, e a curva subiu até <strong>8 em agosto</strong>, com 9 em maio no pico. Sete é um mês bom, não um mês heroico. Mas ele não se ganha nos primeiros dias.</p>
+
+  <div class="eyebrow" style="margin-top:32px">Em que dia do mês o cliente diz sim &middot; 40 fechamentos desde fev/26</div>
+  <div class="janelas">
+    <div class="janela"><span>dia 1–5</span><span class="bar dim" style="width:4%"></span><b>1</b></div>
+    <div class="janela"><span>dia 6–10</span><span class="bar dim" style="width:21%"></span><b>5</b></div>
+    <div class="janela"><span>dia 11–20</span><span class="bar" style="width:100%"></span><b>24</b></div>
+    <div class="janela"><span>dia 21–31</span><span class="bar" style="width:42%"></span><b>10</b></div>
+  </div>
+  <p class="prosa" style="margin-top:20px">Faz sentido: o dono de escolinha decide quando a dor aparece — na hora de cobrar a mensalidade do mês, que é meio de mês. <strong>A janela real de fechamento abre por volta do dia 8.</strong> O trabalho dos dias 2 a 7 é encher essa janela de conversa, não de cobrança.</p>
+
+  <div class="eyebrow" style="margin-top:40px">O que quebrou &middot; leads novos por semana e quantos viraram pagantes</div>
+  <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Semana</th><th class="num">Leads</th><th class="num">Pagantes</th><th class="num">Conversão</th><th>&nbsp;</th></tr></thead>
+      <tbody>
+        <tr><td class="tel">13/07</td><td class="num">31</td><td class="num">17</td><td class="num">55%</td><td class="nota">pico</td></tr>
+        <tr><td class="tel">20/07</td><td class="num">7</td><td class="num">6</td><td class="num">86%</td><td class="nota">—</td></tr>
+        <tr><td class="tel">27/07</td><td class="num">4</td><td class="num">2</td><td class="num">50%</td><td class="nota">—</td></tr>
+        <tr><td class="tel">03/08</td><td class="num">22</td><td class="num">2</td><td class="num">9%</td><td class="nota q">a conversão despenca</td></tr>
+        <tr><td class="tel">10/08</td><td class="num">22</td><td class="num">4</td><td class="num">18%</td><td class="nota q">—</td></tr>
+        <tr><td class="tel">17/08</td><td class="num">2</td><td class="num">0</td><td class="num">—</td><td class="nota q">a torneira fecha</td></tr>
+        <tr><td class="tel">24/08</td><td class="num">5</td><td class="num">0</td><td class="num">—</td><td class="nota q">—</td></tr>
+        <tr><td class="tel">31/08</td><td class="num">1</td><td class="num">0</td><td class="num">—</td><td class="nota q">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prosa" style="margin-top:20px">São duas quedas, não uma. O <strong>volume</strong> caiu de 31 para 1 lead por semana. E a <strong>conversão</strong> já tinha caído de 55% para 9% antes disso — na semana de 03/08 ainda entraram 22 leads e só 2 fecharam. Ligar a campanha resolve metade do problema.</p>
+
+  <p class="prosa">A outra metade está no board: nos 60 leads vivos, <strong><code>toque_num</code> é 0, <code>proximo_toque_em</code> é nulo e <code>fila</code> é nula em 100% deles</strong>. A cadência foi desenhada no schema e nunca rodou. Quase todos param em 18 ou 19 de agosto, com a última mensagem saindo de você e nenhuma resposta depois.</p>
+</section>
+
+<section>
+  <div class="alerta">
+    <div class="eyebrow">Antes das 5h de amanhã</div>
+    <h3>A campanha de Escolinha pode não subir</h3>
+    <p>O anúncio de clique-para-WhatsApp da conta está travado no erro <code>2446955 / HARD_ERROR</code> desde hoje, e a causa já foi confirmada: a Página <em>Mensalli — Cobranças Automáticas</em> não tem conta do WhatsApp Business vinculada. O seletor do Gerenciador engana — ele lista o número, mas o vínculo real não existe. Isso atinge <strong>qualquer</strong> CTWA da conta, não só o anúncio antigo.</p>
+    <p>Conserto: Gerenciador → editar o conjunto → Destino → WhatsApp → <strong>Conectar perfil</strong>, e republicar. O <code>issues_info</code> do anúncio é o único sinal confiável de que voltou. Se o Meta recusar dizendo que o número já está em uso, é a WABA fantasma <code>2043005513016563</code> segurando ele — remover só pela UI de Configurações do Negócio.</p>
+    <p><strong>Nunca</strong> completar "verificar / registrar número" na Cloud API para destravar: o +55 62 8161-8862 é o master das automações na Evolution. Registrar mata o disparo de cobrança de todos os clientes.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Cinco frentes, além da campanha</h2>
+  <p class="prosa" style="margin-top:14px">Em ordem de esforço por fechamento. As duas primeiras não dependem de nenhum real de mídia e, se saírem bem, já valem os 7 sozinhas.</p>
+
+  <div class="frente">
+    <div class="frente-head">
+      <span class="eyebrow">Frente 1</span>
+      <h3>Os que já disseram sim e ninguém voltou</h3>
+      <span class="tag hot">hoje</span>
+    </div>
+    <p class="prosa">Cinco pessoas em estágio de decisão deixadas no vácuo. Anderson reconectou o WhatsApp <strong>hoje</strong>, com o trial vencido em 20/08 — está mexendo no sistema agora, sem acesso. George escreveu "mas vamos fechar sim" há dezenove dias e nunca mais foi tocado.</p>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr><th>Quem</th><th>Telefone</th><th class="num">Alunos</th><th>Situação</th><th>Abertura</th></tr></thead>
+        <tbody>
+          <tr><td class="nome"><span class="dot"></span>prof Anderson</td><td class="tel">91 99308-8473</td><td class="num">0</td><td>KDANC · reconectou hoje, trial venceu 20/08</td><td class="por">"Vi que você reconectou o WhatsApp hoje. Seu teste venceu — quer que eu libere de volta e a gente sobe seus alunos junto?"</td></tr>
+          <tr><td class="nome"><span class="dot"></span>George Maia</td><td class="tel">96 98113-9084</td><td class="num">1</td><td>escolinha portovilla · "vamos fechar sim", 14/08</td><td class="por">Retomar a própria frase dele e mandar o Pix pronto. Não reapresentar o produto.</td></tr>
+          <tr><td class="nome"><span class="dot"></span>Dayvson Luna</td><td class="tel">81 99166-3391</td><td class="num">15</td><td>conectado · respondeu 28/08, sem retorno seu</td><td class="por">Já tem 15 alunos dentro. Mostrar o que ele perde por não ligar a régua neste mês.</td></tr>
+          <tr><td class="nome"><span class="dot"></span>William Braz</td><td class="tel">38 99117-4884</td><td class="num">0</td><td>Novo Recreativo · conectado, trial venceu 18/08</td><td class="por">Tocado hoje. Se não responder até quinta, ligar.</td></tr>
+          <tr><td class="nome"><span class="dot off"></span>Practos</td><td class="tel">67 99129-6886</td><td class="num">2</td><td>trial vence <strong>amanhã, 03/09</strong></td><td class="por">Último dia. Conectar o WhatsApp junto com ele, na chamada.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="frente">
+    <div class="frente-head">
+      <span class="eyebrow">Frente 2</span>
+      <h3>Winback de conta que já rodou de verdade</h3>
+      <span class="tag hot">esta semana</span>
+      <span class="tag">13 contas</span>
+    </div>
+    <p class="prosa">O balde mais subestimado do banco. São contas que cadastraram aluno, conectaram o WhatsApp e usaram — depois pararam. Não precisa explicar o produto nem vencer objeção de confiança: elas já viram funcionar. O Colégio GVC sozinho é um Premium.</p>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr><th>Conta</th><th>Telefone</th><th class="num">Alunos</th><th>Zap</th><th>Ângulo de volta</th></tr></thead>
+        <tbody>
+          <tr><td class="nome">Colégio GVC</td><td class="tel">34 99993-3698</td><td class="num">308</td><td><span class="dot"></span>on</td><td class="por">A maior base parada do banco. Vale ligar, não mandar mensagem.</td></tr>
+          <tr><td class="nome">Studio Olimpus Corpus</td><td class="tel">71 98108-4525</td><td class="num">105</td><td><span class="dot"></span>on</td><td class="por">Cassiane. Tocada em 24/08 sem resposta — trocar texto por áudio.</td></tr>
+          <tr><td class="nome">MANIMAL Jiu-Jitsu</td><td class="tel">21 99861-7017</td><td class="num">50</td><td><span class="dot"></span>on</td><td class="por">Pagou R$ 49,90 e parou. A base já cabe no Pro.</td></tr>
+          <tr><td class="nome">Academia AD Lions</td><td class="tel">11 93229-8179</td><td class="num">40</td><td><span class="dot off"></span>off</td><td class="por">Pagou R$ 99,90. A conexão caiu — pode ter sido isso que a perdeu.</td></tr>
+          <tr><td class="nome">Reforço Tia Sol</td><td class="tel">99 99139-0907</td><td class="num">36</td><td><span class="dot"></span>on</td><td class="por">36 alunos cadastrados e nenhum pagamento registrado.</td></tr>
+          <tr><td class="nome">Studio DM</td><td class="tel">62 99207-8578</td><td class="num">36</td><td><span class="dot"></span>on</td><td class="por">Respondeu em 28/08 e ficou sem retorno.</td></tr>
+          <tr><td class="nome">Treinador Jayr</td><td class="tel">63 99225-1391</td><td class="num">25</td><td><span class="dot"></span>on</td><td class="por">Pagou R$ 49,90 uma vez.</td></tr>
+          <tr><td class="nome">Oficina de Aprender</td><td class="tel">71 98820-0064</td><td class="num">22</td><td><span class="dot"></span>on</td><td class="por">Pagou R$ 49,90 uma vez.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="frente">
+    <div class="frente-head">
+      <span class="eyebrow">Frente 3</span>
+      <h3>Descongelar os 40 do board</h3>
+      <span class="tag warn">até quinta</span>
+    </div>
+    <p class="prosa">Quarenta leads em "conversando" e dezoito em "criou conta", todos parados em 18–19/08 com a última mensagem saindo de você. Eles não disseram não — ficaram sem o toque seguinte. Não vale reescrever a abordagem: vale <strong>mudar de canal</strong>. Quem não respondeu texto duas vezes responde áudio ou ligação.</p>
+    <ol class="passos">
+      <li>Separar os 40 em três filas: <strong>respondeu e sumiu</strong> (a mais quente), <strong>abriu conta e não conectou</strong>, <strong>nunca respondeu</strong>.</li>
+      <li>Filas 1 e 2 levam <strong>áudio de 30 segundos</strong>, seu, com o nome da escolinha na primeira frase. É o que separa você de disparo em massa.</li>
+      <li>Fila 3 recebe uma mensagem de encerramento — "vou parar de te chamar; se um dia precisar, é só responder aqui". Costuma ressuscitar de 5 a 10%.</li>
+      <li>Preencher <code>fila</code>, <code>toque_num</code> e <code>proximo_toque_em</code> ao tocar cada um. Sem isso, os leads da campanha de amanhã congelam igual.</li>
+    </ol>
+  </div>
+
+  <div class="frente">
+    <div class="frente-head">
+      <span class="eyebrow">Frente 4</span>
+      <h3>Trial expirado com prova de uso</h3>
+      <span class="tag">66 contas, 4 que importam</span>
+    </div>
+    <p class="prosa">Dos 66 trials expirados, a maioria nunca cadastrou ninguém — não são leads, são cadastros. Estes quatro cadastraram alunos e três conectaram o WhatsApp. A FCARENA chegou a <strong>disparar 56 mensagens</strong> pelo sistema antes de parar: essa conta já provou pra si mesma que funciona.</p>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr><th>Conta</th><th>Telefone</th><th class="num">Alunos</th><th class="num">Msgs enviadas</th><th class="num">Trial venceu</th></tr></thead>
+        <tbody>
+          <tr><td class="nome"><span class="dot"></span>FCARENA ⚽</td><td class="tel">27 99838-6631</td><td class="num">28</td><td class="num">56</td><td class="num">09/04</td></tr>
+          <tr><td class="nome"><span class="dot"></span>Dayvson Luna</td><td class="tel">81 99166-3391</td><td class="num">15</td><td class="num">18</td><td class="num">29/05</td></tr>
+          <tr><td class="nome"><span class="dot"></span>Goandgeit English</td><td class="tel">71 99380-4967</td><td class="num">12</td><td class="num">0</td><td class="num">13/03</td></tr>
+          <tr><td class="nome"><span class="dot off"></span>Furia Thai</td><td class="tel">21 97007-3779</td><td class="num">10</td><td class="num">0</td><td class="num">22/05</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="frente">
+    <div class="frente-head">
+      <span class="eyebrow">Frente 5</span>
+      <h3>Indicação da base que está feliz</h3>
+      <span class="tag">custo zero</span>
+    </div>
+    <p class="prosa">Vinte e seis contas ativas, doze delas com mais de 50 alunos e disparando todo mês — Team Juliana (317), Independente (218), Personal Fight (193), Paineiras (192), AG Natação (134), GR Esperança (118). Dono de escolinha conhece dono de escolinha, e quase todos estão em cidade onde a concorrência ainda é o caderno.</p>
+    <ol class="passos">
+      <li>Pedir a indicação <strong>no dia em que a régua entrega resultado</strong> — logo depois do lote de cobrança do mês, não numa terça qualquer.</li>
+      <li>Fazer um pedido concreto: "me indica <strong>um</strong> dono de escolinha que ainda cobra no caderno". Um, não "alguém".</li>
+      <li>Contrapartida simples, sem burocracia: um mês grátis para quem indica, quando o indicado pagar o primeiro.</li>
+      <li>Doze contas ativas vencem entre 03 e 10/09 — a mesma conversa serve para segurar a renovação. Sete novos com três churns é um mês perdido.</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <h2>Os próximos sete dias</h2>
+  <p class="prosa" style="margin-top:14px">A janela de fechamento abre no dia 8. Até lá, o trabalho é encher o topo e reabrir conversa — não pedir cartão.</p>
+
+  <div class="semana">
+    <div class="dia"><div class="d">Hoje · 02</div><div class="t"><b>Frente 1 inteira, um por um.</b> Cinco mensagens, cinco pessoas, nome próprio na primeira linha. Anderson primeiro — ele está no sistema agora. Depois: destravar o "Conectar perfil" da Página no Gerenciador.</div></div>
+    <div class="dia"><div class="d">Quarta · 03</div><div class="t"><b>Confirmar que a campanha subiu de fato</b> — checar o <code>issues_info</code> do anúncio, não o painel. Practos vence hoje. Abrir a Frente 2 pelas três maiores: GVC, Olimpus e Studio DM.</div></div>
+    <div class="dia"><div class="d">Quinta · 04</div><div class="t"><b>Terminar o winback</b> (Manimal, AD Lions, Tia Sol, Jayr, Oficina). SLA para lead novo da campanha: resposta em menos de 5 minutos no horário comercial.</div></div>
+    <div class="dia"><div class="d">Sexta · 05</div><div class="t"><b>Descongelar o board.</b> As duas primeiras filas, por áudio. Sexta à tarde é quando o dono de escolinha para de treinar e olha o celular.</div></div>
+    <div class="dia"><div class="d">Fim de semana</div><div class="t"><b>Só responder quem chegar.</b> Sábado de manhã é horário de jogo — não é hora de prospectar, é hora de estar disponível.</div></div>
+    <div class="dia"><div class="d">Segunda · 07</div><div class="t"><b>Frente 4</b> (os quatro trials com uso) e o pedido de indicação para as seis maiores contas ativas.</div></div>
+    <div class="dia"><div class="d">Terça · 08</div><div class="t"><b>Abre a janela.</b> Daqui pra frente o foco vira fechar o que já está aquecido — e a campanha já tem uma semana de dado para decidir se escala ou troca o criativo.</div></div>
+  </div>
+</section>
+
+<footer>
+  Números apurados em 02/09/2026 sobre <code>vw_admin_contas</code>, <code>mensalli_leads</code> e <code>devedores</code>.
+  Base do mês: 26 contas ativas, 3 em trial, 66 trials expirados, 13 em churn, 2 inadimplentes.
+  A contagem de alunos exclui registros marcados como lixo.
+</footer>
+
+</div>

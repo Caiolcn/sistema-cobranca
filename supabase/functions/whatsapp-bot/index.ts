@@ -579,7 +579,7 @@ async function capturarLeadMensalli(
 
   const { data: lead } = await supabase
     .from('mensalli_leads')
-    .select('id, status, nome, ultima_interacao, ignorado')
+    .select('id, status, nome, ultima_interacao, ignorado, nao_lidas')
     .eq('remote_jid', remoteJid)
     .maybeSingle()
 
@@ -613,6 +613,9 @@ async function capturarLeadMensalli(
         ultima_mensagem: texto,
         ultima_direcao: direcao,
         ultima_interacao: enviadoEm,
+        // Lead nasce de mensagem recebida (o guard acima barra outbound), entao
+        // ja nasce com uma nao lida — e o badge da caixa aparece na hora.
+        nao_lidas: 1,
       })
       .select('id')
       .single()
@@ -639,11 +642,16 @@ async function capturarLeadMensalli(
     // Só o pushName de quem escreve pra gente serve como nome do lead.
     if (!lead.nome && !fromMe && pushName?.trim()) patch.nome = pushName.trim()
 
+    // Badge da caixa de entrada. Quem zera e o inbox ao abrir a conversa (e o
+    // proprio envio, na edge function mensalli-lead-send).
+    if (!fromMe) patch.nao_lidas = (lead.nao_lidas || 0) + 1
+
     await supabase.from('mensalli_leads').update(patch).eq('id', leadId)
   }
 
   // wa_message_id e UNIQUE: reentrega do mesmo evento nao duplica a conversa
-  const { error: msgErr } = await supabase
+  const temMidia = tipo !== 'texto'
+  const { data: gravada, error: msgErr } = await supabase
     .from('mensalli_lead_mensagens')
     .upsert(
       {
@@ -653,11 +661,139 @@ async function capturarLeadMensalli(
         texto,
         tipo,
         enviado_em: enviadoEm,
+        // 'pendente' entra na fila de download logo abaixo.
+        midia_status: temMidia ? 'pendente' : 'nao_aplica',
       },
       { onConflict: 'wa_message_id', ignoreDuplicates: true }
     )
+    .select('id, midia_status')
+    .maybeSingle()
 
   if (msgErr) console.error('❌ Erro ao gravar mensagem do lead:', msgErr.message)
+
+  // Midia do WhatsApp expira: buscamos no ato do recebimento, nao na hora de
+  // abrir a conversa. waitUntil solta o download em segundo plano — a Evolution
+  // recebe o 200 sem esperar o upload.
+  if (temMidia && gravada?.id && gravada.midia_status === 'pendente') {
+    const tarefa = baixarMidiaLead(supabase, {
+      mensagemId: gravada.id,
+      leadId: leadId!,
+      waMessageId,
+      remoteJid,
+      fromMe,
+      tipo,
+    })
+    // @ts-ignore EdgeRuntime existe no runtime do Supabase, nao nos tipos do Deno
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(tarefa)
+    } else {
+      tarefa.catch(() => {})
+    }
+  }
+}
+
+// ============================================================
+// Midia das conversas de lead
+// ============================================================
+// A Evolution nao manda o binario no webhook (webhookBase64 fica false de
+// proposito: ligar isso engorda o payload de TODAS as instancias dos clientes,
+// e a rotina de zumbi recria instancia com o flag em false de novo). Entao
+// buscamos sob demanda, uma mensagem por vez.
+const EXTENSAO_POR_MIME: Record<string, string> = {
+  'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/aac': 'aac',
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+  'video/mp4': 'mp4', 'video/3gpp': '3gp', 'video/quicktime': 'mov',
+  'application/pdf': 'pdf',
+}
+
+const EXTENSAO_POR_TIPO: Record<string, string> = {
+  audio: 'ogg', imagem: 'jpg', video: 'mp4', documento: 'bin', sticker: 'webp', outro: 'bin',
+}
+
+async function baixarMidiaLead(
+  supabase: any,
+  args: {
+    mensagemId: string
+    leadId: string
+    waMessageId: string
+    remoteJid: string
+    fromMe: boolean
+    tipo: string
+  }
+) {
+  const { mensagemId, leadId, waMessageId, remoteJid, fromMe, tipo } = args
+
+  const marcarErro = async (motivo: string) => {
+    console.warn(`⚠️ Midia de lead nao baixada (${motivo}):`, waMessageId)
+    await supabase
+      .from('mensalli_lead_mensagens')
+      .update({ midia_status: 'erro' })
+      .eq('id', mensagemId)
+  }
+
+  try {
+    if (!waMessageId) return await marcarErro('sem wa_message_id')
+
+    const { data: configRows } = await supabase
+      .from('config')
+      .select('chave, valor')
+      .in('chave', ['evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
+    const cfg: Record<string, string> = {}
+    for (const r of configRows || []) cfg[r.chave] = r.valor
+
+    const apiUrl = (cfg.evolution_api_url || '').replace(/\/+$/, '')
+    const apiKey = cfg.evolution_api_key
+    const instancia = cfg.evolution_master_instance || INSTANCIA_MENSALLI
+    if (!apiUrl || !apiKey) return await marcarErro('evolution nao configurada')
+
+    const resp = await fetch(`${apiUrl}/chat/getBase64FromMediaMessage/${instancia}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({
+        message: { key: { id: waMessageId, remoteJid, fromMe } },
+        convertToMp4: false,
+      }),
+    })
+
+    if (!resp.ok) return await marcarErro(`http ${resp.status}`)
+
+    const dados = await resp.json().catch(() => null)
+    const base64 = dados?.base64 || dados?.media || null
+    if (!base64) return await marcarErro('resposta sem base64')
+
+    const mime = dados?.mimetype || dados?.mimeType || null
+    const ext = (mime && EXTENSAO_POR_MIME[String(mime).split(';')[0]]) || EXTENSAO_POR_TIPO[tipo] || 'bin'
+
+    // base64 -> bytes sem passar por string gigante duas vezes
+    const binario = atob(base64)
+    const bytes = new Uint8Array(binario.length)
+    for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i)
+
+    const caminho = `${leadId}/${waMessageId}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('lead-midia')
+      .upload(caminho, bytes, {
+        contentType: mime || 'application/octet-stream',
+        upsert: true,
+      })
+    if (upErr) return await marcarErro(`upload: ${upErr.message}`)
+
+    await supabase
+      .from('mensalli_lead_mensagens')
+      .update({
+        midia_path: caminho,
+        midia_mime: mime,
+        midia_bytes: bytes.length,
+        duracao_seg: dados?.seconds || dados?.duration || null,
+        midia_status: 'ok',
+      })
+      .eq('id', mensagemId)
+
+    console.log('📎 Midia de lead guardada:', caminho, `${Math.round(bytes.length / 1024)}KB`)
+  } catch (e) {
+    await marcarErro(e instanceof Error ? e.message : 'excecao')
+  }
 }
 
 // ============================================================
