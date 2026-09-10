@@ -12,6 +12,7 @@ import AbaContas from './AbaContas'
 import AbaFinanceiro from './AbaFinanceiro'
 import AbaRetencao from './AbaRetencao'
 import AbaNovidades from './AbaNovidades'
+import AbaProspeccao from './AbaProspeccao'
 import CentralMensagens from '../CentralMensagens'
 import ModalEditarConta from './ModalEditarConta'
 import ModalDisparo from './ModalDisparo'
@@ -39,6 +40,10 @@ const ABAS = [
   // Changelog do produto. Fica aqui e não em Marketing porque o público é o
   // mesmo do resto do /admin: todas as contas de uma vez.
   { value: 'novidades', label: 'Atualizações', icon: 'mdi:bullhorn-outline' },
+  // Prospecção porta a porta no trajeto casa-trabalho. Mora aqui e não em
+  // Marketing porque é ferramenta interna de aquisição, não algo que o cliente
+  // da escola vê — e o /admin já é a área restrita a admin.
+  { value: 'prospeccao', label: 'Prospecção', icon: 'mdi:map-search-outline' },
 ]
 
 export default function AdminShell() {
@@ -181,6 +186,8 @@ export default function AdminShell() {
             />
           )}
           {aba === 'novidades' && <AbaNovidades />}
+
+          {aba === 'prospeccao' && <AbaProspeccao />}
         </>
       )}
 
