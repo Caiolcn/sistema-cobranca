@@ -368,3 +368,12 @@
 .ds-select-message--error {
   color: var(--danger-700);
 }
+
+/* MOBILE — mesmo motivo do Input: abaixo de 16px o iPhone dá zoom no foco e
+   não volta. E alvo de toque de 44px, que é o mínimo para o dedo. */
+@media (max-width: 640px) {
+  .ds-select-trigger {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}

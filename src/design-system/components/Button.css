@@ -231,3 +231,11 @@
   align-items: center;
   justify-content: center;
 }
+
+/* MOBILE — alvo de toque. Botão de 32px de altura é confortável no mouse e
+   escorregadio no dedo; o piso recomendado é 44px. O `xs` fica de fora de
+   propósito: ele existe para ícone dentro de linha de tabela. */
+@media (max-width: 640px) {
+  .ds-btn--sm { min-height: 40px; }
+  .ds-btn--md { min-height: 44px; }
+}

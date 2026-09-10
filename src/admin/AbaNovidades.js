@@ -385,7 +385,7 @@ export default function AbaNovidades() {
           <>
             <Modal.Body>
               <div style={{ display: 'grid', gap: '14px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
                   <Select label="Tipo" options={TAGS} value={form.tag}
                     onChange={(v) => alterar('tag', v)} />
                   <Select label="Público" options={PUBLICOS} value={form.publico}
@@ -424,7 +424,7 @@ export default function AbaNovidades() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                   <Select label="Leva para" options={ROTAS} value={form.cta_rota} clearable searchable
                     placeholder="Nenhuma (só informativa)"
                     onCreate={(texto) => alterar('cta_rota', texto)}
@@ -435,7 +435,7 @@ export default function AbaNovidades() {
                     onChange={(e) => alterar('cta_label', e.target.value)} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                   <Input label="Ícone (Iconify)" value={form.icone}
                     placeholder="mdi:calendar-remove-outline"
                     helper="Usado quando não há print"

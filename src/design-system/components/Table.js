@@ -57,6 +57,11 @@ import './Table.css'
 
 export default function Table({
   columns = [],
+  // Abaixo de 640px cada linha vira um cartao rotulo/valor. Ligado por padrao:
+  // tabela larga em celular so oferece fonte ilegivel ou rolagem horizontal, e
+  // a rolagem esconde justo a coluna de acao, que mora na ponta direita.
+  // Passe false onde a grade em si for a informacao (ex: comparativo lado a lado).
+  mobileCards = true,
   data = [],
   rowKey = 'id',
   onRowClick,
@@ -117,7 +122,7 @@ export default function Table({
   }
 
   return (
-    <div className={`ds-table-container ${className}`} style={style}>
+    <div className={`ds-table-container${mobileCards ? ' ds-table-container--cards' : ''} ${className}`} style={style}>
       {selectable && selectedCount > 0 && (
         <div className="ds-bulk-actions">
           <span className="ds-bulk-actions__count">
@@ -204,7 +209,17 @@ export default function Table({
                       </td>
                     )}
                     {columns.map(col => (
-                      <td key={col.key} className={col.align ? `ds-table__align-${col.align}` : undefined}>
+                      <td
+                        key={col.key}
+                        className={col.align ? `ds-table__align-${col.align}` : undefined}
+                        // O CSS do modo cartao le este atributo para desenhar o
+                        // rotulo da celula. So texto: label ReactNode nao vira
+                        // string util, entao essas celulas ficam so com o valor.
+                        // Label vazio é o caso da coluna de ações. Emitir
+                        // data-rotulo="" desenharia um rótulo invisível ocupando
+                        // 40% da linha e jogaria o botão para o canto.
+                        data-rotulo={typeof col.label === 'string' && col.label ? col.label : undefined}
+                      >
                         {col.render ? col.render(row, index) : row[col.key]}
                       </td>
                     ))}

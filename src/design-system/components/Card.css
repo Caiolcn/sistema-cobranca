@@ -156,3 +156,21 @@
   margin: 0;
   border: 0;
 }
+
+/* MOBILE — o respiro que dá elegância no desktop come a largura útil num
+   celular de 390px. Dois cards aninhados custavam 96px só de padding lateral. */
+@media (max-width: 640px) {
+  .ds-card--padding-spacious { padding: var(--space-4); }
+  .ds-card--padding-default  { padding: var(--space-3); }
+  .ds-card__header,
+  .ds-card__body,
+  .ds-card__footer { padding: var(--space-3) var(--space-4); }
+  .ds-card__body--spacious { padding: var(--space-4); }
+
+  /* Ações do header caem para baixo do título em vez de espremê-lo. */
+  .ds-card__header { flex-wrap: wrap; }
+  .ds-card__header-actions { flex-wrap: wrap; }
+
+  /* Rodapé com dois ou três botões vira coluna antes de virar sanfona. */
+  .ds-card__footer { flex-wrap: wrap; }
+}

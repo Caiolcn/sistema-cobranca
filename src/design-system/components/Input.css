@@ -255,3 +255,23 @@
   gap: 12px;
   margin-top: 2px;
 }
+
+/* ============================================================
+   MOBILE — fonte de 16px e alvo de toque maior.
+
+   O 16px não é estética: o Safari do iPhone dá zoom automático ao focar um
+   campo com fonte menor que 16px, e NÃO desfaz o zoom ao sair. A página fica
+   torta pelo resto da navegação. É o bug de mobile mais comum em formulário.
+   ============================================================ */
+@media (max-width: 640px) {
+  .ds-input-native,
+  .ds-input-row--sm .ds-input-native,
+  .ds-input-row--md .ds-input-native {
+    font-size: 16px;
+  }
+
+  /* Dedo não acerta alvo de 32px. 44px é o mínimo recomendado. */
+  .ds-input-row--sm { min-height: 40px; }
+  .ds-input-row--md { min-height: 44px; }
+  .ds-input-row--lg { min-height: 50px; }
+}

@@ -179,3 +179,77 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+/* ============================================================
+   MOBILE — a tabela vira lista de cartões abaixo de 640px.
+
+   Tabela de seis colunas num celular de 390px só tem duas saídas: fonte
+   ilegível ou rolagem horizontal. E a rolagem horizontal esconde justamente a
+   coluna de ação, que por convenção mora na ponta direita — o usuário não
+   descobre que ela existe. Aqui cada LINHA vira um cartão e cada CÉLULA vira
+   uma dupla rótulo/valor.
+
+   O rótulo sai do `data-rotulo` que o Table.js copia de `column.label`, então
+   nenhuma tela precisa declarar nada: quem já usa <Table> ganha isso de graça.
+   Coluna cujo label não é texto fica só com o valor, sem rótulo.
+   ============================================================ */
+@media (max-width: 640px) {
+  .ds-table-container--cards .ds-table-scroll {
+    overflow-x: visible;
+  }
+
+  .ds-table-container--cards .ds-table,
+  .ds-table-container--cards .ds-table tbody,
+  .ds-table-container--cards .ds-table tr,
+  .ds-table-container--cards .ds-table td {
+    display: block;
+    width: auto;
+  }
+
+  /* O cabeçalho perde a função quando cada célula carrega o próprio rótulo. */
+  .ds-table-container--cards .ds-table thead {
+    display: none;
+  }
+
+  .ds-table-container--cards .ds-table tbody tr {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .ds-table-container--cards .ds-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .ds-table-container--cards .ds-table tbody td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+    border: 0;
+    /* O alinhamento à direita das colunas numéricas já vem do space-between;
+       manter o text-align original empurraria o rótulo junto. */
+    text-align: left;
+  }
+
+  .ds-table-container--cards .ds-table tbody td[data-rotulo]::before {
+    content: attr(data-rotulo);
+    flex: 0 0 40%;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  /* Checkbox de seleção abre o cartão, encostado à esquerda. */
+  .ds-table-container--cards .ds-table tbody td.ds-table__checkbox-cell {
+    justify-content: flex-start;
+    padding-bottom: var(--space-2);
+  }
+
+  /* Empty state e skeleton ocupam o cartão inteiro, não viram par rótulo/valor. */
+  .ds-table-container--cards .ds-table tbody td[colspan] {
+    display: block;
+    padding: 0;
+  }
+}
