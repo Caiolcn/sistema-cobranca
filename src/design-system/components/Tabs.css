@@ -186,3 +186,38 @@
   outline: 2px solid var(--mensalli-green-500);
   outline-offset: 2px;
 }
+
+/* ============================================================
+   MOBILE — o segmented quebra em linhas em vez de rolar de lado.
+
+   Com sete abas o controle não cabe na largura de um celular, e a saída antiga
+   era rolagem horizontal. Rolagem em navegação é ruim por um motivo específico:
+   a aba escondida não anuncia que existe. Quem abre no telefone vê quatro e
+   supõe que são todas.
+
+   Quebrando em duas linhas todas ficam visíveis de uma vez. O `flex: 1 1 auto`
+   faz as abas dividirem a linha por igual em vez de deixarem um buraco à
+   direita, e o `display: flex` (em vez de inline-flex) faz o controle ocupar a
+   largura toda, senão ele encolhe para caber no conteúdo e volta a quebrar mal.
+   ============================================================ */
+@media (max-width: 640px) {
+  .ds-tabs--segmented {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    /* Sem border-box o `width: 100%` soma com os 4px de padding de cada lado e
+       o controle fica 8px mais largo que o pai — rolagem lateral de novo, so
+       que sutil o bastante para passar despercebida. */
+    box-sizing: border-box;
+  }
+
+  .ds-tabs--segmented .ds-tabs__item {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 8px 12px;
+    /* O rótulo pode quebrar dentro do próprio chip se precisar; melhor duas
+       palavras empilhadas do que texto cortado. */
+    white-space: normal;
+  }
+  .ds-tabs--segmented.ds-tabs--sm .ds-tabs__item { padding: 8px 10px; }
+}

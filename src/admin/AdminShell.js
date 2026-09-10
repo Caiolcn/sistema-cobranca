@@ -125,9 +125,12 @@ export default function AdminShell() {
         </Button>
       </div>
 
-      {/* overflow-x: as abas com ícone não cabem em tela estreita, e o
-          segmented não quebra linha — rola dentro do próprio container. */}
-      <div style={{ marginBottom: 20, overflowX: 'auto', paddingBottom: 2 }}>
+      {/* No desktop as sete abas cabem em linha. No celular não cabem, e a
+          rolagem lateral escondia aba sem avisar que existia — quem abria no
+          telefone via quatro e supunha que eram todas. Abaixo de 640px o
+          segmented passa a quebrar em linhas (Tabs.css), então aqui o
+          overflow-x sai de cena justamente nessa faixa. */}
+      <div style={{ marginBottom: 20, overflowX: isSmallScreen ? 'visible' : 'auto', paddingBottom: 2 }}>
         <Tabs
           variant="segmented"
           size={isSmallScreen ? 'sm' : 'md'}
