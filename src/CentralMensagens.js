@@ -474,7 +474,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
       {/* Filtros */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isSmallScreen ? '1fr' : 'minmax(180px,1fr) minmax(160px,1fr) minmax(160px,1fr) minmax(200px,1.4fr)',
+        gridTemplateColumns: isSmallScreen ? 'minmax(0, 1fr)' : 'minmax(180px,1fr) minmax(160px,1fr) minmax(160px,1fr) minmax(200px,1.4fr)',
         gap: 10, marginBottom: 16
       }}>
         <Select options={PERIODOS} value={periodo} onChange={setPeriodo} />

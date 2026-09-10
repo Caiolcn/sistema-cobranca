@@ -302,7 +302,7 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
       <div style={{
         display: 'grid',
         gridTemplateColumns: isSmallScreen
-          ? '1fr'
+          ? 'minmax(0, 1fr)'
           : 'minmax(160px,1fr) minmax(170px,1fr) minmax(160px,1fr) minmax(180px,1.3fr)',
         gap: 10,
         marginBottom: 14,

@@ -89,3 +89,20 @@ table {
   border-radius: 8px;
   overflow: hidden;
 }
+/* ============================================================
+   Rolagem lateral no celular — a regra que faltava.
+
+   O container do conteúdo (Dashboard.js) é `display: flex`, e todo filho de
+   flex nasce com `min-width: auto`. Isso significa que ele NÃO encolhe abaixo
+   do próprio min-content: basta uma tabela, um título comprido ou uma grade
+   rígida lá dentro para a página inteira ficar mais larga que a tela e ganhar
+   rolagem lateral. É a causa mais comum de "o site não é responsivo" em app
+   feito com layout flex, e não aparece no desktop porque lá sobra largura.
+
+   `min-width: 0` devolve a capacidade de encolher. `max-width: 100%` é o
+   cinto de segurança para o que ainda assim tentar passar.
+   ============================================================ */
+.app-conteudo > * {
+  min-width: 0;
+  max-width: 100%;
+}

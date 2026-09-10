@@ -150,7 +150,7 @@ export default function AbaVisaoGeral({ dados, irPara, isSmallScreen }) {
     },
   ]
 
-  const colunasKpi = isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(180px, 1fr))'
+  const colunasKpi = isSmallScreen ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))'
 
   return (
     <div>
@@ -335,7 +335,7 @@ function Funil({ kpis, carregando, isSmallScreen }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+      gridTemplateColumns: isSmallScreen ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
       gap: 10,
     }}>
       {etapas.map((e, i) => {

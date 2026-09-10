@@ -1531,7 +1531,12 @@ export default function Dashboard() {
         )}
         <PlanExpirationBanner />
         <WhatsAppDesconectadoBanner />
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'flex-start', backgroundColor: '#ffffff' }}>
+        {/* app-conteudo: a classe existe por causa do filho. Este container e
+            flex, e todo filho de flex nasce com min-width:auto, o que o impede
+            de encolher abaixo do proprio min-content — qualquer conteudo largo
+            la dentro empurra a PAGINA e cria rolagem lateral no celular. A
+            regra `.app-conteudo > *` no App.css zera esse minimo. */}
+        <div className="app-conteudo" style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'flex-start', backgroundColor: '#ffffff' }}>
           <Outlet />
         </div>
       </div>

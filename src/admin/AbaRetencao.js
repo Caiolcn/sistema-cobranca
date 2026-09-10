@@ -69,7 +69,7 @@ export default function AbaRetencao({ dados, onDisparar, isSmallScreen }) {
     },
   ]
 
-  const grade = isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))'
+  const grade = isSmallScreen ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(280px, 1fr))'
 
   return (
     <div>

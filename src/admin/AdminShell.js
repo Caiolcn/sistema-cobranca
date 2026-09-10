@@ -236,7 +236,7 @@ function AtalhosAdmin({ isSmallScreen }) {
       </div>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: isSmallScreen ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: 10,
       }}>
         {PAINEIS.map(p => (
