@@ -59,6 +59,38 @@ Lembrete: sua aula de {{descricaoAula}} começa em 1 hora! 🕐
 
 Até já! 💪`,
 
+  // ATENÇÃO: os dois textos abaixo estão DUPLICADOS nas edge functions
+  // (agendamento-agendar e lembrete-aula-24h), que são quem envia de fato e
+  // precisam de um fallback quando a conta não tem template salvo. Mudou aqui,
+  // muda lá — senão o aluno lê um texto no editor e recebe outro no WhatsApp.
+  booking_confirmed: `Oi, {{nomeAluno}}! ✅
+
+Sua aula está *confirmada*!
+
+📆 Data: {{dataAula}} ({{diaSemana}})
+⏰ Horário: {{horarioAula}}
+🥋 Aula: {{descricaoAula}}
+📍 Local: {{nomeEmpresa}}
+
+Chegue uns 10 minutinhos antes. Se precisar remarcar, é só responder aqui.
+
+Até lá! 💪`,
+
+  // Aula sem descrição é o caso comum, então {{descricaoAula}} fica numa linha
+  // só dela: quando vem vazia, as edge functions apagam a linha inteira em vez
+  // de deixar "Aula:" órfão. Variável no meio de frase não ganha esse
+  // tratamento — por isso o texto padrão não faz "aula de {{descricaoAula}}".
+  class_reminder_24h: `Oi, {{nomeAluno}}! 👋
+
+Passando pra lembrar: você tem aula *amanhã*! 📅
+
+📆 Data: {{dataAula}} ({{diaSemana}})
+⏰ Horário: {{horarioAula}}
+🥋 Aula: {{descricaoAula}}
+📍 Local: {{nomeEmpresa}}
+
+Se precisar remarcar, é só responder aqui. Te espero! 💪`,
+
   birthday: `Feliz aniversário, {{nomeCliente}}! 🎂🎉
 
 A equipe {{nomeEmpresa}} deseja a você um dia incrível, cheio de saúde, alegria e conquistas!
@@ -145,6 +177,8 @@ export const TITULOS_PADRAO = {
   due_day: 'Lembrete - Vencimento Hoje',
   overdue: 'Cobrança - 3 Dias Após o Vencimento',
   class_reminder: 'Lembrete de Aula',
+  class_reminder_24h: 'Lembrete de Aula - Véspera',
+  booking_confirmed: 'Confirmação de Agendamento',
   birthday: 'Mensagem de Aniversário',
   payment_confirmed: 'Confirmação de Pagamento',
   welcome: 'Boas-vindas',
@@ -166,6 +200,10 @@ export const TITULOS_PADRAO = {
  *
  * `class_reminder` e `birthday` NÃO estão aqui — nunca foram semeados. Existem
  * em poucas contas e só nascem se criados à mão.
+ *
+ * `booking_confirmed` e `class_reminder_24h` também ficam de fora de propósito:
+ * nascem quando a conta liga o toggle (criarTemplatePadraoSeNaoExiste) e, se
+ * ainda assim faltarem, quem envia usa o fallback embutido na edge function.
  */
 export const TEMPLATES_SEED = [
   { tipo: 'due_day', titulo: TITULOS_PADRAO.due_day, mensagem: TEMPLATES_PADRAO.due_day },

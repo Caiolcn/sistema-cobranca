@@ -24,6 +24,16 @@ console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 const paraExibir = (msg) => (msg || '').replace(/\{\{nomeCliente\}\}/g, '{{nomeAluno}}')
 const paraSalvar = (msg) => (msg || '').replace(/\{\{nomeAluno\}\}/g, '{{nomeCliente}}')
 
+// Tipos ligados a AULA: o editor mostra outro conjunto de variáveis pra eles
+// (nada de valor/vencimento) e esconde a nota de {{diasAtraso}}.
+const TIPOS_AULA = ['class_reminder', 'class_reminder_24h', 'booking_confirmed']
+
+// Destes dois quem renderiza são as edge functions (agendamento-agendar e
+// lembrete-aula-24h), que conhecem a data do agendamento. O lembrete de 1h fica
+// de fora de propósito: é montado pelo n8n, que NÃO substitui {{dataAula}} nem
+// {{diaSemana}} — oferecer o chip lá faria o aluno receber a chave crua.
+const TIPOS_AULA_COM_DATA = ['class_reminder_24h', 'booking_confirmed']
+
 // ==========================================
 // COMPONENTE: CAMPANHAS
 // ==========================================
@@ -739,6 +749,8 @@ export default function WhatsAppConexao() {
   const [automacaoNoDiaAtiva, setAutomacaoNoDiaAtiva] = useState(true) // Ativo por padrão
   const [automacao3DiasDepoisAtiva, setAutomacao3DiasDepoisAtiva] = useState(false)
   const [automacaoLembreteAulaAtiva, setAutomacaoLembreteAulaAtiva] = useState(false)
+  const [automacaoLembreteAula24hAtiva, setAutomacaoLembreteAula24hAtiva] = useState(false)
+  const [automacaoConfirmacaoAgendamentoAtiva, setAutomacaoConfirmacaoAgendamentoAtiva] = useState(false)
   const [automacaoConfirmacaoPgtoAtiva, setAutomacaoConfirmacaoPgtoAtiva] = useState(true) // Ativo por padrão
   const [automacaoAniversarioAtiva, setAutomacaoAniversarioAtiva] = useState(false)
   const [enviarDomingoAtivo, setEnviarDomingoAtivo] = useState(true)
@@ -817,7 +829,7 @@ export default function WhatsAppConexao() {
           // Configurações de automação do usuário (da tabela configuracoes_cobranca)
           supabase
             .from('configuracoes_cobranca')
-            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, alertar_despesas, alertar_despesas_dias_antes, recuperacao_inativos_ativa, nps_experimental_ativo, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
+            .select('enviar_3_dias_antes, enviar_no_dia, enviar_3_dias_depois, enviar_lembrete_aula, enviar_lembrete_aula_24h, enviar_confirmacao_agendamento, enviar_aniversario, enviar_confirmacao_pagamento, enviar_domingo, enviar_resumo_diario, alertar_despesas, alertar_despesas_dias_antes, recuperacao_inativos_ativa, nps_experimental_ativo, bot_ativo, bot_saudacao, bot_opcoes_ativas, bot_lead_opcoes_ativas, bot_lead_saudacao, bot_texto_conhecer')
             .eq('user_id', effectiveUserId)
             .maybeSingle(),
 
@@ -872,6 +884,8 @@ export default function WhatsAppConexao() {
           due_day: findBestTemplate('due_day'),
           overdue: findBestTemplate('overdue'),
           class_reminder: findBestTemplate('class_reminder'),
+          class_reminder_24h: findBestTemplate('class_reminder_24h'),
+          booking_confirmed: findBestTemplate('booking_confirmed'),
           birthday: findBestTemplate('birthday'),
           payment_confirmed: findBestTemplate('payment_confirmed'),
           welcome: findBestTemplate('welcome')
@@ -932,6 +946,8 @@ export default function WhatsAppConexao() {
         setAutomacaoNoDiaAtiva(configCobranca?.enviar_no_dia !== false)
         setAutomacao3DiasDepoisAtiva(configCobranca?.enviar_3_dias_depois === true)
         setAutomacaoLembreteAulaAtiva(configCobranca?.enviar_lembrete_aula === true)
+        setAutomacaoLembreteAula24hAtiva(configCobranca?.enviar_lembrete_aula_24h === true)
+        setAutomacaoConfirmacaoAgendamentoAtiva(configCobranca?.enviar_confirmacao_agendamento === true)
         setAutomacaoAniversarioAtiva(configCobranca?.enviar_aniversario === true)
         setAutomacaoConfirmacaoPgtoAtiva(configCobranca?.enviar_confirmacao_pagamento !== false)
         setEnviarDomingoAtivo(configCobranca?.enviar_domingo !== false)
@@ -1268,6 +1284,8 @@ export default function WhatsAppConexao() {
         'automacao_nodia_ativa': 'enviar_no_dia',
         'automacao_3diasdepois_ativa': 'enviar_3_dias_depois',
         'automacao_lembrete_aula_ativa': 'enviar_lembrete_aula',
+        'automacao_lembrete_aula_24h_ativa': 'enviar_lembrete_aula_24h',
+        'automacao_confirmacao_agendamento_ativa': 'enviar_confirmacao_agendamento',
         'automacao_aniversario_ativa': 'enviar_aniversario',
         'automacao_confirmacao_pgto_ativa': 'enviar_confirmacao_pagamento',
         'automacao_resumo_diario_ativa': 'enviar_resumo_diario',
@@ -1395,6 +1413,8 @@ export default function WhatsAppConexao() {
             due_day: findBest('due_day'),
             overdue: findBest('overdue'),
             class_reminder: findBest('class_reminder'),
+            class_reminder_24h: findBest('class_reminder_24h'),
+            booking_confirmed: findBest('booking_confirmed'),
             birthday: findBest('birthday'),
             payment_confirmed: findBest('payment_confirmed'),
             welcome: findBest('welcome')
@@ -1681,6 +1701,71 @@ export default function WhatsAppConexao() {
           type: 'success',
           title: 'Lembrete de Aula Ativado',
           message: 'Lembretes de aula serão enviados 1 hora antes via WhatsApp! Configure os horários na página Horários.'
+        })
+      }
+    }
+  }
+
+  // Lembrete da véspera. Vale só para aula avulsa (agendamentos) — aluno de
+  // turma fixa receberia "sua aula é amanhã" todo dia, e isso é bloqueio na
+  // certa. Quem envia é a edge function lembrete-aula-24h (pg_cron 15/15min).
+  const toggleAutomacaoLembreteAula24h = async () => {
+    const novoValor = !automacaoLembreteAula24hAtiva
+
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('class_reminder_24h')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_lembrete_aula_24h_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoLembreteAula24hAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Lembrete da Véspera Ativado',
+          message: 'Quem marcar aula avulsa vai receber um lembrete 24h antes, além do de 1 hora. Alunos de turma fixa não recebem este.'
+        })
+      }
+    }
+  }
+
+  // Confirmação que sai na hora em que o aluno marca pelo link de agendamento.
+  // O envio mora na edge function agendamento-agendar.
+  const toggleAutomacaoConfirmacaoAgendamento = async () => {
+    const novoValor = !automacaoConfirmacaoAgendamentoAtiva
+
+    if (novoValor) {
+      const templateCriado = await criarTemplatePadraoSeNaoExiste('booking_confirmed')
+      if (!templateCriado) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'danger',
+          title: 'Erro',
+          message: 'Não foi possível criar o template padrão. Tente novamente.'
+        })
+        return
+      }
+    }
+
+    const sucesso = await salvarConfiguracaoAutomacao('automacao_confirmacao_agendamento_ativa', novoValor)
+    if (sucesso) {
+      setAutomacaoConfirmacaoAgendamentoAtiva(novoValor)
+      if (novoValor) {
+        setFeedbackModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Confirmação Ativada',
+          message: 'Quem marcar aula pelo seu link de agendamento vai receber a confirmação no WhatsApp na mesma hora.'
         })
       }
     }
@@ -2979,6 +3064,8 @@ export default function WhatsAppConexao() {
                   { tipo: 'payment_confirmed', categoria: 'cobrancas', nome: 'Confirmação Pagamento', descricao: 'Enviada ao marcar como pago', icone: 'mdi:check-decagram', cor: '#4CAF50', ativo: automacaoConfirmacaoPgtoAtiva, toggle: toggleAutomacaoConfirmacaoPgto, locked: false },
                   { tipo: 'despesa_vencendo', categoria: 'cobrancas', nome: 'Alerta de Despesa', descricao: `Avisa no WhatsApp do dono ${alertaDespesasDiasAntes} dia(s) antes do vencimento`, icone: 'mdi:cash-clock', cor: '#dc2626', ativo: automacaoAlertaDespesasAtiva, toggle: toggleAlertaDespesas, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'class_reminder', categoria: 'aulas', nome: 'Lembrete Aula', descricao: 'Lembrete 1h antes da aula', icone: 'mdi:clock-alert-outline', cor: '#6366f1', ativo: automacaoLembreteAulaAtiva, toggle: toggleAutomacaoLembreteAula, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'class_reminder_24h', categoria: 'aulas', nome: 'Lembrete Véspera', descricao: 'Lembrete 24h antes (só aula avulsa)', icone: 'mdi:calendar-clock-outline', cor: '#6366f1', ativo: automacaoLembreteAula24hAtiva, toggle: toggleAutomacaoLembreteAula24h, locked: automacaoLocked, plano: 'Pro' },
+                  { tipo: 'booking_confirmed', categoria: 'aulas', nome: 'Confirmação de Agendamento', descricao: 'Enviada ao aluno quando ele marca pelo link', icone: 'mdi:calendar-check', cor: '#10b981', ativo: automacaoConfirmacaoAgendamentoAtiva, toggle: toggleAutomacaoConfirmacaoAgendamento, locked: isLocked('premium'), plano: 'Premium' },
                   { tipo: 'resumo_diario', categoria: 'aulas', nome: 'Resumo do Dia', descricao: 'Receba os agendamentos do dia às 7h', icone: 'mdi:clipboard-text-clock', cor: '#0ea5e9', ativo: automacaoResumoDiarioAtiva, toggle: toggleResumoDiario, locked: isLocked('premium'), semTemplate: true, plano: 'Premium' },
                   { tipo: 'birthday', categoria: 'relacionamento', nome: 'Aniversário', descricao: 'Parabéns no dia do aniversário (8h)', icone: 'mdi:cake-variant', cor: '#E91E63', ativo: automacaoAniversarioAtiva, toggle: toggleAutomacaoAniversario, locked: automacaoLocked, plano: 'Pro' },
                   { tipo: 'welcome', categoria: 'relacionamento', nome: 'Boas-vindas', descricao: 'Enviada ao cadastrar novo aluno', icone: 'mdi:hand-wave', cor: '#8B5CF6', ativo: true, toggle: null, locked: false, semToggle: true },
@@ -3267,7 +3354,7 @@ export default function WhatsAppConexao() {
                 <h5 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '600', color: '#344848' }}>
                   Variáveis Disponíveis (clique para copiar):
                 </h5>
-                {tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'class_reminder' && (
+                {tipoTemplateSelecionado !== 'birthday' && !TIPOS_AULA.includes(tipoTemplateSelecionado) && (
                   <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
                     A mensagem é enviada pro WhatsApp do responsável (quando cadastrado). Pra falar com o responsável citando o aluno, use <strong>{`{{nomeResponsavel}}`}</strong> + <strong>{`{{nomeAlunoReal}}`}</strong> {`— este sempre traz o nome do aluno (ex.: "Oi {{nomeResponsavel}}, sobre a mensalidade do {{nomeAlunoReal}}")`}.
                   </p>
@@ -3300,12 +3387,16 @@ export default function WhatsAppConexao() {
                         </code>
                       ))}
                     </>
-                  ) : tipoTemplateSelecionado === 'class_reminder' ? (
+                  ) : TIPOS_AULA.includes(tipoTemplateSelecionado) ? (
                     <>
                       {[
                         { var: '{{nomeAluno}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' },
                         { var: '{{descricaoAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
                         { var: '{{horarioAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
+                        ...(TIPOS_AULA_COM_DATA.includes(tipoTemplateSelecionado) ? [
+                          { var: '{{dataAula}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' },
+                          { var: '{{diaSemana}}', bg: '#ede7f6', border: '#ce93d8', color: '#6a1b9a' }
+                        ] : []),
                         { var: '{{nomeEmpresa}}', bg: '#e3f2fd', border: '#e0e0e0', color: '#8867A1' }
                       ].map(v => (
                         <code
@@ -3504,9 +3595,13 @@ export default function WhatsAppConexao() {
                     Variáveis exclusivas para mensagem de aniversário
                   </p>
                 )}
-                {tipoTemplateSelecionado === 'class_reminder' && (
+                {TIPOS_AULA.includes(tipoTemplateSelecionado) && (
                   <p style={{ fontSize: '11px', color: '#6366f1', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
-                    Variáveis exclusivas para lembrete de aula
+                    {tipoTemplateSelecionado === 'booking_confirmed'
+                      ? 'Enviada ao aluno assim que ele marca a aula pelo seu link de agendamento'
+                      : tipoTemplateSelecionado === 'class_reminder_24h'
+                        ? 'Enviada 24h antes. Só para aula avulsa — quem tem turma fixa não recebe'
+                        : 'Variáveis exclusivas para lembrete de aula'}
                   </p>
                 )}
                 {tipoTemplateSelecionado === 'payment_confirmed' && (
@@ -3519,7 +3614,7 @@ export default function WhatsAppConexao() {
                     Enviada ao cadastrar novo aluno com boas-vindas ativada
                   </p>
                 )}
-                {tipoTemplateSelecionado !== 'overdue' && tipoTemplateSelecionado !== 'class_reminder' && tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'payment_confirmed' && tipoTemplateSelecionado !== 'welcome' && (
+                {tipoTemplateSelecionado !== 'overdue' && !TIPOS_AULA.includes(tipoTemplateSelecionado) && tipoTemplateSelecionado !== 'birthday' && tipoTemplateSelecionado !== 'payment_confirmed' && tipoTemplateSelecionado !== 'welcome' && (
                   <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
                     Nota: {`{{diasAtraso}}`} não está disponível para mensagens pré-vencimento
                   </p>

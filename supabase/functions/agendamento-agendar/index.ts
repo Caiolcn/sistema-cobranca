@@ -14,6 +14,111 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+
+function normalizarTelefone(tel: string | null): string {
+  let t = String(tel || '').replace(/\D/g, '')
+  if (t && !t.startsWith('55')) t = '55' + t
+  return t
+}
+
+function primeiroNome(nome: string | null): string {
+  return (nome || '').trim().split(/\s+/)[0] || ''
+}
+
+/** Formata direto da string YYYY-MM-DD.
+ *  NÃO usar new Date('YYYY-MM-DD'): a data é lida como UTC e volta um dia no
+ *  fuso de Brasília — o aluno receberia a confirmação com a data errada. */
+function dataBR(iso: string): string {
+  const [ano, mes, dia] = iso.slice(0, 10).split('-')
+  return `${dia}/${mes}/${ano}`
+}
+
+function diaSemanaBR(iso: string): string {
+  const [ano, mes, dia] = iso.slice(0, 10).split('-').map(Number)
+  return DIAS_SEMANA[new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()]
+}
+
+/** Texto usado quando a conta ligou a confirmação mas não tem template salvo.
+ *  Sem isto o aluno receberia mensagem VAZIA — foi o que aconteceu com
+ *  class_reminder e birthday, que nunca foram semeados em conta nenhuma.
+ *  Tem que bater com TEMPLATES_PADRAO.booking_confirmed de
+ *  src/data/templatesPadrao.js. */
+const FALLBACK_CONFIRMACAO = `Oi, {{nomeAluno}}! ✅
+
+Sua aula está *confirmada*!
+
+📆 Data: {{dataAula}} ({{diaSemana}})
+⏰ Horário: {{horarioAula}}
+🥋 Aula: {{descricaoAula}}
+📍 Local: {{nomeEmpresa}}
+
+Chegue uns 10 minutinhos antes. Se precisar remarcar, é só responder aqui.
+
+Até lá! 💪`
+
+/** `classificar_falha` no banco lê `erro_codigo` de uma lista fechada pra
+ *  decidir se a Central de Mensagens pode oferecer reenvio. Código fora dela
+ *  vira 'indeterminada'. Mesma lista de mensagens-worker e lembrete-aula-24h. */
+function codigoErro(status: number, textoCru: string): string {
+  if (/Connection Closed/i.test(textoCru)) return 'connection_closed'
+  if (/exists["\\\s:]*false/i.test(textoCru)) return 'numero_inexistente'
+  if (status >= 500) return 'instance_500'
+  return 'bad_request'
+}
+
+/** Aula sem descrição é o caso COMUM, não a exceção: a maioria dos horários
+ *  cadastrados não tem nome. Encher a variável com um texto de reserva gerava
+ *  "Aula: sua aula", e deixar vazia gera uma linha órfã "🥋 Aula:". Então
+ *  variável vazia apaga a LINHA em que ela estava — e só ela.
+ *
+ *  Roda antes da substituição, porque depois não há como saber qual linha
+ *  existia só por causa da variável. Cópia do mesmo helper de
+ *  lembrete-aula-24h; mexer aqui pede mexer lá. */
+function removerLinhasDeVariavelVazia(base: string, tokensVazios: string[]): string {
+  if (tokensVazios.length === 0) return base
+
+  return base
+    .split('\n')
+    .filter(linha => {
+      if (!tokensVazios.some(t => linha.includes(t))) return true
+      const semToken = tokensVazios.reduce((s, t) => s.split(t).join(''), linha)
+      return /[A-Za-zÀ-ÿ0-9]/.test(semToken.replace(/^[^:]*:/, ''))
+    })
+    .join('\n')
+}
+
+function montarConfirmacao(template: string | null, dados: {
+  nomeCliente: string | null
+  nomeAluno: string | null
+  descricaoAula: string | null
+  horarioAula: string | null
+  dataAula: string
+  nomeEmpresa: string | null
+}): string {
+  const vars: Record<string, string> = {
+    '{{nomeCliente}}': primeiroNome(dados.nomeCliente),
+    '{{nomeAluno}}': primeiroNome(dados.nomeAluno),
+    '{{nomeAlunoReal}}': primeiroNome(dados.nomeAluno),
+    '{{descricaoAula}}': dados.descricaoAula || '',
+    '{{horarioAula}}': (dados.horarioAula || '').slice(0, 5),
+    '{{dataAula}}': dataBR(dados.dataAula),
+    '{{diaSemana}}': diaSemanaBR(dados.dataAula),
+    '{{nomeEmpresa}}': dados.nomeEmpresa || 'Equipe',
+  }
+
+  const tokensVazios = Object.entries(vars).filter(([, v]) => v === '').map(([k]) => k)
+  let msg = removerLinhasDeVariavelVazia(
+    (template && template.trim() !== '') ? template : FALLBACK_CONFIRMACAO,
+    tokensVazios
+  )
+
+  for (const [chave, valor] of Object.entries(vars)) {
+    msg = msg.split(chave).join(valor)
+  }
+  return msg.replace(/ {2,}/g, ' ')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -34,7 +139,7 @@ serve(async (req) => {
     // 1. Buscar empresa pelo slug
     const { data: empresa } = await supabase
       .from('usuarios')
-      .select('id, agendamento_ativo')
+      .select('id, agendamento_ativo, nome_empresa')
       .eq('agendamento_slug', slug)
       .single()
 
@@ -48,7 +153,7 @@ serve(async (req) => {
     // 2. Validar que o aluno pertence a empresa
     const { data: devedor } = await supabase
       .from('devedores')
-      .select('id, nome, user_id, aulas_restantes')
+      .select('id, nome, user_id, aulas_restantes, telefone, responsavel_nome, comunicacoes_ativas, bloquear_mensagens')
       .eq('id', devedor_id)
       .eq('user_id', empresa.id)
       .or('lixo.is.null,lixo.eq.false')
@@ -197,7 +302,11 @@ serve(async (req) => {
       .eq('status', 'experimental')
       .is('primeira_aula_data', null)
 
-    // 10. Notificar admin via WhatsApp
+    // 10. Avisar no WhatsApp: o dono sempre, o aluno se a conta ligou a confirmação.
+    //
+    // As duas mensagens saem da MESMA instância (a do cliente) e nenhuma delas
+    // pode derrubar o agendamento — que já está gravado a esta altura. Por isso
+    // tudo aqui vive dentro de try/catch e nunca muda a resposta da função.
     try {
       const { data: conexao } = await supabase
         .from('mensallizap')
@@ -218,7 +327,23 @@ serve(async (req) => {
         const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
         const apiKey = configMap.evolution_api_key
 
+        const enviar = async (numero: string, texto: string) => {
+          const resp = await fetch(`${apiUrl}/message/sendText/${conexao.instance_name}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': apiKey,
+            },
+            body: JSON.stringify({ number: numero, text: texto }),
+          })
+          const textoCru = await resp.text()
+          let corpo: unknown = null
+          try { corpo = JSON.parse(textoCru) } catch { /* corpo não-JSON */ }
+          return { ok: resp.ok, status: resp.status, textoCru, corpo }
+        }
+
         if (apiKey) {
+          // 10a. Notificação do dono (comportamento antigo, intocado)
           const { data: adminUser } = await supabase
             .from('usuarios')
             .select('telefone')
@@ -235,22 +360,64 @@ serve(async (req) => {
               `Data: ${dataObj.toLocaleDateString('pt-BR')} (${diasSemana[dataObj.getDay()]})\n` +
               `Horario: ${aula.horario}`
 
-            await fetch(`${apiUrl}/message/sendText/${conexao.instance_name}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': apiKey,
-              },
-              body: JSON.stringify({
-                number: `55${telAdmin}`,
-                text: msg,
-              }),
-            })
+            await enviar(`55${telAdmin}`, msg)
+          }
+
+          // 10b. Confirmação para o ALUNO — o pedido do cliente. Até aqui quem
+          // marcava pelo link não recebia nada e ficava sem prova de que deu certo.
+          const { data: cfg } = await supabase
+            .from('configuracoes_cobranca')
+            .select('enviar_confirmacao_agendamento')
+            .eq('user_id', empresa.id)
+            .maybeSingle()
+
+          const alunoAceitaMensagem =
+            devedor.comunicacoes_ativas !== false && devedor.bloquear_mensagens !== true
+
+          if (cfg?.enviar_confirmacao_agendamento === true && alunoAceitaMensagem) {
+            const telAluno = normalizarTelefone(devedor.telefone)
+
+            if (telAluno.length >= 12) {
+              const { data: templates } = await supabase
+                .from('templates')
+                .select('mensagem, is_padrao')
+                .eq('user_id', empresa.id)
+                .eq('tipo', 'booking_confirmed')
+                .eq('ativo', true)
+
+              const customizado = templates?.find((t: any) => t.is_padrao !== true)
+              const padrao = templates?.find((t: any) => t.is_padrao === true)
+
+              const mensagem = montarConfirmacao(customizado?.mensagem || padrao?.mensagem || null, {
+                nomeCliente: devedor.responsavel_nome || devedor.nome,
+                nomeAluno: devedor.nome,
+                descricaoAula: aula.descricao,
+                horarioAula: aula.horario,
+                dataAula: data,
+                nomeEmpresa: empresa.nome_empresa,
+              })
+
+              const r = await enviar(telAluno, mensagem)
+
+              await supabase.from('logs_mensagens').insert({
+                user_id: empresa.id,
+                devedor_id: devedor.id,
+                tipo: 'booking_confirmed',
+                telefone: telAluno,
+                mensagem,
+                status: r.ok ? 'enviado' : 'falha',
+                erro: r.ok ? null : r.textoCru.slice(0, 300),
+                erro_codigo: r.ok ? null : codigoErro(r.status, r.textoCru),
+                http_status: r.status,
+                response_api: r.corpo,
+                enviado_em: new Date().toISOString(),
+              })
+            }
           }
         }
       }
     } catch (notifErr) {
-      console.error('Erro ao notificar admin:', notifErr)
+      console.error('Erro ao notificar agendamento:', notifErr)
     }
 
     return new Response(

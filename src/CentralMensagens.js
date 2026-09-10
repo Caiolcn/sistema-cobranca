@@ -128,6 +128,8 @@ const TIPOS = {
   welcome: 'Boas-vindas',
   birthday: 'Aniversário',
   class_reminder: 'Lembrete de aula',
+  class_reminder_24h: 'Lembrete de aula (véspera)',
+  booking_confirmed: 'Agendamento confirmado',
   cobranca_manual: 'Envio manual',
   // O workflow de NPS grava o log sem `tipo`; a vw_central_mensagens reconhece
   // pelo texto e devolve 'nps'. Sem esta entrada a Central mostrava o codigo cru.
