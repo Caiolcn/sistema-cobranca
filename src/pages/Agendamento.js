@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { FUNCTIONS_URL, SUPABASE_ANON_KEY as ANON_KEY } from '../supabaseClient'
+import { mascaraData, dataNascimentoParaISO } from '../utils/validators'
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const DIAS_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -57,6 +58,7 @@ export default function Agendamento() {
   const [etapa, setEtapa] = useState('telefone') // telefone | nome | selecionar | grade
   const [telefone, setTelefone] = useState('')
   const [nome, setNome] = useState('')
+  const [dataNascimento, setDataNascimento] = useState('') // DD/MM/AAAA
   const [aluno, setAluno] = useState(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState([])
   const [identificando, setIdentificando] = useState(false)
@@ -330,12 +332,14 @@ export default function Agendamento() {
   // Cadastrar novo aluno
   const cadastrarAluno = async () => {
     if (nome.trim().length < 2) { mostrarToast('Digite seu nome completo', 'error'); return }
+    const nascimentoISO = dataNascimentoParaISO(dataNascimento)
+    if (!nascimentoISO) { mostrarToast('Data de nascimento inválida', 'error'); return }
 
     setCadastrando(true)
     try {
       const res = await fetch(`${FUNCTIONS_URL}/agendamento-cadastrar`, {
         method: 'POST', headers,
-        body: JSON.stringify({ slug, nome: nome.trim(), telefone: telefone.replace(/\D/g, '') })
+        body: JSON.stringify({ slug, nome: nome.trim(), telefone: telefone.replace(/\D/g, ''), data_nascimento: nascimentoISO })
       })
       const json = await res.json()
 
@@ -802,7 +806,7 @@ export default function Agendamento() {
             </div>
             <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, color: '#fff' }}>Primeira vez aqui?</h2>
             <p style={{ margin: 0, color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-              Digite seu nome para agendar uma aula experimental
+              Preencha seus dados para agendar uma aula experimental
             </p>
           </div>
 
@@ -829,6 +833,25 @@ export default function Agendamento() {
               autoFocus
             />
 
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#64748b', margin: '16px 0 8px' }}>
+              Data de nascimento
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={dataNascimento}
+              onChange={e => setDataNascimento(mascaraData(e.target.value))}
+              onKeyDown={e => e.key === 'Enter' && cadastrarAluno()}
+              placeholder="DD/MM/AAAA"
+              style={{
+                width: '100%', padding: '14px 16px', fontSize: 16, fontWeight: 600,
+                border: '2px solid #e2e8f0', borderRadius: 12, outline: 'none',
+                transition: 'border-color 0.2s', boxSizing: 'border-box'
+              }}
+              onFocus={e => e.target.style.borderColor = '#22c55e'}
+              onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+            />
+
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
                 onClick={() => setEtapa('telefone')}
@@ -841,13 +864,13 @@ export default function Agendamento() {
               </button>
               <button
                 onClick={cadastrarAluno}
-                disabled={cadastrando || nome.trim().length < 2}
+                disabled={cadastrando || nome.trim().length < 2 || dataNascimento.length < 10}
                 style={{
                   flex: 1, padding: '14px 24px',
-                  background: nome.trim().length >= 2 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#e2e8f0',
-                  color: nome.trim().length >= 2 ? '#fff' : '#94a3b8',
+                  background: nome.trim().length >= 2 && dataNascimento.length === 10 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#e2e8f0',
+                  color: nome.trim().length >= 2 && dataNascimento.length === 10 ? '#fff' : '#94a3b8',
                   border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 700,
-                  cursor: nome.trim().length >= 2 ? 'pointer' : 'default',
+                  cursor: nome.trim().length >= 2 && dataNascimento.length === 10 ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                 }}
               >

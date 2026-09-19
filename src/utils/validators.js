@@ -232,3 +232,49 @@ export function removerFormatacao(value) {
   if (!value) return ''
   return value.replace(/\D/g, '')
 }
+
+/**
+ * Máscara de data DD/MM/AAAA enquanto digita.
+ * Nas páginas públicas (cadastro, agendamento) usamos texto com máscara em vez
+ * de <input type="date">: no celular o seletor nativo abre no ano atual e o
+ * aluno teria que voltar décadas rolando até o ano de nascimento.
+ * @param {string} value - Valor atual
+ * @returns {string} - Valor com máscara
+ */
+export function mascaraData(value) {
+  if (!value) return ''
+  return value
+    .replace(/\D/g, '')
+    .slice(0, 8)
+    .replace(/(\d{2})(\d)/, '$1/$2')
+    .replace(/(\d{2})(\d)/, '$1/$2')
+}
+
+/**
+ * Converte data de nascimento DD/MM/AAAA para AAAA-MM-DD.
+ * @param {string} valor - Data com máscara
+ * @returns {string|null} - ISO, ou null se incompleta, inexistente
+ *   (ex.: 31/02), futura ou anterior a 1900
+ */
+export function dataNascimentoParaISO(valor) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor || '')
+  if (!m) return null
+  const [, dd, mm, aaaa] = m
+  const d = new Date(Number(aaaa), Number(mm) - 1, Number(dd))
+  if (d.getFullYear() !== Number(aaaa) || d.getMonth() !== Number(mm) - 1 || d.getDate() !== Number(dd)) return null
+  if (d.getFullYear() < 1900 || d > new Date()) return null
+  return `${aaaa}-${mm}-${dd}`
+}
+
+/**
+ * Idade completa em anos numa data de referência (hoje, por padrão).
+ * @param {string} dataISO - AAAA-MM-DD
+ * @returns {number}
+ */
+export function idadeEmAnos(dataISO, referencia = new Date()) {
+  const [a, m, d] = dataISO.split('-').map(Number)
+  let anos = referencia.getFullYear() - a
+  const mesRef = referencia.getMonth() + 1
+  if (mesRef < m || (mesRef === m && referencia.getDate() < d)) anos--
+  return anos
+}

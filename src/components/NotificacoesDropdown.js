@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient'
 const TIPOS = {
   pagamento: { icon: 'fluent:money-20-regular', cor: '#10b981', bg: '#ecfdf5' },
   lead: { icon: 'fluent:person-add-20-regular', cor: '#8b5cf6', bg: '#f5f3ff' },
+  cadastro: { icon: 'mdi:file-document-edit-outline', cor: '#d97706', bg: '#fffbeb' },
   agendamento: { icon: 'fluent:calendar-20-regular', cor: '#ec4899', bg: '#fdf2f8' },
   vencendo: { icon: 'fluent:alert-20-regular', cor: '#f59e0b', bg: '#fffbeb' },
   atrasada: { icon: 'fluent:error-circle-20-regular', cor: '#ef4444', bg: '#fef2f2' },
@@ -51,7 +52,7 @@ export async function carregarNotificacoes(userId) {
 
   const desdeNovidade = new Date(agora.getTime() - DIAS_NOVIDADE_NO_SINO * 86400000).toISOString()
 
-  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes, novRes] = await Promise.all([
+  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes, novRes, cadRes] = await Promise.all([
     supabase
       .from('mensalidades')
       .select('id, valor, data_pagamento, devedores(nome)')
@@ -104,6 +105,17 @@ export async function carregarNotificacoes(userId) {
       .gte('publicado_em', desdeNovidade)
       .order('publicado_em', { ascending: false })
       .limit(10),
+    // Fichas enviadas pelo link de cadastro, ainda aguardando aprovação
+    supabase
+      .from('devedores')
+      .select('id, nome, created_at')
+      .eq('user_id', userId)
+      .eq('origem', 'autocadastro')
+      .eq('experimental', true)
+      .or('lixo.is.null,lixo.eq.false')
+      .gte('created_at', hojeIni)
+      .order('created_at', { ascending: false })
+      .limit(10),
   ])
 
   const itens = []
@@ -125,7 +137,18 @@ export async function carregarNotificacoes(userId) {
       titulo: `Novo lead: ${l.nome || l.telefone || 'Sem nome'}`,
       sub: l.origem === 'bot_whatsapp' ? 'Bot WhatsApp' : (l.origem || 'Manual'),
       timestamp: l.created_at,
-      link: '/app/crm',
+      // Experimental do agendamento também está na fila de aprovação de Alunos
+      link: l.origem === 'agendamento' ? '/app/clientes?aprovacao=1' : '/app/crm',
+    })
+  }
+  for (const c of cadRes.data || []) {
+    itens.push({
+      tipo: 'cadastro',
+      id: `cad-${c.id}`,
+      titulo: `Novo cadastro: ${c.nome}`,
+      sub: 'Pelo link de cadastro · aguardando aprovação',
+      timestamp: c.created_at,
+      link: '/app/clientes?aprovacao=1',
     })
   }
   for (const a of agRes.data || []) {

@@ -42,6 +42,7 @@ const AdminCobrancaSaas = lazy(() => import('./AdminCobrancaSaas'))
 const AdminLeads = lazy(() => import('./AdminLeads'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
+const Autocadastro = lazy(() => import('./pages/Autocadastro'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 const LandingEscolinha = lazy(() => import('./pages/LandingEscolinha'))
 const LinkInBio = lazy(() => import('./pages/LinkInBio'))
@@ -160,6 +161,7 @@ function App() {
               <Route path="/portal/:token" element={<PortalCliente />} />
               <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />
+              <Route path="/cadastro/:slug" element={<Autocadastro />} />
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
               {/* Ver como cliente: resgata o token e abre a sessão dele (modo espelho) */}
               <Route path="/ver-como/:token" element={<VerComo />} />

@@ -28,6 +28,7 @@ import Checkbox from './design-system/components/Checkbox'
 import Dropdown from './design-system/components/Dropdown'
 import DateField from './components/DateField'
 import RadarEvasao from './components/RadarEvasao'
+import AprovacaoCadastros from './components/AprovacaoCadastros'
 
 // Soft-delete: mensalidades na lixeira têm lixo = true.
 // SEMPRE busque mensalidades para exibição/contagem/edição por aqui, para o filtro
@@ -136,6 +137,13 @@ export default function Clientes() {
   const [enviarBoasVindas, setEnviarBoasVindas] = useState(true)
   const [mostrarEdicaoBoasVindas, setMostrarEdicaoBoasVindas] = useState(false)
   const [mensagemBoasVindasCustom, setMensagemBoasVindasCustom] = useState('')
+
+  // Aprovação de cadastro (link de cadastro / experimental do agendamento):
+  // o modal de Novo aluno abre preenchido e, ao salvar, atualiza esse devedor
+  // em vez de criar outro.
+  const [aprovandoDevedor, setAprovandoDevedor] = useState(null)
+  const [recarregarPendentes, setRecarregarPendentes] = useState(0)
+  const [mostrarLinkCadastro, setMostrarLinkCadastro] = useState(false)
 
   // Estados para modais de confirmação
   const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
@@ -1270,6 +1278,32 @@ export default function Clientes() {
     }
   }
 
+  // Aprovar cadastro pendente: abre o modal de Novo aluno com a ficha que o
+  // aluno preencheu. O professor revisa, escolhe plano e vencimento e salva.
+  const abrirAprovacao = (p) => {
+    const temResp = !!p.responsavel_nome
+    setAprovandoDevedor(p)
+    setErroModalNovoCliente('')
+    setNovoClienteNome(p.nome || '')
+    setNovoClienteTelefone(temResp ? '' : formatarTelefone(p.telefone || ''))
+    setNovoClienteCpf(p.cpf ? formatarCpfCnpj(p.cpf) : '')
+    setNovoClienteDataNascimento(p.data_nascimento || '')
+    setNovoClienteEmail(p.email || '')
+    setNovoClienteResponsavelNome(p.responsavel_nome || '')
+    setNovoClienteResponsavelTelefone(temResp ? formatarTelefone(p.responsavel_telefone || p.telefone || '') : '')
+    setNovoClienteTags(p.tags || [])
+    setNovoClienteCep(p.cep || ''); setNovoClienteEndereco(p.endereco || ''); setNovoClienteNumero(p.numero || '')
+    setNovoClienteComplemento(p.complemento || ''); setNovoClienteBairro(p.bairro || '')
+    setNovoClienteCidade(p.cidade || ''); setNovoClienteEstado(p.estado || '')
+    // Abre nos Dados: o professor revisa o que o aluno preencheu e completa
+    // o que faltar (tags, endereço) antes de escolher o plano
+    setTemResponsavel(temResp); setStepCadastro(1)
+    setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
+    setPlanoSelecionado(''); setEnviarBoasVindas(true)
+    setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
+    setMostrarModalNovoCliente(true)
+  }
+
   const handleCriarCliente = async () => {
     if (salvandoCliente) return
     setErroModalNovoCliente('')
@@ -1334,38 +1368,54 @@ export default function Clientes() {
         }
       }
 
-      // Criar cliente
-      const { data: clienteData, error: clienteError } = await supabase
-        .from('devedores')
-        .insert({
-          user_id: userId,
-          nome: novoClienteNome.trim(),
-          telefone: telefoneParaSalvar,
-          cpf: novoClienteCpf.trim() || null,
-          data_nascimento: novoClienteDataNascimento || null,
-          email: novoClienteEmail.trim() || null,
-          responsavel_nome: novoClienteResponsavelNome.trim() || null,
-          responsavel_telefone: novoClienteResponsavelTelefone.trim() || null,
-          cep: novoClienteCep.trim() || null,
-          endereco: novoClienteEndereco.trim() || null,
-          numero: novoClienteNumero.trim() || null,
-          complemento: novoClienteComplemento.trim() || null,
-          bairro: novoClienteBairro.trim() || null,
-          cidade: novoClienteCidade.trim() || null,
-          estado: novoClienteEstado.trim() || null,
-          valor_devido: 0,
-          data_vencimento: new Date().toISOString().split('T')[0],
-          status: 'pendente',
-          assinatura_ativa: criarAssinatura,
-          plano_id: criarAssinatura ? planoSelecionado : null,
-          aulas_restantes: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
-          aulas_total: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
-          tags: novoClienteTags.length > 0 ? novoClienteTags : null,
-          portal_token: crypto.randomUUID().replace(/-/g, '')
-        })
-        .select()
+      // Criar cliente — ou, na aprovação de cadastro, promover o pendente
+      const dadosAluno = {
+        nome: novoClienteNome.trim(),
+        telefone: telefoneParaSalvar,
+        cpf: novoClienteCpf.trim() || null,
+        data_nascimento: novoClienteDataNascimento || null,
+        email: novoClienteEmail.trim() || null,
+        responsavel_nome: novoClienteResponsavelNome.trim() || null,
+        responsavel_telefone: novoClienteResponsavelTelefone.trim() || null,
+        cep: novoClienteCep.trim() || null,
+        endereco: novoClienteEndereco.trim() || null,
+        numero: novoClienteNumero.trim() || null,
+        complemento: novoClienteComplemento.trim() || null,
+        bairro: novoClienteBairro.trim() || null,
+        cidade: novoClienteCidade.trim() || null,
+        estado: novoClienteEstado.trim() || null,
+        assinatura_ativa: criarAssinatura,
+        plano_id: criarAssinatura ? planoSelecionado : null,
+        aulas_restantes: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
+        aulas_total: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
+        tags: novoClienteTags.length > 0 ? novoClienteTags : null
+      }
+
+      const { data: clienteData, error: clienteError } = aprovandoDevedor
+        ? await supabase
+          .from('devedores')
+          .update({ ...dadosAluno, experimental: false })
+          .eq('id', aprovandoDevedor.id)
+          .select()
+        : await supabase
+          .from('devedores')
+          .insert({
+            ...dadosAluno,
+            user_id: userId,
+            valor_devido: 0,
+            data_vencimento: new Date().toISOString().split('T')[0],
+            status: 'pendente',
+            portal_token: crypto.randomUUID().replace(/-/g, '')
+          })
+          .select()
 
       if (clienteError) throw clienteError
+
+      // Aprovado: o lead do CRM (experimental do agendamento) vira convertido,
+      // igual à conversão feita pelo próprio CRM
+      if (aprovandoDevedor) {
+        await supabase.from('leads').update({ status: 'convertido' }).eq('convertido_em_devedor_id', aprovandoDevedor.id)
+      }
 
       // Se criar assinatura, criar primeira mensalidade
       if (criarAssinatura && clienteData && clienteData.length > 0) {
@@ -1496,9 +1546,13 @@ Equipe ${nomeEmpresa}`
           showToast('Aluno criado! (Erro ao enviar boas-vindas)', 'warning')
         }
       } else {
-        showToast('Aluno criado com sucesso!', 'success')
+        showToast(aprovandoDevedor ? 'Cadastro aprovado!' : 'Aluno criado com sucesso!', 'success')
       }
 
+      if (aprovandoDevedor) {
+        setAprovandoDevedor(null)
+        setRecarregarPendentes(n => n + 1)
+      }
       setMostrarModalNovoCliente(false)
       setNovoClienteNome('')
       setNovoClienteTelefone('')
@@ -1712,6 +1766,21 @@ Equipe ${nomeEmpresa}`
 
       {/* Conteúdo da aba Alunos (conteúdo original) */}
       {abaAtiva === 'alunos' && <>
+      <AprovacaoCadastros
+        userId={userId}
+        nomeEmpresa={nomeEmpresa}
+        isSmallScreen={isSmallScreen}
+        onAprovar={abrirAprovacao}
+        recarregar={recarregarPendentes}
+        mostrarLink={mostrarLinkCadastro}
+        onFecharLink={() => setMostrarLinkCadastro(false)}
+        abrirLista={searchParams.get('aprovacao') === '1'}
+        onListaAberta={() => {
+          const next = new URLSearchParams(searchParams)
+          next.delete('aprovacao')
+          setSearchParams(next, { replace: true })
+        }}
+      />
       {/* Busca + Botões */}
       <div style={{
         backgroundColor: 'white',
@@ -1733,6 +1802,16 @@ Equipe ${nomeEmpresa}`
 
           {/* Botões */}
           <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
+            <Button
+              variant="outline"
+              icon="mdi:link-variant"
+              iconOnly
+              aria-label="Link de cadastro"
+              title="Link de cadastro: o aluno preenche a ficha"
+              onClick={() => setMostrarLinkCadastro(true)}
+              style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
+            />
+
             <Button
               variant="outline"
               icon="iconoir:import"
@@ -1810,6 +1889,7 @@ Equipe ${nomeEmpresa}`
               variant="secondary"
               icon="mdi:plus"
               onClick={() => {
+                setAprovandoDevedor(null)
                 setErroModalNovoCliente('')
                 setNovoClienteNome(''); setNovoClienteTelefone(''); setNovoClienteCpf('')
                 setNovoClienteDataNascimento(''); setNovoClienteEmail('')
@@ -3892,7 +3972,7 @@ Equipe ${nomeEmpresa}`
             <div style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: isSmallScreen ? '18px' : '20px', fontWeight: '600', color: '#1a1a1a' }}>
-                  Novo Aluno
+                  {aprovandoDevedor ? 'Aprovar cadastro' : 'Novo Aluno'}
                 </h3>
                 <Button variant="ghost" iconOnly icon="mdi:close" aria-label="Fechar"
                   onClick={() => { setMostrarModalNovoCliente(false); setStepCadastro(1); setErroModalNovoCliente('') }} />
@@ -4285,7 +4365,7 @@ Equipe ${nomeEmpresa}`
                 )
               })() : (
                 <Button variant="primary" icon="mdi:check" loading={salvandoCliente} onClick={handleCriarCliente}>
-                  Criar Aluno
+                  {aprovandoDevedor ? 'Aprovar aluno' : 'Criar Aluno'}
                 </Button>
               )}
             </div>

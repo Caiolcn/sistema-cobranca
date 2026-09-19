@@ -1,5 +1,7 @@
 // Edge Function: Agendamento Online - Cadastrar Aluno Novo
-// Cria devedor com origem='agendamento' e status experimental
+// Cria devedor com origem='agendamento' e status experimental.
+// Ele cai na fila "Aguardando aprovacao" da tela de Alunos junto com o
+// autocadastro; la o professor aprova, escolhe plano e vencimento.
 // Acesso PUBLICO (sem autenticacao)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -26,7 +28,7 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
   try {
-    const { slug, nome, telefone } = await req.json()
+    const { slug, nome, telefone, data_nascimento } = await req.json()
 
     if (!slug || !nome || !telefone) {
       return new Response(
@@ -40,6 +42,23 @@ serve(async (req) => {
         JSON.stringify({ error: 'Nome deve ter pelo menos 2 caracteres' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Opcional aqui: versoes antigas da pagina ainda mandam so nome + telefone
+    let dataNascimento: string | null = null
+    if (data_nascimento) {
+      const d = new Date(String(data_nascimento) + 'T12:00:00Z')
+      // "2010-02-31" vira 03/03 sem erro no JS; a volta pro texto denuncia
+      const valida = /^\d{4}-\d{2}-\d{2}$/.test(String(data_nascimento)) &&
+        !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === String(data_nascimento) &&
+        d.getFullYear() >= 1900 && d <= new Date()
+      if (!valida) {
+        return new Response(
+          JSON.stringify({ error: 'Data de nascimento invalida' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      dataNascimento = String(data_nascimento)
     }
 
     const telNormalizado = normalizarTelefone(telefone)
@@ -91,6 +110,7 @@ serve(async (req) => {
         user_id: empresa.id,
         nome: nome.trim(),
         telefone: telefone.trim(),
+        data_nascimento: dataNascimento,
         valor_devido: 0,
         data_vencimento: new Date().toISOString().split('T')[0],
         status: 'pendente',

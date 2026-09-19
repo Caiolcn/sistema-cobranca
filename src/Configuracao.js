@@ -5088,7 +5088,8 @@ function Configuracao({ secao = 'config' }) {
           <div style={{ fontSize: '13px', color: '#4338ca', lineHeight: '1.5' }}>
             <strong>Como funciona:</strong> Crie as aulas na aba <strong>Horários → Agendamento</strong>,
             ative aqui e compartilhe o link. Alunos cadastrados se identificam pelo telefone.
-            Novos alunos preenchem nome e telefone e entram como aula experimental.
+            Novos alunos preenchem nome, telefone e nascimento e entram como aula experimental,
+            na fila <strong>Aguardando aprovação</strong> da tela de Alunos.
           </div>
         </div>
       </div>
