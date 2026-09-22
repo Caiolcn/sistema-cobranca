@@ -1,4 +1,5 @@
 import { supabase, FUNCTIONS_URL } from '../supabaseClient'
+import { chamarEvolution } from './evolutionProxy'
 import { modoEspelhoAtivo } from '../utils/modoEspelho'
 import { TEMPLATES_SEED } from '../data/templatesPadrao'
 
@@ -14,7 +15,6 @@ import { TEMPLATES_SEED } from '../data/templatesPadrao'
  * conexão — trocar isso quebraria todos os envios.
  */
 
-const API_URL_PADRAO = 'https://service-evolution-api.tnvro1.easypanel.host'
 
 /**
  * Nome que uma conta NOVA recebe. Só isso — não use para descobrir a instância
@@ -60,32 +60,20 @@ export function getInstanceName(userId) {
 
 /** Lê a chave/URL globais da Evolution e monta a config da instância do usuário. */
 export async function carregarConfigEvolution(userId) {
-  const { data } = await supabase
-    .from('config')
-    .select('chave, valor')
-    .in('chave', ['evolution_api_key', 'evolution_api_url'])
-
-  const mapa = {}
-  data?.forEach((item) => { mapa[item.chave] = item.valor })
-
+  // A chave da Evolution NAO volta mais para o navegador: quem fala com a
+  // Evolution e a edge function evolution-proxy. Aqui sobra so o nome da
+  // instancia, que o front ainda usa para exibir e para gravar em mensallizap.
   return {
-    apiKey: mapa.evolution_api_key || '',
-    apiUrl: mapa.evolution_api_url || API_URL_PADRAO,
     instanceName: await resolverInstanceName(userId)
   }
 }
 
 /** 'open' | 'connecting' | 'close' — 'close' também cobre instância inexistente. */
 export async function verificarEstado(config) {
-  if (!config?.apiKey) return 'close'
   try {
-    const response = await fetch(
-      `${config.apiUrl}/instance/connectionState/${config.instanceName}`,
-      { headers: { apikey: config.apiKey } }
-    )
-    if (!response.ok) return 'close'
-    const data = await response.json()
-    return data.instance?.state || 'close'
+    const r = await chamarEvolution('connectionState')
+    if (!r.ok) return 'close'
+    return r.data?.instance?.state || 'close'
   } catch {
     return 'close'
   }
@@ -113,16 +101,11 @@ const NUMERO_SONDA = '5511999999999'
  * supabase/functions/whatsapp-health-check/index.ts.
  */
 export async function sondarSocket(config, timeoutMs = 12000) {
-  if (!config?.apiKey) return false
+  if (!config?.instanceName) return false
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(`${config.apiUrl}/chat/whatsappNumbers/${config.instanceName}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
-      body: JSON.stringify({ numbers: [NUMERO_SONDA] }),
-      signal: controller.signal
-    })
+    const res = await chamarEvolution('whatsappNumbers', { numbers: [NUMERO_SONDA] }, undefined, timeoutMs)
     // 200 = o Baileys conseguiu falar com o WhatsApp. Se o número existe é irrelevante.
     return res.ok
   } catch {
@@ -171,10 +154,7 @@ async function garantirWebhook(config, userId) {
   }
 
   try {
-    await fetch(`${config.apiUrl}/webhook/set/${config.instanceName}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
-      body: JSON.stringify({
+    await chamarEvolution('webhookSet', {
         webhook: {
           enabled: true,
           url: WEBHOOK_BOT_URL,
@@ -183,7 +163,6 @@ async function garantirWebhook(config, userId) {
           events: botAtivo ? ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'] : ['CONNECTION_UPDATE']
         }
       })
-    })
   } catch {
     // best-effort: o self-heal do health-check reafirma na próxima rodada
   }
@@ -204,7 +183,7 @@ async function garantirWebhook(config, userId) {
  * POST: o PUT devolve 404 nesta versão (medido em 11/08/26).
  */
 export async function tentarRestart(config, numeroReal, esperaMs = 15000) {
-  if (!config?.apiKey) return false
+  if (!config?.instanceName) return false
 
   // SEM número não há como provar que voltou. Antes isto conferia o resultado
   // com o connectionState — que responde 'open' para instância ZUMBI, sempre.
@@ -215,10 +194,8 @@ export async function tentarRestart(config, numeroReal, esperaMs = 15000) {
   if (!numeroReal) return false
 
   try {
-    const res = await fetch(`${config.apiUrl}/instance/restart/${config.instanceName}`, {
-      method: 'POST', headers: { apikey: config.apiKey }
-    })
-    if (!res.ok) return false
+    const res = await chamarEvolution('restart')
+      if (!res.ok) return false
   } catch {
     return false
   }
@@ -239,16 +216,11 @@ export async function tentarRestart(config, numeroReal, esperaMs = 15000) {
  * consulta, com número do próprio dono, e só dentro de uma ação do usuário.
  */
 async function sondarSocketReal(config, numero, timeoutMs = 12000) {
-  if (!config?.apiKey || !numero) return false
+  if (!config?.instanceName || !numero) return false
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(`${config.apiUrl}/chat/whatsappNumbers/${config.instanceName}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
-      body: JSON.stringify({ numbers: [String(numero).replace(/\D/g, '')] }),
-      signal: controller.signal
-    })
+    const res = await chamarEvolution('whatsappNumbers', { numbers: [String(numero).replace(/\D/g, '')] }, undefined, timeoutMs)
     return res.ok
   } catch {
     return false
@@ -296,17 +268,10 @@ export const MENSAGEM_TRAVADA =
  */
 async function instanciaSumiu(config) {
   try {
-    const res = await fetch(
-      `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
-      // Timeout obrigatorio: o fetchInstances degradou junto com a Evolution
-      // (nao respondeu em 180s em 21/08). Sem isso a chamada pendura a tela do
-      // cliente no meio do fluxo de conexao — e no caso do instanciaSumiu, que
-      // roda num laco de 4, pendura quatro vezes.
-      { headers: { apikey: config.apiKey }, signal: AbortSignal.timeout(8000) }
-    )
+    const res = await chamarEvolution('fetchInstances', {}, undefined, 8000)
     if (res.status === 404) return true
     if (!res.ok) return false
-    const data = await res.json()
+    const data = res.data
     const lista = Array.isArray(data) ? data : [data]
     return !lista.some((i) => (i?.name || i?.instance?.instanceName) === config.instanceName)
   } catch {
@@ -327,14 +292,10 @@ async function instanciaSumiu(config) {
  * num zumbi dá 500. Por isso quem manda é o sumiço confirmado, não o status HTTP.
  */
 export async function resetarInstancia(config, tentativas = 4) {
-  if (!config?.apiKey) return false
+  if (!config?.instanceName) return false
 
-  await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
-    method: 'DELETE', headers: { apikey: config.apiKey }
-  }).catch(() => {})
-  await fetch(`${config.apiUrl}/instance/delete/${config.instanceName}`, {
-    method: 'DELETE', headers: { apikey: config.apiKey }
-  }).catch(() => {})
+  await chamarEvolution('logout').catch(() => {})
+  await chamarEvolution('delete').catch(() => {})
 
   // O delete não é instantâneo: a Evolution ainda derruba o socket e limpa a
   // sessão depois de responder. Recriar antes disso ressuscita a instância presa.
@@ -348,14 +309,10 @@ export async function resetarInstancia(config, tentativas = 4) {
 /** Cria (se preciso) e pede o QR. Devolve o base64 ou null se a API não mandou. */
 async function criarEConectar(config, userId) {
   // 403/409 = instância já existe; não é erro.
-  const createResponse = await fetch(`${config.apiUrl}/instance/create`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
-    body: JSON.stringify({
-      instanceName: config.instanceName,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS'
-    })
+  const createResponse = await chamarEvolution('create', {
+    instanceName: config.instanceName,
+    qrcode: true,
+    integration: 'WHATSAPP-BAILEYS'
   })
 
   // 401/403 de chave inválida precisa estourar: nenhum reset resolve isso e
@@ -364,7 +321,7 @@ async function criarEConectar(config, userId) {
     throw new Error('Integração do WhatsApp recusada pelo servidor. Fale com o suporte.')
   }
   if (![403, 409].includes(createResponse.status) && !createResponse.ok) {
-    const erro = await createResponse.json().catch(() => ({}))
+    const erro = createResponse.data || {}
     throw new Error(erro.message || `Erro ao criar instância: HTTP ${createResponse.status}`)
   }
 
@@ -373,16 +330,13 @@ async function criarEConectar(config, userId) {
   // fora do rastreio de queda em tempo real.
   await garantirWebhook(config, userId)
 
-  const connectResponse = await fetch(
-    `${config.apiUrl}/instance/connect/${config.instanceName}`,
-    { headers: { apikey: config.apiKey } }
-  )
+  const connectResponse = await chamarEvolution('connect')
 
   // Falha aqui não é terminal: quase sempre é a instância presa, e quem trata
   // isso é o reset do gerarQrCode. Devolver null deixa ele decidir.
   if (!connectResponse.ok) return null
 
-  const data = await connectResponse.json()
+  const data = connectResponse.data
   // A Evolution já devolveu o QR em formatos diferentes entre versões
   return data.base64 || data.qrcode?.base64 || data.code || data.qr || null
 }
@@ -422,7 +376,7 @@ async function marcarPareamento(userId, segundos) {
  * atalho que deixava o cliente preso numa tela verde que não enviava nada.
  */
 export async function gerarQrCode(config, { forcar = false, userId = null } = {}) {
-  if (!config?.apiKey) {
+  if (!config?.instanceName) {
     throw new Error('Integração do WhatsApp não configurada. Fale com o suporte.')
   }
 
@@ -580,16 +534,9 @@ export async function salvarConexao(userId, config) {
   // errar a grafia do nono dígito.
   let whatsappNumero = null
   try {
-    const res = await fetch(
-      `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
-      // Timeout obrigatorio: o fetchInstances degradou junto com a Evolution
-      // (nao respondeu em 180s em 21/08). Sem isso a chamada pendura a tela do
-      // cliente no meio do fluxo de conexao — e no caso do instanciaSumiu, que
-      // roda num laco de 4, pendura quatro vezes.
-      { headers: { apikey: config.apiKey }, signal: AbortSignal.timeout(8000) }
-    )
+    const res = await chamarEvolution('fetchInstances', {}, undefined, 8000)
     if (res.ok) {
-      const dados = await res.json()
+      const dados = res.data
       const inst = (Array.isArray(dados) ? dados : [dados])[0]
       whatsappNumero = inst?.ownerJid ? String(inst.ownerJid).split('@')[0] : null
     }

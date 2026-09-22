@@ -35,6 +35,13 @@ export default function useAdminContas(ativo) {
     setCarregando(true)
     setErro(null)
     try {
+      // Espera a sessao ser restaurada do storage ANTES de consultar.
+      // Sem isto a chamada saia como anon, e ate 08/09/26 ela "funcionava"
+      // so porque a vw_admin_contas estava concedida ao anon — ou seja, a
+      // lista de contas do /admin era legivel por qualquer um. Com o anon
+      // revogado, a mesma corrida vira 403 e a aba Contas nasce vazia.
+      await supabase.auth.getSession()
+
       const [contasRes, pagamentosRes, assinaturasRes, engajamentoRes, planosRes] = await Promise.all([
         supabase.from('vw_admin_contas').select('*').order('nome_empresa', { ascending: true, nullsFirst: false }),
         supabase

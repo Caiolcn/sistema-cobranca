@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient'
 import { resolverDestinatario } from '../utils/destinatario'
 import { calcularMultaJuros, valorEfetivoMensalidade } from '../utils/multaJuros'
 import { modoEspelhoAtivo, ERRO_ESPELHO } from '../utils/modoEspelho'
+import { chamarEvolution } from './evolutionProxy'
 
 /**
  * Serviço para integração com Evolution API
@@ -9,8 +10,6 @@ import { modoEspelhoAtivo, ERRO_ESPELHO } from '../utils/modoEspelho'
  */
 class WhatsAppService {
   constructor() {
-    this.apiUrl = null
-    this.apiKey = null
     this.instanceName = null
     this.initialized = false
 
@@ -41,6 +40,60 @@ class WhatsAppService {
    * quer ver) e o resto não: enviar mensagem, reiniciar ou desconectar a
    * instância do cliente sairia no WhatsApp real dele.
    */
+  /**
+   * Único caminho deste serviço para a Evolution API.
+   *
+   * Devolve um objeto com a MESMA forma de um Response (.ok/.status/.text()/
+   * .json()) de propósito: toda a taxonomia de erro do envio (erro_codigo,
+   * remote_jid divergente, instance_500...) depende desse formato, e reescrevê-la
+   * seria a forma mais fácil de introduzir bug no caminho de cobrança.
+   *
+   * A chave vive só na edge function. `instanceName` é aceito porque o envio
+   * acontece na instância do DONO da mensalidade, que pode não ser quem está
+   * logado (admin disparando pela conta do cliente) — o proxy só honra isso para
+   * admin, e devolve 403 para cliente comum que pedir instância alheia.
+   */
+  async evoFetch(op, params = {}, instanceName = undefined, opcoes = {}) {
+    const { retries = 1, delayBase = 0, timeoutMs = 30000 } = opcoes
+
+    // Modo espelho: mesma trava de antes. Só passam as operações que eram GET —
+    // um admin "vendo como cliente" não pode enviar nem mexer na instância real.
+    const LEITURA = new Set(['connectionState', 'connect', 'fetchInstances'])
+    if (!LEITURA.has(op) && modoEspelhoAtivo()) {
+      console.warn('[modo espelho] chamada bloqueada:', op)
+      return this._comoResponse({
+        ok: false,
+        status: 403,
+        data: { error: ERRO_ESPELHO.message, code: ERRO_ESPELHO.code }
+      })
+    }
+
+    let ultima = null
+    for (let tentativa = 0; tentativa < retries; tentativa++) {
+      const r = await chamarEvolution(op, params, instanceName, timeoutMs)
+      ultima = r
+
+      // Sucesso ou erro de cliente (4xx): não adianta repetir.
+      if (r.ok || (r.status >= 400 && r.status < 500)) return this._comoResponse(r)
+
+      if (tentativa < retries - 1 && delayBase > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayBase * Math.pow(2, tentativa)))
+      }
+    }
+    return this._comoResponse(ultima)
+  }
+
+  /** Embrulha a resposta do proxy no formato que os call sites já esperam. */
+  _comoResponse(r) {
+    const dados = r?.data ?? null
+    const texto = typeof dados === 'string' ? dados : JSON.stringify(dados ?? {})
+    return {
+      ok: !!r?.ok,
+      status: r?.status ?? 0,
+      text: async () => texto,
+      json: async () => dados
+    }
+  }
   async fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
     const metodo = (options.method || 'GET').toUpperCase()
     if (metodo !== 'GET' && modoEspelhoAtivo()) {
@@ -120,21 +173,8 @@ class WhatsAppService {
       // a mensagem para a instância travada. O TTL de 5 min limita a defasagem.
       this._cache.instanciaPorUser = {}
 
-      // Buscar configurações da Evolution API
-      const { data: configs, error } = await supabase
-        .from('config')
-        .select('chave, valor')
-        .in('chave', ['evolution_api_key', 'evolution_api_url'])
-
-      if (error) throw error
-
-      const configMap = {}
-      configs.forEach(item => {
-        configMap[item.chave] = item.valor
-      })
-
-      this.apiKey = configMap.evolution_api_key
-      this.apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
+      // A chave da Evolution nao vem mais para o navegador: quem fala com a
+      // Evolution e a edge function evolution-proxy (ver evoFetch abaixo).
 
       // Nome da instância: LÊ do banco, não deriva do user_id.
       // Derivar amarrava a conta a um nome só para sempre — quando esse nome
@@ -174,7 +214,7 @@ class WhatsAppService {
       this._cache.lastInit = now
     }
 
-    if (!this.apiKey || !this.apiUrl || !this.instanceName) {
+    if (!this.instanceName) {
       throw new Error('WhatsApp não configurado. Configure a Evolution API primeiro.')
     }
   }
@@ -318,17 +358,11 @@ class WhatsAppService {
       const numerosParaVerificar = variantes.map(n => n + '@s.whatsapp.net')
       console.log('🔍 Verificando números no WhatsApp:', numerosParaVerificar)
 
-      const response = await fetch(
-        `${this.apiUrl}/chat/whatsappNumbers/${instanceName}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': this.apiKey
-          },
-          body: JSON.stringify({ numbers: numerosParaVerificar }),
-          signal: AbortSignal.timeout(10000)
-        }
+      const response = await this.evoFetch(
+        'whatsappNumbers',
+        { numbers: numerosParaVerificar },
+        instanceName,
+        { timeoutMs: 10000 }
       )
 
       if (response.ok) {
@@ -404,7 +438,6 @@ class WhatsAppService {
     const numeroFormatado = await this.verificarNumeroWhatsApp(telefone, instanceNameOverride)
 
     console.log('📡 Enviando para Evolution API...')
-    console.log('🔗 URL:', `${this.apiUrl}/message/sendText/${instanceName}`)
     console.log('📞 Número verificado:', numeroFormatado)
 
     const payload = {
@@ -412,19 +445,10 @@ class WhatsAppService {
       text: mensagem
     }
 
-    const response = await this.fetchWithRetry(
-      `${this.apiUrl}/message/sendText/${instanceName}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': this.apiKey
-        },
-        body: JSON.stringify(payload)
-      },
-      2, // 2 tentativas (1 original + 1 retry)
-      2000 // 2 segundos de delay base
-    )
+    const response = await this.evoFetch('sendText', payload, instanceName, {
+      retries: 2,      // 1 original + 1 retry
+      delayBase: 2000
+    })
 
     console.log('📊 Status da resposta:', response.status)
 
@@ -651,14 +675,11 @@ class WhatsAppService {
     }
 
     try {
-      const response = await this.fetchWithTimeout(
-        `${this.apiUrl}/message/sendText/${instanceName}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': this.apiKey },
-          body: JSON.stringify({ number: jid, text: mensagem })
-        },
-        30000
+      const response = await this.evoFetch(
+        'sendText',
+        { number: jid, text: mensagem },
+        instanceName,
+        { timeoutMs: 30000 }
       )
 
       const httpStatus = response.status
@@ -733,19 +754,10 @@ class WhatsAppService {
       fileName: fileName
     }
 
-    const response = await this.fetchWithRetry(
-      `${this.apiUrl}/message/sendMedia/${instanceName}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': this.apiKey
-        },
-        body: JSON.stringify(payload)
-      },
-      2,
-      3000
-    )
+    const response = await this.evoFetch('sendMedia', payload, instanceName, {
+      retries: 2,
+      delayBase: 3000
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -1831,16 +1843,9 @@ Equipe {{nomeEmpresa}}`)
     await this.ensureInitialized()
 
     try {
-      const response = await this.fetchWithTimeout(
-        `${this.apiUrl}/instance/connectionState/${this.instanceName}`,
-        {
-          method: 'GET',
-          headers: {
-            'apikey': this.apiKey
-          }
-        },
-        15000 // 15 segundos de timeout para status check
-      )
+      const response = await this.evoFetch('connectionState', {}, this.instanceName, {
+        timeoutMs: 15000
+      })
 
       if (!response.ok) {
         return { conectado: false, estado: 'erro' }
@@ -1883,16 +1888,9 @@ Equipe {{nomeEmpresa}}`)
       // POST, não PUT: o PUT responde 404 na Evolution 2.3.7 (medido em 11/08/26),
       // então este restart NUNCA funcionou — o !response.ok abaixo devolvia false
       // em 100% das vezes e todo "tentamos reconectar automaticamente" era fachada.
-      const response = await this.fetchWithTimeout(
-        `${this.apiUrl}/instance/restart/${this.instanceName}`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': this.apiKey
-          }
-        },
-        15000
-      )
+      const response = await this.evoFetch('restart', {}, this.instanceName, {
+        timeoutMs: 15000
+      })
 
       if (!response.ok) {
         console.warn('⚠️ Restart retornou status:', response.status)
@@ -1917,7 +1915,7 @@ Equipe {{nomeEmpresa}}`)
   // Buscar foto de perfil do WhatsApp (uma tentativa só)
   async buscarFotoPerfil(telefone, userIdOverride = null) {
     await this.ensureInitialized()
-    if (!this.apiKey || !this.apiUrl || !this.instanceName) {
+    if (!this.instanceName) {
       console.log('⚠️ WhatsApp não inicializado para buscar foto')
       return null
     }
@@ -1926,16 +1924,10 @@ Equipe {{nomeEmpresa}}`)
       const numero = telefone.replace(/\D/g, '')
       const numeroFinal = numero.length <= 11 ? `55${numero}` : numero
 
-      const response = await fetch(
-        `${this.apiUrl}/chat/fetchProfilePictureUrl/${this.instanceName}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': this.apiKey
-          },
-          body: JSON.stringify({ number: numeroFinal })
-        }
+      const response = await this.evoFetch(
+        'fetchProfilePictureUrl',
+        { number: numeroFinal },
+        this.instanceName
       )
 
       if (!response.ok) {

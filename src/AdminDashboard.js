@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabaseClient'
+import { chamarEvolution } from './services/evolutionProxy'
 import { Icon } from '@iconify/react'
 
 export default function AdminDashboard() {
@@ -134,28 +135,11 @@ export default function AdminDashboard() {
     setRestartingCliente(cliente.user_id)
 
     try {
-      // Buscar API key e URL
-      const { data: configs } = await supabase
-        .from('config')
-        .select('chave, valor')
-        .in('chave', ['evolution_api_key', 'evolution_api_url'])
-
-      const configMap = {}
-      configs?.forEach(item => { configMap[item.chave] = item.valor })
-
-      const apiKey = configMap.evolution_api_key
-      const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
-
-      if (!apiKey) {
-        alert('API key da Evolution não encontrada')
-        return
-      }
-
-      // Chamar restart (POST — o PUT devolve 404 na Evolution 2.3.7)
-      const response = await fetch(`${apiUrl}/instance/restart/${instanceName}`, {
-        method: 'POST',
-        headers: { 'apikey': apiKey }
-      })
+      // A chave da Evolution nao vem mais para o navegador: quem fala com a
+      // Evolution e a edge function evolution-proxy. Esta tela e de admin,
+      // entao o proxy honra a instancia pedida (a do cliente selecionado).
+      // Restart e POST — o PUT devolve 404 na Evolution 2.3.7.
+      const response = await chamarEvolution('restart', {}, instanceName)
 
       if (!response.ok) {
         alert(`Erro ao reiniciar instância: ${response.status}`)
@@ -165,13 +149,10 @@ export default function AdminDashboard() {
       // Aguardar e verificar
       await new Promise(resolve => setTimeout(resolve, 5000))
 
-      const statusResponse = await fetch(`${apiUrl}/instance/connectionState/${instanceName}`, {
-        method: 'GET',
-        headers: { 'apikey': apiKey }
-      })
+      const statusResponse = await chamarEvolution('connectionState', {}, instanceName)
 
       if (statusResponse.ok) {
-        const data = await statusResponse.json()
+        const data = statusResponse.data
         const state = data.instance?.state || 'close'
 
         if (state === 'open') {

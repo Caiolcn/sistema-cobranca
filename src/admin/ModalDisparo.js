@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Icon } from '@iconify/react'
-import { supabase } from '../supabaseClient'
+import { supabase, FUNCTIONS_URL } from '../supabaseClient'
 import whatsappService from '../services/whatsappService'
 import Modal from '../design-system/components/Modal'
 import Button from '../design-system/components/Button'
@@ -249,32 +249,24 @@ export default function ModalDisparo({
     setEnviando(true)
     setResultado(null)
     try {
-      const { data: cfgData, error: cfgErro } = await supabase
-        .from('config')
-        .select('chave, valor')
-        .in('chave', ['n8n_webhook_recuperar_trial', 'evolution_api_url', 'evolution_api_key'])
-      if (cfgErro) throw cfgErro
-
-      const cfg = Object.fromEntries((cfgData || []).map(c => [c.chave, c.valor]))
-      if (!cfg.n8n_webhook_recuperar_trial) {
-        throw new Error('Webhook não configurado. Adicione a chave "n8n_webhook_recuperar_trial" na tabela config.')
-      }
-      if (!cfg.evolution_api_url || !cfg.evolution_api_key) {
-        throw new Error('Credenciais Evolution não encontradas na tabela config.')
-      }
+      // A URL do webhook e a chave da Evolution nao passam mais pelo navegador:
+      // quem injeta as duas e a edge function disparo-retencao, com service_role.
+      // Ela tambem confere usuarios.role = 'admin' no banco.
 
       const meta = META_GRUPO[grupo]
       const labelOferta = OFERTAS[grupo]?.find(o => o.value === oferta)?.label || oferta
 
-      const resposta = await fetch(cfg.n8n_webhook_recuperar_trial, {
+      const { data: sessao } = await supabase.auth.getSession()
+      const resposta = await fetch(`${FUNCTIONS_URL}/disparo-retencao`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessao?.session?.access_token || ''}`
+        },
         body: JSON.stringify({
           grupo,
           oferta,
           oferta_label: labelOferta,
-          evolution_api_url: cfg.evolution_api_url,
-          evolution_api_key: cfg.evolution_api_key,
           chave_pix: chavePix || '',
           total: alvos.length,
           disparado_em: new Date().toISOString(),
@@ -295,7 +287,10 @@ export default function ModalDisparo({
           })),
         }),
       })
-      if (!resposta.ok) throw new Error(`Webhook respondeu HTTP ${resposta.status}`)
+      const retorno = await resposta.json().catch(() => ({}))
+      if (!resposta.ok || retorno.ok === false) {
+        throw new Error(retorno.error || `Disparo respondeu HTTP ${resposta.status}`)
+      }
 
       await supabase.from('retencao_saas_envios').insert(alvos.map(c => ({
         usuario_id: c.id,

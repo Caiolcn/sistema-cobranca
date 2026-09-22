@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser } from './contexts/UserContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+import { chamarEvolution } from './services/evolutionProxy'
 import useWindowSize from './hooks/useWindowSize'
 import { Icon } from '@iconify/react'
 
@@ -25,8 +26,6 @@ export default function AdminWhatsAppMaster() {
   const navigate = useNavigate()
   const { isMobile } = useWindowSize()
 
-  const [apiUrl, setApiUrl] = useState('')
-  const [apiKey, setApiKey] = useState('')
   const [instance, setInstance] = useState(MASTER_INSTANCE_FALLBACK)
   const [status, setStatus] = useState('disconnected') // 'disconnected' | 'connecting' | 'connected'
   const [qrCode, setQrCode] = useState(null)
@@ -34,33 +33,34 @@ export default function AdminWhatsAppMaster() {
   const [erro, setErro] = useState('')
   const [numero, setNumero] = useState(null)
   const [tempoRestante, setTempoRestante] = useState(120)
-  const cfgRef = useRef({ apiUrl: '', apiKey: '', instance: MASTER_INSTANCE_FALLBACK })
+  const cfgRef = useRef({ instance: MASTER_INSTANCE_FALLBACK })
 
   useEffect(() => {
     if (!userLoading && !isAdmin) navigate('/app/home')
   }, [isAdmin, userLoading, navigate])
 
-  useEffect(() => { cfgRef.current = { apiUrl, apiKey, instance } }, [apiUrl, apiKey, instance])
+  useEffect(() => { cfgRef.current = { instance } }, [instance])
 
   // Carregar credenciais globais + nome da instância master + status
   const carregar = useCallback(async () => {
     const { data: configs } = await supabase
       .from('config')
       .select('chave, valor')
-      .in('chave', ['evolution_api_key', 'evolution_api_url', 'evolution_master_instance'])
+      .in('chave', ['evolution_master_instance'])
 
+    // So o NOME da instancia vem do banco. A chave da Evolution nao chega mais
+    // ao navegador: as chamadas passam pela edge function evolution-proxy, que
+    // aceita `instance` explicito porque esta tela e restrita a admin.
     const map = {}
     configs?.forEach(c => { map[c.chave] = c.valor })
-    const url = map.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
-    const key = map.evolution_api_key || ''
     const inst = map.evolution_master_instance || MASTER_INSTANCE_FALLBACK
-    setApiUrl(url); setApiKey(key); setInstance(inst)
+    setInstance(inst)
 
-    if (key) {
+    if (inst) {
       try {
-        const res = await fetch(`${url}/instance/connectionState/${inst}`, { headers: { apikey: key } })
+        const res = await chamarEvolution('connectionState', {}, inst)
         if (res.ok) {
-          const data = await res.json()
+          const data = res.data
           if ((data.instance?.state) === 'open') {
             setStatus('connected')
             // Busca o número conectado (best-effort).
@@ -70,12 +70,9 @@ export default function AdminWhatsAppMaster() {
             // 21/08) e a tela inteira trava só para exibir um número que é
             // enfeite. Falhar rápido aqui é melhor que carregar devagar.
             try {
-              const pr = await fetch(`${url}/instance/fetchInstances?instanceName=${encodeURIComponent(inst)}`, {
-                headers: { apikey: key },
-                signal: AbortSignal.timeout(8000)
-              })
+              const pr = await chamarEvolution('fetchInstances', {}, inst, 8000)
               if (pr.ok) {
-                const arr = await pr.json()
+                const arr = pr.data
                 const minha = acharInstancia(arr, inst)
                 const dono = minha?.ownerJid || minha?.instance?.owner || ''
                 setNumero(dono.split('@')[0] || minha?.profileName || minha?.instance?.profileName || null)
@@ -105,9 +102,9 @@ export default function AdminWhatsAppMaster() {
       // 404 aqui significa instância inexistente, que é exatamente o que este
       // passo quer descobrir.
       let existe = false, estado = null
-      const r = await fetch(`${apiUrl}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } })
+      const r = await chamarEvolution('connectionState', {}, instance)
       if (r.ok) {
-        const d = await r.json().catch(() => null)
+        const d = r.data
         estado = d?.instance?.state || null
         existe = !!estado
       }
@@ -120,24 +117,20 @@ export default function AdminWhatsAppMaster() {
 
       // 2. criar se não existir
       if (!existe) {
-        const cr = await fetch(`${apiUrl}/instance/create`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: apiKey },
-          body: JSON.stringify({ instanceName: instance, qrcode: true, integration: 'WHATSAPP-BAILEYS' })
-        })
+        const cr = await chamarEvolution('create', { qrcode: true, integration: 'WHATSAPP-BAILEYS' }, instance)
         if (cr.status !== 403 && cr.status !== 409 && !cr.ok) {
-          const e = await cr.json().catch(() => ({}))
+          const e = cr.data || {}
           throw new Error(e.message || `Erro ao criar instância: HTTP ${cr.status}`)
         }
       }
 
       // 3. gerar QR
-      const cn = await fetch(`${apiUrl}/instance/connect/${instance}`, { headers: { apikey: apiKey } })
+      const cn = await chamarEvolution('connect', {}, instance)
       if (!cn.ok) {
-        const e = await cn.json().catch(() => ({}))
+        const e = cn.data || {}
         throw new Error(e.message || `HTTP ${cn.status}`)
       }
-      const data = await cn.json()
+      const data = cn.data
       const qr = data.base64 || data.qrcode?.base64 || data.code || data.qr
       if (!qr) {
         // Sem QR + state "open" = a Evolution considera a instância conectada;
@@ -164,13 +157,13 @@ export default function AdminWhatsAppMaster() {
   useEffect(() => {
     if (status !== 'connecting' || !qrCode) return
     const cfg = cfgRef.current
-    if (!cfg.apiKey) return
+    if (!cfg.instance) return
 
     const intervalId = setInterval(async () => {
       try {
-        const res = await fetch(`${cfg.apiUrl}/instance/connectionState/${cfg.instance}`, { headers: { apikey: cfg.apiKey } })
+        const res = await chamarEvolution('connectionState', {}, cfg.instance)
         if (res.ok) {
-          const data = await res.json()
+          const data = res.data
           if ((data.instance?.state) === 'open') {
             setStatus('connected'); setQrCode(null); carregar()
           }
@@ -192,7 +185,7 @@ export default function AdminWhatsAppMaster() {
   const desconectar = async () => {
     setLoading(true); setErro('')
     try {
-      await fetch(`${apiUrl}/instance/logout/${instance}`, { method: 'DELETE', headers: { apikey: apiKey } })
+      await chamarEvolution('logout', {}, instance)
       setStatus('disconnected'); setQrCode(null); setNumero(null)
     } catch (e) {
       setErro('Erro ao desconectar: ' + e.message)
@@ -271,11 +264,11 @@ export default function AdminWhatsAppMaster() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <Icon icon="mdi:whatsapp" width={64} style={{ color: '#25D366', marginBottom: 12 }} />
             <p style={{ fontSize: 14, color: '#666', margin: '0 0 20px' }}>
-              {apiKey ? 'Clique abaixo pra gerar o QR Code e conectar o número da plataforma.' : 'Configure a Evolution API primeiro (chave não encontrada na tabela config).'}
+              {instance ? 'Clique abaixo pra gerar o QR Code e conectar o número da plataforma.' : 'Instância master não configurada (evolution_master_instance na tabela config).'}
             </p>
-            <button onClick={conectar} disabled={loading || !apiKey} style={{
-              padding: '12px 28px', backgroundColor: apiKey ? '#344848' : '#ccc', color: 'white', border: 'none',
-              borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: loading || !apiKey ? 'not-allowed' : 'pointer',
+            <button onClick={conectar} disabled={loading || !instance} style={{
+              padding: '12px 28px', backgroundColor: instance ? '#344848' : '#ccc', color: 'white', border: 'none',
+              borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: loading || !instance ? 'not-allowed' : 'pointer',
               display: 'inline-flex', alignItems: 'center', gap: 8
             }}>
               <Icon icon={loading ? 'mdi:loading' : 'mdi:qrcode'} width={18} style={loading ? { animation: 'ds-spin 1s linear infinite' } : undefined} />

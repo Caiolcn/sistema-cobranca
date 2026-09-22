@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase, FUNCTIONS_URL } from './supabaseClient'
+import { chamarEvolution } from './services/evolutionProxy'
 import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import useWindowSize from './hooks/useWindowSize'
@@ -719,7 +720,7 @@ export default function WhatsAppConexao() {
   const [qrCode, setQrCode] = useState(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [config, setConfig] = useState({ apiKey: '', apiUrl: '', instanceName: '' })
+  const [config, setConfig] = useState({ instanceName: '' })
   const configRef = useRef(config)
   const [tempoRestante, setTempoRestante] = useState(120) // Contador de 2 minutos (120 segundos)
 
@@ -811,13 +812,7 @@ export default function WhatsAppConexao() {
         const instanceName = await resolverInstanceName(effectiveUserId)
 
         // 2. Fazer TODAS as queries em paralelo
-        const [configResult, templatesResult, automacoesResult, usuarioResult, metodoPagResult, asaasResult] = await Promise.all([
-          // Config da Evolution API
-          supabase
-            .from('config')
-            .select('chave, valor')
-            .in('chave', ['evolution_api_key', 'evolution_api_url']),
-
+        const [templatesResult, automacoesResult, usuarioResult, metodoPagResult, asaasResult] = await Promise.all([
           // Templates do usuário
           supabase
             .from('templates')
@@ -855,14 +850,9 @@ export default function WhatsAppConexao() {
             .single()
         ])
 
-        // 3. Processar Config Evolution API
-        const configMap = {}
-        configResult.data?.forEach(item => { configMap[item.chave] = item.valor })
-
-        const apiKey = configMap.evolution_api_key || ''
-        const apiUrl = configMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
-
-        setConfig({ apiKey, apiUrl, instanceName })
+        // A chave da Evolution nao e mais lida aqui: as chamadas passam pela
+        // edge function evolution-proxy. Sobra o nome da instancia.
+        setConfig({ instanceName })
 
         // 3.1 Processar Chave PIX
         if (usuarioResult.data?.chave_pix) {
@@ -998,9 +988,9 @@ export default function WhatsAppConexao() {
         // morto, até a varredura seguinte derrubar de novo. Agora só gravamos
         // conectado = true quando a sonda passa; no zumbi não tocamos no banco
         // (quem manda ali é o health-check) e a UI conta a verdade.
-        if (apiKey && instanceName) {
+        if (instanceName) {
           try {
-            const { veredito } = await verificarSaude({ apiKey, apiUrl, instanceName })
+            const { veredito } = await verificarSaude({ instanceName })
 
             // Zumbi SEM sonda: a evidencia sai dos NOSSOS logs, nao da Evolution.
             //
@@ -1159,15 +1149,9 @@ export default function WhatsAppConexao() {
       // base em agosto) e é o destino de fallback do aviso de queda.
       let whatsappNumero = null
       try {
-        const res = await fetch(
-          `${config.apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(config.instanceName)}`,
-          // Timeout: sem ele, o cliente escaneia o QR com sucesso e a tela fica
-          // pendurada aqui, buscando o numero — sem gravar conectado = true.
-          // Da a impressao de "escaneei e nao aconteceu nada".
-          { headers: { 'apikey': config.apiKey }, signal: AbortSignal.timeout(8000) }
-        )
+        const res = await chamarEvolution('fetchInstances', {}, config.instanceName, 8000)
         if (res.ok) {
-          const dados = await res.json()
+          const dados = res.data
           const inst = (Array.isArray(dados) ? dados : [dados])[0]
           whatsappNumero = inst?.ownerJid ? String(inst.ownerJid).split('@')[0] : null
           console.log('📱 Número WhatsApp detectado:', whatsappNumero)
@@ -2183,19 +2167,16 @@ export default function WhatsAppConexao() {
     if (status !== 'connecting' || !qrCode) return
 
     const currentConfig = configRef.current
-    if (!currentConfig.apiKey) return
+    if (!currentConfig.instanceName) return
 
     console.log('🔄 Iniciando polling...')
 
     const intervalId = setInterval(async () => {
       try {
-        const response = await fetch(
-          `${currentConfig.apiUrl}/instance/connectionState/${currentConfig.instanceName}`,
-          { headers: { 'apikey': currentConfig.apiKey } }
-        )
+        const response = await chamarEvolution('connectionState', {}, currentConfig.instanceName)
 
         if (response.ok) {
-          const data = await response.json()
+          const data = response.data
           const state = data.instance?.state || 'close'
 
           console.log(`📊 Status: ${state}`)
@@ -2247,10 +2228,7 @@ export default function WhatsAppConexao() {
   const desconectar = async () => {
     setLoading(true)
     try {
-      await fetch(`${config.apiUrl}/instance/logout/${config.instanceName}`, {
-        method: 'DELETE',
-        headers: { 'apikey': config.apiKey }
-      })
+      await chamarEvolution('logout', {}, config.instanceName)
 
       // Atualizar status no banco de dados (tabela config)
       if (contextUserId) {

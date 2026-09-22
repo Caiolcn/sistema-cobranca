@@ -294,8 +294,11 @@ export const processarLembretes = async (userId) => {
         data_vencimento: mensalidade.data_vencimento,
         dias_restantes: diasRestantes,
         template: template,
-        evolution_api_key: config.evolution_api_key,  // GLOBAL
-        evolution_api_url: config.evolution_api_url,  // GLOBAL
+        // evolution_api_key/url NAO vao mais no payload: a chave e global e
+        // nao pode transitar pelo navegador. Se estas funcoes forem revividas
+        // (hoje nao ha chamador: as automacoes rodam no n8n por cron), o
+        // disparo tem que passar por edge function, que injeta a credencial
+        // com service_role - ver supabase/functions/evolution-proxy.
         evolution_instance_name: devedor.whatsapp_config.evolution_instance_name  // INDIVIDUAL
       };
 
@@ -419,8 +422,11 @@ export const processarVencimentosHoje = async (userId) => {
         valor: mensalidade.valor,
         data_vencimento: mensalidade.data_vencimento,
         template: template,
-        evolution_api_key: config.evolution_api_key,  // GLOBAL
-        evolution_api_url: config.evolution_api_url,  // GLOBAL
+        // evolution_api_key/url NAO vao mais no payload: a chave e global e
+        // nao pode transitar pelo navegador. Se estas funcoes forem revividas
+        // (hoje nao ha chamador: as automacoes rodam no n8n por cron), o
+        // disparo tem que passar por edge function, que injeta a credencial
+        // com service_role - ver supabase/functions/evolution-proxy.
         evolution_instance_name: devedor.whatsapp_config.evolution_instance_name  // INDIVIDUAL
       };
 
