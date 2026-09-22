@@ -144,6 +144,9 @@ export default function Dashboard() {
 
   // Determinar tela ativa pela rota atual
   const telaAtiva = location.pathname.replace('/app/', '') || 'home'
+  // O /admin tem sub-rotas (admin/leads, admin/cron...). Sem o startsWith o
+  // item do menu apagaria assim que a pessoa entrasse numa delas.
+  const naAreaAdmin = telaAtiva.startsWith('admin')
   // Aba de Configuração ativa (pra destacar no dropdown da engrenagem)
   const abaConfigAtiva = telaAtiva === 'configuracao'
     ? (new URLSearchParams(location.search).get('aba') || 'empresa')
@@ -293,6 +296,30 @@ export default function Dashboard() {
             style={{ height: '28px', objectFit: 'contain' }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {/* Atalho pro /admin, só pra admin. Fica aqui na topbar e nao so no
+                menu lateral porque no app instalado esse e o caminho de um toque:
+                o PWA sempre abre em /app/home (start_url do manifest e "/"), e
+                abrir a gaveta pra chegar no painel interno custa dois toques. */}
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/app/admin')}
+                title="Admin Mensalli"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: naAreaAdmin ? '#f5f3ff' : 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#7c3aed'
+                }}
+              >
+                <Icon icon="fluent:shield-keyhole-20-regular" width="22" height="22" />
+              </button>
+            )}
             <button
               onClick={() => setBuscaAberta(true)}
               title="Buscar"
@@ -780,6 +807,43 @@ export default function Dashboard() {
             <Icon icon="fluent:megaphone-loud-20-regular" width="22" height="22" />
             {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Marketing</span>}
           </div>
+
+          {/* Admin (Mensalli) — só aparece pra quem é admin.
+              Existe porque o app instalado no celular sempre abre na start_url
+              do manifest (/), e de lá cai em /app/home: sem um item de menu não
+              havia como chegar no /app/admin pelo PWA. O roxo separa na hora o
+              que é painel interno do que é tela de cliente. */}
+          {isAdmin && (
+            <div
+              className={!isMobile ? 'sidebar-tooltip' : ''}
+              data-tooltip="Admin Mensalli"
+              onClick={() => { navigate('/app/admin'); if (isMobile) setMenuAberto(false) }}
+              style={{
+                width: isMobile ? '100%' : '40px',
+                height: '40px',
+                backgroundColor: naAreaAdmin ? '#6d28d9' : 'transparent',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isMobile ? 'flex-start' : 'center',
+                gap: isMobile ? '12px' : '0',
+                paddingLeft: isMobile ? '12px' : '0',
+                color: naAreaAdmin ? 'white' : '#7c3aed',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (!naAreaAdmin) e.currentTarget.style.backgroundColor = '#f5f3ff'
+              }}
+              onMouseLeave={(e) => {
+                if (!naAreaAdmin) e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+            >
+              <Icon icon="fluent:shield-keyhole-20-regular" width="22" height="22" />
+              {isMobile && <span style={{ fontSize: '14px', fontWeight: '500' }}>Admin Mensalli</span>}
+            </div>
+          )}
 
           {/* Configuração (só no mobile — no desktop fica no ícone de engrenagem da top bar) */}
           {isMobile && (
