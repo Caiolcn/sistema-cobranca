@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import Modal from '../../design-system/components/Modal'
-import ListaConversas, { FILTROS, aplicarFiltro, ordenarFila } from './ListaConversas'
+import ListaConversas, { FILTROS, aplicarFiltro, ordenarRecentes } from './ListaConversas'
 import Conversa from './Conversa'
 import Composer from './Composer'
 import PainelLead from './PainelLead'
@@ -18,7 +18,7 @@ export default function AbaCaixa({ inbox, respostas, isMobile, selecionadoId, on
 
   const setSelecionadoId = onSelecionarId
   const [busca, setBusca] = useState('')
-  const [filtro, setFiltro] = useState('esperando')
+  const [filtro, setFiltro] = useState('todas')
   const [painelAberto, setPainelAberto] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
@@ -36,7 +36,7 @@ export default function AbaCaixa({ inbox, respostas, isMobile, selecionadoId, on
     )
   }, [leads, busca])
 
-  const visiveis = useMemo(() => ordenarFila(aplicarFiltro(porBusca, filtro)), [porBusca, filtro])
+  const visiveis = useMemo(() => ordenarRecentes(aplicarFiltro(porBusca, filtro)), [porBusca, filtro])
 
   const contadores = useMemo(() => {
     const c = {}
@@ -98,10 +98,10 @@ export default function AbaCaixa({ inbox, respostas, isMobile, selecionadoId, on
         </button>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '14px', fontWeight: 650, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: '15.5px', fontWeight: 650, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {lead.nome || formatarTelefone(lead.telefone)}
         </div>
-        <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+        <div style={{ fontSize: '12.5px', color: '#64748b' }}>
           {lead.telefone ? formatarTelefone(lead.telefone) : 'sem número (LID)'} · {lead.esperando_resposta ? `esperando ${tempoDesde(lead.ultima_interacao)}` : 'respondido'}
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function AbaCaixa({ inbox, respostas, isMobile, selecionadoId, on
 
   const bloco = (
     <>
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, backgroundColor: '#f8fafc' }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, backgroundColor: '#efeae2' }}>
         <Conversa
           mensagens={conversa.mensagens}
           pendentes={conversa.pendentes}
@@ -143,7 +143,11 @@ export default function AbaCaixa({ inbox, respostas, isMobile, selecionadoId, on
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : (painelAberto ? '330px 1fr 340px' : '330px 1fr'),
+      // Lista em ~1/3 da tela, como o WhatsApp Web. Com 330px fixos, num
+      // monitor largo a conversa ficava com 90% e a lista não cabia nada.
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : (painelAberto ? 'minmax(320px, 30%) minmax(0, 1fr) 320px' : 'minmax(360px, 34%) minmax(0, 1fr)'),
       border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden',
       // Ocupa toda a altura que o shell deu, em vez de calcular vh na mão —
       // cálculo de vh erra sempre que o cabeçalho muda de tamanho.
@@ -182,7 +186,7 @@ export default function AbaCaixa({ inbox, respostas, isMobile, selecionadoId, on
               <Icon icon="mdi:message-text-outline" width="34" />
               <div style={{ fontSize: '13.5px' }}>Escolha uma conversa à esquerda.</div>
               <div style={{ fontSize: '12px', maxWidth: '320px' }}>
-                A lista começa por quem está esperando resposta há mais tempo.
+                A conversa mais recente fica no topo, como no WhatsApp.
               </div>
             </div>
           )}

@@ -2,12 +2,13 @@ import { Icon } from '@iconify/react'
 import SearchInput from '../../design-system/components/SearchInput'
 import { formatarTelefone, tempoDesde } from './utils'
 
-// Lista da caixa de entrada. A ordem é de quem está esperando há mais tempo,
-// não de quem chegou por último: a fila é de dívida sua, não de novidade.
+// Lista da caixa de entrada, na ordem do WhatsApp: conversa mais recente no
+// topo, em todos os filtros. Ordenar por "esperando há mais tempo" enterrava o
+// lead que acabou de chegar embaixo de dezenas de conversas velhas de julho.
 
 export const FILTROS = [
-  { id: 'esperando', rotulo: 'Esperando você', icone: 'mdi:message-alert-outline' },
   { id: 'todas',     rotulo: 'Todas',          icone: 'mdi:inbox-outline' },
+  { id: 'esperando', rotulo: 'Esperando você', icone: 'mdi:message-alert-outline' },
   { id: 'clientes',  rotulo: 'Clientes',       icone: 'mdi:account-check-outline' },
   { id: 'hoje',      rotulo: 'Toque hoje',     icone: 'mdi:calendar-clock' },
   { id: 'perdidos',  rotulo: 'Perdidos',       icone: 'mdi:account-off-outline' }
@@ -23,14 +24,8 @@ export function aplicarFiltro(leads, filtro) {
   }
 }
 
-export function ordenarFila(leads) {
-  // Esperando resposta primeiro, e dentro disso o mais antigo no topo —
-  // é o que estoura o SLA de 5 minutos do playbook.
-  return [...leads].sort((a, b) => {
-    if (a.esperando_resposta !== b.esperando_resposta) return a.esperando_resposta ? -1 : 1
-    if (a.esperando_resposta) return new Date(a.ultima_interacao) - new Date(b.ultima_interacao)
-    return new Date(b.ultima_interacao) - new Date(a.ultima_interacao)
-  })
+export function ordenarRecentes(leads) {
+  return [...leads].sort((a, b) => new Date(b.ultima_interacao) - new Date(a.ultima_interacao))
 }
 
 const iniciais = (nome) => {
@@ -104,16 +99,16 @@ export default function ListaConversas({
                 border: 'none', borderBottom: '1px solid #f1f5f9',
                 borderLeft: `3px solid ${ativo ? '#334155' : esperando ? '#ef4444' : 'transparent'}`,
                 backgroundColor: ativo ? '#f1f5f9' : '#fff',
-                padding: '10px 12px'
+                padding: '12px 14px'
               }}
             >
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <div style={{
-                  width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
+                  width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0,
                   backgroundColor: lead.plano_pago ? '#dcfce7' : lead.usuario_id ? '#cffafe' : '#e2e8f0',
                   color: lead.plano_pago ? '#166534' : lead.usuario_id ? '#155e75' : '#475569',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px', fontWeight: 700
+                  fontSize: '14px', fontWeight: 700
                 }}>
                   {iniciais(lead.nome)}
                 </div>
@@ -121,19 +116,19 @@ export default function ListaConversas({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <strong style={{
-                      fontSize: '13px', color: '#0f172a', flex: 1, minWidth: 0,
+                      fontSize: '15px', color: '#0f172a', flex: 1, minWidth: 0,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                     }}>
                       {lead.nome || formatarTelefone(lead.telefone)}
                     </strong>
-                    <span style={{ fontSize: '10.5px', color: esperando ? '#b91c1c' : '#94a3b8', flexShrink: 0 }}>
+                    <span style={{ fontSize: '12px', color: esperando ? '#b91c1c' : '#667781', flexShrink: 0 }}>
                       {tempoDesde(lead.ultima_interacao)}
                     </span>
                   </div>
 
                   <div style={{
-                    fontSize: '12px', color: '#64748b', marginTop: '2px', lineHeight: 1.3,
-                    display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                    fontSize: '13.5px', color: '#54656f', marginTop: '3px', lineHeight: 1.35,
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
                   }}>
                     {lead.ultima_direcao === 'out' && <span style={{ color: '#94a3b8' }}>Você: </span>}
                     {lead.ultima_mensagem || <span style={{ fontStyle: 'italic' }}>sem mensagem</span>}

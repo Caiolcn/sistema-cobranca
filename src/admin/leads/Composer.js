@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import { supabase } from '../../supabaseClient'
-import { resolverVariaveis, pendenciasDoTexto } from './utils'
+import { resolverVariaveis, pendenciasDoTexto, planoPara } from './utils'
 
 // Campo de resposta com os atalhos do playbook.
 //
@@ -12,19 +12,32 @@ import { resolverVariaveis, pendenciasDoTexto } from './utils'
 // Nada aqui envia sozinho: o playbook manda variar o texto, e copy-paste
 // idêntico em sequência é justamente o padrão que o WhatsApp pune.
 
+// Cada anúncio de estáticos chega com uma mensagem pré-preenchida diferente
+// (meta-ads-dashboard/tools/trocar-mensagem-wpp.mjs); ela diz qual arte a
+// pessoa viu e, portanto, qual abertura responder.
+const ABERTURA_POR_ANUNCIO = [
+  { trecho: 'cobrar aluno por aluno', atalho: 'ab-cobrador' },
+  { trecho: 'automatizar as cobran', atalho: 'ab-automatizar' },
+  { trecho: 'inadimpl', atalho: 'ab-inadimplencia' },
+  { trecho: 'ct/escolinha', atalho: 'ab-ct' }
+]
+
+const OFERTA_POR_PLANO = { Starter: 'plano-starter', Pro: 'plano-pro', Premium: 'plano-premium' }
+
 // Qual atalho faz sentido agora, pelo estado do lead. É sugestão, não regra.
 export function sugerirAtalho(lead) {
   if (!lead) return null
   if (lead.toque_vencido && lead.fila) {
     return `${lead.fila.toLowerCase()}${(lead.toque_num || 0) + 1}`
   }
-  if (lead.status === 'novo') return 'boasvindas'
-  if (lead.status === 'criou_conta') return 'c1'
+  if (lead.status === 'novo') {
+    const msg = String(lead.ultima_mensagem || '').toLowerCase()
+    return ABERTURA_POR_ANUNCIO.find(a => msg.includes(a.trecho))?.atalho || 'boasvindas'
+  }
+  if (lead.status === 'criou_conta') return 'teste-conectar'
   if (lead.status === 'conversando') {
-    if (!lead.alunos) return 'qsonicho'
-    if (lead.alunos >= 30) return 'q30'
-    if (lead.alunos >= 20) return 'q2030'
-    return 'qpequeno'
+    const plano = planoPara(lead.alunos)
+    return plano ? OFERTA_POR_PLANO[plano.nome] : 'qsonicho'
   }
   return null
 }
@@ -53,7 +66,7 @@ export default function Composer({ lead, respostas, enviando, onEnviar, isMobile
   const filtradas = useMemo(() => {
     const termo = filtro.trim().toLowerCase()
     const base = respostas.filter(r => r.ativo !== false)
-    if (!termo) return base.slice(0, 40)
+    if (!termo) return base.slice(0, 100)
     return base.filter(r =>
       r.atalho.toLowerCase().includes(termo) ||
       r.titulo.toLowerCase().includes(termo) ||
@@ -190,7 +203,7 @@ export default function Composer({ lead, respostas, enviando, onEnviar, isMobile
           placeholder={'Escreva a resposta, ou digite / para os atalhos do playbook'}
           style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid #cbd5e1',
-            fontSize: '13.5px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
+            fontSize: '15px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
             lineHeight: 1.45, maxHeight: '220px'
           }}
         />

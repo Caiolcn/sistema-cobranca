@@ -108,7 +108,7 @@ export default function Conversa({ mensagens, pendentes, carregando, urlsMidia, 
   let diaAnterior = null
 
   return (
-    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div style={{ padding: '16px 6%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
       {mensagens.map(m => {
         const dia = diaDe(m.enviado_em)
         const novoDia = dia !== diaAnterior
@@ -121,8 +121,8 @@ export default function Conversa({ mensagens, pendentes, carregando, urlsMidia, 
             {novoDia && (
               <div style={{ textAlign: 'center', margin: '12px 0 8px' }}>
                 <span style={{
-                  fontSize: '11px', color: '#64748b', backgroundColor: '#e2e8f0',
-                  borderRadius: '999px', padding: '2px 10px'
+                  fontSize: '12px', color: '#54656f', backgroundColor: '#fff', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
+                  borderRadius: '8px', padding: '4px 12px'
                 }}>
                   {rotuloDia(m.enviado_em)}
                 </span>
@@ -130,12 +130,12 @@ export default function Conversa({ mensagens, pendentes, carregando, urlsMidia, 
             )}
             <div style={{ display: 'flex', justifyContent: meu ? 'flex-end' : 'flex-start' }}>
               <div style={{
-                maxWidth: '78%',
-                backgroundColor: meu ? '#dcf8c6' : '#fff',
-                border: `1px solid ${meu ? '#bbf0a0' : '#e2e8f0'}`,
+                maxWidth: 'min(65%, 620px)', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
+                backgroundColor: meu ? '#d9fdd3' : '#fff',
+                border: 'none',
                 borderRadius: meu ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                padding: '7px 10px 5px', fontSize: '13.5px', color: '#1e293b',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45
+                padding: '8px 11px 6px', fontSize: '15px', color: '#1e293b',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5
               }}>
                 {temMidia && (
                   <div style={{ marginBottom: m.texto ? '6px' : '2px' }}>
@@ -143,7 +143,7 @@ export default function Conversa({ mensagens, pendentes, carregando, urlsMidia, 
                   </div>
                 )}
                 {m.texto}
-                <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px', textAlign: 'right' }}>
+                <div style={{ fontSize: '11px', color: '#667781', marginTop: '3px', textAlign: 'right' }}>
                   {formatarHora(m.enviado_em)}
                 </div>
               </div>
@@ -155,11 +155,11 @@ export default function Conversa({ mensagens, pendentes, carregando, urlsMidia, 
       {pendentes.map(p => (
         <div key={p.tempId} style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{
-            maxWidth: '78%',
+            maxWidth: 'min(65%, 620px)', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
             backgroundColor: p.status === 'erro' ? '#fef2f2' : '#f1f8e9',
             border: `1px dashed ${p.status === 'erro' ? '#fca5a5' : '#c5e1a5'}`,
-            borderRadius: '12px 12px 4px 12px', padding: '7px 10px 5px',
-            fontSize: '13.5px', color: '#1e293b', whiteSpace: 'pre-wrap', wordBreak: 'break-word'
+            borderRadius: '12px 12px 4px 12px', padding: '8px 11px 6px',
+            fontSize: '15px', color: '#1e293b', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5
           }}>
             {p.texto}
             <div style={{ fontSize: '10px', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px' }}>
