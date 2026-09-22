@@ -186,7 +186,7 @@ export default function AprovacaoCadastros({
         .eq('id', userId)
       if (error) throw error
       setLinkConfig(c => ({ ...c, slug, ativo: ativar }))
-      showToast(ativar ? 'Link de cadastro ativado!' : 'Link de cadastro desativado', 'success')
+      showToast(ativar ? 'Link de autocadastro ativado!' : 'Link de autocadastro desativado', 'success')
     } catch (err) {
       console.error('Erro ao salvar link de cadastro:', err)
       showToast('Erro ao salvar: ' + (err?.message || 'tente de novo'), 'error')
@@ -274,7 +274,7 @@ export default function AprovacaoCadastros({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 600, fontSize: '15px', color: '#111827' }}>{p.nome}</span>
                       {p.origem === 'autocadastro'
-                        ? <Badge variant="info" icon="mdi:file-document-edit-outline">Link de cadastro</Badge>
+                        ? <Badge variant="info" icon="mdi:file-document-edit-outline">Link de autocadastro</Badge>
                         : <Badge variant="warning" icon="mdi:run">Experimental</Badge>}
                     </div>
                     <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
@@ -315,7 +315,7 @@ export default function AprovacaoCadastros({
       <Modal
         isOpen={mostrarLink}
         onClose={onFecharLink}
-        title="Link de cadastro"
+        title="Link de autocadastro"
         subtitle="O aluno preenche a ficha e você só aprova e escolhe o plano"
         size="md"
       >
