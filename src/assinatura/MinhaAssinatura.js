@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import Badge from '../design-system/components/Badge'
@@ -135,6 +135,7 @@ export default function MinhaAssinatura({ comoPagina = false }) {
   const [verPlanos, setVerPlanos] = useState(false)
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false)
   const [cancelando, setCancelando] = useState(false)
+  const jaConfirmeiCartao = useRef(false)
 
   // A cobrança é SEMPRE da conta logada: o checkout do Mercado Pago sai da
   // sessão. Por isso lemos userData cru, e não o effectiveData do seletor
@@ -160,6 +161,35 @@ export default function MinhaAssinatura({ comoPagina = false }) {
   }, [])
 
   useEffect(() => { carregarCobranca() }, [carregarCobranca])
+
+  // Rede de segurança do cartão: quem pagou e não voltou pela tela de retorno
+  // (fechou a aba, pagou no celular e abriu o app no computador) ficava preso
+  // como não-pagante pra sempre, porque o MP nunca manda webhook de assinatura
+  // pra gente. Toda vez que uma conta SEM plano pago abre esta tela, pergunto
+  // ao MP se existe assinatura autorizada no nome dela — a função só ativa na
+  // virada pending → authorized, então rodar à toa não empurra o vencimento.
+  useEffect(() => {
+    if (carregandoConta || !userData || userData.plano_pago) return
+    // Uma vez por visita: userData troca de identidade a cada refresh e sem
+    // esta trava a tela ficaria batendo no Mercado Pago em loop.
+    if (jaConfirmeiCartao.current) return
+    jaConfirmeiCartao.current = true
+    let cancelado = false
+
+    ;(async () => {
+      try {
+        const r = await mercadoPagoService.confirmarAssinaturaCartao()
+        if (cancelado || !r?.ativou) return
+        await refreshUserData()
+        carregarCobranca()
+      } catch (e) {
+        // Silencioso de propósito: é um bônus, não o caminho principal.
+        console.error('Confirmação de assinatura no cartão falhou:', e)
+      }
+    })()
+
+    return () => { cancelado = true }
+  }, [carregandoConta, userData, refreshUserData, carregarCobranca])
 
   // Consumo real do plano. O filtro de aluno é o mesmo do resto do app
   // (`lixo.is.null,lixo.eq.false`) pra que o número aqui bata com a tela de

@@ -99,6 +99,40 @@ export const mercadoPagoService = {
   },
 
   /**
+   * Pergunta ao Mercado Pago se a assinatura de cartão foi autorizada e ativa
+   * a conta na hora, se foi.
+   *
+   * O cartão NÃO pode depender do webhook: o `notification_url` que mandamos
+   * no /preapproval é ignorado pelo MP (assinatura só notifica na URL do
+   * painel da aplicação), e por isso todo pagamento de cartão ficava preso em
+   * `pending` enquanto o dinheiro já tinha caído na conta. Esta chamada é o
+   * caminho que não tem como não chegar.
+   *
+   * @param {string|null} preapprovalId - id que volta na URL do checkout
+   * @returns {Promise<{status, ativou, plano, plano_vencimento, duplicadas}>}
+   */
+  async confirmarAssinaturaCartao(preapprovalId = null) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Usuário não autenticado')
+
+    const response = await fetch(`${FUNCTIONS_URL}/confirmar-assinatura-cartao`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ preapproval_id: preapprovalId }),
+    })
+
+    if (!response.ok) {
+      const erro = await response.json().catch(() => ({}))
+      throw new Error(erro.error || 'Erro ao confirmar assinatura')
+    }
+
+    return await response.json()
+  },
+
+  /**
    * Cancela a assinatura ativa do usuário
    * @returns {Promise<{success: boolean, message: string}>}
    */

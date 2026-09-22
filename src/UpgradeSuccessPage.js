@@ -3,61 +3,77 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { mercadoPagoService } from './services/mercadoPagoService'
 
+// Quantas vezes pergunto ao MP antes de desistir. O cartão costuma autorizar
+// em segundos, mas a preapproval pode ficar `pending` uns instantes.
+const TENTATIVAS = 6
+const INTERVALO = 3000
+
 export default function UpgradeSuccessPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState('checking') // checking, success, pending, error
-  const [mensagem, setMensagem] = useState('Verificando status do pagamento...')
+  const [status, setStatus] = useState('checking') // checking, success, pending, indefinido, error
+  const [mensagem, setMensagem] = useState('Confirmando seu pagamento com o Mercado Pago...')
+  const [duplicada, setDuplicada] = useState(false)
 
   useEffect(() => {
     verificarStatusPagamento()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const verificarStatusPagamento = async () => {
-    // Mercado Pago redireciona com esses parâmetros:
-    // ?status=approved ou ?status=pending ou ?status=rejected
-    // &external_reference=user_id
-    // &payment_id=123456
-    // &preference_id=xxx
-    // &collection_status=approved
-
+    // O retorno do checkout de ASSINATURA não traz `status`/`collection_status`
+    // — traz `preapproval_id`. Ler só a URL foi exatamente o que fez a tela
+    // estampar "Pagamento Não Aprovado" pra quem tinha acabado de pagar: sem
+    // parâmetro, caía no else. Agora a URL é só uma dica; quem responde é o MP.
+    const preapprovalId =
+      searchParams.get('preapproval_id') || searchParams.get('preapproval')
     const paymentStatus = searchParams.get('status') || searchParams.get('collection_status')
-    const externalReference = searchParams.get('external_reference')
-    const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id')
-    const preferenceId = searchParams.get('preference_id')
 
-    console.log('📊 Parâmetros recebidos:', {
-      paymentStatus,
-      externalReference,
-      paymentId,
-      preferenceId
-    })
+    console.log('📊 Retorno do checkout:', { preapprovalId, paymentStatus })
 
-    // Aguardar 3 segundos para dar tempo do webhook processar
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
+      try {
+        const r = await mercadoPagoService.confirmarAssinaturaCartao(preapprovalId)
+        console.log(`🔍 Tentativa ${tentativa}:`, r)
 
-    // Verificar se assinatura foi ativada
-    const assinatura = await mercadoPagoService.verificarAssinaturaAtiva()
+        if (r.status === 'authorized' || r.plano_pago) {
+          const temDuplicada = !!r.duplicadas?.length
+          setDuplicada(temDuplicada)
+          setStatus('success')
+          setMensagem(
+            temDuplicada
+              ? 'Pagamento aprovado e conta ativada! Só que encontramos mais de uma assinatura ativa no seu cartão — chama a gente no WhatsApp pra cancelar a duplicada e devolver o valor.'
+              : 'Pagamento aprovado! Sua conta foi ativada com sucesso.'
+          )
+          // Com assinatura duplicada a pessoa precisa LER o aviso: jogar ela
+          // pro dashboard em 3 segundos esconderia justamente o que importa.
+          if (!temDuplicada) setTimeout(() => navigate('/app/home'), 3000)
+          return
+        }
 
-    console.log('🔍 Assinatura encontrada:', assinatura)
+        // Cancelada/pausada no MP é a única situação em que dá pra dizer que
+        // não passou. Qualquer outra coisa é "ainda não sei".
+        if (r.status === 'cancelled' || paymentStatus === 'rejected') {
+          setStatus('error')
+          setMensagem('O pagamento não foi concluído. Nada foi cobrado do seu cartão.')
+          return
+        }
+      } catch (e) {
+        console.error('Erro ao confirmar assinatura:', e)
+      }
 
-    if (paymentStatus === 'approved' || assinatura) {
-      setStatus('success')
-      setMensagem('Pagamento aprovado! Sua conta foi ativada com sucesso.')
-
-      // Redirecionar para dashboard após 3 segundos
-      setTimeout(() => {
-        navigate('/app/home')
-      }, 3000)
-
-    } else if (paymentStatus === 'pending') {
-      setStatus('pending')
-      setMensagem('Pagamento pendente. Você receberá um email quando for aprovado.')
-
-    } else {
-      setStatus('error')
-      setMensagem('Houve um problema com o pagamento. Tente novamente.')
+      if (tentativa < TENTATIVAS) {
+        await new Promise((resolve) => setTimeout(resolve, INTERVALO))
+      }
     }
+
+    // Acabaram as tentativas sem resposta do MP. Isto NÃO é reprovação — e a
+    // tela não pode sugerir que seja, nem oferecer "tentar de novo": foi assim
+    // que uma cliente acabou com duas assinaturas criadas em 23 segundos.
+    setStatus('indefinido')
+    setMensagem(
+      'Ainda não consegui confirmar o pagamento com o Mercado Pago. Se o valor foi debitado do seu cartão, ele está valendo: é só abrir "Minha assinatura" daqui a pouco que a conta libera sozinha. Não pague de novo — se preferir, chama a gente no WhatsApp.'
+    )
   }
 
   const getIconAndColor = () => {
@@ -65,6 +81,7 @@ export default function UpgradeSuccessPage() {
       case 'success':
         return { icon: 'mdi:check-circle', color: '#4caf50', bg: '#e8f5e9' }
       case 'pending':
+      case 'indefinido':
         return { icon: 'mdi:clock-alert', color: '#ff9800', bg: '#fff3e0' }
       case 'error':
         return { icon: 'mdi:alert-circle', color: '#f44336', bg: '#ffebee' }
@@ -135,7 +152,8 @@ export default function UpgradeSuccessPage() {
         }}>
           {status === 'success' && '✨ Pagamento Aprovado!'}
           {status === 'pending' && '⏳ Pagamento Pendente'}
-          {status === 'error' && '❌ Pagamento Não Aprovado'}
+          {status === 'indefinido' && '⏳ Confirmando o pagamento'}
+          {status === 'error' && '❌ Pagamento Não Concluído'}
           {status === 'checking' && '🔄 Processando...'}
         </h1>
 
@@ -151,7 +169,7 @@ export default function UpgradeSuccessPage() {
         </p>
 
         {/* Informação adicional para sucesso */}
-        {status === 'success' && (
+        {status === 'success' && !duplicada && (
           <div style={{
             backgroundColor: '#f0f9ff',
             padding: '20px',
@@ -235,7 +253,7 @@ export default function UpgradeSuccessPage() {
         )}
 
         {/* Info de suporte */}
-        {(status === 'pending' || status === 'error') && (
+        {(status === 'pending' || status === 'error' || status === 'indefinido' || duplicada) && (
           <div style={{
             marginTop: '32px',
             paddingTop: '24px',
@@ -257,7 +275,7 @@ export default function UpgradeSuccessPage() {
                   fontWeight: '600'
                 }}
               >
-                (62) 98246-6639
+                (62) 98161-8862
               </a>
             </p>
           </div>
