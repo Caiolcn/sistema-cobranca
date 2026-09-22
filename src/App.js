@@ -28,6 +28,7 @@ const MinhaAssinatura = lazy(() => import('./assinatura/MinhaAssinatura'))
 const UpgradeSuccessPage = lazy(() => import('./UpgradeSuccessPage'))
 const PaginaPagamento = lazy(() => import('./pages/PaginaPagamento'))
 const PortalCliente = lazy(() => import('./pages/PortalCliente'))
+const PortalAcesso = lazy(() => import('./pages/PortalAcesso'))
 const PaginaContrato = lazy(() => import('./pages/PaginaContrato'))
 const AgendaNova = lazy(() => import('./AgendaNova'))
 const Relatorios = lazy(() => import('./Relatorios'))
@@ -158,6 +159,7 @@ function App() {
               <Route path="/login" element={session ? <RedirecionarPosLogin /> : <Login onLogin={() => setSession(true)} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pagar/:token" element={<PaginaPagamento />} />
+              <Route path="/portal/c/:slug" element={<PortalAcesso />} />
               <Route path="/portal/:token" element={<PortalCliente />} />
               <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />

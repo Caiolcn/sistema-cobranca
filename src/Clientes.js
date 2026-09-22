@@ -10,6 +10,7 @@ import TagInput from './components/TagInput'
 import TagFormModal from './components/TagFormModal'
 import { corTextoContrastante } from './utils/tagColors'
 import CsvImportModal from './components/CsvImportModal'
+import LinkPortalConta from './components/LinkPortalConta'
 import AnamneseSection from './components/AnamneseSection'
 import ContratosSection from './ContratosSection'
 import { validarTelefone, validarCPF } from './utils/validators'
@@ -128,6 +129,7 @@ export default function Clientes() {
   const [planos, setPlanos] = useState([])
   const [mostrarModalCriarPlano, setMostrarModalCriarPlano] = useState(false)
   const [mostrarImportModal, setMostrarImportModal] = useState(false)
+  const [mostrarLinkPortal, setMostrarLinkPortal] = useState(false)
   const [novoPlanoNome, setNovoPlanoNome] = useState('')
   const [novoPlanoValor, setNovoPlanoValor] = useState('')
   const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
@@ -1803,64 +1805,13 @@ Equipe ${nomeEmpresa}`
           {/* Botões */}
           <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
             <Button
-              variant="outline"
-              icon="mdi:link-variant"
-              iconOnly
-              aria-label="Link de cadastro"
-              title="Link de cadastro: o aluno preenche a ficha"
-              onClick={() => setMostrarLinkCadastro(true)}
-              style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
-            />
-
-            <Button
-              variant="outline"
-              icon="iconoir:import"
-              iconOnly
-              aria-label="Importar alunos via CSV"
-              title="Importar alunos via CSV"
-              onClick={() => setMostrarImportModal(true)}
-              style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
-            />
-
-            <Dropdown
-              align="end"
-              style={{ flex: isSmallScreen ? 1 : 'none' }}
-              trigger={
-                <Button
-                  variant="outline"
-                  icon="ph:export-light"
-                  iconOnly
-                  aria-label="Exportar lista"
-                  title="Exportar lista"
-                  style={{ width: isSmallScreen ? '100%' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
-                />
-              }
-            >
-              <Dropdown.Item
-                icon={<Icon icon="mdi:file-delimited-outline" width="18" style={{ color: '#16a34a' }} />}
-                onClick={() => exportarClientes(clientesFiltrados)}
-              >
-                Exportar CSV
-              </Dropdown.Item>
-              <Dropdown.Item
-                icon={<Icon icon="mdi:file-pdf-box" width="18" style={{ color: '#dc2626' }} />}
-                onClick={() => {
-                  const subtitulo = filtroTag !== 'todas' ? `Tag: ${filtroTag}` : ''
-                  exportarClientesPDF(clientesFiltrados, { subtitulo })
-                }}
-              >
-                Exportar PDF
-              </Dropdown.Item>
-            </Dropdown>
-
-            <Button
               className="btn-filtrar"
               variant={temFiltrosAtivos ? 'secondary' : 'outline'}
-              icon="mdi:filter-outline"
+              iconRight="mdi:filter-outline"
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
               style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
             >
-              {!isSmallScreen && 'Filtrar'}
+              Filtrar
               {temFiltrosAtivos && (
                 <span style={{
                   position: 'absolute',
@@ -1885,9 +1836,50 @@ Equipe ${nomeEmpresa}`
               )}
             </Button>
 
+            {/* Ações secundárias num menu só: a barra fica com 3 botões, todos com texto */}
+            <Dropdown
+              align="end"
+              style={{ flex: isSmallScreen ? 1 : 'none' }}
+              trigger={
+                <Button
+                  variant="outline"
+                  iconRight="mdi:chevron-down"
+                  style={{ width: isSmallScreen ? '100%' : 'auto', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
+                >
+                  Ações
+                </Button>
+              }
+            >
+              <Dropdown.Group label="Links pros alunos">
+                <Dropdown.Item onClick={() => setMostrarLinkCadastro(true)}>
+                  Link de autocadastro
+                </Dropdown.Item>
+                <Dropdown.Item onClick={() => setMostrarLinkPortal(true)}>
+                  Link do portal
+                </Dropdown.Item>
+              </Dropdown.Group>
+              <Dropdown.Divider />
+              <Dropdown.Group label="Planilha">
+                <Dropdown.Item onClick={() => setMostrarImportModal(true)}>
+                  Importar alunos (CSV)
+                </Dropdown.Item>
+                <Dropdown.Item onClick={() => exportarClientes(clientesFiltrados)}>
+                  Exportar CSV
+                </Dropdown.Item>
+                <Dropdown.Item
+                  onClick={() => {
+                    const subtitulo = filtroTag !== 'todas' ? `Tag: ${filtroTag}` : ''
+                    exportarClientesPDF(clientesFiltrados, { subtitulo })
+                  }}
+                >
+                  Exportar PDF
+                </Dropdown.Item>
+              </Dropdown.Group>
+            </Dropdown>
+
             <Button
               variant="secondary"
-              icon="mdi:plus"
+              iconRight="mdi:plus"
               onClick={() => {
                 setAprovandoDevedor(null)
                 setErroModalNovoCliente('')
@@ -1905,7 +1897,7 @@ Equipe ${nomeEmpresa}`
               }}
               style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
             >
-              {!isSmallScreen && 'Adicionar'}
+              Adicionar
             </Button>
 
             {/* Popover de filtros */}
@@ -4768,6 +4760,12 @@ Equipe ${nomeEmpresa}`
           </div>
         </div>
       )}
+
+      <LinkPortalConta
+        isOpen={mostrarLinkPortal}
+        onClose={() => setMostrarLinkPortal(false)}
+        userId={userId}
+      />
 
       {/* Modal de Importação CSV */}
       <CsvImportModal
