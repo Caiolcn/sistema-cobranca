@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { MdAutorenew, MdPayments, MdDashboardCustomize, MdCheckCircle } from 'react-icons/md'
 import { trackLead, trackCompleteRegistration, trackStartTrial, enviarEventoCapi } from './utils/metaPixel'
 import { obterAtribuicao, gerarEventId } from './utils/metaAttribution'
-import whatsappService from './services/whatsappService'
 import useWindowSize from './hooks/useWindowSize'
 
 // Paleta do site público (mesma da LandingPage) — quem chega aqui vem de lá.
@@ -55,34 +54,11 @@ const SELOS = ['Sai do seu próprio WhatsApp', 'Configura em ~5 minutos']
 // Enquanto o array estiver vazio, o bloco simplesmente não aparece.
 const DEPOIMENTOS = []
 
-// Instância WhatsApp da própria plataforma (Mensalli → novo cliente).
-// Mesma usada pelos disparos do /admin. O novo usuário ainda não conectou
-// a instância dele, então a boas-vindas sai daqui.
-// Fonte de verdade é config.evolution_master_instance; aqui fica só o mesmo
-// fallback do resto do sistema, porque o cadastro não pode pagar uma query a
-// mais no caminho crítico. Se trocar a master, trocar lá E aqui.
-const INSTANCIA_MENSALLI = 'mensalli_master'
-
-// Prévia da cobrança logo no cadastro: a prova de valor mais barata que existe.
-// Aqui ainda não há empresa, plano nem aluno cadastrado, então o exemplo usa
-// dados fictícios de propósito — e o rodapé deixa explícito que é modelo
-// editável, senão a pessoa acha que o sistema já saiu cobrando alguém.
-const montarCobrancaExemplo = (primeiroNome) =>
-`Olá, Maria.
-
-Este é um lembrete referente à sua mensalidade:
-
-📌 Plano Mensal
-💰 R$ 150,00
-📅 Vencimento: dia 10
-
-🔑 Chave PIX: academia@exemplo.com.br
-
-Estamos à disposição para qualquer esclarecimento.
-━━━━━━━━━━━━━━━
-${primeiroNome}, esta é uma cobrança de exemplo.
-
-Vai ser assim que seus alunos vão receber, direto do seu WhatsApp. E todo esse texto você pode editar do jeito que você preferir dentro do Mensalli. ✏️`
+// As duas mensagens do cadastro (saudação + prévia da cobrança) moravam aqui e
+// saíam do navegador pela instância master. Desde o evolution-proxy (22/09/26)
+// isso não é mais possível: cliente comum só opera a própria instância, e todo
+// cadastro levava 403 em silêncio. Texto e envio vivem agora na edge function
+// signup-boas-vindas — ver o comentário de cabeçalho dela.
 
 export default function Signup({ onCadastroIniciado }) {
   const navigate = useNavigate()
@@ -272,39 +248,26 @@ export default function Signup({ onCadastroIniciado }) {
       // navegador perde (adblock, ITP do Safari, aba fechada cedo demais).
       enviarEventoCapi('CompleteRegistration', { eventId: eventIdCadastro })
 
-      // Boas-vindas via WhatsApp, enviada pelo número da plataforma (master).
+      // Boas-vindas + prévia da cobrança, pelo número da plataforma (master).
+      // Quem envia é a edge function: daqui do navegador o proxy da Evolution
+      // barra (403 — cliente comum não opera a master), e foi assim que esses
+      // dois envios morreram em silêncio entre 22 e 23/09/26.
+      //
       // Sem await de propósito: o envio pode levar segundos e não pode atrasar a
       // ida pro onboarding. Se falhar, a conta já está criada e a pessoa segue.
-      const primeiroNome = nomeCompleto.trim().split(' ')[0]
-      const mensagemBoasVindas =
-`Oi ${primeiroNome}! 👋
-
-Aqui é o Caio, da equipe do Mensalli. Vi que você acabou de criar sua conta — seja muito bem-vindo(a)! 🎉
-
-Sua conta já está com tudo desbloqueado. Pra ver a mágica acontecer, é só cadastrar seus alunos e ativar a cobrança automática no WhatsApp.
-
-Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que eu te ajudo. 😊`
-
-      // Boas-vindas e exemplo saem em sequência (não em paralelo) só pra chegarem
-      // na ordem certa na conversa. Sem await no fluxo principal: o popup aparece
-      // na hora e o envio segue por fora.
+      // O destino e os textos ficam do lado do servidor — não mandamos telefone
+      // nem mensagem no corpo; a função lê o telefone da própria conta.
       ;(async () => {
         try {
-          await whatsappService.enviarMensagem(telefoneLimpo, mensagemBoasVindas, INSTANCIA_MENSALLI)
-        } catch (erroBoasVindas) {
-          console.error('Falha ao enviar boas-vindas (não bloqueia cadastro):', erroBoasVindas)
-        }
-        try {
-          const resultado = await whatsappService.enviarMensagem(
-            telefoneLimpo,
-            montarCobrancaExemplo(primeiroNome),
-            INSTANCIA_MENSALLI
-          )
-          // O service resolve com { sucesso: false } em vez de rejeitar em parte
-          // dos erros — se não checar, o popup afirma que enviou e não enviou.
-          if (resultado && resultado.sucesso === false) throw new Error(resultado.erro || 'envio recusado')
-        } catch (erroExemplo) {
-          console.error('Falha ao enviar cobrança de exemplo:', erroExemplo)
+          const { data, error } = await supabase.functions.invoke('signup-boas-vindas')
+          // A função responde 200 com `enviado: false` quando a Evolution recusa
+          // — se não checar os dois, o popup afirma que enviou e não enviou.
+          if (error) throw error
+          if (!data?.enviado || !data?.exemplo) {
+            throw new Error(JSON.stringify(data?.detalhe || data || 'envio recusado'))
+          }
+        } catch (erroEnvio) {
+          console.error('Falha nas mensagens de boas-vindas (não bloqueia cadastro):', erroEnvio)
           setExemploFalhou(true)
         }
       })()
