@@ -34,6 +34,7 @@ mensalidade_atraso AS (
       END
     ) AS dias_atraso
   FROM mensalidades m
+  WHERE (m.lixo IS NULL OR m.lixo = false)  -- mensalidade excluída não conta como atraso
   GROUP BY m.devedor_id
 ),
 nps_ultimo AS (
