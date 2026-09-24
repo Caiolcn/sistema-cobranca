@@ -169,19 +169,13 @@ export default function AdminCobrancaSaas() {
   }
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Cabeçalho */}
       <div style={{ marginBottom: '24px' }}>
-        <button
-          onClick={() => navigate('/app/admin')}
-          style={{ background: 'transparent', border: 'none', color: '#667eea', cursor: 'pointer', fontSize: '13px', padding: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '4px' }}
-        >
-          <Icon icon="mdi:arrow-left" width="16" /> Voltar ao /admin
-        </button>
-        <h1 style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: 'bold', color: '#333', margin: '0 0 6px 0' }}>
+        <h1 className="adm-titulo" style={{ marginBottom: 4 }}>
           Cobrança SaaS Automática
         </h1>
-        <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
+        <p style={{ color: 'var(--neutral-500)', fontSize: '14px', margin: 0 }}>
           Lembra os clientes pagantes de renovar o plano — 3 dias antes, no dia e 3 dias depois do vencimento.
           Dispara sozinho todo dia às 9h (BRT) pelo WhatsApp master.
         </p>

@@ -14,6 +14,7 @@ import Signup from './Signup'
 import ResetPassword from './ResetPassword'
 import Privacidade from './pages/Privacidade'
 import BarraModoEspelho from './components/BarraModoEspelho'
+import { destinoAdminLegado } from './admin/navegacao'
 import InstalarAppPrompt from './components/InstalarAppPrompt'
 
 // Lazy loading para componentes do app (carregados sob demanda)
@@ -34,8 +35,18 @@ const AgendaNova = lazy(() => import('./AgendaNova'))
 const Relatorios = lazy(() => import('./Relatorios'))
 const Ajuda = lazy(() => import('./Ajuda'))
 const CRM = lazy(() => import('./CRM'))
-const Admin = lazy(() => import('./Admin'))
-const AdminErrosMensagens = lazy(() => import('./AdminErrosMensagens'))
+const AdminLayout = lazy(() => import('./admin/AdminLayout'))
+// As telas do CRM moram num módulo só (dividem carga e modais) — cada rota
+// pega o seu export nomeado.
+const telaCRM = (nome) => lazy(() => import('./admin/AdminShell').then(m => ({ default: m[nome] })))
+const SecaoCRM = telaCRM('SecaoCRM')
+const PaginaVisaoGeral = telaCRM('PaginaVisaoGeral')
+const PaginaContas = telaCRM('PaginaContas')
+const PaginaFinanceiroAdmin = telaCRM('PaginaFinanceiro')
+const PaginaRetencao = telaCRM('PaginaRetencao')
+const PaginaMensagens = telaCRM('PaginaMensagens')
+const PaginaAtualizacoes = telaCRM('PaginaAtualizacoes')
+const PaginaProspeccao = telaCRM('PaginaProspeccao')
 const AdminCron = lazy(() => import('./AdminCron'))
 const AdminWhatsAppSaude = lazy(() => import('./AdminWhatsAppSaude'))
 const AdminWhatsAppMaster = lazy(() => import('./AdminWhatsAppMaster'))
@@ -104,6 +115,12 @@ function RedirecionarParaLogin() {
 function RedirecionarParaAssinatura() {
   const { search } = useLocation()
   return <Navigate to={`/app/assinatura${search}`} replace />
+}
+
+// /app/admin[/sub][?aba=] -> /admin/<tela>, preservando o resto da query.
+function RedirecionarAdminLegado() {
+  const { pathname, search } = useLocation()
+  return <Navigate to={destinoAdminLegado(pathname, search)} replace />
 }
 
 // Já logado batendo em /login: respeita o ?next=. Sem isso, quem entrava pelo
@@ -237,17 +254,36 @@ function App() {
                     <Route path="ajuda" element={<Ajuda />} />
                     <Route path="avisos" element={<Avisos />} />
                     <Route path="crm" element={<CRM />} />
-                    <Route path="admin" element={<Admin />} />
-                    <Route path="admin/erros-mensagens" element={<AdminErrosMensagens />} />
-                    <Route path="admin/cron" element={<AdminCron />} />
-                    <Route path="admin/whatsapp-saude" element={<AdminWhatsAppSaude />} />
-                    <Route path="admin/whatsapp-master" element={<AdminWhatsAppMaster />} />
-                    <Route path="admin/cobranca-saas" element={<AdminCobrancaSaas />} />
-                    <Route path="admin/leads" element={<AdminLeads />} />
+                  </Route>
+                  {/* /app/admin virou /admin, com layout próprio. Os links velhos
+                      (favoritos, ?aba=...) seguem abrindo a tela certa. */}
+                  <Route path="/app/admin/*" element={<RedirecionarAdminLegado />} />
+                  <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<Navigate to="visao-geral" replace />} />
+                    <Route element={<SecaoCRM />}>
+                      <Route path="visao-geral" element={<PaginaVisaoGeral />} />
+                      <Route path="contas" element={<PaginaContas />} />
+                      <Route path="financeiro" element={<PaginaFinanceiroAdmin />} />
+                      <Route path="retencao" element={<PaginaRetencao />} />
+                    </Route>
+                    <Route path="mensagens" element={<PaginaMensagens />} />
+                    <Route path="atualizacoes" element={<PaginaAtualizacoes />} />
+                    <Route path="prospeccao" element={<PaginaProspeccao />} />
+                    <Route path="leads" element={<AdminLeads />} />
+                    <Route path="cobranca-saas" element={<AdminCobrancaSaas />} />
+                    <Route path="whatsapp-saude" element={<AdminWhatsAppSaude />} />
+                    <Route path="whatsapp-master" element={<AdminWhatsAppMaster />} />
+                    {/* "Erros de envio" saiu: a Central de mensagens já mostra as falhas. */}
+                    <Route path="erros-mensagens" element={<Navigate to="/admin/mensagens" replace />} />
+                    <Route path="cron" element={<AdminCron />} />
+                    <Route path="*" element={<Navigate to="/admin/visao-geral" replace />} />
                   </Route>
                 </>
               ) : (
-                <Route path="/app/*" element={<RedirecionarParaLogin />} />
+                <>
+                  <Route path="/app/*" element={<RedirecionarParaLogin />} />
+                  <Route path="/admin/*" element={<RedirecionarParaLogin />} />
+                </>
               )}
 
               {/* Landing page publica da academia por slug raiz.

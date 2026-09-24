@@ -1,0 +1,384 @@
+/* ============================================================
+   Layout próprio do /admin
+
+   Sidebar branca com a marca + selo "Admin", item ativo em pílula escura,
+   cartão do usuário no rodapé; topbar fina com o caminho e a saudação;
+   conteúdo em fundo cinza-claro para os cards brancos destacarem.
+   ============================================================ */
+
+.adm-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--neutral-50);
+  font-family: var(--font-sans);
+}
+
+.adm-coluna {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Sidebar ---------- */
+
+.adm-sidebar {
+  width: 256px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--neutral-0);
+  border-right: 1px solid var(--neutral-200);
+  height: 100%;
+}
+
+.adm-sidebar-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding-right: 12px;
+  border-bottom: 1px solid var(--neutral-200);
+  flex-shrink: 0;
+}
+
+.adm-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+
+.adm-marca img {
+  height: 26px;
+  object-fit: contain;
+}
+
+.adm-selo {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background-color: var(--neutral-900);
+  color: var(--neutral-0);
+  letter-spacing: 0.02em;
+}
+
+.adm-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+}
+
+.adm-nav-grupo + .adm-nav-grupo {
+  margin-top: 18px;
+}
+
+.adm-nav-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral-400);
+  padding: 0 12px 6px;
+}
+
+.adm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-600);
+  text-decoration: none;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.adm-nav-item svg {
+  flex-shrink: 0;
+  color: var(--neutral-500);
+  transition: color 150ms ease-out;
+}
+
+.adm-nav-item:hover {
+  background-color: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.adm-nav-item.ativo {
+  background-color: var(--neutral-900);
+  color: var(--neutral-0);
+  font-weight: 600;
+}
+
+.adm-nav-item.ativo svg {
+  color: var(--neutral-0);
+}
+
+/* Rodapé: atalho pro app + cartão do usuário */
+.adm-rodape {
+  flex-shrink: 0;
+  border-top: 1px solid var(--neutral-200);
+  padding: 12px;
+}
+
+.adm-usuario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px 2px 8px;
+}
+
+.adm-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background-color: var(--neutral-100);
+  color: var(--neutral-700);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.adm-usuario-nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm-usuario-papel {
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+
+/* ---------- Topbar ---------- */
+
+.adm-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 64px;
+  padding: 0 32px;
+  flex-shrink: 0;
+  background-color: var(--neutral-0);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.adm-caminho {
+  font-size: 13px;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm-caminho strong {
+  color: var(--neutral-900);
+  font-weight: 600;
+}
+
+.adm-boasvindas {
+  font-size: 13px;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+.adm-boasvindas strong {
+  color: var(--neutral-900);
+  font-weight: 600;
+}
+
+/* Área de conteúdo: mesmo container do <Outlet> do Dashboard (flex +
+   align-items:flex-start + .app-conteudo), para as telas que nasceram lá
+   dentro renderizarem igual aqui. */
+.adm-conteudo {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* ---------- Cabeçalho das páginas ---------- */
+
+.adm-pagina {
+  flex: 1;
+  min-width: 0;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+.adm-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.adm-titulo {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--neutral-900);
+  line-height: 1.25;
+}
+
+.adm-subtitulo {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--neutral-500);
+}
+
+/* ---------- KPIs no /admin ----------
+   O StatCard do DS usa barra lateral colorida (padrão do app). Aqui, só no
+   admin, o accent vira um quadrado cheio com o ícone em branco e o número
+   ganha mais peso — leitura de painel, não de lista. */
+
+.adm-layout .ds-statcard {
+  border-left-width: 1px;
+  border-color: var(--neutral-200);
+  border-radius: 14px;
+  padding: 20px;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.adm-layout .ds-statcard--sm {
+  padding: 16px;
+}
+
+/* Especificidade extra: o DS repinta a borda esquerda no hover por accent. */
+.adm-layout .ds-statcard.ds-statcard--clickable:hover {
+  border-color: var(--neutral-300);
+  box-shadow: var(--shadow-md);
+}
+
+.adm-layout .ds-statcard__topo {
+  align-items: flex-start;
+}
+
+.adm-layout .ds-statcard__label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--neutral-500);
+  padding-top: 2px;
+}
+
+.adm-layout .ds-statcard__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  opacity: 1;
+  color: var(--neutral-0);
+  background-color: var(--neutral-500);
+}
+
+.adm-layout .ds-statcard--sm .ds-statcard__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.adm-layout .ds-statcard--accent-primary .ds-statcard__icon { background-color: var(--mensalli-green-500); }
+.adm-layout .ds-statcard--accent-success .ds-statcard__icon { background-color: var(--success-500); }
+.adm-layout .ds-statcard--accent-warning .ds-statcard__icon { background-color: var(--warning-500); }
+.adm-layout .ds-statcard--accent-danger  .ds-statcard__icon { background-color: var(--danger-500); }
+.adm-layout .ds-statcard--accent-info    .ds-statcard__icon { background-color: var(--info-500); }
+.adm-layout .ds-statcard--accent-neutral .ds-statcard__icon { background-color: var(--neutral-400); }
+
+.adm-layout .ds-statcard__value {
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  margin-top: -8px;
+}
+
+/* ---------- Botões de ícone ----------
+   O App.css pinta todo <button> de azul, inclusive no :hover — por isso o
+   background vai sobrescrito nos três estados. */
+
+.adm-icone-btn,
+.adm-icone-btn:hover,
+.adm-icone-btn:disabled {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--neutral-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.adm-icone-btn:hover {
+  background-color: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+/* ---------- Celular ---------- */
+
+.adm-layout.mobile {
+  flex-direction: column;
+}
+
+.adm-layout.mobile .adm-topbar {
+  padding: 0 8px;
+  justify-content: flex-start;
+  height: 56px;
+}
+
+.adm-layout.mobile .adm-topbar .adm-marca {
+  padding: 0 4px;
+}
+
+.adm-layout.mobile .adm-pagina {
+  padding: 16px;
+}
+
+.adm-layout.mobile .adm-titulo {
+  font-size: 20px;
+}
+
+.adm-gaveta-fundo {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  z-index: 1000;
+}
+
+.adm-gaveta {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  z-index: 1001;
+  box-shadow: var(--shadow-xl);
+}
+
+.adm-gaveta .adm-sidebar {
+  width: 100%;
+  border-right: none;
+}

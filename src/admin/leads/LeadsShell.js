@@ -96,16 +96,9 @@ export default function LeadsShell() {
       display: 'flex', flexDirection: 'column', minHeight: 0,
       padding: isMobile ? '12px' : '18px 22px'
     }}>
-      <button
-        onClick={() => navigate('/app/admin')}
-        style={{ background: 'transparent', border: 'none', color: '#667eea', cursor: 'pointer', fontSize: '13px', padding: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '4px' }}
-      >
-        <Icon icon="mdi:arrow-left" width="16" /> Voltar ao /admin
-      </button>
-
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
+          <h1 className="adm-titulo" style={{ marginBottom: 4 }}>
             Leads de campanha
           </h1>
           <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

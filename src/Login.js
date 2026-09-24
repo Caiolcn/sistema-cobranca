@@ -12,7 +12,8 @@ import { supabase } from './supabaseClient'
 // <Navigate> dela ganha a corrida contra o navigate() daqui de baixo.
 export function destinoPosLogin(search) {
   const next = new URLSearchParams(search || '').get('next')
-  return next && next.startsWith('/app/') && !next.startsWith('//') ? next : '/app/home'
+  const interno = next && (next.startsWith('/app/') || next.startsWith('/admin'))
+  return interno && !next.startsWith('//') ? next : '/app/home'
 }
 
 export default function Login({ onLogin }) {

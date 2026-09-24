@@ -132,6 +132,26 @@ export function formatarDataHora(iso) {
   })
 }
 
+// Última atividade da conta (colunas ultimo_acesso / ultima_acao da
+// vw_admin_contas). O tom diz se a pessoa sumiu: até 2 dias é uso normal
+// (ninguém abre o app no domingo), 15+ dias é conta esfriando.
+export function textoAtividade(iso) {
+  if (!iso) return { texto: 'nunca', tom: 'critico' }
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return { texto: '—', tom: 'neutro' }
+  const min = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
+  let texto
+  if (min < 60) texto = min <= 1 ? 'agora' : `há ${min} min`
+  else if (min < 60 * 24) texto = `há ${Math.floor(min / 60)} h`
+  else {
+    const dias = Math.floor(min / (60 * 24))
+    texto = dias === 1 ? 'ontem' : `há ${dias} dias`
+  }
+  const dias = min / (60 * 24)
+  const tom = dias < 2 ? 'ok' : dias < 7 ? 'neutro' : dias < 15 ? 'alerta' : 'critico'
+  return { texto, tom }
+}
+
 // "vence em 3 dias" / "venceu há 12 dias" / "vence hoje" — a frase inteira,
 // para a tabela não ter que decidir o tempo verbal em cada célula.
 export function textoVencimento(iso) {

@@ -183,7 +183,6 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
 
       // Nomes não vêm na view de propósito — juntar usuarios/devedores no SQL
       // deixaria a listagem bem mais pesada por um dado que cabe em dois mapas.
-      // Mesmo padrão de AdminErrosMensagens.js.
       const userIds = [...new Set(arr.map(l => l.user_id).filter(Boolean))]
       const devIds = [...new Set(arr.map(l => l.devedor_id).filter(Boolean))]
 

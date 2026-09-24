@@ -200,18 +200,11 @@ export default function AdminWhatsAppMaster() {
   const labelStatus = status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Aguardando leitura...' : 'Desconectado'
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '760px', margin: '0 auto' }}>
-      <button
-        onClick={() => navigate('/app/admin')}
-        style={{ background: 'transparent', border: 'none', color: '#667eea', cursor: 'pointer', fontSize: '13px', padding: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '4px' }}
-      >
-        <Icon icon="mdi:arrow-left" width="16" /> Voltar ao /admin
-      </button>
-
-      <h1 style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: 'bold', color: '#333', margin: '0 0 6px 0' }}>
+    <div style={{ padding: isMobile ? '16px' : '32px', maxWidth: '760px', margin: '0 auto' }}>
+      <h1 className="adm-titulo" style={{ marginBottom: 4 }}>
         WhatsApp Master da Mensalli
       </h1>
-      <p style={{ color: '#666', fontSize: '14px', margin: '0 0 24px 0' }}>
+      <p style={{ color: 'var(--neutral-500)', fontSize: '14px', margin: '0 0 24px 0' }}>
         Número da plataforma que dispara avisos de sistema — como avisar um gestor de que o WhatsApp <strong>dele</strong> caiu (já que o canal dele está fora do ar). Instância: <code>{instance}</code>
       </p>
 

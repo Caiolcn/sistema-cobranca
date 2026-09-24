@@ -18,6 +18,7 @@ import { resolverVariaveis, pendenciasDoTexto, planoPara } from './utils'
 const ABERTURA_POR_ANUNCIO = [
   { trecho: 'cobrar aluno por aluno', atalho: 'ab-cobrador' },
   { trecho: 'automatizar as cobran', atalho: 'ab-automatizar' },
+  { trecho: 'cobre meus alunos sozinho', atalho: 'ab-automatizar' }, // story5 (linha do tempo)
   { trecho: 'inadimpl', atalho: 'ab-inadimplencia' },
   { trecho: 'ct/escolinha', atalho: 'ab-ct' }
 ]

@@ -7,10 +7,11 @@ import Select from '../design-system/components/Select'
 import SearchInput from '../design-system/components/SearchInput'
 import Tabs from '../design-system/components/Tabs'
 import Modal from '../design-system/components/Modal'
-import { showSuccess } from '../Toast'
+import { showSuccess, showError } from '../Toast'
+import { supabase } from '../supabaseClient'
 import {
   infoCiclo, ORDEM_CICLOS, ORIGENS_PAGAMENTO,
-  formatarData, formatarDataHora, textoVencimento, formatarBRL,
+  formatarData, formatarDataHora, textoVencimento, textoAtividade, formatarBRL,
   nomeDaConta, telefoneDaConta,
 } from './ciclo'
 
@@ -27,6 +28,7 @@ import {
    ============================================================ */
 
 const TOM_VENCIMENTO = {
+  ok: 'var(--success-700)',
   neutro: 'var(--color-text-secondary)',
   alerta: 'var(--warning-700)',
   critico: 'var(--danger-700)',
@@ -56,6 +58,7 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState('nome')
   const [detalhe, setDetalhe] = useState(null)
+  const [gerandoEspelho, setGerandoEspelho] = useState(null) // id da conta
 
   const trocarFiltro = (mudanca) => {
     onFiltrosChange?.({ ciclo: filtroCiclo, origem: filtroOrigem, foco, ...mudanca })
@@ -126,6 +129,14 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
           if (!b.data_limite) return -1
           return (new Date(a.data_limite) - new Date(b.data_limite)) * dir
         }
+        case 'atividade_recente':
+        case 'atividade_antiga': {
+          // Nunca acessou vai sempre para o fim na "recente" e para o topo na
+          // "antiga" — é exatamente quem essa ordenação quer achar.
+          const ta = a.ultimo_acesso ? new Date(a.ultimo_acesso).getTime() : 0
+          const tb = b.ultimo_acesso ? new Date(b.ultimo_acesso).getTime() : 0
+          return ordenacao === 'atividade_recente' ? tb - ta : ta - tb
+        }
         case 'mensagens':
           return (b.mensagens_mes || 0) - (a.mensagens_mes || 0)
         case 'cadastro':
@@ -141,6 +152,50 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
   const copiar = (texto, rotulo) => {
     if (!texto) return
     navigator.clipboard?.writeText(texto).then(() => showSuccess(`${rotulo} copiado`)).catch(() => {})
+  }
+
+  // Link "ver como cliente" (modo espelho) direto da linha — antes era preciso
+  // escolher a conta no seletor do topo do app e só então gerar. Mesma edge
+  // function do Dashboard: magic link de 15 min, auditado no log_auditoria.
+  const copiarLinkEspelho = async (conta) => {
+    if (gerandoEspelho) return
+    setGerandoEspelho(conta.id)
+    const gerar = async () => {
+      const { data, error } = await supabase.functions.invoke('admin-impersonar', {
+        body: { targetUserId: conta.id },
+      })
+      if (error || data?.error) throw new Error(data?.error || error.message)
+      return data.url
+    }
+    try {
+      // O Safari só deixa escrever no clipboard dentro do clique; depois de um
+      // await o gesto "expira". O ClipboardItem com Promise segura o gesto
+      // enquanto a edge function responde. Onde não existe, gera e copia.
+      if (window.ClipboardItem && navigator.clipboard?.write) {
+        let url
+        const blob = gerar().then(u => { url = u; return new Blob([u], { type: 'text/plain' }) })
+        try {
+          await navigator.clipboard.write([new window.ClipboardItem({ 'text/plain': blob })])
+        } catch (e) {
+          if (!url) throw e
+          window.prompt('Não deu para copiar sozinho. Copie o link:', url)
+          return
+        }
+      } else {
+        const url = await gerar()
+        try {
+          await navigator.clipboard.writeText(url)
+        } catch {
+          window.prompt('Não deu para copiar sozinho. Copie o link:', url)
+          return
+        }
+      }
+      showSuccess(`Link de espelho de ${nomeDaConta(conta)} copiado (vale 15 min)`)
+    } catch (e) {
+      showError(`Não foi possível gerar o link: ${e.message}`)
+    } finally {
+      setGerandoEspelho(null)
+    }
   }
 
   const colunas = useMemo(() => [
@@ -214,6 +269,34 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
       },
     },
     {
+      key: 'ultimo_acesso',
+      label: 'Última atividade',
+      width: 190,
+      render: (c) => {
+        // View antiga (migration não rodada): sem a coluna, não é "nunca".
+        if (!('ultimo_acesso' in c)) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+        const { texto, tom } = textoAtividade(c.ultimo_acesso)
+        return (
+          <div
+            title={[
+              `Último acesso: ${formatarDataHora(c.ultimo_acesso)}`,
+              c.ultima_acao && `Última ação: ${c.ultima_acao} em ${formatarDataHora(c.ultima_acao_em)}`,
+            ].filter(Boolean).join('\n')}
+          >
+            <div style={{ fontSize: 13, color: TOM_VENCIMENTO[tom], fontWeight: tom === 'ok' ? 500 : 400 }}>{texto}</div>
+            <div style={{
+              fontSize: 11, color: 'var(--color-text-muted)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {c.ultima_acao
+                ? `${c.ultima_acao} · ${formatarData(c.ultima_acao_em).slice(0, 5)}`
+                : 'nenhuma ação registrada'}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
       key: 'whatsapp_conectado',
       label: 'WhatsApp',
       width: 130,
@@ -259,7 +342,7 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
       key: 'acoes',
       label: '',
       align: 'right',
-      width: 92,
+      width: 124,
       render: (c) => (
         <div data-no-row-click style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
           <Button
@@ -275,6 +358,17 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
             size="xs"
             variant="ghost"
             iconOnly
+            icon="mdi:incognito"
+            aria-label="Copiar link ver como cliente"
+            title={'Copiar link "ver como cliente" (vale 15 min)'}
+            loading={gerandoEspelho === c.id}
+            disabled={!!gerandoEspelho && gerandoEspelho !== c.id}
+            onClick={() => copiarLinkEspelho(c)}
+          />
+          <Button
+            size="xs"
+            variant="ghost"
+            iconOnly
             icon="mdi:information-outline"
             aria-label="Ver detalhes"
             title="Histórico de pagamentos"
@@ -283,7 +377,10 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
         </div>
       ),
     },
-  ], [nomeDoPlano, precoDoPlano, onEditar])
+    // copiarLinkEspelho muda a cada render, mas só lê gerandoEspelho — que já
+    // está nas dependências.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [nomeDoPlano, precoDoPlano, onEditar, gerandoEspelho])
 
   const temFiltroAtivo = !!foco || filtroCiclo !== 'todos' || filtroPlano !== 'todos'
     || filtroOrigem !== 'todos' || filtroWhatsapp !== 'todos' || busca.trim() !== ''
@@ -326,6 +423,8 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
             { value: 'nome', label: 'Nome (A–Z)' },
             { value: 'vencimento_asc', label: 'Vencimento (mais próximo)' },
             { value: 'vencimento_desc', label: 'Vencimento (mais distante)' },
+            { value: 'atividade_recente', label: 'Atividade mais recente' },
+            { value: 'atividade_antiga', label: 'Sem atividade há mais tempo' },
             { value: 'mensagens', label: 'Mais mensagens no mês' },
             { value: 'cadastro', label: 'Cadastro mais recente' },
             { value: 'valor', label: 'Maior valor pago' },
@@ -525,6 +624,16 @@ function DetalheConta({ conta, onClose, onEditar, copiar, nomeDoPlano, precoDoPl
         <div style={{ height: 1, backgroundColor: 'var(--color-border-subtle)', margin: '18px 0' }} />
 
         <Campo rotulo="Cadastro">{formatarDataHora(conta.data_cadastro || conta.created_at)}</Campo>
+        <Campo rotulo="Último acesso" dica='Sessão no app; o "ver como" do admin não conta'>
+          {conta.ultimo_acesso
+            ? `${formatarDataHora(conta.ultimo_acesso)} · ${textoAtividade(conta.ultimo_acesso).texto}`
+            : 'nunca'}
+        </Campo>
+        <Campo rotulo="Última ação">
+          {conta.ultima_acao
+            ? `${conta.ultima_acao} · ${formatarDataHora(conta.ultima_acao_em)}`
+            : 'nenhuma registrada'}
+        </Campo>
         <Campo rotulo="Mensagens no mês">
           {(conta.mensagens_mes || 0).toLocaleString('pt-BR')}
           {conta.limite_mensal ? ` de ${conta.limite_mensal.toLocaleString('pt-BR')}` : ''}
