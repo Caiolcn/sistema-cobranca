@@ -20,6 +20,22 @@
 --      alterada. Dá para varrer a base inteira lendo email e asaas_api_key
 --      (a chave de cobrança do Asaas) de todas as contas.
 --
+-- >> CORREÇÃO (23/09/26, na aplicação): o abuso 2 NÃO se confirmou no teste.
+-- >> Simulando um JWT de conta comum, o UPDATE em linha alheia escreveu ZERO
+-- >> linhas, com e sem RETURNING — o Postgres aplica a policy de SELECT para
+-- >> localizar a linha a atualizar, e a de SELECT sempre foi restrita
+-- >> ((auth.uid() = id) OR is_admin()). O abuso 1 se confirmou inteiro, mas
+-- >> na PRÓPRIA linha, e quem fecha ele é o trigger de
+-- >> sql-multiusuario-fase0-blindar-plano.sql, não esta drop.
+-- >>
+-- >> Esta drop continua certa, por um motivo que só apareceu com o plano de
+-- >> multiusuário: o USING (true) fica vivo esperando alguém alargar o SELECT
+-- >> de `usuarios` — que é exatamente o que a fase 1 faz em 46 outras tabelas.
+-- >> Era uma mina armada para a fase seguinte.
+-- >>
+-- >> APLICADO em 23/09/26. Migration:
+-- >> multiusuario_fase0_1_drop_policy_frouxa_usuarios
+--
 -- Takeover de admin NÃO é possível: o trigger tr_proteger_role reverte
 -- qualquer mudança em `role` feita por quem não é admin.
 --
