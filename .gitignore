@@ -86,3 +86,13 @@ credentials.json
 
 # Relatorio de auditoria de seguranca: mapa de exploracao, NUNCA publicar.
 /docs/security-audit/
+
+# Planilhas de clientes para importacao (dados pessoais - nunca commitar)
+/importacoes/*
+!/importacoes/LEIA-ME.md
+
+# Material de marketing/prospeccao e planejamento interno (repo publico).
+/docs/funil-vendas-mensalli.html
+/docs/playbook-sdr-prospeccao-mensalli.html
+/docs/roteiro-abordagem-porta.md
+/docs/plano-multiusuario.md
