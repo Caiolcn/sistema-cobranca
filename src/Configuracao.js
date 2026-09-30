@@ -756,6 +756,15 @@ function Configuracao({ secao = 'config' }) {
     setMostrarModalPlano(true)
   }
 
+  // Texto da coluna "Ciclo": pacote de aulas nao tem ciclo, mostra a quantidade de aulas
+  const descreverCicloPlano = (plano) => {
+    if (plano.tipo === 'pacote') {
+      const n = parseInt(plano.numero_aulas) || 0
+      return `Pacote (${n} ${n === 1 ? 'aula' : 'aulas'})`
+    }
+    return plano.ciclo_cobranca || 'mensal'
+  }
+
   const abrirModalEditarPlano = async (plano) => {
     setPlanoEditando(plano)
     setFormPlano({
@@ -1594,7 +1603,7 @@ function Configuracao({ secao = 'config' }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <p style={{ fontSize: '13px', color: '#666', margin: 0, textTransform: 'capitalize' }}>
-                    Ciclo: {plano.ciclo_cobranca || 'mensal'}
+                    Ciclo: {descreverCicloPlano(plano)}
                   </p>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -1678,7 +1687,7 @@ function Configuracao({ secao = 'config' }) {
                     R$ {parseFloat(plano.valor).toFixed(2)}
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '14px', color: '#666', textTransform: 'capitalize' }}>
-                    {plano.ciclo_cobranca || 'mensal'}
+                    {descreverCicloPlano(plano)}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <span style={{
