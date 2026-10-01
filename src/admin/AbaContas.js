@@ -139,6 +139,8 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
         }
         case 'mensagens':
           return (b.mensagens_mes || 0) - (a.mensagens_mes || 0)
+        case 'alunos':
+          return (b.total_alunos || 0) - (a.total_alunos || 0)
         case 'cadastro':
           return new Date(b.data_cadastro || b.created_at || 0) - new Date(a.data_cadastro || a.created_at || 0)
         case 'valor':
@@ -239,6 +241,17 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
               {formatarBRL(precoDoPlano(c.plano))}/mês
             </div>
           )}
+        </div>
+      ),
+    },
+    {
+      key: 'total_alunos',
+      label: 'Alunos',
+      width: 80,
+      render: (c) => (
+        <div style={{ fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{c.total_alunos}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>cadastrados</div>
         </div>
       ),
     },
@@ -426,6 +439,7 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
             { value: 'atividade_recente', label: 'Atividade mais recente' },
             { value: 'atividade_antiga', label: 'Sem atividade há mais tempo' },
             { value: 'mensagens', label: 'Mais mensagens no mês' },
+            { value: 'alunos', label: 'Mais alunos cadastrados' },
             { value: 'cadastro', label: 'Cadastro mais recente' },
             { value: 'valor', label: 'Maior valor pago' },
           ]}
@@ -633,6 +647,9 @@ function DetalheConta({ conta, onClose, onEditar, copiar, nomeDoPlano, precoDoPl
           {conta.ultima_acao
             ? `${conta.ultima_acao} · ${formatarDataHora(conta.ultima_acao_em)}`
             : 'nenhuma registrada'}
+        </Campo>
+        <Campo rotulo="Alunos cadastrados">
+          {(conta.total_alunos || 0).toLocaleString('pt-BR')}
         </Campo>
         <Campo rotulo="Mensagens no mês">
           {(conta.mensagens_mes || 0).toLocaleString('pt-BR')}
