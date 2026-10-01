@@ -48,6 +48,7 @@ const PaginaMensagens = telaCRM('PaginaMensagens')
 const PaginaAtualizacoes = telaCRM('PaginaAtualizacoes')
 const PaginaProspeccao = telaCRM('PaginaProspeccao')
 const PaginaMetaAttribution = telaCRM('PaginaMetaAttribution')
+const PaginaGoogleMetrics = telaCRM('PaginaGoogleMetrics')
 const AdminCron = lazy(() => import('./AdminCron'))
 const AdminWhatsAppSaude = lazy(() => import('./AdminWhatsAppSaude'))
 const AdminWhatsAppMaster = lazy(() => import('./AdminWhatsAppMaster'))
@@ -58,6 +59,10 @@ const Agendamento = lazy(() => import('./pages/Agendamento'))
 const Autocadastro = lazy(() => import('./pages/Autocadastro'))
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 const LandingEscolinha = lazy(() => import('./pages/LandingEscolinha'))
+const LandingPilates = lazy(() => import('./pages/LandingPilates'))
+const LandingLuta = lazy(() => import('./pages/LandingLuta'))
+const LandingNatacao = lazy(() => import('./pages/LandingNatacao'))
+const LandingMulti = lazy(() => import('./pages/LandingMulti'))
 const LinkInBio = lazy(() => import('./pages/LinkInBio'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
 const VerComo = lazy(() => import('./pages/VerComo'))
@@ -189,6 +194,10 @@ function App() {
                   e o slug 'escolinha' esta reservado em Configuracao.js pra
                   nenhum cliente registrar o site dele nessa URL. */}
               <Route path="/escolinha" element={session ? <Navigate to="/app/home" replace /> : <LandingEscolinha />} />
+              <Route path="/pilates" element={session ? <Navigate to="/app/home" replace /> : <LandingPilates />} />
+              <Route path="/luta" element={session ? <Navigate to="/app/home" replace /> : <LandingLuta />} />
+              <Route path="/natacao" element={session ? <Navigate to="/app/home" replace /> : <LandingNatacao />} />
+              <Route path="/multi" element={session ? <Navigate to="/app/home" replace /> : <LandingMulti />} />
               <Route path="/links" element={<LinkInBio />} />
               <Route path="/privacidade" element={<Privacidade />} />
 
@@ -271,6 +280,7 @@ function App() {
                     <Route path="atualizacoes" element={<PaginaAtualizacoes />} />
                     <Route path="prospeccao" element={<PaginaProspeccao />} />
                     <Route path="meta-attribution" element={<PaginaMetaAttribution />} />
+                    <Route path="google-metrics" element={<PaginaGoogleMetrics />} />
                     <Route path="leads" element={<AdminLeads />} />
                     <Route path="cobranca-saas" element={<AdminCobrancaSaas />} />
                     <Route path="whatsapp-saude" element={<AdminWhatsAppSaude />} />

@@ -13,6 +13,7 @@ import AbaRetencao from './AbaRetencao'
 import AbaNovidades from './AbaNovidades'
 import AbaProspeccao from './AbaProspeccao'
 import SecaoMetaAttribution from './SecaoMetaAttribution'
+import SecaoGoogleMetrics from './SecaoGoogleMetrics'
 import CentralMensagens from '../CentralMensagens'
 import ModalEditarConta from './ModalEditarConta'
 import ModalDisparo from './ModalDisparo'
@@ -211,6 +212,14 @@ export function PaginaMetaAttribution() {
   return (
     <Pagina titulo="Meta Ads Attribution" subtitulo="Rastreie o funil completo: Lead → Conta → WhatsApp → Pagante">
       <SecaoMetaAttribution />
+    </Pagina>
+  )
+}
+
+export function PaginaGoogleMetrics() {
+  return (
+    <Pagina titulo="Google Ads Performance" subtitulo="Rastreie conversões por landing page e nicho">
+      <SecaoGoogleMetrics />
     </Pagina>
   )
 }
