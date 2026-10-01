@@ -40,9 +40,7 @@ export default function LandingNicho({ nicho, titulo, subtitulo, beneficios, cta
           data: {
             nome_completo: nome,
             telefone: telefone.replace(/\D/g, ''),
-            plano: 'pro',
-            gclid: gclid || null,
-            google_lead_source: nicho
+            plano: 'pro'
           }
         }
       })
