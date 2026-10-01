@@ -24,6 +24,22 @@ const BUCKETS = {
   retencao_c2: { label: 'Trial antigo', icon: 'mdi:history', cor: '#6b7280', bg: '#f3f4f6' }
 }
 
+// Textos editáveis no modal. Os trial_* são enviados SOZINHOS pela edge
+// trial-avisos (cron de hora em hora) — editar aqui muda a próxima rodada.
+const TEMPLATES_EDITAVEIS = [
+  { tipo: 'retencao_d', label: '👋 Onboarding - Não logou há 1 dia' },
+  { tipo: 'retencao_a', label: '⏰ Trial acabando (1 dia antes)' },
+  { tipo: 'retencao_b', label: '💛 Trial expirou ontem' },
+  { tipo: 'retencao_e', label: '📅 Vence em breve (3 dias antes do plano vencer)' },
+  { tipo: 'retencao_c1', label: '💜 Reativação - Ex-pagante sumido (7-90 dias)' },
+  { tipo: 'retencao_c2', label: '🕰️ Reativação - Trial antigo, nunca pagou (7-90 dias)' },
+  { tipo: 'trial_24h_sem_alunos', label: '🤖 Automático 24h - não conectou WhatsApp, sem alunos' },
+  { tipo: 'trial_24h_com_alunos', label: '🤖 Automático 24h - não conectou WhatsApp, já tem alunos' },
+  { tipo: 'trial_d1_sem_whatsapp', label: '🤖 Automático fim do teste - WhatsApp não conectado' },
+  { tipo: 'trial_d1_sem_alunos', label: '🤖 Automático fim do teste - conectado, sem alunos' },
+  { tipo: 'trial_d1_ativo', label: '🤖 Automático fim do teste - conta configurada' }
+]
+
 export default function RetencaoSaas() {
   const { userId, isAdmin } = useUser()
   const [candidatos, setCandidatos] = useState([])
@@ -49,7 +65,7 @@ export default function RetencaoSaas() {
         supabase
           .from('templates_admin')
           .select('*')
-          .in('tipo', ['retencao_a', 'retencao_b', 'retencao_d', 'retencao_c1', 'retencao_c2', 'retencao_e'])
+          .in('tipo', TEMPLATES_EDITAVEIS.map(t => t.tipo))
       ])
 
       setCandidatos(candResult.data || [])
@@ -129,14 +145,9 @@ export default function RetencaoSaas() {
 
   // Abrir modal de edição de templates
   const abrirTemplates = () => {
-    setTemplatesEditando({
-      retencao_d: templates.retencao_d?.mensagem || '',
-      retencao_a: templates.retencao_a?.mensagem || '',
-      retencao_b: templates.retencao_b?.mensagem || '',
-      retencao_e: templates.retencao_e?.mensagem || '',
-      retencao_c1: templates.retencao_c1?.mensagem || '',
-      retencao_c2: templates.retencao_c2?.mensagem || ''
-    })
+    setTemplatesEditando(Object.fromEntries(
+      TEMPLATES_EDITAVEIS.map(({ tipo }) => [tipo, templates[tipo]?.mensagem || ''])
+    ))
     setTemplatesModal(true)
   }
 
@@ -462,17 +473,10 @@ export default function RetencaoSaas() {
 
             <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
               <p style={{ fontSize: '13px', color: '#666', marginBottom: '20px' }}>
-                Use <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nome}}'}</code>, <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{email}}'}</code> como variáveis.
+                Use <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nome}}'}</code>, <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{email}}'}</code> como variáveis. Nos automáticos (🤖): <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{alunos}}'}</code>, <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{fim}}'}</code> ("amanhã" / "hoje às 17h").
               </p>
 
-              {[
-                { tipo: 'retencao_d', label: '👋 Onboarding - Não logou há 1 dia' },
-                { tipo: 'retencao_a', label: '⏰ Trial acabando (1 dia antes)' },
-                { tipo: 'retencao_b', label: '💛 Trial expirou ontem' },
-                { tipo: 'retencao_e', label: '📅 Vence em breve (3 dias antes do plano vencer)' },
-                { tipo: 'retencao_c1', label: '💜 Reativação - Ex-pagante sumido (7-90 dias)' },
-                { tipo: 'retencao_c2', label: '🕰️ Reativação - Trial antigo, nunca pagou (7-90 dias)' }
-              ].map(({ tipo, label }) => (
+              {TEMPLATES_EDITAVEIS.map(({ tipo, label }) => (
                 <div key={tipo} style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#344848', marginBottom: '6px' }}>
                     {label}
