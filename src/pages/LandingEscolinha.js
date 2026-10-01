@@ -223,7 +223,7 @@ export default function LandingEscolinha() {
 
           <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
             <div style={{ position: 'relative', width: '100%', maxWidth: '520px' }}>
-              <img src={escolinhasHero} alt="Treinador com atletas de futebol, atletismo, basquete e handebol" style={{ width: '100%', aspectRatio: '4 / 4.25', objectFit: 'cover', objectPosition: '35% center', borderRadius: isSmallScreen ? '22px' : '28px', display: 'block', boxShadow: '0 34px 70px rgba(16,24,40,.22)' }} />
+              <img src={escolinhasHero} alt="Treinador com atletas de futebol, atletismo, basquete e handebol" style={{ width: '100%', aspectRatio: '4 / 4.25', objectFit: 'cover', objectPosition: '65% center', borderRadius: isSmallScreen ? '22px' : '28px', display: 'block', boxShadow: '0 34px 70px rgba(16,24,40,.22)' }} />
               <div style={{ position: 'absolute', left: isSmallScreen ? '12px' : '-22px', bottom: '22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', padding: '10px', borderRadius: '16px', background: 'rgba(255,255,255,.92)', border: `1px solid ${BORDER}`, boxShadow: '0 18px 45px rgba(16,24,40,.17)', backdropFilter: 'blur(12px)' }}>
                 {['⚽ Futebol', '🏃 Atletismo', '🏀 Basquete', '🤾 Handebol'].map(esporte => <span key={esporte} style={{ padding: '7px 9px', borderRadius: '9px', background: GREEN_SOFT, color: GREEN_DK, fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' }}>{esporte}</span>)}
               </div>
