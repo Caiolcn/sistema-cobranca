@@ -27,7 +27,7 @@ const statusColors = {
 }
 
 export default function AbaOutbound() {
-  const { realUserId: userId } = useUser()
+  const { instanceId } = useUser()
   const [tab, setTab] = useState('daily')
   const [dailyLeads, setDailyLeads] = useState([])
   const [allLeads, setAllLeads] = useState([])
@@ -37,17 +37,17 @@ export default function AbaOutbound() {
   const [copiedId, setCopiedId] = useState(null)
 
   useEffect(() => {
-    if (!userId) return
+    if (!instanceId) return
     loadData()
-  }, [userId])
+  }, [instanceId])
 
   async function loadData() {
     setLoading(true)
     try {
       const [daily, all, s] = await Promise.all([
-        getDailyList(userId),
-        getLeads(userId, filters),
-        getStats(userId)
+        getDailyList(instanceId),
+        getLeads(instanceId, filters),
+        getStats(instanceId)
       ])
       setDailyLeads(daily || [])
       setAllLeads(all || [])
