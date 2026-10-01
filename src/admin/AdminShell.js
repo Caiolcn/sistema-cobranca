@@ -12,6 +12,7 @@ import AbaFinanceiro from './AbaFinanceiro'
 import AbaRetencao from './AbaRetencao'
 import AbaNovidades from './AbaNovidades'
 import AbaProspeccao from './AbaProspeccao'
+import AbaOutbound from './AbaOutbound'
 import SecaoMetaAttribution from './SecaoMetaAttribution'
 import SecaoGoogleMetrics from './SecaoGoogleMetrics'
 import CentralMensagens from '../CentralMensagens'
@@ -220,6 +221,14 @@ export function PaginaGoogleMetrics() {
   return (
     <Pagina titulo="Google Ads Performance" subtitulo="Rastreie conversões por landing page e nicho">
       <SecaoGoogleMetrics />
+    </Pagina>
+  )
+}
+
+export function PaginaOutbound() {
+  return (
+    <Pagina titulo="📲 Outbound Prospecting" subtitulo="Gerencie contatos, acompanhe conversões e automatize follow-ups">
+      <AbaOutbound />
     </Pagina>
   )
 }

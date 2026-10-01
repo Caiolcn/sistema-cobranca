@@ -49,6 +49,7 @@ const PaginaAtualizacoes = telaCRM('PaginaAtualizacoes')
 const PaginaProspeccao = telaCRM('PaginaProspeccao')
 const PaginaMetaAttribution = telaCRM('PaginaMetaAttribution')
 const PaginaGoogleMetrics = telaCRM('PaginaGoogleMetrics')
+const PaginaOutbound = telaCRM('PaginaOutbound')
 const AdminCron = lazy(() => import('./AdminCron'))
 const AdminWhatsAppSaude = lazy(() => import('./AdminWhatsAppSaude'))
 const AdminWhatsAppMaster = lazy(() => import('./AdminWhatsAppMaster'))
@@ -277,6 +278,7 @@ function App() {
                     <Route path="prospeccao" element={<PaginaProspeccao />} />
                     <Route path="meta-attribution" element={<PaginaMetaAttribution />} />
                     <Route path="google-metrics" element={<PaginaGoogleMetrics />} />
+                    <Route path="outbound" element={<PaginaOutbound />} />
                     <Route path="leads" element={<AdminLeads />} />
                     <Route path="cobranca-saas" element={<AdminCobrancaSaas />} />
                     <Route path="whatsapp-saude" element={<AdminWhatsAppSaude />} />
