@@ -1,21 +1,71 @@
-import LandingNicho from './LandingNicho'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
+import { MdArrowForward, MdBolt, MdCalendarMonth, MdCheck, MdCheckCircle, MdCreditCard, MdDashboard, MdDoneAll, MdExpandMore, MdGroups, MdHistory, MdLink, MdPayments, MdQrCode2, MdSchedule, MdSecurity, MdTrendingDown, MdVisibility } from 'react-icons/md'
+import { capturarAtribuicao } from '../utils/metaAttribution'
+import { trackViewContent } from '../utils/metaPixel'
+import './LandingLuta.css'
+
+const WA = 'https://wa.me/5562981618862?text=' + encodeURIComponent('Oi! Tenho um CT de luta e quero conhecer o Mensalli.')
+const dores = [
+  ['Depois do treino', 'Você troca o kimono pela planilha', 'A última turma termina, mas ainda falta conferir Pix, procurar comprovante e atualizar quem pagou.'],
+  ['Todo mês', 'Cobrar aluno vira um climão', 'Você conhece cada aluno pelo nome. Por isso, mandar “sua mensalidade venceu” nunca parece simples.'],
+  ['Sem perceber', 'Pequenos atrasos viram um rombo', 'Um aluno aqui, outro ali. Quando fecha o mês, parte do trabalho ficou presa nas mensalidades.'],
+  ['No WhatsApp', 'Tudo se mistura no mesmo lugar', 'Faixa, horário, aula experimental, comprovante e cobrança chegam enquanto você está no tatame.']
+]
+const recursos = [
+  [FaWhatsapp, 'Cobrança no seu WhatsApp', 'As mensagens saem do número que seus alunos já conhecem e podem responder normalmente.'],
+  [MdPayments, 'Régua automática', 'Avise antes, no dia e depois do vencimento sem lembrar de cada aluno manualmente.'],
+  [MdLink, 'Link de pagamento', 'Envie Pix, cartão ou boleto na conversa e facilite o pagamento na hora.'],
+  [MdDashboard, 'Painel do dono', 'Veja o que entrou, o que falta receber e quem precisa de atenção.'],
+  [MdGroups, 'Alunos e responsáveis', 'Centralize ficha, plano, vencimento, histórico e o contato de quem paga.'],
+  [MdCalendarMonth, 'Turmas e presença', 'Organize modalidades, horários, chamada e acompanhe quem começou a faltar.'],
+  [MdHistory, 'Histórico organizado', 'Cada cobrança, mensagem e pagamento fica registrado para sua equipe.'],
+  [MdSecurity, 'Dados protegidos', 'Permissões e rastreabilidade para as informações do CT e dos alunos.']
+]
+const planos = [
+  ['Starter', 'Para o CT que está começando', '49', 'Até 50 alunos ativos', '200 mensagens/mês', ['Cobrança no vencimento', '1 mensagem personalizada', 'Painel financeiro']],
+  ['Pro', 'Para o CT em crescimento', '99', 'Até 150 alunos ativos', '600 mensagens/mês', ['Régua completa de cobrança', 'Turmas, agenda e presença', 'Contratos e ficha do aluno', 'Suporte pelo WhatsApp'], true],
+  ['Premium', 'Para uma operação profissional', '149', 'Até 500 alunos ativos', '3.000 mensagens/mês', ['Tudo do Pro', 'Site e aula experimental', 'CRM e Bot do WhatsApp', 'Campanhas e suporte prioritário']]
+]
+const faqs = [
+  ['As mensagens saem do WhatsApp do meu CT?', 'Sim. Você conecta o número do CT por QR Code. O aluno recebe do contato que já conhece e pode responder normalmente.'],
+  ['Preciso trocar meu número?', 'Não. A proposta é conectar o número que seu CT já utiliza durante a configuração inicial.'],
+  ['Serve para jiu-jítsu, muay thai e outras lutas?', 'Serve. Você organiza modalidades, turmas, horários e mensalidades de acordo com a operação do seu CT.'],
+  ['E quando o aluno paga em dinheiro?', 'Você registra a baixa manualmente. O aluno sai da fila de cobrança e o histórico continua organizado.'],
+  ['É difícil trazer os alunos da planilha?', 'Não. Você pode começar aos poucos e contar com apoio para organizar a entrada dos dados.'],
+  ['Existe fidelidade?', 'Não. Os planos são mensais e você pode cancelar quando quiser. O teste não exige cartão.']
+]
+function setMeta(name, content, attr = 'name') { let el = document.querySelector(`meta[${attr}="${name}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el) }; el.setAttribute('content', content) }
 
 export default function LandingLuta() {
-  return (
-    <LandingNicho
-      nicho="academia-de-luta"
-      titulo="Sistema para Academia de Luta"
-      subtitulo="Gerencie alunos, cobranças e WhatsApp em um só lugar"
-      beneficios={[
-        'Cobrança automática de mensalidades',
-        'Lembretes pelo WhatsApp da academia',
-        'Gestão de turmas, níveis e horários',
-        'PIX, cartão ou boleto',
-        'Agenda integrada com aulas',
-        'Relatórios de inadimplência'
-      ]}
-      cta="Começar Trial Gratuito"
-      imagem="🥋"
-    />
-  )
+  const navigate = useNavigate(), [faq, setFaq] = useState(null)
+  const [alunos, setAlunos] = useState(80), [mensalidade, setMensalidade] = useState(160), [inad, setInad] = useState(12)
+  const perda = useMemo(() => alunos * mensalidade * inad / 100, [alunos, mensalidade, inad])
+  useEffect(() => { capturarAtribuicao(); trackViewContent('landing-academia-de-luta'); const old = document.title; const title = 'Sistema para CT de luta — cobrança no WhatsApp | Mensalli'; const desc = 'Organize alunos, turmas e mensalidades. A Mensalli cobra pelo WhatsApp do seu CT.'; document.title = title; setMeta('description', desc); setMeta('og:title', title, 'property'); setMeta('og:description', desc, 'property'); return () => { document.title = old } }, [])
+  const signup = () => { const p = new URLSearchParams(window.location.search); p.set('origem', 'academia-de-luta'); navigate(`/signup?${p}`) }
+  return <main className="fight-page">
+    <nav className="fight-nav"><a href="/"><img src="/Logo-Full.png" alt="Mensalli" /></a><div className="nav-links"><a href="#como">Como funciona</a><a href="#recursos">Recursos</a><a href="#planos">Planos</a></div><div><button className="nav-login" onClick={() => navigate('/login')}>Entrar</button><button className="green-btn small" onClick={signup}>Testar grátis</button></div></nav>
+    <section className="fight-hero"><div className="hero-photo"/><div className="hero-shade"/><div className="hero-copy"><span className="eyebrow"><i/>Feito para CTs e academias de luta</span><h1>Seu aluno treina.<br/>A Mensalli <em>cobra.</em></h1><p>Mensalidades, lembretes e pagamentos organizados no WhatsApp do seu CT — para você sair da planilha e voltar ao tatame.</p><Actions signup={signup}/><Notes/></div><StatusCard/></section>
+    <div className="styles-strip">JIU-JÍTSU <i/> MUAY THAI <i/> BOXE <i/> KARATÊ <i/> MMA <i/> TAEKWONDO</div>
+    <section className="section"><Intro kicker="A rotina real de quem toca um CT" title={<>Você ensina disciplina.<br/>Mas a cobrança depende da <em>sua memória.</em></>} text="Dar aula, montar turma, acompanhar graduação, responder aluno e ainda correr atrás de mensalidade. Não deveria ser tudo nas suas costas."/><div className="pain-grid">{dores.map((d,i)=><article className="pain-card" key={d[1]}><span>0{i+1}</span><small>{d[0]}</small><h3>{d[1]}</h3><p>{d[2]}</p></article>)}</div></section>
+    <section className="dark-section" id="como"><Intro light kicker="Cobrança Invisível Mensalli" title={<>Configure uma vez.<br/><em>Esqueça todo mês.</em></>} text="O sistema acompanha cada vencimento e fala com o aluno na hora certa. Você só acompanha o que importa."/><div className="flow"><Flow n="01" icon={MdQrCode2} title="Conecte o WhatsApp" text="Leia o QR Code com o número oficial do seu CT."/><MdArrowForward/><Flow n="02" icon={MdSchedule} title="Defina a régua" text="Escolha quando lembrar antes e depois do vencimento."/><MdArrowForward/><Flow n="03" icon={MdBolt} title="Deixe rodando" text="A Mensalli envia, registra e organiza a cobrança."/></div><ChatDemo/></section>
+    <section className="section feature-section" id="recursos"><Intro kicker="Mais que uma mensagem automática" title={<>O comando do seu CT,<br/><em>sem sair do tatame.</em></>} text="Uma operação organizada para cuidar dos alunos, das turmas e da saúde financeira do negócio."/><div className="feature-grid">{recursos.map(([Icon,t,x])=><article className="feature-card" key={t}><span><Icon/></span><h3>{t}</h3><p>{x}</p><b>Conhecer recurso <MdArrowForward/></b></article>)}</div></section>
+    <section className="visual-section"><div className="visual-copy"><span className="kicker">Tudo em um painel</span><h2>Não precisa mais perguntar<br/><em>“quem ainda não pagou?”</em></h2><p>A resposta aparece quando você entra: recebido, a receber, atrasos, alunos ativos e mensagens enviadas.</p><div className="visual-list"><span><MdVisibility/>Visão rápida do mês</span><span><MdTrendingDown/>Pendências em destaque</span><span><MdCreditCard/>Pagamentos organizados</span></div></div><div className="dashboard-frame"><div className="browser"><i/><i/><i/><span>app.mensalli.com.br</span></div><img src="/dashboard.png" alt="Painel financeiro da Mensalli"/></div></section>
+    <section className="section calc-section"><div><span className="kicker">Faça a conta do seu CT</span><h2>Quanto fica preso<br/>nas mensalidades <em>todo mês?</em></h2><p>A estimativa usa apenas os números que você informar. Não é uma promessa de recuperação.</p></div><div className="calculator"><Range label="Alunos ativos" value={alunos} set={setAlunos} min="10" max="500" step="10"/><Range label="Mensalidade média" prefix="R$ " value={mensalidade} set={setMensalidade} min="50" max="500" step="10"/><Range label="Percentual em atraso" suffix="%" value={inad} set={setInad} min="1" max="40"/><div className="calc-result"><small>Valor estimado em atraso no mês</small><strong>{perda.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong><span>Organizar a cobrança começa por enxergar o número.</span></div></div></section>
+    <section className="plans-section" id="planos"><Intro kicker="Planos que acompanham seu crescimento" title={<>Comece leve. Evolua<br/>junto com o <em>seu CT.</em></>} text="Teste por 3 dias, sem cartão. Escolha o plano quando a Mensalli fizer sentido para sua rotina."/><div className="plans-grid">{planos.map(([n,p,v,a,m,f,d])=><article className={`plan-card ${d?'featured':''}`} key={n}>{d&&<span className="popular">MAIS ESCOLHIDO</span>}<small>{p}</small><h3>{n}</h3><div className="price"><span>R$</span><strong>{v}</strong><span>/mês</span></div><div className="limits"><b>{a}</b><b>{m}</b></div><ul>{f.map(x=><li key={x}><MdCheck/>{x}</li>)}</ul><button className={d?'green-btn':'outline-dark'} onClick={signup}>Testar este plano <MdArrowForward/></button></article>)}</div><p className="price-note">No checkout: Starter R$ 49,90 · Pro R$ 99,90 · Premium R$ 149,90.</p></section>
+    <section className="section"><div className="security-card"><div><span className="kicker">Segurança também é gestão</span><h2>Dados do seu CT tratados com <em>responsabilidade.</em></h2><p>Controle de acesso, histórico das ações e boas práticas para proteger sua operação.</p></div><div className="security-points">{[[MdSecurity,'Privacidade','Atenção à LGPD.'],[MdHistory,'Rastreabilidade','Histórico das ações.'],[MdGroups,'Permissões','Acesso para a equipe.']].map(([I,t,x])=><span key={t}><I/><b>{t}</b><small>{x}</small></span>)}</div></div></section>
+    <section className="section faq-section"><Intro kicker="Sem enrolação" title={<>Perguntas antes de<br/><em>entrar no tatame.</em></>}/><div className="faq-list">{faqs.map(([q,a],i)=><button className={faq===i?'open':''} key={q} onClick={()=>setFaq(faq===i?null:i)}><span><b>{q}</b>{faq===i&&<p>{a}</p>}</span><MdExpandMore/></button>)}</div></section>
+    <section className="final-cta"><span className="belt"/><span className="kicker">Seu CT merece uma gestão à altura</span><h2>Você cuida da evolução dos alunos.<br/><em>A Mensalli cuida da cobrança.</em></h2><p>Comece agora e veja sua rotina financeira funcionando com mais clareza e menos cobrança manual.</p><Actions signup={signup}/><Notes/></section>
+    <footer><div><img src="/Logo-Full.png" alt="Mensalli"/><p>Cobrança automática e gestão de mensalidades para quem vive do próprio negócio.</p><a href="https://www.instagram.com/mensalli.br/" target="_blank" rel="noreferrer"><FaInstagram/></a></div><small>© 2026 Mensalli. Todos os direitos reservados.</small></footer><a className="floating-wa" href={WA} target="_blank" rel="noreferrer"><FaWhatsapp/></a>
+  </main>
 }
+
+function Intro({kicker,title,text,light}) { return <div className={`section-intro ${light?'light':''}`}><span className="kicker">{kicker}</span><h2>{title}</h2>{text&&<p>{text}</p>}</div> }
+function Actions({signup}) { return <div className="actions"><button className="green-btn" onClick={signup}>Começar teste grátis <MdArrowForward/></button><a className="outline-btn" href={WA} target="_blank" rel="noreferrer"><FaWhatsapp/>Falar com a equipe</a></div> }
+function Notes(){return <div className="notes"><span><MdCheck/>3 dias grátis</span><span><MdCheck/>Sem cartão</span><span><MdCheck/>Cancele quando quiser</span></div>}
+function Flow({n,icon:Icon,title,text}){return <div className="flow-step"><span>{n}</span><Icon/><h3>{title}</h3><p>{text}</p></div>}
+function Range({label,value,set,prefix='',suffix='',...props}){return <label>{label}<strong>{prefix}{value}{suffix}</strong><input type="range" value={value} onChange={e=>set(Number(e.target.value))} {...props}/></label>}
+function StatusCard(){return <div className="status-card"><div className="status-head"><div><small>Visão do seu CT</small><b>Mensalidades de outubro</b></div><span>● AO VIVO</span></div><div className="status-grid"><div><small>Recebido</small><b>R$ 8.640</b><span>↑ entrando</span></div><div><small>Em aberto</small><b>R$ 1.920</b><span>12 alunos</span></div></div><Student initials="MR" name="Marcos Rocha" sub="Jiu-jítsu adulto" status="Pago"/><Student initials="LC" name="Lucas Costa" sub="Muay Thai · vence hoje" status="Lembrete enviado"/><div className="whats-note"><FaWhatsapp/><div><b>Cobranças trabalhando</b><small>6 mensagens enviadas automaticamente hoje</small></div><MdDoneAll/></div></div>}
+function Student({initials,name,sub,status}){return <div className="student"><span>{initials}</span><div><b>{name}</b><small>{sub}</small></div><em>{status}</em></div>}
+function ChatDemo(){return <div className="chat-demo"><div className="phone"><div className="phone-top"><span>‹</span><b>CT Império<small>online</small></b></div><div className="phone-body"><i>Hoje</i><p>Fala, Lucas! 👊 Sua mensalidade vence hoje. Seu link de pagamento está aqui:<br/><b>mensalli.com.br/pagar</b><small>09:12 <MdDoneAll/></small></p><p className="answer">Obrigado, professor! Já vou acertar.<small>09:14</small></p><p>Pagamento identificado ✓<small>09:16</small></p></div></div><div className="chat-copy"><span className="kicker">A conversa continua humana</span><h3>O aluno recebe do número que já conhece.</h3><p>Sem e-mail ignorado e sem uma plataforma estranha. A cobrança chega pelo WhatsApp do CT, com a sua linguagem.</p><ul>{['Antes do vencimento','No dia combinado','Após o atraso','Para quando o pagamento entra'].map(x=><li key={x}><MdCheckCircle/>{x}</li>)}</ul></div></div>}
