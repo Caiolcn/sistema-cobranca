@@ -110,7 +110,7 @@ html { scroll-behavior: smooth }
 }
 
 .hero-photo {
-  background: url('../assets/ct-luta-hero.png') center right / cover no-repeat;
+  background: url('../assets/ct-luta-hero.png') center bottom / cover no-repeat;
   opacity: .7;
 }
 
