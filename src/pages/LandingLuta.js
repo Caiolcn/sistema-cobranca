@@ -10,19 +10,21 @@ const NUMEROS = [
 ]
 
 const FEATURES = [
-  { emoji: '💚', titulo: 'Cobranças automáticas', desc: 'PIX, cartão e boleto. Sem digitação manual.' },
-  { emoji: '💬', titulo: 'Lembretes via WhatsApp', desc: 'Do seu próprio número. Antes, no dia e depois do vencimento.' },
-  { emoji: '📊', titulo: 'Relatórios e controle', desc: 'Saiba exatamente quem pagou, quem deve e quanto falta receber.' },
-  { emoji: '⏰', titulo: 'Agenda integrada', desc: 'Turmas, horários e alunos por nível em um só lugar.' },
-  { emoji: '👥', titulo: 'Gestão de alunos', desc: 'Avançados, iniciantes, veteranos. Tudo organizado.' },
-  { emoji: '✅', titulo: 'Tudo que você precisa', desc: 'Encerra a era da planilha e do caos administrativo.' }
+  { emoji: '💚', titulo: 'Cobranças automáticas', desc: 'PIX, cartão e boleto saem sozinhos' },
+  { emoji: '💬', titulo: 'Lembretes via WhatsApp', desc: '3 dias antes, no dia e 3 dias depois' },
+  { emoji: '📊', titulo: 'Relatórios completos', desc: 'Saiba quem pagou, quem deve e quanto falta' },
+  { emoji: '⏰', titulo: 'Agenda integrada', desc: 'Turmas, horários e níveis em um só lugar' },
+  { emoji: '👥', titulo: 'Gestão de alunos', desc: 'Organize por iniciante, intermediário, avançado' },
+  { emoji: '✅', titulo: 'Sem planilha', desc: 'Tchau Excel. Tudo automatizado e organizado.' }
 ]
 
-const INTEGRATIONS = [
-  { emoji: '💚', titulo: 'WhatsApp' },
-  { emoji: '💳', titulo: 'PIX' },
-  { emoji: '🏦', titulo: 'Cartão de crédito' },
-  { emoji: '📑', titulo: 'Boleto' }
+const FAQ = [
+  { q: 'Como funciona a cobrança automática?', a: 'Você configura a data de vencimento e o sistema envia lembretes 3 dias antes, no dia e 3 dias depois. O aluno paga pelo WhatsApp e a cobrança é baixada sozinha.' },
+  { q: 'Sai do meu próprio WhatsApp?', a: 'Sim! Tudo sai do seu número, sem intermediários. Seus alunos conversam direto com você, como sempre fizeram.' },
+  { q: 'E se o aluno não pagar?', a: 'Você continua recebendo lembretes automáticos. E vê um relatório claro de quem está atrasado para você cobrar pessoalmente se precisar.' },
+  { q: 'Consigo gerenciar múltiplas turmas?', a: 'Sim! Crie quantas turmas quiser com horários, níveis e mensalidades diferentes. Tudo organizado em um só lugar.' },
+  { q: 'Quanto tempo leva para configurar?', a: 'Menos de 5 minutos. Você cria a conta, adiciona os alunos, define o vencimento e libera os lembretes. Pronto!' },
+  { q: 'Preciso de conhecimento técnico?', a: 'Não! Tudo é intuitivo e pensado para ser usado por você. Temos suporte em caso de dúvida.' }
 ]
 
 export default function LandingLuta() {
@@ -50,7 +52,7 @@ export default function LandingLuta() {
             telefone: telefone.replace(/\D/g, ''),
             plano: 'pro',
             gclid: gclid || null,
-            google_lead_source: 'luta'
+            google_lead_source: 'academia-de-luta'
           }
         }
       })
@@ -66,179 +68,174 @@ export default function LandingLuta() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Header */}
+      <div style={{
+        borderBottom: '1px solid #f0f0f0',
+        padding: '16px 20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#1f2937' }}>Mensalli 🥋</div>
+        <button
+          onClick={() => document.getElementById('form').scrollIntoView({ behavior: 'smooth' })}
+          style={{
+            padding: '8px 16px',
+            background: '#22c55e',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Começar
+        </button>
+      </div>
+
       {/* Hero */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        padding: '60px 20px',
+        padding: '80px 20px',
         textAlign: 'center',
-        position: 'relative'
+        maxWidth: '900px',
+        margin: '0 auto'
       }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ fontSize: '60px', marginBottom: '20px' }}>🥋</div>
-          <h1 style={{ fontSize: '44px', fontWeight: 'bold', marginBottom: '16px', lineHeight: 1.2 }}>
-            Sistema para Academias de Artes Marciais e Centros de Treinamento
-          </h1>
-          <p style={{ fontSize: '18px', opacity: 0.95, marginBottom: '32px', maxWidth: '700px', margin: '0 auto 32px' }}>
-            Descubra como Mensalli pode te ajudar a conquistar mais alunos, gerenciar mensalidades e cobranças automáticas.
-          </p>
-          <button
-            onClick={() => document.getElementById('form').scrollIntoView({ behavior: 'smooth' })}
-            style={{
-              padding: '14px 36px',
-              background: '#22c55e',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.transform = 'scale(1.05)'
-              e.target.style.boxShadow = '0 8px 20px rgba(34, 197, 94, 0.4)'
-            }}
-            onMouseOut={(e) => {
-              e.target.style.transform = 'scale(1)'
-              e.target.style.boxShadow = 'none'
-            }}
-          >
-            Começar Grátis
-          </button>
-        </div>
+        <h1 style={{
+          fontSize: '48px',
+          fontWeight: '700',
+          marginBottom: '16px',
+          color: '#1f2937',
+          lineHeight: 1.2
+        }}>
+          Nunca mais cobre aluno por aluno no WhatsApp.
+        </h1>
+        <p style={{
+          fontSize: '18px',
+          color: '#6b7280',
+          marginBottom: '32px',
+          maxWidth: '700px',
+          margin: '0 auto 32px'
+        }}>
+          A cobrança que funciona por você, no WhatsApp.
+        </p>
+        <button
+          onClick={() => document.getElementById('form').scrollIntoView({ behavior: 'smooth' })}
+          style={{
+            padding: '14px 32px',
+            background: '#22c55e',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Teste grátis
+        </button>
       </div>
 
       {/* Números */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '20px',
-        maxWidth: '900px',
-        margin: '-40px auto 60px',
-        padding: '0 20px',
-        position: 'relative',
-        zIndex: 1
+        background: '#f9fafb',
+        padding: '60px 20px',
+        marginBottom: '60px'
       }}>
-        {NUMEROS.map((n, i) => (
-          <div key={i} style={{
-            background: 'white',
-            padding: '24px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#667eea', marginBottom: '8px' }}>
-              {n.valor}
-            </div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>
-              {n.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Por que escolher */}
-      <div style={{
-        maxWidth: '1000px',
-        margin: '0 auto 80px',
-        padding: '0 20px'
-      }}>
-        <h2 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '48px', textAlign: 'center', color: '#1f2937' }}>
-          Tudo que você precisa para gerir sua academia
-        </h2>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '24px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px',
+          maxWidth: '900px',
+          margin: '0 auto'
         }}>
-          {FEATURES.map((f, i) => (
-            <div key={i} style={{
-              background: 'white',
-              padding: '28px',
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              textAlign: 'center',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)'
-              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.1)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = 'none'
-            }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>{f.emoji}</div>
-              <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '6px', fontSize: '16px' }}>
-                {f.titulo}
+          {NUMEROS.map((n, i) => (
+            <div key={i} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
+                {n.valor}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                {f.desc}
+                {n.label}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Integrações */}
+      {/* O que faz funcionar */}
       <div style={{
-        background: 'white',
-        padding: '60px 20px',
-        marginBottom: '60px',
-        borderTop: '1px solid #e5e7eb'
+        maxWidth: '900px',
+        margin: '0 auto 80px',
+        padding: '0 20px'
       }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '40px', textAlign: 'center', color: '#1f2937' }}>
-            Integrado com as ferramentas que você usa
-          </h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '20px'
-          }}>
-            {INTEGRATIONS.map((int, i) => (
-              <div key={i} style={{
-                background: '#f9fafb',
-                padding: '24px',
-                borderRadius: '8px',
-                textAlign: 'center',
-                border: '1px solid #e5e7eb'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>{int.emoji}</div>
-                <div style={{ fontWeight: '600', color: '#1f2937' }}>{int.titulo}</div>
-              </div>
-            ))}
-          </div>
+        <h2 style={{
+          fontSize: '32px',
+          fontWeight: 'bold',
+          marginBottom: '48px',
+          textAlign: 'center',
+          color: '#1f2937'
+        }}>
+          O que faz seu cliente realmente ficar
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '32px'
+        }}>
+          {FEATURES.map((f, i) => (
+            <div key={i}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>{f.emoji}</div>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '6px' }}>
+                {f.titulo}
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6b7280' }}>
+                {f.desc}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Formulário */}
       <div id="form" style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#f9fafb',
         padding: '80px 20px',
         marginBottom: '60px'
       }}>
         <div style={{ maxWidth: '500px', margin: '0 auto' }}>
           <div style={{
             background: 'white',
-            borderRadius: '16px',
+            borderRadius: '8px',
             padding: '48px 32px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+            border: '1px solid #e5e7eb'
           }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-              Teste Gratuito por 7 dias
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              color: '#1f2937'
+            }}>
+              Teste 7 dias grátis
             </h2>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '32px' }}>
-              Sem cartão de crédito. Cancele quando quiser.
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginBottom: '32px'
+            }}>
+              Sem cartão de crédito. Sem pegadinhas.
             </p>
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#374151' }}>
-                  Seu nome *
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  color: '#374151'
+                }}>
+                  Seu nome
                 </label>
                 <input
                   type="text"
@@ -248,9 +245,9 @@ export default function LandingLuta() {
                   required
                   style={{
                     width: '100%',
-                    padding: '11px 14px',
+                    padding: '10px 12px',
                     border: '1px solid #d1d5db',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     fontSize: '14px',
                     fontFamily: 'inherit',
                     boxSizing: 'border-box'
@@ -259,8 +256,14 @@ export default function LandingLuta() {
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#374151' }}>
-                  Email *
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  color: '#374151'
+                }}>
+                  Email
                 </label>
                 <input
                   type="email"
@@ -270,9 +273,9 @@ export default function LandingLuta() {
                   required
                   style={{
                     width: '100%',
-                    padding: '11px 14px',
+                    padding: '10px 12px',
                     border: '1px solid #d1d5db',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     fontSize: '14px',
                     fontFamily: 'inherit',
                     boxSizing: 'border-box'
@@ -281,8 +284,14 @@ export default function LandingLuta() {
               </div>
 
               <div style={{ marginBottom: '32px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#374151' }}>
-                  WhatsApp *
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  color: '#374151'
+                }}>
+                  WhatsApp
                 </label>
                 <input
                   type="tel"
@@ -292,9 +301,9 @@ export default function LandingLuta() {
                   required
                   style={{
                     width: '100%',
-                    padding: '11px 14px',
+                    padding: '10px 12px',
                     border: '1px solid #d1d5db',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     fontSize: '14px',
                     fontFamily: 'inherit',
                     boxSizing: 'border-box'
@@ -307,24 +316,26 @@ export default function LandingLuta() {
                 disabled={loading}
                 style={{
                   width: '100%',
-                  padding: '14px',
+                  padding: '12px',
                   background: loading ? '#d1d5db' : '#22c55e',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
                   fontSize: '15px',
                   fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s'
+                  cursor: loading ? 'not-allowed' : 'pointer'
                 }}
-                onMouseOver={(e) => !loading && (e.target.style.transform = 'scale(1.02)')}
-                onMouseOut={(e) => (e.target.style.transform = 'scale(1)')}
               >
-                {loading ? '⏳ Criando conta...' : 'Começar Agora'}
+                {loading ? 'Criando conta...' : 'Começar'}
               </button>
             </form>
 
-            <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '20px', textAlign: 'center' }}>
+            <p style={{
+              fontSize: '12px',
+              color: '#9ca3af',
+              marginTop: '20px',
+              textAlign: 'center'
+            }}>
               Ao se cadastrar, você concorda com nossos Termos de Uso
             </p>
           </div>
@@ -337,83 +348,92 @@ export default function LandingLuta() {
         margin: '0 auto 80px',
         padding: '0 20px'
       }}>
-        <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '40px', textAlign: 'center', color: '#1f2937' }}>
-          Perguntas Frequentes
+        <h2 style={{
+          fontSize: '28px',
+          fontWeight: 'bold',
+          marginBottom: '40px',
+          textAlign: 'center',
+          color: '#1f2937'
+        }}>
+          Quanto você perde com atraso?
         </h2>
-        {[
-          { q: 'Consigo gerenciar alunos de diferentes níveis?', a: 'Sim! Você categoriza por iniciante, intermediário, avançado, etc. Cada grupo pode ter horários e mensalidades diferentes.' },
-          { q: 'A cobrança sai do meu WhatsApp?', a: 'Sim! Tudo sai do seu número. Lembretes 3 dias antes, no dia e 3 dias depois. Sem intermediários, sem confusão.' },
-          { q: 'E se usar múltiplos horários ou turmas?', a: 'Organize quantas turmas quiser. Cada uma com seu horário, quantidade de alunos e mensalidade específica.' },
-          { q: 'Leva quanto tempo para começar?', a: 'Menos de 5 minutos. Você cria sua conta, adiciona os alunos e libera os lembretes. Pronto!' }
-        ].map((faq, i) => (
-          <div key={i} style={{
-            background: 'white',
-            padding: '20px',
-            marginBottom: '12px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            cursor: 'pointer'
-          }}
-          onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontWeight: '600',
-              color: '#1f2937'
-            }}>
-              {faq.q}
-              <span style={{ fontSize: '20px' }}>{openFaq === i ? '−' : '+'}</span>
-            </div>
-            {openFaq === i && (
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {FAQ.map((faq, i) => (
+            <div
+              key={i}
+              onClick={() => setOpenFaq(openFaq === i ? null : i)}
+              style={{
+                background: 'white',
+                padding: '20px',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb',
+                cursor: 'pointer'
+              }}
+            >
               <div style={{
-                marginTop: '12px',
-                paddingTop: '12px',
-                borderTop: '1px solid #e5e7eb',
-                color: '#6b7280',
-                fontSize: '14px'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontWeight: '600',
+                color: '#1f2937'
               }}>
-                {faq.a}
+                {faq.q}
+                <span style={{ fontSize: '18px', color: '#22c55e' }}>
+                  {openFaq === i ? '−' : '+'}
+                </span>
               </div>
-            )}
-          </div>
-        ))}
+              {openFaq === i && (
+                <div style={{
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid #e5e7eb',
+                  color: '#6b7280',
+                  fontSize: '14px',
+                  lineHeight: 1.6
+                }}>
+                  {faq.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Footer CTA */}
+      {/* CTA Final */}
       <div style={{
         background: '#1f2937',
         color: 'white',
         textAlign: 'center',
-        padding: '60px 20px'
+        padding: '60px 20px',
+        marginBottom: '0'
       }}>
         <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '16px' }}>
-          Pronto para crescer?
+          Pronto para automatizar?
         </h2>
         <p style={{ marginBottom: '24px', fontSize: '16px', opacity: 0.9 }}>
-          Comece seu teste gratuito agora. Sem cartão. Sem compromisso.
+          7 dias grátis. Sem cartão. Teste agora.
         </p>
         <button
           onClick={() => document.getElementById('form').scrollIntoView({ behavior: 'smooth' })}
           style={{
-            padding: '14px 36px',
+            padding: '12px 32px',
             background: '#22c55e',
             color: 'white',
             border: 'none',
-            borderRadius: '8px',
+            borderRadius: '6px',
             fontSize: '16px',
             fontWeight: '600',
             cursor: 'pointer'
           }}
         >
-          Começar Agora
+          Começar
         </button>
       </div>
 
       {/* Footer */}
       <div style={{
         background: '#111827',
-        color: '#9ca3af',
+        color: '#6b7280',
         textAlign: 'center',
         padding: '20px',
         fontSize: '12px'
