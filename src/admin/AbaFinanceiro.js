@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import StatCard from '../design-system/components/StatCard'
 import { formatarBRL, CICLOS_PAGANTES } from './ciclo'
+import SecaoAquisicao from './SecaoAquisicao'
 
 /* ============================================================
    Aba Financeiro
@@ -132,6 +133,8 @@ export default function AbaFinanceiro({ dados, isSmallScreen }) {
           hint={`${kpis.churn} contas que já pagaram`}
         />
       </div>
+
+      <SecaoAquisicao contas={contas} precoDoPlano={precoDoPlano} isSmallScreen={isSmallScreen} />
 
       {/* Série de 12 meses */}
       <section style={{ marginBottom: 28 }}>
