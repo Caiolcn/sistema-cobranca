@@ -23,6 +23,7 @@ export const GRUPOS_ADMIN = [
     itens: [
       { slug: 'meta-attribution', label: 'Meta Ads Attribution', descricao: 'Lead → Conta → WhatsApp → Pagante', icon: 'mdi:facebook' },
       { slug: 'google-metrics', label: 'Google Ads Performance', descricao: 'Conversões por landing page', icon: 'mdi:google' },
+      { slug: 'outbound', label: 'Outbound Prospecting', descricao: 'Gestão de leads e acompanhamento', icon: 'mdi:phone-outgoing' },
       { slug: 'leads', label: 'Leads', icon: 'mdi:account-multiple-plus-outline' },
       { slug: 'prospeccao', label: 'Prospecção', icon: 'mdi:map-search-outline' },
     ],
