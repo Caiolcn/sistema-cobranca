@@ -21,6 +21,7 @@ export const GRUPOS_ADMIN = [
   {
     grupo: 'Aquisição',
     itens: [
+      { slug: 'meta-attribution', label: 'Meta Ads Attribution', descricao: 'Lead → Conta → WhatsApp → Pagante', icon: 'mdi:chart-line' },
       { slug: 'leads', label: 'Leads', icon: 'mdi:account-multiple-plus-outline' },
       { slug: 'prospeccao', label: 'Prospecção', icon: 'mdi:map-search-outline' },
     ],
