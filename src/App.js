@@ -194,10 +194,10 @@ function App() {
                   e o slug 'escolinha' esta reservado em Configuracao.js pra
                   nenhum cliente registrar o site dele nessa URL. */}
               <Route path="/escolinha" element={session ? <Navigate to="/app/home" replace /> : <LandingEscolinha />} />
-              <Route path="/pilates" element={session ? <Navigate to="/app/home" replace /> : <LandingPilates />} />
-              <Route path="/luta" element={session ? <Navigate to="/app/home" replace /> : <LandingLuta />} />
-              <Route path="/natacao" element={session ? <Navigate to="/app/home" replace /> : <LandingNatacao />} />
-              <Route path="/multi" element={session ? <Navigate to="/app/home" replace /> : <LandingMulti />} />
+              <Route path="/academia-pilates" element={session ? <Navigate to="/app/home" replace /> : <LandingPilates />} />
+              <Route path="/academia-de-luta" element={session ? <Navigate to="/app/home" replace /> : <LandingLuta />} />
+              <Route path="/escola-natacao" element={session ? <Navigate to="/app/home" replace /> : <LandingNatacao />} />
+              <Route path="/software-mensalidades" element={session ? <Navigate to="/app/home" replace /> : <LandingMulti />} />
               <Route path="/links" element={<LinkInBio />} />
               <Route path="/privacidade" element={<Privacidade />} />
 
