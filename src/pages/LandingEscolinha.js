@@ -22,14 +22,15 @@ import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
 import useWindowSize from '../hooks/useWindowSize'
 import { capturarAtribuicao } from '../utils/metaAttribution'
 import { trackViewContent } from '../utils/metaPixel'
+import escolinhasHero from '../assets/escolinhas-multiesporte-hero.png'
 import {
   INK, BODY, MUTED, BORDER, BG, BG_SOFT,
   GREEN, GREEN_DK, GREEN_BRIGHT, GREEN_SOFT, DARK, GRAD,
   gradText, LANDING_CSS, scrollToId, btnGrad, btnGhost,
-  Blob, PhoneChat
+  Blob
 } from './landing/ui'
 
-const WA_MENSALLI = 'https://wa.me/5562981618862?text=' + encodeURIComponent('Oi! Tenho uma escolinha de futebol e quero saber mais sobre o Mensalli.')
+const WA_MENSALLI = 'https://wa.me/5562981618862?text=' + encodeURIComponent('Oi! Tenho uma escolinha esportiva e quero saber mais sobre o Mensalli.')
 
 // SPA sem render no servidor: o Google executa JS e le isso, mas o preview de
 // link no WhatsApp/Meta continua vindo do index.html estatico. Pra trafego pago
@@ -46,8 +47,8 @@ function setMeta(nome, conteudo, attr = 'name') {
   el.setAttribute('content', conteudo)
 }
 
-const TITULO_SEO = 'Sistema para escolinha de futebol — cobrança de mensalidade no WhatsApp | Mensalli'
-const DESC_SEO = 'O Mensalli cobra a mensalidade da sua escolinha de futebol sozinho, pelo WhatsApp da própria escolinha. Turmas, chamada, Pix com baixa automática e portal do responsável. Teste grátis por 3 dias.'
+const TITULO_SEO = 'Sistema para escolinhas esportivas — mensalidades no WhatsApp | Mensalli'
+const DESC_SEO = 'Sistema para escolinhas de futebol, atletismo, basquete e handebol. Organize atletas, turmas, presença e cobranças pelo WhatsApp da escolinha.'
 
 export default function LandingEscolinha() {
   const navigate = useNavigate()
@@ -64,7 +65,6 @@ export default function LandingEscolinha() {
     () => (Number(roiAtletas) || 0) * (Number(roiValor) || 0) * ((Number(roiInad) || 0) / 100),
     [roiAtletas, roiValor, roiInad]
   )
-  const recuperacao = useMemo(() => perdaMensal * 0.7, [perdaMensal])
 
   useEffect(() => {
     capturarAtribuicao()
@@ -79,11 +79,8 @@ export default function LandingEscolinha() {
     return () => { document.title = tituloAnterior }
   }, [])
 
-  // Preserva a querystring que trouxe a pessoa (utm_*, fbclid) e marca a origem.
   const irParaSignup = () => {
-    const params = new URLSearchParams(window.location.search)
-    params.set('origem', 'escolinha')
-    navigate(`/signup?${params.toString()}`)
+    navigate('/signup')
   }
 
   const dores = [
@@ -97,13 +94,13 @@ export default function LandingEscolinha() {
     {
       nome: 'Cobrança',
       titulo: 'A mensalidade chega antes de você precisar pedir',
-      desc: 'O sistema avisa o responsável 3 dias antes, no dia e depois do vencimento — pelo WhatsApp da escolinha. Quem paga pelo link do Pix tem baixa automática e sai da fila na hora.',
-      bullets: ['Régua de lembretes que você configura uma vez', 'Pix, cartão e boleto no mesmo link', 'Parou de cobrar sozinho quando o dinheiro cai']
+      desc: 'O sistema acompanha os vencimentos e envia a cobrança pelo WhatsApp da escolinha. Quem paga pelo link tem o pagamento registrado e sai da fila.',
+      bullets: ['Cobranças enviadas no momento certo', 'Pix, cartão e boleto no mesmo link', 'Histórico de mensagens e pagamentos']
     },
     {
       nome: 'Turmas e horários',
       titulo: 'Cada categoria no seu dia, no seu horário',
-      desc: 'Sub-9, Sub-11, Sub-13, turma da manhã, turma da tarde. Monte a grade uma vez e a agenda da semana fica montada — com chamada por turma e por dia.',
+      desc: 'Futebol Sub-11, iniciação ao atletismo, basquete e handebol. Organize a grade da semana com chamada por turma e por dia.',
       bullets: ['Grade semanal por categoria', 'Chamada de presença em dois toques', 'Lembrete de treino automático pro responsável']
     },
     {
@@ -121,9 +118,9 @@ export default function LandingEscolinha() {
   ]
 
   const passos = [
-    { numero: '01', titulo: 'Conecte o WhatsApp da escolinha', desc: 'Escaneia o QR Code com o número que os responsáveis já conhecem. Leva menos de um minuto.' },
-    { numero: '02', titulo: 'Cadastre atletas, turmas e valores', desc: 'Traga sua planilha ou cadastre na mão. Categoria, dia de treino e dia do vencimento.' },
-    { numero: '03', titulo: 'Ligue a régua e volte pro campo', desc: 'A partir daí a cobrança sai sozinha, todo mês, sem você mandar uma mensagem.' }
+    { numero: '01', titulo: 'Cadastre seus atletas', desc: 'Traga sua planilha, cadastre aos poucos ou envie a base para nossa equipe ajudar você.' },
+    { numero: '02', titulo: 'Conecte o WhatsApp', desc: 'Escaneie o QR Code com o número que os responsáveis já conhecem.' },
+    { numero: '03', titulo: 'Deixe rodando', desc: 'O Mensalli acompanha, envia e organiza suas cobranças todos os meses.' }
   ]
 
   const diferenciais = [
@@ -141,11 +138,11 @@ export default function LandingEscolinha() {
       features: ['Até 50 atletas ativos', '200 mensagens/mês', 'Cobrança automática no vencimento', '1 template de mensagem', 'Painel do financeiro']
     },
     {
-      nome: 'Pro', eyebrow: 'A maioria das escolinhas', preco: 99, destaque: true,
-      features: ['Até 150 atletas ativos', '600 mensagens/mês', 'Régua completa (antes, no dia e depois)', 'Turmas, grade e chamada', 'Contrato com assinatura', 'Ficha do atleta', 'Suporte no WhatsApp']
+      nome: 'Pro', eyebrow: 'Escolinhas em crescimento', preco: 99, destaque: false,
+      features: ['Até 150 atletas ativos', '600 mensagens/mês', 'Cobranças automáticas', 'Turmas, grade e chamada', 'Contrato com assinatura', 'Ficha do atleta', 'Suporte no WhatsApp']
     },
     {
-      nome: 'Premium', eyebrow: 'Mais de uma unidade', preco: 149, destaque: false,
+      nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, destaque: true,
       features: ['Até 500 atletas ativos', '3.000 mensagens/mês', 'Tudo do Pro', 'Site da escolinha', 'Link de aula experimental', 'Bot que responde o responsável', 'Campanhas de WhatsApp', 'Suporte prioritário']
     }
   ]
@@ -154,7 +151,7 @@ export default function LandingEscolinha() {
     { p: 'As mensagens saem do meu número mesmo?', r: 'Saem. Você conecta o WhatsApp da escolinha por QR Code e as cobranças partem dele. O responsável recebe do número que já conhece e responde pra você, como sempre fez.' },
     { p: 'Meu número pode ser banido?', r: 'Não, usando como o sistema foi feito pra ser usado: mensagem de cobrança e aviso só pra quem você cadastrou. O que derruba número é lista comprada e disparo em massa pra desconhecido — isso o Mensalli não faz.' },
     { p: 'E o responsável que paga em dinheiro na mão?', r: 'Você dá baixa manual em dois toques e o sistema para de cobrar aquele atleta na hora. Quem paga pelo link do Pix tem baixa automática, sem você mexer.' },
-    { p: 'Dá pra separar por categoria e turma?', r: 'Dá. Sub-9, Sub-11, Sub-13, turma da manhã, turma da tarde — cada atleta na sua turma, com horário de treino e chamada de presença.' },
+    { p: 'Dá pra separar por esporte, categoria e turma?', r: 'Dá. Futebol, atletismo, basquete e handebol podem ter suas próprias categorias, horários de treino e chamadas de presença.' },
     { p: 'Tenho dois irmãos na escolinha. Como fica?', r: 'Cada atleta tem a própria mensalidade e a própria ficha, mas o mesmo responsável recebe as cobranças no mesmo WhatsApp.' },
     { p: 'Consigo controlar presença?', r: 'Sim. Chamada por turma e por dia, e um radar que aponta o atleta cuja frequência começou a cair — antes de virar cancelamento.' },
     { p: 'Quanto tempo leva pra configurar?', r: 'Cerca de cinco minutos pra conectar o WhatsApp e cadastrar as primeiras turmas. Se você já tem planilha, dá pra importar.' },
@@ -200,12 +197,12 @@ export default function LandingEscolinha() {
         <Blob style={{ top: '-120px', right: '-80px', width: '520px', height: '520px', opacity: 0.55 }} />
         <div style={{ maxWidth: '1120px', margin: '0 auto', position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1.05fr .95fr', gap: isSmallScreen ? '44px' : '56px', alignItems: 'center' }}>
           <div style={{ textAlign: isSmallScreen ? 'center' : 'left' }}>
-            <div style={eyebrow}><MdSportsSoccer size={15} /> Gestão para escolinhas de futebol</div>
+            <div style={eyebrow}><MdSportsSoccer size={15} /> Gestão para escolinhas esportivas</div>
             <h1 style={{ fontSize: isSmallScreen ? '36px' : '58px', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2px', margin: '0 0 20px' }}>
-              A mensalidade da escolinha <span style={gradText}>cobra sozinha</span>. No seu WhatsApp.
+              Seus atletas treinam. <span style={gradText}>O Mensalli cuida das mensalidades.</span>
             </h1>
             <p style={{ fontSize: isSmallScreen ? '17px' : '19px', color: BODY, lineHeight: 1.6, margin: '0 0 30px', maxWidth: '520px', marginLeft: isSmallScreen ? 'auto' : 0, marginRight: isSmallScreen ? 'auto' : 0 }}>
-              O Mensalli lembra cada responsável, manda o Pix e dá baixa quando o dinheiro cai. Você volta pro campo.
+              O Mensalli organiza atletas, cobra os responsáveis pelo WhatsApp e acompanha os pagamentos. Você volta para o treino.
             </p>
             <div style={{ display: 'flex', gap: '12px', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: 'center', justifyContent: isSmallScreen ? 'center' : 'flex-start' }}>
               <button onClick={irParaSignup} style={{ ...btnGrad('15px 30px', '16px'), width: isSmallScreen ? '100%' : 'auto' }}
@@ -225,17 +222,12 @@ export default function LandingEscolinha() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-            <PhoneChat
-              isSmall={isSmallScreen}
-              titulo="Escolinha do Craque"
-              subtitulo="online"
-              mensagens={[
-                { de: 'nos', texto: 'Oi, Dona Cláudia! 👋 A mensalidade do Miguel (Sub-11) vence amanhã — R$ 130.', hora: '09:12', tickAnimado: true },
-                { de: 'nos', texto: 'Pode pagar no Pix por aqui 👇', hora: '09:12', anexo: 'pix' },
-                { de: 'eles', texto: 'Pago! Mandei agorinha 🙏', hora: '09:26' },
-                { de: 'nos', texto: 'Recebemos, obrigado! Bom treino quinta ⚽', hora: '09:26' }
-              ]}
-            />
+            <div style={{ position: 'relative', width: '100%', maxWidth: '520px' }}>
+              <img src={escolinhasHero} alt="Treinador com atletas de futebol, atletismo, basquete e handebol" style={{ width: '100%', aspectRatio: '4 / 4.25', objectFit: 'cover', objectPosition: 'center', borderRadius: isSmallScreen ? '22px' : '28px', display: 'block', boxShadow: '0 34px 70px rgba(16,24,40,.22)' }} />
+              <div style={{ position: 'absolute', left: isSmallScreen ? '12px' : '-22px', bottom: '22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', padding: '10px', borderRadius: '16px', background: 'rgba(255,255,255,.92)', border: `1px solid ${BORDER}`, boxShadow: '0 18px 45px rgba(16,24,40,.17)', backdropFilter: 'blur(12px)' }}>
+                {['⚽ Futebol', '🏃 Atletismo', '🏀 Basquete', '🤾 Handebol'].map(esporte => <span key={esporte} style={{ padding: '7px 9px', borderRadius: '9px', background: GREEN_SOFT, color: GREEN_DK, fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' }}>{esporte}</span>)}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -278,7 +270,7 @@ export default function LandingEscolinha() {
             ))}
           </div>
           <p style={{ textAlign: 'center', marginTop: '40px', fontSize: isSmallScreen ? '19px' : '23px', fontWeight: '700', color: INK, letterSpacing: '-.6px' }}>
-            O Mensalli existe pra devolver <span style={gradText}>o seu tempo pro campo.</span>
+            O Mensalli existe pra devolver <span style={gradText}>o seu tempo para o treino.</span>
           </p>
         </div>
       </section>
@@ -402,14 +394,10 @@ export default function LandingEscolinha() {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <div style={{ backgroundColor: '#fef2f2', borderRadius: '14px', padding: '20px', border: '1px solid #fecaca' }}>
-                <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 4px', fontWeight: '600' }}>Fica pra trás por mês</p>
+                <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 4px', fontWeight: '600' }}>Valor estimado em atraso por mês</p>
                 <p style={{ fontSize: '26px', fontWeight: '800', color: '#dc2626', margin: 0 }}>R$ {perdaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-              <div style={{ background: `linear-gradient(135deg, ${GREEN_SOFT}, #e9fbf1)`, borderRadius: '14px', padding: '20px', border: '1px solid #bbf7d0' }}>
-                <p style={{ fontSize: '13px', color: GREEN_DK, margin: '0 0 4px', fontWeight: '600' }}>Recupere até 70%</p>
-                <p style={{ fontSize: '26px', fontWeight: '800', color: GREEN, margin: 0 }}>+R$ {recuperacao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
             <p style={{ fontSize: '12px', color: MUTED, margin: '0 0 20px', textAlign: 'center' }}>
@@ -417,7 +405,7 @@ export default function LandingEscolinha() {
             </p>
             <button onClick={irParaSignup} style={{ ...btnGrad('16px', '16px'), width: '100%' }}
               onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-              Quero recuperar isso <MdArrowForward size={20} />
+              Quero organizar minhas cobranças <MdArrowForward size={20} />
             </button>
           </div>
         </div>
@@ -428,8 +416,8 @@ export default function LandingEscolinha() {
         <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <p style={eyebrow}><MdStar size={15} /> Planos</p>
-            <h2 style={h2}>Custa menos que <span style={gradText}>uma mensalidade de atleta</span></h2>
-            <p style={sub}>Um atleta paga o sistema inteiro. Três dias grátis, sem cartão.</p>
+            <h2 style={h2}>Escolha o plano ideal para <span style={gradText}>a sua escolinha</span></h2>
+            <p style={sub}>Comece a organizar suas cobranças hoje. Três dias grátis, sem cartão.</p>
           </div>
           {/* alignItems stretch + o ul crescendo (flex:1) mantem os botoes dos tres
               planos na mesma linha, independente de quantas features cada um tem */}
@@ -438,7 +426,7 @@ export default function LandingEscolinha() {
               const d = pl.destaque
               return (
                 <div key={i} style={{ backgroundColor: 'white', padding: '34px', borderRadius: '22px', border: d ? `2px solid ${GREEN}` : `1px solid ${BORDER}`, position: 'relative', transform: (d && !isSmallScreen) ? 'scale(1.04)' : 'none', boxShadow: d ? '0 26px 60px rgba(22,163,74,0.18)' : '0 12px 30px rgba(16,24,40,0.05)', display: 'flex', flexDirection: 'column' }}>
-                  {d && <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: GRAD, color: 'white', padding: '6px 16px', borderRadius: '100px', fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}>Mais escolhido</div>}
+                  {d && <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: GRAD, color: 'white', padding: '6px 16px', borderRadius: '100px', fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}>Melhor custo-benefício</div>}
                   <p style={{ fontSize: '12px', fontWeight: '700', color: MUTED, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>{pl.eyebrow}</p>
                   <h3 style={{ fontSize: '22px', fontWeight: '700', color: INK, margin: '0 0 16px' }}>{pl.nome}</h3>
                   <div style={{ marginBottom: '24px' }}>
@@ -500,9 +488,9 @@ export default function LandingEscolinha() {
           <LinhasCampo />
           <Blob style={{ top: '-160px', left: '-100px', width: '460px', height: '460px', opacity: 0.5 }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <p style={{ ...eyebrow, backgroundColor: 'rgba(34,197,94,0.14)', color: GREEN_BRIGHT }}><MdSportsSoccer size={15} /> Bola pra frente</p>
+            <p style={{ ...eyebrow, backgroundColor: 'rgba(34,197,94,0.14)', color: GREEN_BRIGHT }}><MdSportsSoccer size={15} /> Sua escolinha em movimento</p>
             <h2 style={{ fontSize: isSmallScreen ? '32px' : '46px', fontWeight: '800', color: 'white', letterSpacing: '-1.8px', lineHeight: 1.08, margin: '0 0 16px' }}>
-              Menos planilha. <span style={gradText}>Mais campo.</span>
+              Menos planilha. <span style={gradText}>Mais esporte.</span>
             </h2>
             <p style={{ fontSize: '17px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.6, margin: '0 auto 32px', maxWidth: '520px' }}>
               Configure em cinco minutos e comece a cobrar amanhã sem mandar uma mensagem na mão.
@@ -533,7 +521,7 @@ export default function LandingEscolinha() {
             <div>
               <img src="/Logo-Full.png" alt="Mensalli" style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)', marginBottom: '16px' }} />
               <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '320px', margin: '0 0 18px' }}>
-                Cobrança automática pelo WhatsApp para escolinhas de futebol. Menos planilha, menos inadimplência, mais tempo no campo.
+                Cobrança automática pelo WhatsApp para escolinhas esportivas. Menos planilha e mais tempo para treinar seus atletas.
               </p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 {[{ icon: FaWhatsapp, href: WA_MENSALLI }, { icon: FaInstagram, href: 'https://instagram.com/mensalli' }].map((s, i) => (
@@ -642,10 +630,10 @@ function Selo({ texto, cor, fundo }) {
 
 function MockCobranca() {
   const linhas = [
-    { nome: 'Miguel Souza', turma: 'Sub-11', valor: 'R$ 130', selo: { texto: 'Pago', cor: '#4ade80', fundo: 'rgba(34,197,94,0.16)' } },
-    { nome: 'Ana Beatriz Lima', turma: 'Sub-9', valor: 'R$ 130', selo: { texto: 'Vence amanhã', cor: '#fbbf24', fundo: 'rgba(251,191,36,0.14)' } },
-    { nome: 'Lucas Ferreira', turma: 'Sub-13', valor: 'R$ 150', selo: { texto: '5 dias em atraso', cor: '#f87171', fundo: 'rgba(248,113,113,0.14)' } },
-    { nome: 'Pedro Henrique', turma: 'Sub-11', valor: 'R$ 130', selo: { texto: 'Pago', cor: '#4ade80', fundo: 'rgba(34,197,94,0.16)' } }
+    { nome: 'Miguel Souza', turma: 'Futebol Sub-11', valor: 'R$ 130', selo: { texto: 'Pago', cor: '#4ade80', fundo: 'rgba(34,197,94,0.16)' } },
+    { nome: 'Ana Beatriz Lima', turma: 'Atletismo iniciante', valor: 'R$ 130', selo: { texto: 'Vence amanhã', cor: '#fbbf24', fundo: 'rgba(251,191,36,0.14)' } },
+    { nome: 'Lucas Ferreira', turma: 'Basquete Sub-13', valor: 'R$ 150', selo: { texto: '5 dias em atraso', cor: '#f87171', fundo: 'rgba(248,113,113,0.14)' } },
+    { nome: 'Pedro Henrique', turma: 'Handebol juvenil', valor: 'R$ 130', selo: { texto: 'Pago', cor: '#4ade80', fundo: 'rgba(34,197,94,0.16)' } }
   ]
   return (
     <div>
@@ -672,9 +660,9 @@ function MockTurmas({ isSmall }) {
   const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
   // [dia] => bloco da turma naquele dia (null = sem treino)
   const grade = [
-    { turma: 'Sub-9', hora: '17h', dias: [1, 3], cor: 'rgba(34,197,94,0.22)', borda: 'rgba(34,197,94,0.45)' },
-    { turma: 'Sub-11', hora: '18h', dias: [0, 2, 4], cor: 'rgba(56,189,248,0.18)', borda: 'rgba(56,189,248,0.4)' },
-    { turma: 'Sub-13', hora: '19h', dias: [1, 3], cor: 'rgba(251,191,36,0.16)', borda: 'rgba(251,191,36,0.38)' }
+    { turma: 'Futebol', hora: '17h', dias: [1, 3], cor: 'rgba(34,197,94,0.22)', borda: 'rgba(34,197,94,0.45)' },
+    { turma: 'Basquete', hora: '18h', dias: [0, 2, 4], cor: 'rgba(56,189,248,0.18)', borda: 'rgba(56,189,248,0.4)' },
+    { turma: 'Handebol', hora: '19h', dias: [1, 3], cor: 'rgba(251,191,36,0.16)', borda: 'rgba(251,191,36,0.38)' }
   ]
   return (
     <div>
@@ -701,7 +689,7 @@ function MockTurmas({ isSmall }) {
         ))}
       </div>
       <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: 'rgba(255,255,255,0.5)' }}>
-        <MdSchedule size={13} /> Chamada da Sub-11 aberta às 18h
+        <MdSchedule size={13} /> Chamada do Basquete aberta às 18h
       </div>
     </div>
   )
@@ -761,7 +749,7 @@ function MockDono() {
         ))}
       </div>
       <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: '#4ade80' }}>
-        <MdTrendingUp size={13} /> Melhor mês desde que a régua foi ligada
+        <MdTrendingUp size={13} /> Melhor mês desde que as cobranças foram automatizadas
       </div>
     </div>
   )
