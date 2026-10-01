@@ -190,14 +190,11 @@ function App() {
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
               {/* Ver como cliente: resgata o token e abre a sessão dele (modo espelho) */}
               <Route path="/ver-como/:token" element={<VerComo />} />
-              {/* Landing de nicho (trafego pago). Fica ANTES do catch-all /:slug
-                  e o slug 'escolinha' esta reservado em Configuracao.js pra
-                  nenhum cliente registrar o site dele nessa URL. */}
-              <Route path="/escolinha" element={session ? <Navigate to="/app/home" replace /> : <LandingEscolinha />} />
-              <Route path="/academia-pilates" element={session ? <Navigate to="/app/home" replace /> : <LandingPilates />} />
-              <Route path="/academia-de-luta" element={session ? <Navigate to="/app/home" replace /> : <LandingLuta />} />
-              <Route path="/escola-natacao" element={session ? <Navigate to="/app/home" replace /> : <LandingNatacao />} />
-              <Route path="/software-mensalidades" element={session ? <Navigate to="/app/home" replace /> : <LandingMulti />} />
+              {/* Landing de nicho (trafego pago). Fica ANTES do catch-all /:slug */}
+              <Route path="/sistema-para-escolinhas" element={session ? <Navigate to="/app/home" replace /> : <LandingEscolinha />} />
+              <Route path="/sistema-para-estudio-pilates" element={session ? <Navigate to="/app/home" replace /> : <LandingPilates />} />
+              <Route path="/sistema-para-academia-de-luta" element={session ? <Navigate to="/app/home" replace /> : <LandingLuta />} />
+              <Route path="/sistema-para-escola-natacao" element={session ? <Navigate to="/app/home" replace /> : <LandingNatacao />} />
               <Route path="/links" element={<LinkInBio />} />
               <Route path="/privacidade" element={<Privacidade />} />
 
