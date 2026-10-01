@@ -10,12 +10,12 @@ const NUMEROS = [
 ]
 
 const FEATURES = [
-  { emoji: '📱', titulo: 'Cobrança automática', desc: 'PIX, cartão e boleto' },
-  { emoji: '💬', titulo: 'Lembretes via WhatsApp', desc: 'Do seu próprio número' },
-  { emoji: '📊', titulo: 'Relatórios e análises', desc: 'Saiba quem deve e quem pagou' },
-  { emoji: '⏰', titulo: 'Agenda de aulas', desc: 'Turmas e horários integrados' },
-  { emoji: '👥', titulo: 'Gestão de alunos', desc: 'Avançados, iniciantes, etc' },
-  { emoji: '✅', titulo: 'Tudo em um lugar', desc: 'Sem planilha ou múltiplos sistemas' }
+  { emoji: '💚', titulo: 'Cobranças automáticas', desc: 'PIX, cartão e boleto. Sem digitação manual.' },
+  { emoji: '💬', titulo: 'Lembretes via WhatsApp', desc: 'Do seu próprio número. Antes, no dia e depois do vencimento.' },
+  { emoji: '📊', titulo: 'Relatórios e controle', desc: 'Saiba exatamente quem pagou, quem deve e quanto falta receber.' },
+  { emoji: '⏰', titulo: 'Agenda integrada', desc: 'Turmas, horários e alunos por nível em um só lugar.' },
+  { emoji: '👥', titulo: 'Gestão de alunos', desc: 'Avançados, iniciantes, veteranos. Tudo organizado.' },
+  { emoji: '✅', titulo: 'Tudo que você precisa', desc: 'Encerra a era da planilha e do caos administrativo.' }
 ]
 
 const INTEGRATIONS = [
@@ -78,10 +78,10 @@ export default function LandingLuta() {
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <div style={{ fontSize: '60px', marginBottom: '20px' }}>🥋</div>
           <h1 style={{ fontSize: '44px', fontWeight: 'bold', marginBottom: '16px', lineHeight: 1.2 }}>
-            O sistema favorito dos gestores de CTs e academias de luta
+            Sistema para Academias de Artes Marciais e Centros de Treinamento
           </h1>
           <p style={{ fontSize: '18px', opacity: 0.95, marginBottom: '32px', maxWidth: '700px', margin: '0 auto 32px' }}>
-            Gerencie alunos, cobranças automáticas e WhatsApp. Tudo em um só lugar.
+            Descubra como Mensalli pode te ajudar a conquistar mais alunos, gerenciar mensalidades e cobranças automáticas.
           </p>
           <button
             onClick={() => document.getElementById('form').scrollIntoView({ behavior: 'smooth' })}
@@ -147,7 +147,7 @@ export default function LandingLuta() {
         padding: '0 20px'
       }}>
         <h2 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '48px', textAlign: 'center', color: '#1f2937' }}>
-          Por que escolher Mensalli?
+          Tudo que você precisa para gerir sua academia
         </h2>
         <div style={{
           display: 'grid',
@@ -341,10 +341,10 @@ export default function LandingLuta() {
           Perguntas Frequentes
         </h2>
         {[
-          { q: 'Como funciona a cobrança automática?', a: 'Você configura uma data e Mensalli envia lembretes 3 dias antes, no dia e 3 dias depois. O aluno paga pelo WhatsApp e a cobrança é baixada automaticamente.' },
-          { q: 'Posso usar meu próprio WhatsApp?', a: 'Sim! Tudo sai do seu próprio número, sem intermediários. Seus alunos conversam direto com você.' },
-          { q: 'E se meu aluno não pagar?', a: 'Você continua recebendo lembretes automáticos até que o pagamento seja feito. Você também vê relatórios de quem deve.' },
-          { q: 'Preciso de conhecimento técnico?', a: 'Não! Tudo é intuitivo e leva 5 minutos para configurar. Temos suporte em caso de dúvidas.' }
+          { q: 'Consigo gerenciar alunos de diferentes níveis?', a: 'Sim! Você categoriza por iniciante, intermediário, avançado, etc. Cada grupo pode ter horários e mensalidades diferentes.' },
+          { q: 'A cobrança sai do meu WhatsApp?', a: 'Sim! Tudo sai do seu número. Lembretes 3 dias antes, no dia e 3 dias depois. Sem intermediários, sem confusão.' },
+          { q: 'E se usar múltiplos horários ou turmas?', a: 'Organize quantas turmas quiser. Cada uma com seu horário, quantidade de alunos e mensalidade específica.' },
+          { q: 'Leva quanto tempo para começar?', a: 'Menos de 5 minutos. Você cria sua conta, adiciona os alunos e libera os lembretes. Pronto!' }
         ].map((faq, i) => (
           <div key={i} style={{
             background: 'white',
