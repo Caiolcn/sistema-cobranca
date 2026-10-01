@@ -1,0 +1,6 @@
+.swim-page { --green: #10b981; }
+.swim-page .hero-photo { background-position: center top; }
+.swim-page .styles-strip { background: #071825; color: #8ba7b5; }
+.swim-page .dark-section { background: linear-gradient(145deg, #06151d 0%, #08251f 100%); }
+.swim-page .swim-final { background: radial-gradient(circle at 50% 0%, #0d3a3b 0%, #07120d 60%); }
+@media (max-width: 720px) { .swim-page .hero-photo { background-position: 64% top; } }

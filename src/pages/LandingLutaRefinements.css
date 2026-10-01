@@ -1,0 +1,189 @@
+/* Ajustes que aproximam a landing de luta da linguagem visual da landing raiz. */
+.fight-page {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.hero-photo {
+  background-position: center top;
+}
+
+.fight-page h1 em,
+.fight-page h2 em,
+.fight-page .visual-copy em,
+.fight-page .final-cta em {
+  background: linear-gradient(120deg, #22c55e, #0ea372);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.green-btn {
+  background: linear-gradient(135deg, #22c55e 0%, #0ea372 100%);
+  color: #fff;
+  border: 0;
+  transition: transform .2s ease;
+}
+
+.green-btn:hover,
+.outline-btn:hover,
+.outline-dark:hover {
+  transform: translateY(-2px);
+  opacity: 1;
+  filter: none;
+}
+
+.plans-section {
+  background: #f7faf8;
+}
+
+.plans-grid {
+  align-items: start;
+  gap: 20px;
+}
+
+.plan-card,
+.plan-card.featured {
+  min-height: 100%;
+  padding: 34px;
+  color: #0f1115;
+  background: #fff;
+  border: 1px solid #ececf0;
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, .05);
+}
+
+.plan-card.featured {
+  border: 2px solid #16a34a;
+  transform: scale(1.04);
+  box-shadow: 0 26px 60px rgba(22, 163, 74, .18);
+}
+
+.popular {
+  top: -13px;
+  padding: 6px 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #22c55e 0%, #0ea372 100%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.plan-card > small {
+  display: block;
+  margin-bottom: 6px;
+  color: #9aa1ab;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.plan-card h3 {
+  margin: 0 0 16px;
+  color: #0f1115;
+  font-size: 22px;
+}
+
+.price {
+  margin-bottom: 4px;
+}
+
+.price strong {
+  color: #0f1115;
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+}
+
+.price span,
+.per-message {
+  color: #9aa1ab;
+  font-size: 13px;
+}
+
+.per-message {
+  display: block;
+  margin-bottom: 24px;
+}
+
+.plan-card ul {
+  min-height: 0;
+  margin: 0 0 30px;
+}
+
+.plan-card li,
+.plan-card.featured li {
+  align-items: flex-start;
+  margin-bottom: 12px;
+  color: #5b636e;
+  font-size: 14px;
+}
+
+.outline-dark {
+  color: #0f1115;
+  border: 1px solid #ececf0;
+  border-radius: 12px;
+  background: #fff;
+  transition: transform .2s ease;
+}
+
+.plan-card .outline-dark:hover,
+.plan-card .outline-dark:focus,
+.plan-card .outline-dark:active {
+  color: #0f1115;
+  border-color: #ececf0;
+  background: #fff;
+  transform: translateY(-2px);
+}
+
+.faq-section {
+  background: #f7faf8;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 0;
+}
+
+.faq-list button,
+.faq-list button.open {
+  padding: 20px 22px;
+  color: #0f1115;
+  background: #fff;
+  border: 1px solid #ececf0;
+  border-radius: 14px;
+}
+
+.faq-list button.open {
+  border-color: #cdeed8;
+}
+
+.faq-list b {
+  color: #0f1115;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.faq-list p {
+  margin: 13px 35px 0 0;
+  color: #5b636e;
+  font-size: 15px;
+}
+
+.faq-list button > svg {
+  flex-shrink: 0;
+  color: #9aa1ab;
+}
+
+@media (max-width: 720px) {
+  .hero-photo {
+    background-position: 64% top;
+  }
+
+  .plan-card.featured {
+    transform: none;
+  }
+}
