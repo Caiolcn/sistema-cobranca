@@ -12,6 +12,7 @@ import AbaFinanceiro from './AbaFinanceiro'
 import AbaRetencao from './AbaRetencao'
 import AbaNovidades from './AbaNovidades'
 import AbaProspeccao from './AbaProspeccao'
+import SecaoMetaAttribution from './SecaoMetaAttribution'
 import CentralMensagens from '../CentralMensagens'
 import ModalEditarConta from './ModalEditarConta'
 import ModalDisparo from './ModalDisparo'
@@ -204,4 +205,12 @@ export function PaginaAtualizacoes() {
 
 export function PaginaProspeccao() {
   return <Pagina titulo="Prospecção"><AbaProspeccao /></Pagina>
+}
+
+export function PaginaMetaAttribution() {
+  return (
+    <Pagina titulo="Meta Ads Attribution" subtitulo="Rastreie o funil completo: Lead → Conta → WhatsApp → Pagante">
+      <SecaoMetaAttribution />
+    </Pagina>
+  )
 }
