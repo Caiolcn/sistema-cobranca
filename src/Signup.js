@@ -174,11 +174,9 @@ export default function Signup({ onCadastroIniciado }) {
           trial_ativo: true,
           plano_pago: false,
           status_conta: 'ativo',
-          // Toda conta nasce como "Minha Empresa": o passo de nomear a empresa
-          // saiu do cadastro e virou item do onboarding da Home. Sem isso o campo
-          // ficaria NULL (o trigger não preenche) e {{nomeEmpresa}} apareceria
-          // vazio nos templates de mensagem.
-          nome_empresa: 'Minha Empresa'
+          nome_empresa: 'Minha Empresa',
+          asaas_formas_pagamento: { pix: true, boleto: false, cartao: false },
+          landing_cta_final_destino: 'whatsapp'
         }, { onConflict: 'id' })
 
       if (upsertError) throw new Error(`Database error: ${upsertError.message || upsertError.code}`)
