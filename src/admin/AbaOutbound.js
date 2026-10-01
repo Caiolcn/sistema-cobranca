@@ -4,7 +4,8 @@ import { getDailyList, getLeads, updateLead, getStats } from '../api/outbound'
 import { Icon } from '@iconify/react'
 import Button from '../design-system/components/Button'
 import Card from '../design-system/components/Card'
-import { MdCheck, MdContentCopy, MdPhone, MdInstagram } from 'react-icons/md'
+import { MdCheck, MdContentCopy, MdPhone } from 'react-icons/md'
+import { FaInstagram } from 'react-icons/fa'
 import './AbaOutbound.css'
 
 const statusLabels = {
@@ -128,7 +129,7 @@ export default function AbaOutbound() {
                   <div className="lead-contacts">
                     {lead.instagram_handle && (
                       <a href={`https://instagram.com/${lead.instagram_handle.replace('@', '')}`} target="_blank" rel="noreferrer">
-                        <MdInstagram /> @{lead.instagram_handle}
+                        <FaInstagram /> @{lead.instagram_handle}
                       </a>
                     )}
                     {lead.telefone && (
