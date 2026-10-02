@@ -27,7 +27,7 @@ const statusColors = {
 }
 
 export default function AbaOutbound() {
-  const { instanceId } = useUser()
+  const { realUserId: instanceId } = useUser()
   const [tab, setTab] = useState('daily')
   const [dailyLeads, setDailyLeads] = useState([])
   const [allLeads, setAllLeads] = useState([])
