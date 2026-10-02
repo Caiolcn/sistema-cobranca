@@ -1,41 +1,32 @@
 {
-  "name": "Outbound Daily List - Exportar Excel",
+  "name": "Outbound Daily List - 10 contatos (JSON)",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "type": "hours",
-              "value": 24
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
             }
-          ],
-          "triggerAtStartup": false,
-          "timezone": "America/Sao_Paulo",
-          "cronExpression": "0 6 * * *"
+          ]
         }
       },
-      "id": "24808295-e5b4-46cf-8cad-efa9b269ad99",
-      "name": "Cron 6h (UTC-3)",
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
-      "position": [
-        -816,
-        560
-      ]
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Todo dia 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1072, 560]
     },
     {
       "parameters": {
-        "jsCode": "const verticais = [\n  { termo: 'pilates Goiânia', nicho: 'pilates', quantidade: 5 },\n  { termo: 'CT de luta Goiânia', nicho: 'luta', quantidade: 5 },\n  { termo: 'escola de natação Goiânia', nicho: 'natacao', quantidade: 5 },\n  { termo: 'escola de idioma Goiânia', nicho: 'idioma', quantidade: 5 },\n  { termo: 'personal trainer Goiânia', nicho: 'personal', quantidade: 5 },\n  { termo: 'escola de ballet Goiânia', nicho: 'ballet', quantidade: 5 }\n];\nreturn verticais;"
+        "jsCode": "const todas = [\n  { termo: 'estúdio de pilates Goiânia', nicho: 'pilates' },\n  { termo: 'CT de luta Goiânia', nicho: 'luta' },\n  { termo: 'escola de natação Goiânia', nicho: 'natacao' },\n  { termo: 'escola de idiomas Goiânia', nicho: 'idioma' },\n  { termo: 'personal trainer Goiânia', nicho: 'personal' },\n  { termo: 'escola de ballet Goiânia', nicho: 'ballet' }\n];\n\n// 5 nichos por dia x 2 contatos = 10. O nicho que fica de fora e a posicao\n// nos resultados do Google mudam a cada dia, pra nao repetir os mesmos lugares.\nconst dia = Math.floor((Date.now() - 3 * 3600 * 1000) / 86400000);\nconst pular = dia % todas.length;\nconst offset = (dia * 2) % 20;\n\nreturn todas\n  .filter((_, i) => i !== pular)\n  .map(v => ({ json: { ...v, quantidade: 2, offset } }));"
       },
-      "id": "f6641222-7460-471c-9f8b-bc1841a102e8",
+      "id": "a1000000-0000-4000-8000-000000000002",
       "name": "Mapear verticais",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        -560,
-        560
-      ]
+      "typeVersion": 2,
+      "position": [-832, 560]
     },
     {
       "parameters": {
@@ -43,137 +34,97 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "query",
-              "value": "={{ $node[\"Mapear verticais\"].json.termo }}"
-            },
-            {
-              "name": "location",
-              "value": "-15.7942,48.3279"
-            },
-            {
-              "name": "radius",
-              "value": "15000"
-            },
-            {
-              "name": "key",
-              "value": "YOUR_GOOGLE_MAPS_API_KEY"
-            },
-            {
-              "name": "language",
-              "value": "pt-BR"
-            }
+            { "name": "query", "value": "={{ $json.termo }}" },
+            { "name": "location", "value": "-16.6869,-49.2648" },
+            { "name": "radius", "value": "15000" },
+            { "name": "language", "value": "pt-BR" },
+            { "name": "key", "value": "YOUR_GOOGLE_MAPS_API_KEY" }
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "ad92b17c-ca77-42ce-b48e-552d85423611",
+      "id": "a1000000-0000-4000-8000-000000000003",
       "name": "Google Maps Search",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -320,
-        560
-      ]
+      "position": [-592, 560]
     },
     {
       "parameters": {
-        "jsCode": "const results = $input.all()[0].json.results || [];\nconst verticai = $node[\"Mapear verticais\"].json;\nconst quantidade = verticai.quantidade;\n\nconst contatos = results.slice(0, quantidade).map((place) => ({\n  nome: place.name,\n  telefone: place.formatted_address || '',\n  google_maps_url: `https://maps.google.com/?q=${place.name}`,\n  instagram_handle: '',\n  vertical: verticai.nicho,\n  mensagem_template: gerarMensagem(verticai.nicho, place.name)\n}));\n\nfunction gerarMensagem(nicho, nome) {\n  const templates = {\n    pilates: `Oi! Vi que você gerencia o ${nome}. Você usa algo pra gerenciar mensalidades e enviar cobranças pelo WhatsApp? Desenvolvemos uma solução feita pra estúdios de pilates. Bora ver uma demo?`,\n    luta: `E aí! Vi que você coordena o ${nome}. Você usa sistema pra gerenciar alunos, cobrar mensalidade e enviar lembretes? Desenvolvemos uma solução exatamente pra CTs de luta. Bora ver?`,\n    natacao: `Olá! Vi que você é responsável pela ${nome}. Você tem algum sistema pra gerenciar alunos e cobranças? Temos uma solução feita pra escolas de natação. Quer conhecer?`,\n    idioma: `Oi! Vi que você gerencia o ${nome}. Você usa algo pra gerenciar mensalidades dos alunos e enviar cobranças pelo WhatsApp? Temos uma solução perfeita pra escolas de idioma. Bora ver?`,\n    personal: `Fala! Vi que você é personal trainer no ${nome}. Você usa sistema pra gerenciar clientes e cobranças? Desenvolvemos uma solução pra personais que automatiza mensalidades. Quer conhecer?`,\n    ballet: `Olá! Vi que você gerencia o ${nome}. Você tem algum sistema pra gerenciar alunas e cobranças? Temos uma solução feita pra escolas de ballet. Quer conferir?`\n  };\n  return templates[nicho] || 'Oi! Você gerencia um estabelecimento? Temos uma solução pra cobrança de mensalidades no WhatsApp. Posso fazer uma demo?';\n}\n\nreturn contatos;"
+        "jsCode": "const verticais = $('Mapear verticais').all();\nconst lugares = [];\n\n$input.all().forEach((item, i) => {\n  const v = verticais[i].json;\n  const results = item.json.results || [];\n  const n = Math.min(v.quantidade, results.length);\n  for (let k = 0; k < n; k++) {\n    const place = results[(v.offset + k) % results.length];\n    lugares.push({\n      json: {\n        place_id: place.place_id,\n        nome: place.name,\n        vertical: v.nicho,\n        endereco: place.formatted_address || '',\n        google_maps_url: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`\n      }\n    });\n  }\n});\n\nreturn lugares;"
       },
-      "id": "e4399c98-e21b-4a93-8322-2eba8e53e9f9",
-      "name": "Formatar contatos + Mensagem",
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Separar lugares",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        -64,
-        560
-      ]
+      "typeVersion": 2,
+      "position": [-352, 560]
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const contatos = $input.all().map(item => item.json);\n\nreturn [{ contatos: contatos, json: JSON.stringify(contatos, null, 2) }];"
+        "url": "https://maps.googleapis.com/maps/api/place/details/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "place_id", "value": "={{ $json.place_id }}" },
+            { "name": "fields", "value": "formatted_phone_number,website,url,rating,user_ratings_total,editorial_summary,reviews" },
+            { "name": "reviews_sort", "value": "most_relevant" },
+            { "name": "language", "value": "pt-BR" },
+            { "name": "key", "value": "YOUR_GOOGLE_MAPS_API_KEY" }
+          ]
+        },
+        "options": {}
       },
-      "id": "json-formatter-123",
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Buscar detalhes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-112, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lugares = $('Separar lugares').all();\n\nfunction instagramDe(url) {\n  const m = (url || '').match(/instagram\\.com\\/([A-Za-z0-9_.]+)/i);\n  return m ? m[1] : '';\n}\n\nreturn $input.all().map((item, i) => {\n  const l = lugares[i].json;\n  const r = item.json.result || {};\n  const reviews = (r.reviews || [])\n    .filter(x => x.text)\n    .slice(0, 3)\n    .map(x => ({ nota: x.rating, texto: x.text.slice(0, 300) }));\n\n  return {\n    json: {\n      nome: l.nome,\n      place_id: l.place_id,\n      vertical: l.vertical,\n      telefone: r.formatted_phone_number || '',\n      instagram_handle: instagramDe(r.website),\n      google_maps_url: r.url || l.google_maps_url,\n      status_google: item.json.status,\n      dados_google: {\n        endereco: l.endereco,\n        nota: r.rating || null,\n        avaliacoes: r.user_ratings_total || 0,\n        site: r.website || '',\n        resumo: r.editorial_summary?.overview || '',\n        reviews\n      }\n    }\n  };\n});"
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Formatar contatos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [128, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { total: $input.all().length, contatos: $input.all().map(i => i.json) } }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
       "name": "Formatar JSON",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        200,
-        560
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "bcdc0a01-da14-4bca-b931-a1fb10a4b680",
-      "name": "Sucesso",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        600,
-        560
-      ]
+      "typeVersion": 2,
+      "position": [368, 560]
     }
   ],
   "pinData": {},
   "connections": {
-    "Cron 7h (UTC-3)": {
-      "main": [
-        [
-          {
-            "node": "Mapear verticais",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Todo dia 6h": {
+      "main": [[{ "node": "Mapear verticais", "type": "main", "index": 0 }]]
     },
     "Mapear verticais": {
-      "main": [
-        [
-          {
-            "node": "Google Maps Search",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Google Maps Search", "type": "main", "index": 0 }]]
     },
     "Google Maps Search": {
-      "main": [
-        [
-          {
-            "node": "Formatar contatos + Mensagem",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Separar lugares", "type": "main", "index": 0 }]]
     },
-    "Formatar contatos + Mensagem": {
-      "main": [
-        [
-          {
-            "node": "Formatar JSON",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Separar lugares": {
+      "main": [[{ "node": "Buscar detalhes", "type": "main", "index": 0 }]]
     },
-    "Formatar JSON": {
-      "main": [
-        [
-          {
-            "node": "Sucesso",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Buscar detalhes": {
+      "main": [[{ "node": "Formatar contatos", "type": "main", "index": 0 }]]
+    },
+    "Formatar contatos": {
+      "main": [[{ "node": "Formatar JSON", "type": "main", "index": 0 }]]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
   }
 }

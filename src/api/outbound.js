@@ -74,21 +74,23 @@ export async function updateLead(leadId, updates) {
   return data[0]
 }
 
-// POST /api/outbound/bulk — criar múltiplos leads (para cron)
+// Importa em lote; lugares já importados (mesmo place_id) são ignorados
 export async function createBulkLeads(instanceId, leads) {
   const formatted = leads.map(lead => ({
     instance_id: instanceId,
     nome: lead.nome,
     vertical: lead.vertical,
-    instagram_handle: lead.instagram_handle,
-    telefone: lead.telefone,
+    instagram_handle: lead.instagram_handle || null,
+    telefone: lead.telefone || null,
     google_maps_url: lead.google_maps_url,
-    mensagem_template: lead.mensagem_template
+    mensagem_template: lead.mensagem_template || null,
+    place_id: lead.place_id || null,
+    dados_google: lead.dados_google || null
   }))
 
   const { data, error } = await supabase
     .from('outbound_leads')
-    .insert(formatted)
+    .upsert(formatted, { onConflict: 'instance_id,place_id', ignoreDuplicates: true })
     .select()
 
   if (error) throw new Error(`Erro ao criar leads em lote: ${error.message}`)

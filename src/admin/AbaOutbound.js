@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from 'react'
 import { useUser } from '../contexts/UserContext'
-import { getDailyList, getLeads, updateLead, getStats, createLead } from '../api/outbound'
+import { getDailyList, getLeads, updateLead, getStats, createBulkLeads } from '../api/outbound'
 import { Icon } from '@iconify/react'
 import Button from '../design-system/components/Button'
 import Card from '../design-system/components/Card'
@@ -70,12 +70,6 @@ export default function AbaOutbound() {
     }
   }
 
-  function copyMessage(text) {
-    navigator.clipboard.writeText(text)
-    setCopiedId(text)
-    setTimeout(() => setCopiedId(null), 2000)
-  }
-
   async function processarJSON(jsonString) {
     try {
       const dados = JSON.parse(jsonString)
@@ -95,21 +89,13 @@ export default function AbaOutbound() {
       }
 
       setLoading(true)
-      for (const contato of contatosArray) {
-        await createLead(instanceId, {
-          nome: contato.nome,
-          vertical: contato.vertical,
-          instagram_handle: contato.instagram_handle || '',
-          telefone: contato.telefone,
-          google_maps_url: contato.google_maps_url,
-          mensagem_template: contato.mensagem_template
-        })
-      }
+      const inseridos = await createBulkLeads(instanceId, contatosArray)
+      const repetidos = contatosArray.length - inseridos.length
 
       loadData()
       setShowImportModal(false)
       setJsonText('')
-      alert(`✅ ${contatosArray.length} contatos importados com sucesso!`)
+      alert(`✅ ${inseridos.length} contatos importados` + (repetidos > 0 ? ` (${repetidos} já existiam e foram ignorados)` : ''))
     } catch (err) {
       alert(`❌ Erro ao importar: ${err.message}`)
     } finally {
@@ -120,32 +106,23 @@ export default function AbaOutbound() {
   async function handleImportJSON(event) {
     const file = event.target.files[0]
     if (!file) return
+    await processarJSON(await file.text())
+    event.target.value = ''
+  }
 
-    try {
-      const text = await file.text()
-      const dados = JSON.parse(text)
-      const contatosArray = Array.isArray(dados) ? dados : [dados]
-
-      setLoading(true)
-      for (const contato of contatosArray) {
-        await createLead(instanceId, {
-          nome: contato.nome,
-          vertical: contato.vertical,
-          instagram_handle: contato.instagram_handle || '',
-          telefone: contato.telefone,
-          google_maps_url: contato.google_maps_url,
-          mensagem_template: contato.mensagem_template
-        })
-      }
-
-      loadData()
-      alert(`✅ ${contatosArray.length} contatos importados com sucesso!`)
-    } catch (err) {
-      alert(`❌ Erro ao importar: ${err.message}`)
-    } finally {
-      setLoading(false)
-      event.target.value = ''
-    }
+  function textoParaIA(lead) {
+    const g = lead.dados_google || {}
+    const linhas = [
+      `Nome: ${lead.nome}`,
+      `Nicho: ${lead.vertical}`,
+      g.endereco && `Endereço: ${g.endereco}`,
+      g.nota && `Nota no Google: ${g.nota} (${g.avaliacoes || 0} avaliações)`,
+      g.resumo && `Descrição: ${g.resumo}`,
+      g.site && `Site: ${g.site}`,
+      lead.instagram_handle && `Instagram: @${lead.instagram_handle}`,
+      ...(g.reviews || []).map(r => `Avaliação (${r.nota}★): ${r.texto}`)
+    ]
+    return linhas.filter(Boolean).join('\n')
   }
 
   return (
@@ -236,18 +213,29 @@ export default function AbaOutbound() {
                   </div>
 
                   <div className="lead-message">
-                    <p>{lead.mensagem_template}</p>
+                    <p style={{ whiteSpace: 'pre-line' }}>
+                      {lead.dados_google
+                        ? [
+                            lead.dados_google.nota && `⭐ ${lead.dados_google.nota} (${lead.dados_google.avaliacoes || 0} avaliações)`,
+                            lead.dados_google.endereco
+                          ].filter(Boolean).join('\n')
+                        : lead.mensagem_template}
+                    </p>
                     <button
-                      className={`copy-btn ${copiedId === lead.mensagem_template ? 'copied' : ''}`}
-                      onClick={() => copyMessage(lead.mensagem_template)}
+                      className={`copy-btn ${copiedId === lead.id ? 'copied' : ''}`}
+                      onClick={() => {
+                        navigator.clipboard.writeText(lead.dados_google ? textoParaIA(lead) : lead.mensagem_template || '')
+                        setCopiedId(lead.id)
+                        setTimeout(() => setCopiedId(null), 2000)
+                      }}
                     >
-                      {copiedId === lead.mensagem_template ? (
+                      {copiedId === lead.id ? (
                         <>
-                          <MdCheck /> Copiada!
+                          <MdCheck /> Copiado!
                         </>
                       ) : (
                         <>
-                          <MdContentCopy /> Copiar
+                          <MdContentCopy /> {lead.dados_google ? 'Copiar dados p/ IA' : 'Copiar'}
                         </>
                       )}
                     </button>
@@ -286,6 +274,9 @@ export default function AbaOutbound() {
                 <option value="pilates">Pilates</option>
                 <option value="luta">Luta</option>
                 <option value="natacao">Natação</option>
+                <option value="idioma">Idioma</option>
+                <option value="personal">Personal</option>
+                <option value="ballet">Ballet</option>
               </select>
               <select
                 value={filters.status}
