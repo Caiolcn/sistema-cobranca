@@ -5,7 +5,7 @@ import { Icon } from '@iconify/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser } from './contexts/UserContext';
 import { SkeletonDashboard } from './components/Skeleton';
-import OnboardingPainel from './OnboardingPainel';
+import OnboardingGuiado from './OnboardingGuiado';
 import NovidadesPainel from './components/NovidadesPainel';
 import whatsappService from './services/whatsappService';
 import { showToast } from './Toast';
@@ -49,7 +49,7 @@ const salvarDispensada = (userId, mensalidadeId) => {
 
 function Home() {
   const navigate = useNavigate();
-  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, chavePix, isAdmin, adminViewingAs, userData, loading: loadingUser } = useUser();
+  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, isAdmin, adminViewingAs, userData, loading: loadingUser } = useUser();
   // "Precisam de você hoje" (fila de ação + cobrança direta) é exclusivo do plano Pro
   const { isProOrAbove } = useUserPlan();
   const [loading, setLoading] = useState(true);
@@ -89,7 +89,16 @@ function Home() {
 
   // Onboarding checklist: só os sinais que vêm das queries do dashboard.
   // empresa/PIX entram no useMemo abaixo, direto do contexto.
-  const [sinaisOnboarding, setSinaisOnboarding] = useState({ whatsapp: false, cliente: false });
+  const [sinaisOnboarding, setSinaisOnboarding] = useState({ whatsapp: false, cliente: false, qtdClientes: 0 });
+  // "Explorar o sistema primeiro": sai do modo foco e mostra o dashboard normal,
+  // com uma faixa pra retomar. Fica no navegador pra não voltar a cada reload.
+  const [explorando, setExplorando] = useState(() => {
+    try { return localStorage.getItem('mensalli_onb_explorar') === '1'; } catch { return false; }
+  });
+  const alternarExplorando = (valor) => {
+    setExplorando(valor);
+    try { localStorage.setItem('mensalli_onb_explorar', valor ? '1' : '0'); } catch { /* sessão só */ }
+  };
 
   // Carregar dados quando userId mudar.
   // Espera o contexto do usuário terminar de carregar (loadingUser): user/userId
@@ -427,7 +436,8 @@ function Home() {
       // aqui, um contexto que chega atrasado congelaria o checklist errado.
       setSinaisOnboarding({
         whatsapp: !!whatsappConectado,
-        cliente: (todosClientes?.length || 0) > 0
+        cliente: (todosClientes?.length || 0) > 0,
+        qtdClientes: todosClientes?.length || 0
       });
 
       setDashboardData({
@@ -470,19 +480,18 @@ function Home() {
      onAuthStateChange. Derivando por useMemo, quando o contexto chega o
      checklist se corrige sozinho.
   ---------------------------------------------------------------- */
+  // Onboarding guiado: só WhatsApp e aluno decidem. Empresa e PIX saíram — não
+  // mudam a primeira experiência. O 3º passo (receber o teste) não tem sinal no
+  // banco: enviar o teste é o que grava onboarding_completed = true.
   const onboardingSteps = useMemo(() => ({
-    // Toda conta nova nasce com nome_empresa = "Minha Empresa" (o passo saiu do
-    // cadastro). Se contasse como preenchido, a etapa nasceria concluída e
-    // ninguém trocaria o placeholder — que aparece nas mensagens dos alunos.
-    empresa: !!(nomeEmpresaContext && nomeEmpresaContext.trim() &&
-      nomeEmpresaContext.trim().toLowerCase() !== 'minha empresa'),
-    pix: !!(chavePix && chavePix.trim()),
     whatsapp: sinaisOnboarding.whatsapp,
     cliente: sinaisOnboarding.cliente
-  }), [nomeEmpresaContext, chavePix, sinaisOnboarding]);
+  }), [sinaisOnboarding]);
 
-  const todasEtapasCompletas =
-    onboardingSteps.empresa && onboardingSteps.pix && onboardingSteps.whatsapp && onboardingSteps.cliente;
+  // Conta que já conectou e tem base de verdade (3+ alunos) não precisa do
+  // teste: fecha sozinha. Quem parou entre o passo 2 e o 3 tem 1 aluno e
+  // continua vendo o passo "Ver chegando".
+  const jaOperando = onboardingSteps.whatsapp && sinaisOnboarding.qtdClientes >= 3;
 
   const mostrarChecklist = useMemo(() => {
     // Enquanto o contexto não chegou, não dá pra afirmar que falta alguma
@@ -490,18 +499,22 @@ function Home() {
     if (loadingUser || !userData) return false;
     // Quem já completou uma vez não vê mais.
     if (!isAdmin && userData.onboarding_completed === true) return false;
-    if (isAdmin && adminViewingAs) return !todasEtapasCompletas;
-    return !isAdmin && !todasEtapasCompletas;
-  }, [loadingUser, userData, isAdmin, adminViewingAs, todasEtapasCompletas]);
+    if (isAdmin && adminViewingAs) return !jaOperando;
+    return !isAdmin && !jaOperando;
+  }, [loadingUser, userData, isAdmin, adminViewingAs, jaOperando]);
 
-  // Marca como completo assim que as 4 etapas fecham (no modo espelho a trava
-  // de escrita barra o update, e tudo bem: é a conta do cliente).
+  // Modo foco: conta sem base mostra SÓ o onboarding (cards zerados, agenda e
+  // aniversariantes vazios só competiam com o próximo passo).
+  const modoFoco = mostrarChecklist && !explorando && sinaisOnboarding.qtdClientes < 3;
+
+  // Marca como completo quando a conta já opera (no modo espelho a trava de
+  // escrita barra o update, e tudo bem: é a conta do cliente).
   useEffect(() => {
     if (!userId || !userData) return;
-    if (todasEtapasCompletas && !isAdmin && userData.onboarding_completed !== true) {
+    if (jaOperando && !isAdmin && userData.onboarding_completed !== true) {
       supabase.from('usuarios').update({ onboarding_completed: true, onboarding_step: 4 }).eq('id', userId);
     }
-  }, [todasEtapasCompletas, isAdmin, userData, userId]);
+  }, [jaOperando, isAdmin, userData, userId]);
 
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -624,6 +637,31 @@ function Home() {
     return `${dia}/${mes}`;
   };
 
+  const aoConcluirOnboarding = () => {
+    alternarExplorando(false);
+    carregarDados();
+  };
+
+  // Conta sem base: a Home é só o passo a passo. O dashboard aparece quando o
+  // teste chega (ou quando a pessoa escolhe explorar antes).
+  if (modoFoco) {
+    return (
+      <div className="home-container">
+      <div className="home-header">
+        <div className="home-welcome">
+          <h1>{getHoraSaudacao()}! 👋</h1>
+          <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
+        </div>
+      </div>
+        <OnboardingGuiado
+          sinais={onboardingSteps}
+          onExplorar={() => alternarExplorando(true)}
+          onConcluir={aoConcluirOnboarding}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="home-container">
       {/* Header de Boas-vindas */}
@@ -634,10 +672,21 @@ function Home() {
         </div>
       </div>
 
-      {/* Primeiros passos: entrou no lugar do wizard que bloqueava a entrada e do
-          balão flutuante do canto. Some sozinho quando as 4 etapas fecham. */}
-      {mostrarChecklist && (
-        <OnboardingPainel completedSteps={onboardingSteps} />
+      {/* Fora do modo foco: quem escolheu explorar ganha uma faixa pra retomar;
+          quem já tem base mas não conectou vê o passo a passo em cima do painel. */}
+      {mostrarChecklist && explorando && (
+        <div className="onbg-retomar">
+          <span>
+            <Icon icon="mdi:rocket-launch-outline" width="18" />
+            Falta pouco pra sua cobrança rodar sozinha: cadastrar 1 aluno, ver a mensagem e conectar seu WhatsApp.
+          </span>
+          <button type="button" onClick={() => alternarExplorando(false)}>
+            Continuar configuração <Icon icon="mdi:arrow-right" width="16" />
+          </button>
+        </div>
+      )}
+      {mostrarChecklist && !explorando && (
+        <OnboardingGuiado sinais={onboardingSteps} onConcluir={aoConcluirOnboarding} />
       )}
 
       {/* Novidades do produto. Vem DEPOIS do onboarding de propósito: conta nova

@@ -1,0 +1,740 @@
+/* Onboarding guiado — ocupa a Home inteira enquanto a conta não tem o básico.
+   Mesma linguagem dos cards da Home (raio 16px, roxo #8867A1); o verde aparece
+   só no que é WhatsApp. */
+
+.onbg {
+  background: linear-gradient(160deg, #f3eefa 0%, #faf8fd 45%, #ffffff 100%);
+  border: 1px solid #e3d7f0;
+  border-radius: 16px;
+  padding: 28px 28px 20px;
+  margin-bottom: 16px;
+}
+
+.onbg-topo {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.onbg-titulo {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.onbg-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* ---------- stepper ---------- */
+
+.onbg-stepper {
+  list-style: none;
+  margin: 0 auto 20px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  max-width: 620px;
+}
+
+.onbg-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  min-width: 0;
+}
+
+/* linha entre as bolinhas */
+.onbg-step + .onbg-step::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e3d7f0;
+  z-index: 0;
+}
+
+.onbg-step.feito + .onbg-step::before,
+.onbg-step.feito + .onbg-step.feito::before {
+  background: #22c55e;
+}
+
+.onbg-step-bola {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  background: #ffffff;
+  border: 2px solid #e3d7f0;
+  color: #9ca3af;
+  transition: all 0.25s ease;
+}
+
+.onbg-step.atual .onbg-step-bola {
+  border-color: #8867A1;
+  background: #8867A1;
+  color: #ffffff;
+  box-shadow: 0 0 0 5px rgba(136, 103, 161, 0.15);
+}
+
+.onbg-step.feito .onbg-step-bola {
+  border-color: #22c55e;
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.onbg-step-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.onbg-step.atual .onbg-step-label { color: #1f2937; }
+.onbg-step.feito .onbg-step-label { color: #16a34a; }
+
+/* ---------- card do passo ---------- */
+
+.onbg-card {
+  background: #ffffff;
+  border: 1px solid #ece4f5;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 860px;
+  margin: 0 auto;
+  box-shadow: 0 6px 24px rgba(106, 77, 130, 0.07);
+}
+
+.onbg-passo-cab {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.onbg-passo-cab h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.onbg-passo-cab p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.onbg-passo-icone {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8867A1 0%, #6a4d82 100%);
+}
+
+.onbg-passo-icone.zap {
+  background: linear-gradient(135deg, #22c55e 0%, #0ea372 100%);
+}
+
+.onbg-acao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 0 6px;
+}
+
+.onbg-acao-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.onbg-dica {
+  font-size: 12.5px;
+  color: #9ca3af;
+}
+
+.onbg-erro {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
+}
+
+.onbg-ok {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 12px;
+  background: #ecfdf3;
+  color: #16a34a;
+  font-size: 16px;
+  animation: onbg-surge 0.3s ease;
+}
+
+@keyframes onbg-surge {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ---------- QR ---------- */
+
+.onbg-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.onbg-qr img {
+  width: 220px;
+  height: 220px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.onbg-qr-instrucoes ol {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 14.5px;
+  color: #374151;
+  line-height: 2;
+}
+
+.onbg-qr-aguardando {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.onbg-pulso {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: onbg-pulsar 1.4s ease-in-out infinite;
+}
+
+@keyframes onbg-pulsar {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
+}
+
+/* ---------- aluno ---------- */
+
+.onbg-grid-aluno {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 1fr 110px;
+  gap: 12px;
+  align-items: start;
+}
+
+/* Sem isso o item do grid assume a largura mínima do conteúdo e o Select
+   estoura a coluna (vazava para fora do card). */
+.onbg-grid-aluno > * {
+  min-width: 0;
+}
+
+/* App.css pinta todo <button> de azul no hover — os links daqui sobrescrevem */
+.onbg-link,
+.onbg-link:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #6a4d82;
+  cursor: pointer;
+}
+
+.onbg-link:hover { text-decoration: underline; }
+
+/* ---------- teste ---------- */
+
+.onbg-teste {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.onbg-celular {
+  border-radius: 22px;
+  overflow: hidden;
+  border: 6px solid #1f2937;
+  background: #efeae2;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.onbg-celular-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #075e54;
+  color: #ffffff;
+}
+
+.onbg-celular-topo div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.onbg-celular-topo strong { font-size: 14px; }
+.onbg-celular-topo span { font-size: 11px; opacity: 0.8; }
+
+.onbg-celular-chat {
+  padding: 14px 12px 18px;
+  min-height: 260px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.onbg-balao {
+  /* Verde-amarelado do balão do WhatsApp: é a cor que a galera associa a
+     "mensagem minha". Sem margem lateral: com margem de um lado só o balão
+     ficava torto dentro do celular. */
+  background: #dcf8c6;
+  border-radius: 10px 2px 10px 10px;
+  padding: 9px 11px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #111b21;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+.onbg-balao.carregando { color: #6b7280; font-style: italic; }
+
+.onbg-teste-lado {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.onbg-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onbg-editor label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.onbg-editor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.onbg-editor textarea:focus {
+  outline: none;
+  border-color: #8867A1;
+  box-shadow: 0 0 0 3px rgba(136, 103, 161, 0.15);
+}
+
+.onbg-aviso {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.onbg-aviso svg { flex-shrink: 0; margin-top: 1px; }
+
+/* ---------- fim ---------- */
+
+.onbg-fim {
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.onbg-fim-icone {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #22c55e 0%, #0ea372 100%);
+  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.3);
+}
+
+.onbg-fim h2 {
+  margin: 4px 0 0;
+  font-size: 21px;
+  color: #1f2937;
+}
+
+.onbg-fim p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.onbg-fim-proximos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  font-size: 13px;
+  color: #6b7280;
+  margin: 4px 0 8px;
+}
+
+.onbg-fim-proximos span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---------- escape ---------- */
+
+.onbg-explorar,
+.onbg-explorar:hover {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 16px auto 0;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.onbg-explorar:hover { color: #6a4d82; }
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 900px) {
+  .onbg-grid-aluno { grid-template-columns: 1fr 1fr; }
+  .onbg-teste { grid-template-columns: 1fr; }
+  .onbg-celular { max-width: 340px; margin: 0 auto; width: 100%; }
+
+  /* Empilhado, tudo vai pro eixo do celular: cabeçalho, vantagens, links e
+     botões centralizados (à esquerda pareciam soltos embaixo dele). */
+  .onbg-passo-cab {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .onbg-teste-lado {
+    align-items: center;
+    text-align: center;
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .onbg-teste-lado > * { width: 100%; }
+  .onbg-lista-beneficios { align-items: center; }
+  .onbg-lista-beneficios > span,
+  .onbg-link,
+  .onbg-ok.compacto { justify-content: center; }
+  /* Quem edita o texto precisa ver como ele fica de verdade: sem centralizar */
+  .onbg-editor label,
+  .onbg-editor textarea { text-align: left; }
+}
+
+@media (max-width: 560px) {
+  .onbg { padding: 20px 14px 16px; }
+  .onbg-card { padding: 18px 14px; }
+  .onbg-titulo { font-size: 19px; }
+  .onbg-grid-aluno { grid-template-columns: 1fr; }
+  .onbg-qr img { width: 200px; height: 200px; }
+  .onbg-step-label { font-size: 11.5px; }
+  .onbg-acao-linha { flex-direction: column-reverse; align-items: stretch; }
+}
+
+/* ---------- faixa "retomar" (quem escolheu explorar) ---------- */
+
+.onbg-retomar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: #f3eefa;
+  border: 1px solid #e3d7f0;
+  font-size: 13.5px;
+  color: #4b3a5c;
+}
+
+.onbg-retomar span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onbg-retomar button,
+.onbg-retomar button:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #8867A1;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.onbg-retomar button:hover { background: #6a4d82; }
+
+/* ---------- passo da mensagem / conexão no lado direito ---------- */
+
+.onbg-teste-lado .onbg-qr {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.onbg-teste-lado .onbg-qr img {
+  width: 200px;
+  height: 200px;
+}
+
+.onbg-lista-beneficios {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14.5px;
+  color: #374151;
+}
+
+.onbg-lista-beneficios > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onbg-lista-beneficios > span svg { color: #22c55e; flex-shrink: 0; }
+
+.onbg-ok.compacto {
+  justify-content: flex-start;
+  padding: 12px 14px;
+  font-size: 14.5px;
+}
+
+.onbg-voltar,
+.onbg-voltar:hover {
+  align-self: center;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ---------- modal do QR ---------- */
+
+.onbg-modal-zap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.onbg-modal-qr {
+  width: 240px;
+  height: 240px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.onbg-modal-qr img {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.onbg-modal-carregando,
+.onbg-modal-ok {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  font-size: 13.5px;
+  color: #6b7280;
+}
+
+.onbg-modal-carregando .onbg-erro { margin: 0; }
+
+.onbg-modal-ok {
+  color: #16a34a;
+  font-size: 16px;
+  animation: onbg-surge 0.3s ease;
+}
+
+.onbg-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid #e5e7eb;
+  border-top-color: #22c55e;
+  animation: onbg-girar 0.8s linear infinite;
+}
+
+@keyframes onbg-girar {
+  to { transform: rotate(360deg); }
+}
+
+.onbg-modal-passos {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onbg-modal-passos li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #374151;
+  text-align: left;
+}
+
+.onbg-modal-passos li > span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #22c55e;
+}
+
+/* "Quero escrever do meu jeito": botão com contorno roxo — como link solto ele
+   se confundia com a lista de vantagens logo acima. */
+.onbg-btn-editar,
+.onbg-btn-editar:hover {
+  align-self: stretch;
+  margin-top: 6px;
+  border: 1.5px solid #8867A1 !important;
+  color: #6a4d82 !important;
+  background: #ffffff !important;
+}
+
+.onbg-btn-editar:hover {
+  background: #f3eefa !important;
+}
+
+@media (max-width: 900px) {
+  .onbg-btn-editar,
+  .onbg-btn-editar:hover { align-self: stretch; }
+}
+
+/* Passo de conectar sem o celular: uma coluna só, centralizada, com o botão
+   do WhatsApp como único foco da tela. */
+.onbg-teste.sem-celular {
+  grid-template-columns: 1fr;
+  max-width: 420px;
+  margin: 8px auto 0;
+}
+
+.onbg-teste.sem-celular .onbg-teste-lado {
+  align-items: stretch;
+  text-align: center;
+}
+
+.onbg-teste.sem-celular .onbg-acao {
+  padding: 8px 0 0;
+}
+
+.onbg-teste.sem-celular .onbg-acao .ds-btn {
+  width: 100%;
+}
+
+.onbg-teste.sem-celular .onbg-ok.compacto {
+  justify-content: center;
+}
+
+/* No celular o Modal do DS vira gaveta presa embaixo; aqui ele fica no meio
+   da tela, como popup — o QR é o centro da atenção. */
+@media (max-width: 640px) {
+  .ds-modal-backdrop:has(.onbg-modal) {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .ds-modal.onbg-modal {
+    border-radius: 16px;
+    max-height: calc(100dvh - 32px);
+  }
+}
