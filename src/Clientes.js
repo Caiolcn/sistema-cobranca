@@ -77,6 +77,9 @@ export default function Clientes() {
   const [emailEdit, setEmailEdit] = useState('')
   const [responsavelNomeEdit, setResponsavelNomeEdit] = useState('')
   const [responsavelTelefoneEdit, setResponsavelTelefoneEdit] = useState('')
+  // Mesmo toggle do cadastro: ligado mostra os campos do responsável e o telefone
+  // do aluno passa a ser o do responsável (campo travado, igual ao modal)
+  const [menorEdit, setMenorEdit] = useState(false)
   const [cepEdit, setCepEdit] = useState('')
   const [enderecoEdit, setEnderecoEdit] = useState('')
   const [numeroEnderecoEdit, setNumeroEnderecoEdit] = useState('')
@@ -743,6 +746,8 @@ export default function Clientes() {
       setEmailEdit(cliente.email || '')
       setResponsavelNomeEdit(cliente.responsavel_nome || '')
       setResponsavelTelefoneEdit(cliente.responsavel_telefone || '')
+      // Quem já tem responsável preenchido vem com o toggle ligado
+      setMenorEdit(!!((cliente.responsavel_nome || '').trim() || (cliente.responsavel_telefone || '').trim()))
       setTagsEdit(Array.isArray(cliente.tags) ? cliente.tags : [])
       setCepEdit(cliente.cep || '')
       setEnderecoEdit(cliente.endereco || '')
@@ -765,13 +770,27 @@ export default function Clientes() {
   }
 
   const handleSalvarEdicao = async () => {
-    if (!nomeEdit.trim() || !telefoneEdit.trim()) {
+    if (menorEdit) {
+      if (!responsavelNomeEdit.trim() || !responsavelTelefoneEdit.trim()) {
+        showToast('Preencha nome e telefone do responsável', 'warning')
+        return
+      }
+      if (!validarTelefone(responsavelTelefoneEdit)) {
+        showToast('Telefone do responsável inválido. Use o formato (XX) XXXXX-XXXX', 'warning')
+        return
+      }
+    }
+
+    // Aluno menor: o contato do aluno é o do responsável (mesma regra do cadastro)
+    const telefoneFinal = menorEdit ? responsavelTelefoneEdit.trim() : telefoneEdit.trim()
+
+    if (!nomeEdit.trim() || !telefoneFinal) {
       showToast('Preencha nome e telefone', 'warning')
       return
     }
 
     // Validar telefone
-    if (!validarTelefone(telefoneEdit)) {
+    if (!validarTelefone(telefoneFinal)) {
       showToast('Telefone inválido. Use o formato (XX) XXXXX-XXXX', 'warning')
       return
     }
@@ -794,9 +813,8 @@ export default function Clientes() {
     try {
       // Verificar se já existe outro cliente com o mesmo telefone
       // Permite duplicata quando o aluno tem responsável (telefone é do responsável)
-      const temResponsavel = responsavelNomeEdit.trim() || responsavelTelefoneEdit.trim()
-      if (!temResponsavel) {
-        const telefoneFormatado = telefoneEdit.trim().replace(/\D/g, '')
+      if (!menorEdit) {
+        const telefoneFormatado = telefoneFinal.replace(/\D/g, '')
         const duplicado = clientes.find(c =>
           c.id !== clienteSelecionado.id &&
           c.telefone?.replace(/\D/g, '') === telefoneFormatado
@@ -812,12 +830,13 @@ export default function Clientes() {
         .from('devedores')
         .update({
           nome: nomeEdit.trim(),
-          telefone: telefoneEdit.trim(),
+          telefone: telefoneFinal,
           cpf: cpfEdit.trim() || null,
           data_nascimento: dataNascimentoEdit || null,
           email: emailEdit.trim() || null,
-          responsavel_nome: responsavelNomeEdit.trim() || null,
-          responsavel_telefone: responsavelTelefoneEdit.trim() || null,
+          // Toggle desligado = sem responsável (igual ao modal)
+          responsavel_nome: menorEdit ? (responsavelNomeEdit.trim() || null) : null,
+          responsavel_telefone: menorEdit ? (responsavelTelefoneEdit.trim() || null) : null,
           tags: tagsEdit.length > 0 ? tagsEdit : null,
           cep: cepEdit.trim() || null,
           endereco: enderecoEdit.trim() || null,
@@ -859,9 +878,9 @@ export default function Clientes() {
       showToast('Aluno atualizado com sucesso!', 'success')
 
       // Se telefone mudou ou não tem foto, tentar puxar do WhatsApp (fire-and-forget)
-      const telefoneMudou = telefoneEdit.trim() !== clienteSelecionado.telefone
-      if ((telefoneMudou || !clienteSelecionado.foto_url) && telefoneEdit.trim()) {
-        whatsappService.buscarFotoPerfil(telefoneEdit.trim()).then(async (fotoUrl) => {
+      const telefoneMudou = telefoneFinal !== clienteSelecionado.telefone
+      if ((telefoneMudou || !clienteSelecionado.foto_url) && telefoneFinal) {
+        whatsappService.buscarFotoPerfil(telefoneFinal).then(async (fotoUrl) => {
           if (fotoUrl) {
             await supabase.from('devedores').update({ foto_url: fotoUrl }).eq('id', clienteSelecionado.id)
             carregarClientes()
@@ -2859,7 +2878,11 @@ Equipe ${nomeEmpresa}`
                   {/* Dados editáveis (sempre visíveis) */}
                   <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                     <Input size="md" label="Nome" value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)} />
-                    <Input size="md" label="Telefone" type="tel" maxLength={15} value={telefoneEdit} onChange={(e) => setTelefoneEdit(formatarTelefone(e.target.value))} />
+                    <Input size="md" label="Telefone" type="tel" maxLength={15}
+                      disabled={menorEdit}
+                      helper={menorEdit ? 'Usa o telefone do responsável' : undefined}
+                      value={menorEdit ? responsavelTelefoneEdit : telefoneEdit}
+                      onChange={(e) => !menorEdit && setTelefoneEdit(formatarTelefone(e.target.value))} />
                     <Input size="md" label="CPF/CNPJ" maxLength={18} placeholder="000.000.000-00" value={cpfEdit} onChange={(e) => setCpfEdit(formatarCpfCnpj(e.target.value))} />
                     <Input size="md" label="E-mail" type="email" placeholder="email@exemplo.com" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} />
                     <DateField size="md" label="Nascimento" value={dataNascimentoEdit} onChange={setDataNascimentoEdit} />
@@ -2867,8 +2890,30 @@ Equipe ${nomeEmpresa}`
                       value={diaVencimentoEdit}
                       onChange={(e) => { const val = e.target.value; if (val === '' || (Number(val) >= 1 && Number(val) <= 31)) setDiaVencimentoEdit(val) }}
                       onFocus={(e) => e.target.select()} />
-                    <Input size="md" label="Responsável Legal" placeholder="Nome do responsável" value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} />
-                    <Input size="md" label="Tel. Responsável" type="tel" maxLength={15} placeholder="(00) 00000-0000" value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} />
+                    {/* Toggle Responsável (mesmo comportamento do modal de cadastro) */}
+                    <div style={{ gridColumn: '1 / -1', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid var(--neutral-300, #CBD5E1)', overflow: 'hidden' }}>
+                      <div style={{ padding: '12px 14px' }}>
+                        <Switch
+                          labelPosition="left"
+                          checked={menorEdit}
+                          onChange={(e) => setMenorEdit(e.target.checked)}
+                          label={
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: '#475569' }}>
+                              <Icon icon="mdi:account-child-outline" width="18" style={{ color: '#94a3b8' }} />
+                              Aluno menor de idade?
+                            </span>
+                          }
+                        />
+                      </div>
+                      {menorEdit && (
+                        <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', padding: '0 14px 14px' }}>
+                          <Input size="md" label="Responsável Legal" required placeholder="Nome do responsável" style={{ minWidth: 0 }}
+                            value={responsavelNomeEdit} onChange={(e) => setResponsavelNomeEdit(e.target.value)} />
+                          <Input size="md" label="Tel. Responsável" required type="tel" maxLength={15} placeholder="(00) 00000-0000" style={{ minWidth: 0 }}
+                            value={responsavelTelefoneEdit} onChange={(e) => setResponsavelTelefoneEdit(formatarTelefone(e.target.value))} />
+                        </div>
+                      )}
+                    </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>Tags / Turmas</label>
                       <TagInput
