@@ -2,13 +2,30 @@
 // Mantidos aqui (e não em cada componente) porque a caixa, o kanban e a fila
 // de follow-up formatam as mesmas coisas do mesmo jeito.
 
+// Colunas do funil de follow-up (sql-funil-leads-v3.sql, funilFollowup.json).
+// Coluna de toque = "esse toque JÁ FOI ENVIADO"; o board calcula o próximo.
+// criou_conta / pagante / churn são automáticas (sync_mensalli_leads).
+// 'perdido' é o id histórico da coluna "Fora do funil".
 export const COLUNAS = [
-  { id: 'novo',        titulo: 'Novo',        cor: '#3b82f6', bg: '#eff6ff', hint: 'Mandou mensagem, sem resposta ainda' },
-  { id: 'conversando', titulo: 'Conversando', cor: '#8b5cf6', bg: '#f5f3ff', hint: 'Papo em andamento' },
-  { id: 'aguardando',  titulo: 'Aguardando',  cor: '#f59e0b', bg: '#fffbeb', hint: 'Disse que ia pensar/esperar' },
-  { id: 'criou_conta', titulo: 'Criou conta', cor: '#06b6d4', bg: '#ecfeff', hint: 'Está no trial', auto: true },
-  { id: 'pagante',     titulo: 'Pagante',     cor: '#16a34a', bg: '#f0fdf4', hint: 'Virou cliente', auto: true },
-  { id: 'perdido',     titulo: 'Perdido',     cor: '#94a3b8', bg: '#f8fafc', hint: 'Sumiu ou disse não' }
+  { id: 'conversando', titulo: 'Conversando',   cor: '#8b5cf6', bg: '#f5f3ff', hint: 'Papo em andamento' },
+  { id: 'aguardando',  titulo: 'Aguardando',    cor: '#f59e0b', bg: '#fffbeb', hint: 'Pediu pra chamar outro dia' },
+  { id: 'a_toque_1',   titulo: 'Toque 1',       cor: '#0ea5e9', bg: '#f0f9ff', hint: 'Enviado · próximo no D3' },
+  { id: 'a_toque_2',   titulo: 'Toque 2',       cor: '#0ea5e9', bg: '#f0f9ff', hint: 'Enviado · próximo no D7' },
+  { id: 'a_toque_3',   titulo: 'Toque 3',       cor: '#0284c7', bg: '#f0f9ff', hint: 'Enviado · próximo no D14' },
+  { id: 'a_toque_4',   titulo: 'Toque 4',       cor: '#0369a1', bg: '#f0f9ff', hint: 'Enviado · próximo no D24' },
+  { id: 'a_toque_5',   titulo: 'Toque 5',       cor: '#075985', bg: '#f0f9ff', hint: 'Enviado · despedida no D36' },
+  { id: 'a_final',     titulo: 'Despedida',     cor: '#64748b', bg: '#f1f5f9', hint: 'Enviada · 3 dias e sai' },
+  { id: 'criou_conta', titulo: 'Criou conta',   cor: '#06b6d4', bg: '#ecfeff', hint: 'Teste e ativação', auto: true },
+  { id: 'pagante',     titulo: 'Pagante',       cor: '#16a34a', bg: '#f0fdf4', hint: 'Virou cliente', auto: true },
+  { id: 'churn',       titulo: 'Churn',         cor: '#dc2626', bg: '#fef2f2', hint: 'Pagou e cancelou', auto: true },
+  { id: 'perdido',     titulo: 'Fora do funil', cor: '#94a3b8', bg: '#f8fafc', hint: 'Reaquecimento 30/60/90' }
+]
+
+export const MOTIVOS_SAIDA = [
+  { value: 'esgotou',      label: 'Esgotou a sequência (reaquece 30/60/90)' },
+  { value: 'preco_timing', label: 'Não agora: preço ou momento (só o de 90 dias)' },
+  { value: 'nao_claro',    label: 'Disse não / pediu pra parar (nada mais)' },
+  { value: 'sem_fit',      label: 'Não tem perfil (nada mais)' }
 ]
 
 // As quatro filas de silêncio do playbook (docs/playbook-leads-campanha.html).
@@ -98,9 +115,10 @@ export const rotuloTipo = (tipo) => ROTULO_TIPO[tipo] || 'Anexo'
 export function resolverVariaveis(texto, lead) {
   if (!texto) return ''
   const plano = planoPara(lead?.alunos)
-  const primeiroNome = String(lead?.nome || '').trim().split(/\s+/)[0] || ''
+  const primeiroNome = String(lead?.nome || lead?.usuario_nome || '').trim().split(/\s+/)[0] || ''
 
   const valores = {
+    seu_nome: 'Caio',
     nome: primeiroNome,
     alunos: lead?.alunos ? String(lead.alunos) : '',
     nicho: lead?.nicho || '',

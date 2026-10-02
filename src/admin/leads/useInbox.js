@@ -129,8 +129,15 @@ export function useInbox(isAdmin) {
 
   const salvarLead = useCallback(async (leadId, patch) => {
     const anterior = leads.find(l => l.id === leadId)
-    const comData = { ...patch, updated_at: new Date().toISOString() }
-    aplicarLocal(leadId, comData)
+    const agora = new Date().toISOString()
+    const comData = { ...patch, updated_at: agora }
+    // Espelho do trigger trg_mensalli_leads_etapa_desde: troca de etapa zera o
+    // contador e o sub-passo. Só local — o banco faz o mesmo sozinho.
+    const espelho = anterior && patch.status && patch.status !== anterior.status
+      ? { etapa_desde: agora, passo: null, passo_em: null, remarcacoes: 0,
+          ...(patch.status !== 'perdido' ? { arquivado: false, motivo_saida: null } : {}) }
+      : {}
+    aplicarLocal(leadId, { ...comData, ...espelho, ...(patch.passo !== undefined ? { passo: patch.passo, passo_em: patch.passo_em } : {}) })
     const { error } = await supabase.from('mensalli_leads').update(comData).eq('id', leadId)
     if (error) {
       if (anterior) aplicarLocal(leadId, anterior)

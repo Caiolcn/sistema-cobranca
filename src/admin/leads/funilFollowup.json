@@ -1,0 +1,317 @@
+[
+  {
+    "id": "a_toque_1",
+    "titulo": "Toque 1",
+    "trilha": "a",
+    "dia": 1,
+    "objetivo": "Reabrir com a oferta da lista",
+    "mensagens": [
+      "{{nome}}, ficou alguma dúvida de como funciona pra {{nicho}}? Se preferir, me manda a lista dos seus alunos (pode ser print da planilha ou foto do caderno) que eu deixo tudo montado pra você ver rodando. Consegue me mandar hoje?",
+      "Oi {{nome}}, o jeito mais rápido de testar é você me mandar a lista dos alunos e eu monto tudo. Quer que eu te mostre antes como o lembrete chega no zap do aluno?"
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "a_toque_2"
+  },
+  {
+    "id": "a_toque_2",
+    "titulo": "Toque 2",
+    "trilha": "a",
+    "dia": 3,
+    "objetivo": "Prova concreta e tirar o medo de configurar",
+    "mensagens": [
+      "{{nome}}, {{caso}}. Dá pra fazer o mesmo com os seus {{alunos}} alunos. Me manda a lista que eu monto?",
+      "{{nome}}, o que mais trava é achar que dá trabalho configurar. Não dá: você só me manda a lista e eu cadastro tudo. Quer ver um print de como a cobrança aparece pro aluno?",
+      "{{nome}}, nem precisa organizar tudo pra testar. Se me mandar uns 3 alunos com valor e vencimento, eu monto um exemplo pra você ver funcionando. Quer fazer assim?"
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "a_toque_3"
+  },
+  {
+    "id": "a_toque_3",
+    "titulo": "Toque 3",
+    "trilha": "a",
+    "dia": 7,
+    "objetivo": "Áudio pessoal para reduzir esforço",
+    "mensagens": [
+      "[ÁUDIO] Oi {{nome}}, é o {{seu_nome}}, do Mensalli. Passando rapidinho: sei que a rotina de {{nicho}} é corrida. Se você me mandar a lista dos seus alunos aqui no zap, eu monto tudo e você só confere, sem compromisso. Pode ser?",
+      "{{nome}}, sem pressão. Se você me mandar a lista dos {{alunos}} alunos, eu monto e você só olha rodando. Quer que eu te explique em 3 linhas como funciona?"
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "a_toque_4"
+  },
+  {
+    "id": "a_toque_4",
+    "titulo": "Toque 4",
+    "trilha": "a",
+    "dia": 14,
+    "objetivo": "Custo do atraso e preço do plano certo",
+    "mensagens": [
+      "{{nome}}, quantos dos seus {{alunos}} alunos costumam atrasar a mensalidade no mês? Se forem uns 5 ou mais, recuperar uma ou duas mensalidades já costuma pagar o sistema. Me conta quantos são?",
+      "{{nome}}, pra quem tem {{alunos}} alunos o plano {{plano}} sai R$ {{preco}}/mês, sem fidelidade. Quer que eu monte seu teste de 3 dias pra você ver antes de decidir?",
+      "{{nome}}, uma dúvida que ficou: você está hoje mais perto de 50, 150 ou 500 alunos? Dependendo disso eu consigo te mostrar exatamente como eu montaria sua cobrança."
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "a_toque_5"
+  },
+  {
+    "id": "a_toque_5",
+    "titulo": "Toque 5",
+    "trilha": "a",
+    "dia": 24,
+    "objetivo": "Checar timing e abrir caminho pra Aguardando",
+    "mensagens": [
+      "{{nome}}, ainda faz sentido pra você agora, ou é melhor eu te chamar mais pra frente? Se for, me fala um mês que eu anoto aqui.",
+      "Oi {{nome}}, não quero te encher. Prefere que eu retome em algum mês específico ou posso montar seu teste agora?"
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "a_final"
+  },
+  {
+    "id": "a_final",
+    "titulo": "Despedida",
+    "trilha": "a",
+    "dia": 36,
+    "objetivo": "Despedida que deixa a porta aberta",
+    "mensagens": [
+      "{{nome}}, vou parar de te chamar pra não encher seu zap. Se um dia cansar de cobrar aluno no braço, é só me mandar um \"quero\" aqui que eu monto tudo pra você, a qualquer hora. Valeu pela conversa!",
+      "Fechando por aqui, {{nome}}! Quando quiser testar com a sua lista de alunos, me chama e eu monto na hora. É só mandar um \"oi\"."
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "fora_do_funil"
+  },
+  {
+    "id": "aguardando_dia",
+    "titulo": "Aguardando: dia combinado",
+    "trilha": "b",
+    "dia": 0,
+    "objetivo": "Retomar no dia combinado",
+    "mensagens": [
+      "{{nome}}, chegou o dia que combinamos! Consegue me mandar a lista dos alunos agora, ou prefere que eu volte à tarde?",
+      "Oi {{nome}}, lembra que ficamos de falar hoje? Me manda a lista que eu monto ainda hoje, posso?"
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "aguardando_reforco"
+  },
+  {
+    "id": "aguardando_reforco",
+    "titulo": "Aguardando: reforço",
+    "trilha": "b",
+    "dia": 3,
+    "objetivo": "Segundo toque ou remarcar (máx. 2 remarcações)",
+    "mensagens": [
+      "{{nome}}, a semana apertou por aí? Sem problema. Prefere que eu te chame de novo em outro dia, ou já adianto a montagem com a lista?",
+      "{{nome}}, só confirmando: quer que eu retome na semana que vem? Me diz um dia que eu anoto."
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "a_toque_3"
+  },
+  {
+    "id": "conta_1",
+    "titulo": "Conta: dia 0",
+    "trilha": "c",
+    "dia": 0,
+    "objetivo": "Conseguir a lista e importar os alunos",
+    "mensagens": [
+      "{{nome}}, vi que você criou a conta, bora! Me manda a lista dos alunos (nome, WhatsApp, dia de vencimento e valor) que eu cadastro por você. Pode ser print?",
+      "Conta criada! Quer que eu importe seus {{alunos}} alunos pra você? É só me mandar a lista."
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_2"
+  },
+  {
+    "id": "conta_2",
+    "titulo": "Conta: dia 1",
+    "trilha": "c",
+    "dia": 1,
+    "objetivo": "Destravar a conexão do WhatsApp",
+    "mensagens": [
+      "[ÁUDIO] {{nome}}, é o {{seu_nome}}. Queria saber se você já conseguiu conectar seu WhatsApp no sistema. Se travou em algum passo, me fala qual que eu resolvo agora.",
+      "{{nome}}, já conseguiu conectar o WhatsApp? Se travou, me manda um print da tela que eu te guio."
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_3"
+  },
+  {
+    "id": "conta_3",
+    "titulo": "Conta: dia 2",
+    "trilha": "c",
+    "dia": 2,
+    "objetivo": "Fazer ver um lembrete saindo antes do fim do teste",
+    "mensagens": [
+      "{{nome}}, seu teste termina amanhã. Já deu pra ver um lembrete saindo pro aluno? Se não, me manda 3 alunos que eu disparo um de teste agora pra você ver.",
+      "{{nome}}, falta 1 dia de teste. Quer que eu cadastre seus alunos hoje pra você aproveitar?"
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_fim_teste"
+  },
+  {
+    "id": "conta_fim_teste",
+    "titulo": "Conta: fim do teste",
+    "trilha": "c",
+    "dia": 3,
+    "objetivo": "Último dia do teste: colocar pelo menos uma cobrança real pra rodar",
+    "mensagens": [
+      "{{nome}}, seu teste termina hoje e não queria que você saísse sem ver uma cobrança rodando de verdade. Me manda 3 alunos (nome, WhatsApp, vencimento e valor) que eu deixo funcionando agora?",
+      "Último dia de teste, {{nome}}! Antes de decidir, quer que eu coloque pelo menos um aluno pra receber a cobrança hoje? Leva 2 minutos."
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_4"
+  },
+  {
+    "id": "conta_4",
+    "titulo": "Conta: dia 5",
+    "trilha": "c",
+    "dia": 5,
+    "objetivo": "Converter no plano certo após o teste",
+    "mensagens": [
+      "[ÁUDIO] {{nome}}, seu teste acabou. Pelo que você me contou, o plano {{plano}} (R$ {{preco}}/mês, sem fidelidade) é o que cabe. Quer que eu deixe ativo e com os alunos importados hoje?",
+      "{{nome}}, deu pra ver o sistema funcionando? Se fez sentido, ativo seu plano {{plano}} agora. Posso ativar?"
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_5"
+  },
+  {
+    "id": "conta_5",
+    "titulo": "Conta: dia 8",
+    "trilha": "c",
+    "dia": 8,
+    "objetivo": "Diagnosticar o que travou, sem desconto",
+    "mensagens": [
+      "{{nome}}, posso te perguntar uma coisa? O que travou: falta de tempo pra configurar, dúvida no sistema ou o valor? Me fala sem filtro que eu te ajudo no que for.",
+      "{{nome}}, quero entender o que faltou pra você seguir. Foi tempo, dúvida ou preço? Qualquer resposta ajuda."
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_6"
+  },
+  {
+    "id": "conta_6",
+    "titulo": "Conta: dia 15",
+    "trilha": "c",
+    "dia": 15,
+    "objetivo": "Oferecer reabrir o teste já configurado",
+    "mensagens": [
+      "{{nome}}, se ainda existe a dor de cobrar aluno no braço, posso reabrir seu teste por mais 3 dias com a lista já importada. Topa ver rodando?",
+      "{{nome}}, que tal eu deixar tudo configurado pra você e você só testa? Me confirma se posso reabrir."
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "conta_7"
+  },
+  {
+    "id": "conta_7",
+    "titulo": "Conta: dia 30",
+    "trilha": "c",
+    "dia": 30,
+    "objetivo": "Despedida que deixa a porta aberta",
+    "mensagens": [
+      "{{nome}}, vou parar de te chamar. Sua conta fica guardada, e quando quiser retomar é só me mandar um \"quero\" que eu reativo tudo com seus alunos.",
+      "Fechando por aqui, {{nome}}! Quando fizer sentido, me chama que eu monto tudo de novo em minutos. Combinado?"
+    ],
+    "se_responder": "criou_conta",
+    "se_nao_responder": "fora_do_funil"
+  },
+  {
+    "id": "pagante_d2",
+    "titulo": "Pagante: dia 2",
+    "trilha": "f",
+    "dia": 2,
+    "objetivo": "Confirmar que as primeiras cobranças saíram",
+    "mensagens": [
+      "{{nome}}, deu tudo certo com os primeiros envios? Ficou alguma coisa que você quer ajustar?",
+      "{{nome}}, passando pra ver se as primeiras cobranças já saíram pros seus alunos. Algum aluno estranhou ou ficou alguma dúvida?"
+    ],
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante_d7"
+  },
+  {
+    "id": "pagante_d7",
+    "titulo": "Pagante: dia 7",
+    "trilha": "f",
+    "dia": 7,
+    "objetivo": "Virar rotina: tirar o que ainda é manual",
+    "mensagens": [
+      "{{nome}}, agora que rodou alguns dias, tem alguma parte da cobrança que você ainda está fazendo manualmente e queria tirar da sua mão?",
+      "{{nome}}, já deu uma semana rodando. Algum aluno já pagou pelo link da cobrança? Se quiser, te mostro onde ver quem já pagou e quem está em atraso."
+    ],
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "churn_1",
+    "titulo": "Churn: motivo",
+    "trilha": "d",
+    "dia": 2,
+    "objetivo": "Entender o motivo do cancelamento",
+    "mensagens": [
+      "[ÁUDIO] {{nome}}, vi que você cancelou, sem problema nenhum! Só queria entender o que pesou: valor, pouco uso ou algo que não funcionou? Isso me ajuda a melhorar.",
+      "{{nome}}, posso te perguntar o motivo do cancelamento? Qualquer resposta ajuda e não vou tentar te convencer de nada."
+    ],
+    "se_responder": "churn",
+    "se_nao_responder": "churn_2"
+  },
+  {
+    "id": "churn_2",
+    "titulo": "Churn: dia 30",
+    "trilha": "d",
+    "dia": 30,
+    "objetivo": "Reativar com base no motivo",
+    "mensagens": [
+      "{{nome}}, passando pra contar que [ajuste ligado ao motivo dele]. Quer que eu reative sua conta com os alunos já cadastrados?",
+      "{{nome}}, como estão as cobranças dos alunos de {{nicho}} aí? Sua conta ainda está guardada. Quer voltar?",
+      "{{nome}}, como ficaram as cobranças aí depois que saiu do Mensalli? Voltou a fazer manualmente ou encontrou outra solução?"
+    ],
+    "se_responder": "churn",
+    "se_nao_responder": "churn_3"
+  },
+  {
+    "id": "churn_3",
+    "titulo": "Churn: dia 90",
+    "trilha": "d",
+    "dia": 90,
+    "objetivo": "Última reativação leve",
+    "mensagens": [
+      "{{nome}}, sua conta continua guardada com todos os alunos. Se quiser voltar, reativo em 5 minutos. Faz sentido?",
+      "{{nome}}, última passada por aqui: se a cobrança dos alunos voltou a dar dor de cabeça, me chama que eu reativo tudo. Posso reativar?"
+    ],
+    "se_responder": "churn",
+    "se_nao_responder": "fora_do_funil"
+  },
+  {
+    "id": "reaq_30",
+    "titulo": "Reaquecer 30",
+    "trilha": "e",
+    "dia": 30,
+    "objetivo": "Reabrir com a lista de alunos",
+    "mensagens": [
+      "{{nome}}, faz um mês que a gente conversou. Virou o mês e voltou a correria de cobrar mensalidade? Se quiser, me manda a lista que eu monto.",
+      "{{nome}}, mudou algo por aí desde a nossa conversa? Se a cobrança ainda é manual, me manda a lista dos alunos que eu monto o teste."
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "reaq_60"
+  },
+  {
+    "id": "reaq_60",
+    "titulo": "Reaquecer 60",
+    "trilha": "e",
+    "dia": 60,
+    "objetivo": "Valor leve e pergunta fácil",
+    "mensagens": [
+      "Dica rápida pra {{nicho}}: mandar um lembrete 2 dias antes do vencimento costuma reduzir bastante o atraso. Quer ver como fica automático?",
+      "{{nome}}, uma pergunta rápida: hoje você cobra aluno por mensagem manual ou já tem algo automático?"
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "reaq_90"
+  },
+  {
+    "id": "reaq_90",
+    "titulo": "Reaquecer 90",
+    "trilha": "e",
+    "dia": 90,
+    "objetivo": "Última tentativa e arquivo",
+    "mensagens": [
+      "{{nome}}, última passada: se a cobrança dos alunos ainda toma seu tempo, me manda a lista e eu monto tudo. Posso contar com a lista?",
+      "{{nome}}, deixo meu contato aqui. Quando fizer sentido testar com seus alunos, me manda um \"quero\" e eu monto na hora."
+    ],
+    "se_responder": "conversando",
+    "se_nao_responder": "arquivo"
+  }
+]
