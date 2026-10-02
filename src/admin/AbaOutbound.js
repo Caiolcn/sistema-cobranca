@@ -80,10 +80,17 @@ export default function AbaOutbound() {
     try {
       const dados = JSON.parse(jsonString)
 
-      // Se for um objeto com propriedade "contatos", usa aquela
-      // Senão, trata como array direto
-      let contatosArray = Array.isArray(dados) ? dados : (dados.contatos || [dados])
-      if (!Array.isArray(contatosArray)) {
+      let contatosArray = dados
+      // Se for array com 1 objeto que tem "contatos", desembrulha
+      if (Array.isArray(contatosArray) && contatosArray.length === 1 && contatosArray[0]?.contatos) {
+        contatosArray = contatosArray[0].contatos
+      }
+      // Se for um único objeto com "contatos", extrai
+      else if (!Array.isArray(contatosArray) && contatosArray?.contatos) {
+        contatosArray = contatosArray.contatos
+      }
+      // Se não for array, encapsula
+      else if (!Array.isArray(contatosArray)) {
         contatosArray = [contatosArray]
       }
 
