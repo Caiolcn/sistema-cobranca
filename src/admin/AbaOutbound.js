@@ -79,7 +79,13 @@ export default function AbaOutbound() {
   async function processarJSON(jsonString) {
     try {
       const dados = JSON.parse(jsonString)
-      const contatosArray = Array.isArray(dados) ? dados : [dados]
+
+      // Se for um objeto com propriedade "contatos", usa aquela
+      // Senão, trata como array direto
+      let contatosArray = Array.isArray(dados) ? dados : (dados.contatos || [dados])
+      if (!Array.isArray(contatosArray)) {
+        contatosArray = [contatosArray]
+      }
 
       setLoading(true)
       for (const contato of contatosArray) {
