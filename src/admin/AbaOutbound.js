@@ -4,7 +4,7 @@ import { getDailyList, getLeads, updateLead, getStats, createLead } from '../api
 import { Icon } from '@iconify/react'
 import Button from '../design-system/components/Button'
 import Card from '../design-system/components/Card'
-import { MdCheck, MdContentCopy, MdPhone } from 'react-icons/md'
+import { MdCheck, MdContentCopy, MdPhone, MdPlace } from 'react-icons/md'
 import { FaInstagram } from 'react-icons/fa'
 import './AbaOutbound.css'
 
@@ -226,6 +226,11 @@ export default function AbaOutbound() {
                     {lead.telefone && (
                       <a href={`https://wa.me/55${lead.telefone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
                         <MdPhone /> {lead.telefone}
+                      </a>
+                    )}
+                    {lead.google_maps_url && (
+                      <a href={lead.google_maps_url} target="_blank" rel="noreferrer">
+                        <MdPlace /> Ver no Maps
                       </a>
                     )}
                   </div>
