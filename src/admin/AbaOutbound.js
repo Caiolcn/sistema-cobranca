@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from 'react'
 import { useUser } from '../contexts/UserContext'
-import { getDailyList, getLeads, updateLead, getStats } from '../api/outbound'
+import { getDailyList, getLeads, updateLead, getStats, createLead } from '../api/outbound'
 import { Icon } from '@iconify/react'
 import Button from '../design-system/components/Button'
 import Card from '../design-system/components/Card'
@@ -74,6 +74,37 @@ export default function AbaOutbound() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  async function handleImportJSON(event) {
+    const file = event.target.files[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const dados = JSON.parse(text)
+      const contatosArray = Array.isArray(dados) ? dados : [dados]
+
+      setLoading(true)
+      for (const contato of contatosArray) {
+        await createLead(instanceId, {
+          nome: contato.nome,
+          vertical: contato.vertical,
+          instagram_handle: contato.instagram_handle || '',
+          telefone: contato.telefone,
+          google_maps_url: contato.google_maps_url,
+          mensagem_template: contato.mensagem_template
+        })
+      }
+
+      loadData()
+      alert(`✅ ${contatosArray.length} contatos importados com sucesso!`)
+    } catch (err) {
+      alert(`❌ Erro ao importar: ${err.message}`)
+    } finally {
+      setLoading(false)
+      event.target.value = ''
+    }
+  }
+
   return (
     <div className="aba-outbound">
       {/* Tabs */}
@@ -107,6 +138,20 @@ export default function AbaOutbound() {
             <div>
               <h3>Contatos para abordar hoje</h3>
               <p>{new Date().toLocaleDateString('pt-BR')}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <label style={{ cursor: 'pointer' }}>
+                <Button variant="primary" icon="mdi:upload" as="span">
+                  Importar JSON
+                </Button>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportJSON}
+                  style={{ display: 'none' }}
+                  disabled={loading}
+                />
+              </label>
             </div>
           </div>
 

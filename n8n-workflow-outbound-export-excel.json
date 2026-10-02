@@ -1,0 +1,179 @@
+{
+  "name": "Outbound Daily List - Exportar Excel",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "type": "hours",
+              "value": 24
+            }
+          ],
+          "triggerAtStartup": false,
+          "timezone": "America/Sao_Paulo",
+          "cronExpression": "0 6 * * *"
+        }
+      },
+      "id": "24808295-e5b4-46cf-8cad-efa9b269ad99",
+      "name": "Cron 6h (UTC-3)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const verticais = [\n  { termo: 'pilates Goiânia', nicho: 'pilates', quantidade: 5 },\n  { termo: 'CT de luta Goiânia', nicho: 'luta', quantidade: 5 },\n  { termo: 'escola de natação Goiânia', nicho: 'natacao', quantidade: 5 },\n  { termo: 'escola de idioma Goiânia', nicho: 'idioma', quantidade: 5 },\n  { termo: 'personal trainer Goiânia', nicho: 'personal', quantidade: 5 },\n  { termo: 'escola de ballet Goiânia', nicho: 'ballet', quantidade: 5 }\n];\nreturn verticais;"
+      },
+      "id": "f6641222-7460-471c-9f8b-bc1841a102e8",
+      "name": "Mapear verticais",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $node[\"Mapear verticais\"].json.termo }}"
+            },
+            {
+              "name": "location",
+              "value": "-15.7942,48.3279"
+            },
+            {
+              "name": "radius",
+              "value": "15000"
+            },
+            {
+              "name": "key",
+              "value": "YOUR_GOOGLE_MAPS_API_KEY"
+            },
+            {
+              "name": "language",
+              "value": "pt-BR"
+            }
+          ]
+        }
+      },
+      "id": "ad92b17c-ca77-42ce-b48e-552d85423611",
+      "name": "Google Maps Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -320,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all()[0].json.results || [];\nconst verticai = $node[\"Mapear verticais\"].json;\nconst quantidade = verticai.quantidade;\n\nconst contatos = results.slice(0, quantidade).map((place) => ({\n  nome: place.name,\n  telefone: place.formatted_address || '',\n  google_maps_url: `https://maps.google.com/?q=${place.name}`,\n  instagram_handle: '',\n  vertical: verticai.nicho,\n  mensagem_template: gerarMensagem(verticai.nicho, place.name)\n}));\n\nfunction gerarMensagem(nicho, nome) {\n  const templates = {\n    pilates: `Oi! Vi que você gerencia o ${nome}. Você usa algo pra gerenciar mensalidades e enviar cobranças pelo WhatsApp? Desenvolvemos uma solução feita pra estúdios de pilates. Bora ver uma demo?`,\n    luta: `E aí! Vi que você coordena o ${nome}. Você usa sistema pra gerenciar alunos, cobrar mensalidade e enviar lembretes? Desenvolvemos uma solução exatamente pra CTs de luta. Bora ver?`,\n    natacao: `Olá! Vi que você é responsável pela ${nome}. Você tem algum sistema pra gerenciar alunos e cobranças? Temos uma solução feita pra escolas de natação. Quer conhecer?`,\n    idioma: `Oi! Vi que você gerencia o ${nome}. Você usa algo pra gerenciar mensalidades dos alunos e enviar cobranças pelo WhatsApp? Temos uma solução perfeita pra escolas de idioma. Bora ver?`,\n    personal: `Fala! Vi que você é personal trainer no ${nome}. Você usa sistema pra gerenciar clientes e cobranças? Desenvolvemos uma solução pra personais que automatiza mensalidades. Quer conhecer?`,\n    ballet: `Olá! Vi que você gerencia o ${nome}. Você tem algum sistema pra gerenciar alunas e cobranças? Temos uma solução feita pra escolas de ballet. Quer conferir?`\n  };\n  return templates[nicho] || 'Oi! Você gerencia um estabelecimento? Temos uma solução pra cobrança de mensalidades no WhatsApp. Posso fazer uma demo?';\n}\n\nreturn contatos;"
+      },
+      "id": "e4399c98-e21b-4a93-8322-2eba8e53e9f9",
+      "name": "Formatar contatos + Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const contatos = $input.all().map(item => item.json);\n\nreturn [{ contatos: contatos, json: JSON.stringify(contatos, null, 2) }];"
+      },
+      "id": "json-formatter-123",
+      "name": "Formatar JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        200,
+        560
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "bcdc0a01-da14-4bca-b931-a1fb10a4b680",
+      "name": "Sucesso",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        600,
+        560
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron 7h (UTC-3)": {
+      "main": [
+        [
+          {
+            "node": "Mapear verticais",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapear verticais": {
+      "main": [
+        [
+          {
+            "node": "Google Maps Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Maps Search": {
+      "main": [
+        [
+          {
+            "node": "Formatar contatos + Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar contatos + Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Formatar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar JSON": {
+      "main": [
+        [
+          {
+            "node": "Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
