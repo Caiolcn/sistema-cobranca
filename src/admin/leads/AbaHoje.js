@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react'
 import Button from '../../design-system/components/Button'
 import EmptyState from '../../design-system/components/EmptyState'
 import { sugerirAtalho } from './Composer'
+import { ehOutbound } from './ListaConversas'
 import { FILAS, formatarDataCurta, hojeISO, tempoDesde, resolverVariaveis } from './utils'
 
 // A fila de follow-up: quem precisa de um toque hoje, e qual toque é.
@@ -16,14 +17,15 @@ export default function AbaHoje({ inbox, respostas, onAbrirConversa }) {
   const [adiando, setAdiando] = useState(null)
   const hoje = hojeISO()
 
+  // Follow-up do Outbound é no CRM do Outbound, não aqui
   const vencidos = useMemo(() => (
     leads
-      .filter(l => l.toque_vencido && l.status !== 'perdido')
+      .filter(l => l.toque_vencido && l.status !== 'perdido' && !ehOutbound(l))
       .sort((a, b) => String(a.proximo_toque_em).localeCompare(String(b.proximo_toque_em)))
   ), [leads])
 
   const lembretes = useMemo(() => (
-    leads.filter(l => l.retornar_em && l.retornar_em <= hoje && !l.toque_vencido && l.status !== 'perdido')
+    leads.filter(l => l.retornar_em && l.retornar_em <= hoje && !l.toque_vencido && l.status !== 'perdido' && !ehOutbound(l))
   ), [leads, hoje])
 
   const adiar = async (lead, dias) => {

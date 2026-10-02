@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { useUser } from '../contexts/UserContext'
-import { getLeads, updateLead, createBulkLeads, syncOutbound } from '../api/outbound'
+import { getLeads, updateLead, createBulkLeads } from '../api/outbound'
 import Button from '../design-system/components/Button'
 import Tabs from '../design-system/components/Tabs'
 import Modal from '../design-system/components/Modal'
@@ -14,7 +14,7 @@ import { hojeISO } from './leads/utils'
 import './AbaOutbound.css'
 
 // Outbound: lista do dia (10 contatos importados do Google), CRM em kanban e
-// métricas. O sync roda na carga: Respondeu / Criou conta / Fechado.
+// métricas. Tudo manual: nenhum card muda de etapa sozinho.
 
 const ABAS = [
   { value: 'daily',    label: 'Lista do dia', icon: 'mdi:format-list-checks' },
@@ -50,12 +50,9 @@ export default function AbaOutbound() {
     setParams(p)
   }
 
-  const loadData = useCallback(async ({ sync = false } = {}) => {
+  const loadData = useCallback(async () => {
     if (!instanceId) return
     try {
-      if (sync) {
-        try { await syncOutbound() } catch (e) { console.warn('[outbound]', e.message) }
-      }
       setLeads(await getLeads(instanceId) || [])
     } catch (err) {
       console.error(err.message)
@@ -64,7 +61,7 @@ export default function AbaOutbound() {
     }
   }, [instanceId])
 
-  useEffect(() => { loadData({ sync: true }) }, [loadData])
+  useEffect(() => { loadData() }, [loadData])
 
   // Otimista: a tela muda na hora e o reload traz o que o trigger preencheu
   // (etapa_desde, data_abordagem, data_resposta).
@@ -102,7 +99,7 @@ export default function AbaOutbound() {
 
       const inseridos = await createBulkLeads(instanceId, contatos)
       const repetidos = contatos.length - inseridos.length
-      await loadData({ sync: true })
+      await loadData()
       setShowImportModal(false)
       setJsonText('')
       alert(`✅ ${inseridos.length} contatos importados` + (repetidos > 0 ? ` (${repetidos} já existiam e foram ignorados)` : ''))
@@ -166,7 +163,7 @@ export default function AbaOutbound() {
           }))}
         />
         <Button variant="outline" size="sm" icon="mdi:refresh" loading={loading}
-          onClick={() => { setLoading(true); loadData({ sync: true }) }}>
+          onClick={() => { setLoading(true); loadData() }}>
           Atualizar
         </Button>
       </div>

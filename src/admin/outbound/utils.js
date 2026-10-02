@@ -1,14 +1,14 @@
-// Etapas do CRM de outbound (sql-outbound-crm.sql). Criou conta e Fechado são
-// automáticos (sync_outbound_leads); Respondeu também, quando a resposta chega
-// no WhatsApp do Mensalli — senão é arrasto.
+// Etapas do CRM de outbound (sql-outbound-crm.sql). Tudo manual, por decisão
+// do Caio (02/10/26): nenhum card muda de coluna sozinho. O trigger no banco
+// só registra as datas (etapa_desde, data_abordagem, data_resposta).
 export const COLUNAS_OUTBOUND = [
   { id: 'novo',          titulo: 'A abordar',    cor: '#64748b', bg: '#f8fafc', hint: 'Veio na lista do dia' },
   { id: 'abordado',      titulo: 'Abordado',     cor: '#0ea5e9', bg: '#f0f9ff', hint: '1ª mensagem enviada · follow-up em 2 dias' },
   { id: 'follow_up',     titulo: 'Follow-up',    cor: '#6366f1', bg: '#eef2ff', hint: 'Follow-up enviado · 3 dias e encerra' },
-  { id: 'respondeu',     titulo: 'Respondeu',    cor: '#8b5cf6', bg: '#f5f3ff', hint: 'Conversa aberta', auto: true },
+  { id: 'respondeu',     titulo: 'Respondeu',    cor: '#8b5cf6', bg: '#f5f3ff', hint: 'Conversa aberta' },
   { id: 'nao_respondeu', titulo: 'Sem resposta', cor: '#f59e0b', bg: '#fffbeb', hint: 'Não respondeu a nada' },
-  { id: 'trial_criado',  titulo: 'Criou conta',  cor: '#06b6d4', bg: '#ecfeff', hint: 'Telefone bateu com uma conta', auto: true },
-  { id: 'fechado',       titulo: 'Fechado',      cor: '#16a34a', bg: '#f0fdf4', hint: 'Virou pagante', auto: true },
+  { id: 'trial_criado',  titulo: 'Criou conta',  cor: '#06b6d4', bg: '#ecfeff', hint: 'Criou conta no Mensalli' },
+  { id: 'fechado',       titulo: 'Fechado',      cor: '#16a34a', bg: '#f0fdf4', hint: 'Virou pagante' },
   { id: 'descartado',    titulo: 'Descartado',   cor: '#94a3b8', bg: '#f8fafc', hint: 'Sem interesse ou sem perfil' }
 ]
 

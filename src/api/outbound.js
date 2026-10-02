@@ -70,13 +70,6 @@ export async function updateLead(leadId, updates) {
   return data[0]
 }
 
-// Respondeu / Criou conta / Fechado automáticos (sql-outbound-crm.sql)
-export async function syncOutbound() {
-  const { data, error } = await supabase.rpc('sync_outbound_leads')
-  if (error) throw new Error(`Erro ao sincronizar outbound: ${error.message}`)
-  return data?.[0] || null
-}
-
 // Importa em lote; lugares já importados (mesmo place_id) são ignorados
 export async function createBulkLeads(instanceId, leads) {
   const formatted = leads.map(lead => ({

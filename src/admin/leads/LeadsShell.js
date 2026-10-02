@@ -12,6 +12,7 @@ import AbaCaixa from './AbaCaixa'
 import AbaHoje from './AbaHoje'
 import AbaFunil from './AbaFunil'
 import AbaMetricas from './AbaMetricas'
+import { ehOutbound } from './ListaConversas'
 
 /* ============================================================
    Leads de campanha — shell
@@ -82,7 +83,7 @@ export default function LeadsShell() {
   if (userLoading || !isAdmin) return null
 
   const esperando = inbox.leads.filter(l => l.esperando_resposta).length
-  const toquesHoje = inbox.leads.filter(l => l.toque_vencido).length
+  const toquesHoje = inbox.leads.filter(l => l.toque_vencido && l.status !== 'perdido' && !ehOutbound(l)).length
 
   // A view antiga não tem as colunas calculadas. Sem esse aviso, a caixa abre
   // vazia (o filtro padrão é "esperando você") e parece bug, não migration.

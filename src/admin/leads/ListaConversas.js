@@ -11,14 +11,20 @@ export const FILTROS = [
   { id: 'esperando', rotulo: 'Esperando você', icone: 'mdi:message-alert-outline' },
   { id: 'clientes',  rotulo: 'Clientes',       icone: 'mdi:account-check-outline' },
   { id: 'hoje',      rotulo: 'Toque hoje',     icone: 'mdi:calendar-clock' },
+  { id: 'outbound',  rotulo: 'Outbound',       icone: 'mdi:phone-outgoing' },
   { id: 'perdidos',  rotulo: 'Perdidos',       icone: 'mdi:account-off-outline' }
 ]
+
+// origem 'outbound' = respondeu a uma abordagem do Outbound (trigger no banco,
+// sql-leads-separar-outbound.sql). Fica na caixa, mas fora do funil da campanha.
+export const ehOutbound = (lead) => lead.origem === 'outbound'
 
 export function aplicarFiltro(leads, filtro) {
   switch (filtro) {
     case 'esperando': return leads.filter(l => l.esperando_resposta)
     case 'clientes':  return leads.filter(l => l.usuario_id)
     case 'hoje':      return leads.filter(l => l.toque_vencido)
+    case 'outbound':  return leads.filter(ehOutbound)
     case 'perdidos':  return leads.filter(l => l.status === 'perdido')
     default:          return leads.filter(l => l.status !== 'perdido')
   }
@@ -140,6 +146,9 @@ export default function ListaConversas({
                         fontSize: '10px', fontWeight: 700, color: '#fff', backgroundColor: '#16a34a',
                         borderRadius: '999px', padding: '1px 6px'
                       }}>{lead.nao_lidas}</span>
+                    )}
+                    {ehOutbound(lead) && (
+                      <span title="Respondeu a uma abordagem do Outbound" style={{ fontSize: '9.5px', fontWeight: 700, backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '4px', padding: '1px 5px' }}>OUTBOUND</span>
                     )}
                     {lead.plano_pago && (
                       <span style={{ fontSize: '9.5px', fontWeight: 700, backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px', padding: '1px 5px' }}>PAGANTE</span>

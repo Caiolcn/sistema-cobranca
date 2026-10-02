@@ -13,6 +13,7 @@ import {
 } from './utils'
 import { proximaAcao, diasNaEtapa, diasEntre, ehAudio, semMarcaAudio } from './funilFollowup'
 import { estiloColuna, ESTILO_CARD, ESTILO_TITULO_COLUNA, ESTILO_HINT_COLUNA } from '../kanbanEstilo'
+import { ehOutbound } from './ListaConversas'
 
 // Funil de follow-up (funilFollowup.json + funilFollowup.js).
 // Coluna de toque = "esse já foi". O card mostra há quantos dias está ali e
@@ -40,6 +41,8 @@ const ATALHOS_DATA = [
   { label: 'Próx. segunda', valor: proximaSegunda },
   { label: '+15 dias',      valor: () => addDias(15) }
 ]
+
+const ETAPAS_CLIENTE = ['criou_conta', 'pagante', 'churn']
 
 const tituloColuna = (id) => COLUNAS.find(c => c.id === id)?.titulo || id
 
@@ -128,6 +131,9 @@ function CardLead({ lead, acao, onAbrir, onDragStart, onDragEnd }) {
           <Tag bg="#f1f5f9" cor="#64748b">
             {lead.motivo_saida === 'preco_timing' ? 'Preço/momento' : lead.motivo_saida === 'sem_fit' ? 'Sem perfil' : 'Disse não'}
           </Tag>
+        )}
+        {ehOutbound(lead) && (
+          <Tag bg="#e0e7ff" cor="#3730a3" icon="mdi:phone-outgoing" title="Veio do Outbound Prospecting (fora das métricas da campanha)">Outbound</Tag>
         )}
         {lead.vinculo_manual && (
           <Tag bg="#eef2ff" cor="#3730a3" icon="mdi:link-variant" title="Contato extra de uma conta (fora das métricas)">
@@ -492,15 +498,20 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
 
   const hoje = hojeISO()
 
-  // Próxima ação calculada uma vez por lead
+  // Próxima ação calculada uma vez por lead. Quem veio do Outbound fica fora
+  // enquanto é prospect (o follow-up dele é no CRM do Outbound); depois que
+  // cria conta vira cliente como qualquer outro e entra no Funil — mas segue
+  // fora das métricas da campanha (vw_mensalli_lead_metricas).
   const comAcao = useMemo(
-    () => leads.map(l => ({ lead: l, acao: proximaAcao(l) })),
+    () => leads
+      .filter(l => !ehOutbound(l) || ETAPAS_CLIENTE.includes(l.status))
+      .map(l => ({ lead: l, acao: proximaAcao(l) })),
     [leads]
   )
 
   const fila = comAcao.filter(x => x.acao && x.acao.due <= hoje)
   const atrasados = fila.filter(x => x.acao.due < hoje).length
-  const arquivados = leads.filter(l => l.arquivado).length
+  const arquivados = comAcao.filter(x => x.lead.arquivado).length
 
   const filtrados = useMemo(() => {
     let lista = comAcao.filter(x => verArquivados || !x.lead.arquivado)
