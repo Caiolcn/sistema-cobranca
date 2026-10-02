@@ -1,0 +1,187 @@
+{
+  "name": "Outbound Daily List - 30 Contatos/dia",
+  "description": "Cron diário (7h): puxa 30 contatos do Google Maps (6 nichos) e popula outbound_leads com mensagens customizadas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "type": "hours",
+              "value": 24
+            }
+          ],
+          "triggerAtStartup": false,
+          "timezone": "America/Sao_Paulo"
+        },
+        "options": {}
+      },
+      "id": "c7f3e4a1-2b1c-4d5e-8f9a-0b1c2d3e4f5a",
+      "name": "Cron 7h (UTC-3)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Verticais: distribuído entre 6 nichos (~30 contatos/dia)\nconst verticais = [\n  { termo: 'pilates Goiânia', nicho: 'pilates', quantidade: 5 },\n  { termo: 'CT de luta Goiânia', nicho: 'luta', quantidade: 5 },\n  { termo: 'escola de natação Goiânia', nicho: 'natacao', quantidade: 5 },\n  { termo: 'escola de idioma Goiânia', nicho: 'idioma', quantidade: 5 },\n  { termo: 'personal trainer Goiânia', nicho: 'personal', quantidade: 5 },\n  { termo: 'escola de ballet Goiânia', nicho: 'ballet', quantidade: 5 }\n];\n\nreturn verticais;\n"
+      },
+      "id": "d8e4f5a1-3c2d-5e6f-9a0b-1c2d3e4f5a6b",
+      "name": "Mapear verticais",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        "sendQuery": true,
+        "queryParameters": "query={{ $node[\"Mapear verticais\"].json.termo }}&location=-15.7942,48.3279&radius=15000&key=YOUR_GOOGLE_MAPS_API_KEY&language=pt-BR"
+      },
+      "id": "e9f5a6b1-4d3e-6f7a-0b1c-2d3e4f5a6b7c",
+      "name": "Google Maps Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Extrai os primeiros N resultados e formata\nconst results = $input.all()[0].json.results || [];\nconst verticai = $node[\"Mapear verticais\"].json;\nconst quantidade = verticai.quantidade;\n\nconst contatos = results.slice(0, quantidade).map((place, idx) => ({\n  nome: place.name,\n  telefone: place.formatted_address || '',\n  google_maps_url: `https://maps.google.com/?q=${place.name}`,\n  instagram_handle: '',\n  vertical: verticai.nicho,\n  mensagem_template: gerarMensagem(verticai.nicho, place.name)\n}));\n\nfunction gerarMensagem(nicho, nome) {\n  const templates = {\n    pilates: `Oi! Vi que você gerencia o ${nome}. Você usa algo pra gerenciar mensalidades e enviar cobranças pelo WhatsApp? Desenvolvemos uma solução feita pra estúdios de pilates. Bora ver uma demo?`,\n    luta: `E aí! Vi que você coordena o ${nome}. Você usa sistema pra gerenciar alunos, cobrar mensalidade e enviar lembretes? Desenvolvemos uma solução exatamente pra CTs de luta. Bora ver?`,\n    natacao: `Olá! Vi que você é responsável pela ${nome}. Você tem algum sistema pra gerenciar alunos e cobranças? Temos uma solução feita pra escolas de natação. Quer conhecer?`,\n    idioma: `Oi! Vi que você gerencia o ${nome}. Você usa algo pra gerenciar mensalidades dos alunos e enviar cobranças pelo WhatsApp? Temos uma solução perfeita pra escolas de idioma. Bora ver?`,\n    personal: `Fala! Vi que você é personal trainer no ${nome}. Você usa sistema pra gerenciar clientes e cobranças? Desenvolvemos uma solução pra personais que automatiza mensalidades. Quer conhecer?`,\n    ballet: `Olá! Vi que você gerencia o ${nome}. Você tem algum sistema pra gerenciar alunas e cobranças? Temos uma solução feita pra escolas de ballet. Quer conferir?`\n  };\n  return templates[nicho] || 'Oi! Você gerencia um estabelecimento? Temos uma solução pra cobrança de mensalidades no WhatsApp. Posso fazer uma demo?';\n}\n\nreturn contatos;\n"
+      },
+      "id": "f0a6b7c1-5e4f-7a8b-1c2d-3e4f5a6b7c8d",
+      "name": "Formatar contatos + Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SUPABASE_URL/rest/v1/outbound_leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "",
+              "value": "={{ { instance_id: 'YOUR_INSTANCE_ID', nome: $node[\"Formatar contatos + Mensagem\"].json.nome, vertical: $node[\"Formatar contatos + Mensagem\"].json.vertical, instagram_handle: $node[\"Formatar contatos + Mensagem\"].json.instagram_handle, telefone: $node[\"Formatar contatos + Mensagem\"].json.telefone, google_maps_url: $node[\"Formatar contatos + Mensagem\"].json.google_maps_url, mensagem_template: $node[\"Formatar contatos + Mensagem\"].json.mensagem_template, status: 'novo' } | toJson }}"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-6f7a-8b9c-2d3e-4f5a6b7c8d9e",
+      "name": "Inserir na Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-7a8b-9c0d-3e4f-5a6b7c8d9e0f",
+      "name": "Sucesso",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Cron 7h (UTC-3)": {
+      "main": [
+        [
+          {
+            "node": "Mapear verticais",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapear verticais": {
+      "main": [
+        [
+          {
+            "node": "Google Maps Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Maps Search": {
+      "main": [
+        [
+          {
+            "node": "Formatar contatos + Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar contatos + Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Inserir na Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserir na Supabase": {
+      "main": [
+        [
+          {
+            "node": "Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
