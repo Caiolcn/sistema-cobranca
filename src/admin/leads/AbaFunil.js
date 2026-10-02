@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
+import { supabase } from '../../supabaseClient'
 import SearchInput from '../../design-system/components/SearchInput'
 import EmptyState from '../../design-system/components/EmptyState'
 import Modal from '../../design-system/components/Modal'
@@ -131,6 +132,11 @@ function CardLead({ lead, acao, onAbrir, onDragStart, onDragEnd }) {
             {lead.motivo_saida === 'preco_timing' ? 'Preço/momento' : lead.motivo_saida === 'sem_fit' ? 'Sem perfil' : 'Disse não'}
           </Tag>
         )}
+        {lead.vinculo_manual && (
+          <Tag bg="#eef2ff" cor="#3730a3" icon="mdi:link-variant" title="Contato extra de uma conta (fora das métricas)">
+            {lead.usuario_empresa || lead.usuario_nome || 'conta'}
+          </Tag>
+        )}
         {lead.status !== 'pagante' && lead.status !== 'churn' && lead.plano_pago && (
           <Tag bg="#dcfce7" cor="#166534">PAGANTE</Tag>
         )}
@@ -199,7 +205,127 @@ function MensagemDaVez({ texto, lead }) {
   )
 }
 
-function FichaLead({ lead, foco, onFechar, onSalvar, onAbrirConversa }) {
+// Conta do Mensalli ligada ao lead. Ligada pelo telefone (sync) não dá pra
+// desfazer aqui — o sync religaria no próximo load. Ligada à mão, dá.
+function ContaVinculada({ lead, onVincular }) {
+  const [aberto, setAberto] = useState(false)
+  const [termo, setTermo] = useState('')
+  const [resultados, setResultados] = useState([])
+  const [buscando, setBuscando] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => {
+    // Vírgula e parênteses quebram o filtro .or() do PostgREST
+    const t = termo.trim().replace(/[,()%*]/g, ' ').trim()
+    if (!aberto || t.length < 2) { setResultados([]); return }
+    let vivo = true
+    setBuscando(true)
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nome_completo, nome_empresa, email, telefone, plano_pago, virou_pagante_em, cancelado_em')
+        .or(`nome_completo.ilike.%${t}%,nome_empresa.ilike.%${t}%,email.ilike.%${t}%`)
+        .neq('role', 'admin')
+        .order('nome_empresa', { ascending: true })
+        .limit(8)
+      if (!vivo) return
+      if (error) console.warn('[funil] busca de contas:', error.message)
+      setResultados(data || [])
+      setBuscando(false)
+    }, 300)
+    return () => { vivo = false; clearTimeout(timer) }
+  }, [termo, aberto])
+
+  const vincular = async (conta) => {
+    setSalvando(true)
+    try {
+      await onVincular(conta)
+      setAberto(false)
+      setTermo('')
+    } catch (e) {
+      window.alert('Não consegui vincular: ' + e.message)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const situacao = (c) => c.cancelado_em || (!c.plano_pago && c.virou_pagante_em)
+    ? { txt: 'Churn', bg: '#fee2e2', cor: '#b91c1c' }
+    : c.plano_pago ? { txt: 'Pagante', bg: '#dcfce7', cor: '#166534' }
+    : { txt: 'Trial', bg: '#cffafe', cor: '#155e75' }
+
+  if (lead.usuario_id) {
+    const s = situacao(lead)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '9px 11px' }}>
+        <div style={{ minWidth: 0, fontSize: '12.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Icon icon="mdi:link-variant" width="14" color="#64748b" />
+            <strong style={{ color: '#0f172a' }}>{lead.usuario_empresa || lead.usuario_nome || 'Conta'}</strong>
+            <Tag bg={s.bg} cor={s.cor}>{s.txt}</Tag>
+          </div>
+          <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+            {[lead.usuario_nome, lead.usuario_email].filter(Boolean).join(' · ')}
+            {' · '}{lead.vinculo_manual ? 'vinculada à mão (contato extra)' : 'ligada pelo telefone'}
+          </div>
+        </div>
+        {lead.vinculo_manual && (
+          <Button variant="ghost" size="sm" icon="mdi:link-variant-off" loading={salvando}
+            onClick={() => { if (window.confirm('Desvincular este lead da conta?')) vincular(null) }}>
+            Desvincular
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  if (!aberto) {
+    return (
+      <Button variant="outline" size="sm" icon="mdi:link-variant-plus" onClick={() => setAberto(true)}>
+        Vincular a uma conta
+      </Button>
+    )
+  }
+
+  return (
+    <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
+      <div style={{ fontSize: '11.5px', color: '#64748b', marginBottom: '7px' }}>
+        Pra quem fala por uma conta que já existe com outro número (gestor, sócio, recepção).
+        O lead passa a seguir a conta: pagante, churn e reativação automáticos.
+      </div>
+      <SearchInput value={termo} onChange={(e) => setTermo(e.target.value)} autoFocus
+        placeholder="Nome, empresa ou e-mail da conta..." size="sm" fullWidth />
+      <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {buscando && <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>Buscando…</span>}
+        {!buscando && termo.trim().length >= 2 && resultados.length === 0 && (
+          <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>Nenhuma conta encontrada</span>
+        )}
+        {resultados.map(c => {
+          const s = situacao(c)
+          return (
+            <div key={c.id} role="button" tabIndex={0}
+              onClick={() => !salvando && vincular(c)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !salvando) vincular(c) }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '7px 8px', borderRadius: '7px', border: '1px solid #f1f5f9', cursor: salvando ? 'wait' : 'pointer', backgroundColor: '#fff' }}>
+              <div style={{ minWidth: 0, fontSize: '12.5px' }}>
+                <strong style={{ color: '#0f172a' }}>{c.nome_empresa || c.nome_completo || 'Sem nome'}</strong>
+                <div style={{ fontSize: '11px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {[c.nome_completo, c.email, c.telefone ? formatarTelefone(c.telefone) : null].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+              <Tag bg={s.bg} cor={s.cor}>{s.txt}</Tag>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ marginTop: '7px', textAlign: 'right' }}>
+        <Button variant="ghost" size="sm" onClick={() => { setAberto(false); setTermo('') }}>Cancelar</Button>
+      </div>
+    </div>
+  )
+}
+
+function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa }) {
   const [status, setStatus] = useState(lead.status)
   const [retornar, setRetornar] = useState(lead.retornar_em || '')
   const [nota, setNota] = useState(lead.observacoes || '')
@@ -254,6 +380,8 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onAbrirConversa }) {
       subtitle={`${lead.telefone ? formatarTelefone(lead.telefone) : 'sem número (LID)'} · ${diasNaEtapa(lead) === 0 ? 'entrou hoje' : `${diasNaEtapa(lead)} dias`} em ${tituloColuna(lead.status)}`}>
       <Modal.Body>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          <ContaVinculada lead={lead} onVincular={onVincular} />
 
           {acao?.tipo === 'toque' && (
             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
@@ -357,7 +485,7 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onAbrirConversa }) {
 }
 
 export default function AbaFunil({ inbox, onAbrirConversa }) {
-  const { leads, salvarLead } = inbox
+  const { leads, salvarLead, vincularConta } = inbox
   const [busca, setBusca] = useState('')
   const [soHoje, setSoHoje] = useState(false)
   const [verArquivados, setVerArquivados] = useState(false)
@@ -517,11 +645,14 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
 
       {leadFicha && (
         <FichaLead
-          key={leadFicha.id}
+          // Remonta quando a etapa ou a conta mudam por fora (vincular, sync):
+          // senão o formulário guardaria a etapa antiga e o Salvar desfaria.
+          key={`${leadFicha.id}:${leadFicha.status}:${leadFicha.usuario_id || ''}`}
           lead={leadFicha}
           foco={ficha.foco}
           onFechar={() => setFicha(null)}
           onSalvar={(patch) => salvarLead(leadFicha.id, patch)}
+          onVincular={(conta) => vincularConta(leadFicha.id, conta)}
           onAbrirConversa={() => { setFicha(null); onAbrirConversa(leadFicha.id) }}
         />
       )}

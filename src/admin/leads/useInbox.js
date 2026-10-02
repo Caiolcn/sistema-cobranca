@@ -148,6 +148,36 @@ export function useInbox(isAdmin) {
 
   const moverStatus = useCallback((leadId, status) => salvarLead(leadId, { status }), [salvarLead])
 
+  // Liga o lead a uma conta à mão (ex.: gestor de um cliente, com outro número).
+  // O lead passa a seguir o estado da conta já agora; daí pra frente o
+  // sync_mensalli_leads cuida do churn/reativação. vinculo_manual tira esse
+  // contato extra das métricas do funil. `conta = null` desfaz.
+  const vincularConta = useCallback(async (leadId, conta) => {
+    const agora = new Date().toISOString()
+    let patch
+    if (conta) {
+      const churnou = conta.cancelado_em || (!conta.plano_pago && conta.virou_pagante_em)
+      patch = {
+        usuario_id: conta.id,
+        vinculo_manual: true,
+        status: churnou ? 'churn' : conta.plano_pago ? 'pagante' : 'criou_conta',
+        conta_detectada_em: agora,
+        pagamento_detectado_em: conta.plano_pago || conta.virou_pagante_em ? agora : null
+      }
+    } else {
+      // Zera as marcas de detecção: se um dia o telefone bater com uma conta, o
+      // sync promove de novo normalmente.
+      patch = { usuario_id: null, vinculo_manual: false, conta_detectada_em: null, pagamento_detectado_em: null }
+    }
+    const { error } = await supabase
+      .from('mensalli_leads')
+      .update({ ...patch, updated_at: agora })
+      .eq('id', leadId)
+    if (error) throw error
+    // Nome da conta, plano etc. vêm do join da view: recarrega em vez de remontar à mão
+    await carregar({ sync: false })
+  }, [carregar])
+
   // O número do Mensalli também é pessoal: amigo, fornecedor e família caem no
   // mesmo webhook. `ignorado` tira da caixa E faz o whatsapp-bot parar de
   // gravar as conversas desse contato.
@@ -174,7 +204,7 @@ export function useInbox(isAdmin) {
     leads, loading, erro, tempoReal,
     somLigado, alternarSom,
     recarregar: carregar,
-    salvarLead, moverStatus, ignorarLead, marcarLido,
+    salvarLead, moverStatus, vincularConta, ignorarLead, marcarLido,
     aplicarLocal
   }
 }
