@@ -35,6 +35,8 @@ export default function AbaOutbound() {
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({ vertical: '', status: '' })
   const [copiedId, setCopiedId] = useState(null)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [jsonText, setJsonText] = useState('')
 
   useEffect(() => {
     if (!instanceId) return
@@ -72,6 +74,34 @@ export default function AbaOutbound() {
     navigator.clipboard.writeText(text)
     setCopiedId(text)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  async function processarJSON(jsonString) {
+    try {
+      const dados = JSON.parse(jsonString)
+      const contatosArray = Array.isArray(dados) ? dados : [dados]
+
+      setLoading(true)
+      for (const contato of contatosArray) {
+        await createLead(instanceId, {
+          nome: contato.nome,
+          vertical: contato.vertical,
+          instagram_handle: contato.instagram_handle || '',
+          telefone: contato.telefone,
+          google_maps_url: contato.google_maps_url,
+          mensagem_template: contato.mensagem_template
+        })
+      }
+
+      loadData()
+      setShowImportModal(false)
+      setJsonText('')
+      alert(`✅ ${contatosArray.length} contatos importados com sucesso!`)
+    } catch (err) {
+      alert(`❌ Erro ao importar: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleImportJSON(event) {
@@ -152,6 +182,9 @@ export default function AbaOutbound() {
                   disabled={loading}
                 />
               </label>
+              <Button variant="secondary" icon="mdi:content-paste" onClick={() => setShowImportModal(true)}>
+                Colar JSON
+              </Button>
             </div>
           </div>
 
@@ -341,6 +374,65 @@ export default function AbaOutbound() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL COLAR JSON */}
+      {showImportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <h2>Colar JSON</h2>
+            <p style={{ color: '#666', marginBottom: '16px' }}>
+              Cole aqui o JSON com os contatos:
+            </p>
+            <textarea
+              value={jsonText}
+              onChange={(e) => setJsonText(e.target.value)}
+              placeholder='[{"nome": "...", "vertical": "...", ...}]'
+              style={{
+                width: '100%',
+                height: '300px',
+                padding: '12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                marginBottom: '16px'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={() => { setShowImportModal(false); setJsonText('') }}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => processarJSON(jsonText)}
+                disabled={!jsonText.trim() || loading}
+              >
+                Importar
+              </Button>
             </div>
           </div>
         </div>
