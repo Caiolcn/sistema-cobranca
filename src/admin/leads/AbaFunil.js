@@ -12,6 +12,7 @@ import {
   resolverVariaveis, planoPara
 } from './utils'
 import { proximaAcao, diasNaEtapa, diasEntre, ehAudio, semMarcaAudio } from './funilFollowup'
+import { estiloColuna, ESTILO_CARD, ESTILO_TITULO_COLUNA, ESTILO_HINT_COLUNA } from '../kanbanEstilo'
 
 // Funil de follow-up (funilFollowup.json + funilFollowup.js).
 // Coluna de toque = "esse já foi". O card mostra há quantos dias está ali e
@@ -92,11 +93,7 @@ function CardLead({ lead, acao, onAbrir, onDragStart, onDragEnd }) {
       onDragStart={(e) => { e.dataTransfer.setData('leadId', lead.id); onDragStart() }}
       onDragEnd={onDragEnd}
       onClick={onAbrir}
-      style={{
-        backgroundColor: '#fff', borderRadius: '8px', padding: '9px 10px',
-        marginBottom: '7px', cursor: 'grab', border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-      }}
+      style={ESTILO_CARD}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
         <div style={{ minWidth: 0 }}>
@@ -601,14 +598,9 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
                 const leadId = e.dataTransfer.getData('leadId')
                 if (leadId) mover(leadId, col.id)
               }}
-              style={{
-                flex: '0 0 220px', width: '220px',
-                backgroundColor: col.bg, borderRadius: '12px', padding: '10px', minHeight: '380px',
-                outline: ativo ? `2px dashed ${col.cor}` : '2px dashed transparent',
-                transition: 'outline-color .12s'
-              }}
+              style={estiloColuna(col, ativo)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <div style={ESTILO_TITULO_COLUNA}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: col.cor }} />
                   <strong style={{ fontSize: '13px', color: '#334155' }}>{col.titulo}</strong>
@@ -626,7 +618,7 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
                   {lista.length}
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '10px' }}>{col.hint}</div>
+              <div style={ESTILO_HINT_COLUNA}>{col.hint}</div>
 
               {lista.map(({ lead, acao }) => (
                 <CardLead

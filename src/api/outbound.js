@@ -57,21 +57,24 @@ export async function createLead(instanceId, lead) {
 }
 
 // PATCH /api/outbound/lead/:id — atualizar status/notas
+// data_abordagem / data_resposta / etapa_desde são preenchidos pelo trigger
+// trg_outbound_leads_etapa na troca de status.
 export async function updateLead(leadId, updates) {
   const { data, error } = await supabase
     .from('outbound_leads')
-    .update({
-      status: updates.status,
-      data_abordagem: updates.data_abordagem,
-      data_resposta: updates.data_resposta,
-      trial_id: updates.trial_id,
-      notas: updates.notas
-    })
+    .update(updates)
     .eq('id', leadId)
     .select()
 
   if (error) throw new Error(`Erro ao atualizar lead: ${error.message}`)
   return data[0]
+}
+
+// Respondeu / Criou conta / Fechado automáticos (sql-outbound-crm.sql)
+export async function syncOutbound() {
+  const { data, error } = await supabase.rpc('sync_outbound_leads')
+  if (error) throw new Error(`Erro ao sincronizar outbound: ${error.message}`)
+  return data?.[0] || null
 }
 
 // Importa em lote; lugares já importados (mesmo place_id) são ignorados

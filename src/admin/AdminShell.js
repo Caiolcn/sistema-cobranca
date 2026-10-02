@@ -44,9 +44,9 @@ function Cabecalho({ titulo, subtitulo, acoes }) {
 }
 
 // Casca das páginas soltas: mesmo padding e cabeçalho da seção CRM.
-function Pagina({ titulo, subtitulo, acoes, children }) {
+function Pagina({ titulo, subtitulo, acoes, children, style }) {
   return (
-    <div className="adm-pagina">
+    <div className="adm-pagina" style={style}>
       {titulo && <Cabecalho titulo={titulo} subtitulo={subtitulo} acoes={acoes} />}
       {children}
     </div>
@@ -226,8 +226,14 @@ export function PaginaGoogleMetrics() {
 }
 
 export function PaginaOutbound() {
+  // Só o kanban (?sub=crm) ganha fundo branco, como em Leads de campanha; lista
+  // do dia e métricas ficam no fundo do admin. alignSelf estica até o fim da
+  // tela (o container do conteúdo é flex com align-items:flex-start).
+  const [params] = useSearchParams()
+  const noCrm = params.get('sub') === 'crm'
   return (
-    <Pagina titulo="📲 Outbound Prospecting" subtitulo="Gerencie contatos, acompanhe conversões e automatize follow-ups">
+    <Pagina titulo="Outbound Prospecting" subtitulo="Lista do dia, CRM de abordagens e o que está convertendo"
+      style={noCrm ? { backgroundColor: '#ffffff', alignSelf: 'stretch' } : undefined}>
       <AbaOutbound />
     </Pagina>
   )

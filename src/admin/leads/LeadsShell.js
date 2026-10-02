@@ -25,10 +25,10 @@ import AbaMetricas from './AbaMetricas'
    ============================================================ */
 
 const ABAS = [
-  { value: 'caixa',    label: 'Caixa',    icon: 'mdi:inbox-arrow-down-outline' },
-  { value: 'hoje',     label: 'Hoje',     icon: 'mdi:calendar-clock' },
   { value: 'funil',    label: 'Funil',    icon: 'mdi:view-column-outline' },
+  { value: 'hoje',     label: 'Hoje',     icon: 'mdi:calendar-clock' },
   { value: 'metricas', label: 'Métricas', icon: 'mdi:chart-line' },
+  { value: 'caixa',    label: 'Caixa',    icon: 'mdi:inbox-arrow-down-outline' },
 ]
 
 export default function LeadsShell() {
@@ -37,7 +37,9 @@ export default function LeadsShell() {
   const { isMobile, isSmallScreen } = useWindowSize()
   const [params, setParams] = useSearchParams()
 
-  const aba = ABAS.some(a => a.value === params.get('aba')) ? params.get('aba') : 'caixa'
+  // Funil é a primeira aba e a que abre por padrão; a Caixa continua a um
+  // clique (e "Abrir conversa" na ficha leva direto pra ela).
+  const aba = ABAS.some(a => a.value === params.get('aba')) ? params.get('aba') : 'funil'
   const [selecionadoId, setSelecionadoId] = useState(null)
   const [respostas, setRespostas] = useState([])
 
@@ -94,7 +96,9 @@ export default function LeadsShell() {
     <div style={{
       width: '100%', alignSelf: 'stretch', boxSizing: 'border-box',
       display: 'flex', flexDirection: 'column', minHeight: 0,
-      padding: isMobile ? '12px' : '18px 22px'
+      padding: isMobile ? '12px' : '18px 22px',
+      // Teste de fundo branco (o azul do layout admin vazava por trás do board)
+      backgroundColor: '#ffffff'
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div>
