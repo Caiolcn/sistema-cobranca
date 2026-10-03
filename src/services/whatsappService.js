@@ -1100,6 +1100,240 @@ class WhatsAppService {
   }
 
   /**
+   * Monta o texto de cobrança de uma mensalidade com o template do dono.
+   *
+   * Separado de enviarCobranca() para o envio de mensagem barrada (Central de
+   * Mensagens) usar exatamente o mesmo texto que a régua mandaria, sem passar
+   * pelo enviarMensagem() — que reinicia instância.
+   *
+   * @param {object} mensalidade - linha de mensalidades com `devedor` embutido
+   * @param {string} tipoMensagem - pre_due_3days | due_day | overdue
+   * @param {string} [mensagemCustomizada]
+   * @returns {{ mensagemFinal: string, telefoneEnvio: string }}
+   */
+  async montarMensagemCobranca(mensalidade, tipoMensagem, mensagemCustomizada = null) {
+    const ownerId = mensalidade.user_id
+
+    // Buscar dados do usuário/empresa incluindo chave PIX (do dono da mensalidade)
+    const { data: usuario, error: usuarioError } = await supabase
+      .from('usuarios')
+      .select('nome_empresa, chave_pix, asaas_multa_juros')
+      .eq('id', ownerId)
+      .maybeSingle()
+
+    if (usuarioError) console.error('❌ Erro ao buscar usuário:', usuarioError)
+
+    const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
+    const chavePix = usuario?.chave_pix || ''
+
+    // Buscar template baseado no tipo de mensagem calculado (do dono da mensalidade)
+    const { data: template } = await supabase
+      .from('templates')
+      .select('mensagem')
+      .eq('user_id', ownerId)
+      .eq('tipo', tipoMensagem)
+      .eq('ativo', true)
+      .limit(1)
+      .maybeSingle()
+
+    // Templates padrão do sistema para cada tipo
+    const TEMPLATES_PADRAO = {
+      pre_due_3days: `Olá, {{nomeCliente}}! 👋
+
+Sua mensalidade vence em {{dataVencimento}}.
+
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
+
+Pague com antecedência e evite esquecimento!
+
+Qualquer dúvida, estamos à disposição.`,
+
+      due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃
+
+Hoje vence sua mensalidade!
+
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
+
+Qualquer dúvida, estamos à disposição!`,
+
+      overdue: `Olá, {{nomeCliente}}, como vai?
+
+Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
+
+Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:
+
+💰 Valor: {{valorMensalidade}}
+🔑 Chave Pix: {{chavePix}}
+
+Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
+    }
+
+    // Usar template do usuário ou o padrão do tipo correto
+    const mensagemTemplate = template?.mensagem || TEMPLATES_PADRAO[tipoMensagem] || TEMPLATES_PADRAO.overdue
+
+    // Calcular dias de atraso
+    const hoje = new Date()
+    const vencimento = new Date(mensalidade.data_vencimento)
+    const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
+
+    // Gerar link do portal do cliente
+    const baseUrl = typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://www.mensalli.com.br'
+    const portalToken = mensalidade.devedor?.portal_token
+    const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
+
+    // Resolver destinatário (telefone e nome seguem auto: responsável > aluno)
+    const destinatario = resolverDestinatario(mensalidade.devedor)
+    // {{nomeCliente}} / {{nomeAluno}}: nome do responsável quando há um
+    // cadastrado, senão o nome do próprio aluno (fallback automático).
+    // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
+    const nomeContato = destinatario.primeiroNome || 'Cliente'
+
+    // Multa/juros por atraso (config do dono). Só > 0 em mensalidade vencida.
+    const fmtBRL = (v) => `R$ ${parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const mj = calcularMultaJuros(mensalidade.valor, mensalidade.data_vencimento, usuario?.asaas_multa_juros)
+
+    // Preparar dados para substituição
+    const dadosSubstituicao = {
+      nomeCliente: nomeContato,
+      nomeAluno: nomeContato,
+      nomeAlunoReal: destinatario.primeiroNomeAluno || '',
+      nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
+      telefone: destinatario.telefone,
+      valorMensalidade: fmtBRL(mensalidade.valor),
+      dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
+      diasAtraso: diasAtraso.toString(),
+      valorMulta: fmtBRL(mj.multa),
+      valorJuros: fmtBRL(mj.juros),
+      valorTotal: fmtBRL(mj.total),
+      nomeEmpresa: nomeEmpresa,
+      chavePix: chavePix,
+      linkPagamento: '', // Será preenchido se necessário
+      portalCliente: portalLink
+    }
+
+    // Verificar metodo de pagamento para decidir se envia link ou não
+    if (mensagemTemplate.includes('{{linkPagamento}}') || mensagemTemplate.includes('{{portalCliente}}')) {
+      const { data: configMetodo } = await supabase
+        .from('config')
+        .select('chave, valor')
+        .eq('chave', `${ownerId}_metodo_pagamento_whatsapp`)
+        .maybeSingle()
+
+      const metodoPagamento = configMetodo?.valor || 'pix_manual'
+
+      if (metodoPagamento === 'asaas_link') {
+        // Asaas ativo: envia link do portal (checkout com QR do Asaas)
+        dadosSubstituicao.linkPagamento = portalLink
+        console.log('🔗 Asaas ativo - link do portal:', portalLink)
+      } else {
+        // PIX manual: sem link, só chave PIX na mensagem
+        dadosSubstituicao.linkPagamento = ''
+        console.log('🔑 PIX manual - sem link, usando chavePix')
+      }
+    }
+
+    console.log('📝 Template usado:', mensagemTemplate)
+    console.log('📊 Dados para substituição:', dadosSubstituicao)
+
+    // Gerar mensagem final (usa customizada se fornecida, senão gera do template)
+    let mensagemFinal
+    if (mensagemCustomizada && mensagemCustomizada.trim()) {
+      console.log('📝 Usando mensagem customizada')
+      mensagemFinal = mensagemCustomizada
+
+      // Verificar metodo para {{linkPagamento}} em msg customizada
+      if (mensagemFinal.includes('{{linkPagamento}}')) {
+        const { data: configMetodo } = await supabase
+          .from('config')
+          .select('chave, valor')
+          .eq('chave', `${ownerId}_metodo_pagamento_whatsapp`)
+          .maybeSingle()
+
+        const metodoPagamento = configMetodo?.valor || 'pix_manual'
+        const linkGerado = metodoPagamento === 'asaas_link' ? portalLink : ''
+        mensagemFinal = mensagemFinal.replace(/\{\{linkPagamento\}\}/g, linkGerado)
+      }
+
+      // Se a mensagem customizada contém {{chavePix}}, substituir também
+      if (mensagemFinal.includes('{{chavePix}}')) {
+        mensagemFinal = mensagemFinal.replace(/\{\{chavePix\}\}/g, chavePix || '')
+      }
+
+      // Se a mensagem customizada contém {{portalCliente}}, substituir com link do portal
+      if (mensagemFinal.includes('{{portalCliente}}')) {
+        mensagemFinal = mensagemFinal.replace(/\{\{portalCliente\}\}/g, portalLink)
+      }
+    } else {
+      mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
+    }
+    console.log('📨 Mensagem final após substituição:', mensagemFinal)
+
+    return { mensagemFinal, telefoneEnvio: destinatario.telefone }
+  }
+
+  /** Pós-envio bem-sucedido: marca a mensalidade e conta no limite do plano do dono. */
+  async registrarUsoCobranca(mensalidade, ownerId) {
+    const { error: updateError } = await supabase
+      .from('mensalidades')
+      .update({
+        enviado_hoje: true,
+        ultima_mensagem_enviada_em: new Date().toISOString(),
+        total_mensagens_enviadas: (mensalidade.total_mensagens_enviadas || 0) + 1
+      })
+      .eq('id', mensalidade.id)
+
+    if (updateError) {
+      console.error('Erro ao atualizar mensalidade:', updateError)
+    }
+
+    // Incrementar contador de uso no controle_planos (do dono)
+    const { data: controleAtual, error: controleError } = await supabase
+      .from('controle_planos')
+      .select('usage_count')
+      .eq('user_id', ownerId)
+      .maybeSingle()
+
+    if (controleError) {
+      console.error('Erro ao buscar controle de planos:', controleError)
+    } else if (controleAtual) {
+      // Atualizar registro existente
+      const { error: updateUsageError } = await supabase
+        .from('controle_planos')
+        .update({
+          usage_count: (controleAtual.usage_count || 0) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', ownerId)
+
+      if (updateUsageError) {
+        console.error('Erro ao incrementar usage_count:', updateUsageError)
+      } else {
+        console.log('✅ Usage count incrementado para:', (controleAtual.usage_count || 0) + 1)
+      }
+    } else {
+      // Criar registro se não existir
+      const { error: insertUsageError } = await supabase
+        .from('controle_planos')
+        .insert({
+          user_id: ownerId,
+          usage_count: 1,
+          limite_mensal: 100,
+          updated_at: new Date().toISOString()
+        })
+
+      if (insertUsageError) {
+        console.error('Erro ao criar controle de planos:', insertUsageError)
+      } else {
+        console.log('✅ Controle de planos criado com usage_count: 1')
+      }
+    }
+  }
+
+  /**
    * Envia cobrança para uma mensalidade específica
    * @param {string} mensalidadeId - ID da mensalidade
    * @param {string} [mensagemCustomizada] - Mensagem customizada (opcional, usa template se não fornecida)
@@ -1136,167 +1370,10 @@ class WhatsAppService {
         }
       }
 
-      // Buscar dados do usuário/empresa incluindo chave PIX (do dono da mensalidade)
-      const { data: usuario, error: usuarioError } = await supabase
-        .from('usuarios')
-        .select('nome_empresa, chave_pix, asaas_multa_juros')
-        .eq('id', ownerId)
-        .maybeSingle()
-
-      if (usuarioError) console.error('❌ Erro ao buscar usuário:', usuarioError)
-
-      const nomeEmpresa = usuario?.nome_empresa || 'Empresa'
-      const chavePix = usuario?.chave_pix || ''
-
-      // Buscar template baseado no tipo de mensagem calculado (do dono da mensalidade)
-      const { data: template } = await supabase
-        .from('templates')
-        .select('mensagem')
-        .eq('user_id', ownerId)
-        .eq('tipo', tipoMensagem)
-        .eq('ativo', true)
-        .limit(1)
-        .maybeSingle()
-
-      // Templates padrão do sistema para cada tipo
-      const TEMPLATES_PADRAO = {
-        pre_due_3days: `Olá, {{nomeCliente}}! 👋
-
-Sua mensalidade vence em {{dataVencimento}}.
-
-💰 Valor: {{valorMensalidade}}
-🔑 Chave Pix: {{chavePix}}
-
-Pague com antecedência e evite esquecimento!
-
-Qualquer dúvida, estamos à disposição.`,
-
-        due_day: `Oi, {{nomeCliente}}! Tudo bem? 😃
-
-Hoje vence sua mensalidade!
-
-💰 Valor: {{valorMensalidade}}
-🔑 Chave Pix: {{chavePix}}
-
-Qualquer dúvida, estamos à disposição!`,
-
-        overdue: `Olá, {{nomeCliente}}, como vai?
-
-Notamos que o pagamento da sua mensalidade (vencida em {{dataVencimento}}) ainda não consta em nosso sistema.
-
-Sabemos que a rotina é corrida, por isso trouxemos os dados aqui para facilitar sua regularização agora mesmo:
-
-💰 Valor: {{valorMensalidade}}
-🔑 Chave Pix: {{chavePix}}
-
-Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta me enviar o comprovante por aqui! Obrigado! 🙏`
-      }
-
-      // Usar template do usuário ou o padrão do tipo correto
-      const mensagemTemplate = template?.mensagem || TEMPLATES_PADRAO[tipoMensagem] || TEMPLATES_PADRAO.overdue
-
-      // Calcular dias de atraso
-      const hoje = new Date()
-      const vencimento = new Date(mensalidade.data_vencimento)
-      const diasAtraso = Math.max(0, Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24)))
-
-      // Gerar link do portal do cliente
-      const baseUrl = typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://www.mensalli.com.br'
-      const portalToken = mensalidade.devedor?.portal_token
-      const portalLink = portalToken ? `${baseUrl}/portal/${portalToken}` : ''
-
-      // Resolver destinatário (telefone e nome seguem auto: responsável > aluno)
-      const destinatario = resolverDestinatario(mensalidade.devedor)
-      // {{nomeCliente}} / {{nomeAluno}}: nome do responsável quando há um
-      // cadastrado, senão o nome do próprio aluno (fallback automático).
-      // {{nomeResponsavel}}: responsável se houver, senão vazio (uso explícito).
-      const nomeContato = destinatario.primeiroNome || 'Cliente'
-
-      // Multa/juros por atraso (config do dono). Só > 0 em mensalidade vencida.
-      const fmtBRL = (v) => `R$ ${parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      const mj = calcularMultaJuros(mensalidade.valor, mensalidade.data_vencimento, usuario?.asaas_multa_juros)
-
-      // Preparar dados para substituição
-      const dadosSubstituicao = {
-        nomeCliente: nomeContato,
-        nomeAluno: nomeContato,
-        nomeAlunoReal: destinatario.primeiroNomeAluno || '',
-        nomeResponsavel: destinatario.ehResponsavel ? destinatario.primeiroNome : '',
-        telefone: destinatario.telefone,
-        valorMensalidade: fmtBRL(mensalidade.valor),
-        dataVencimento: new Date(mensalidade.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR'),
-        diasAtraso: diasAtraso.toString(),
-        valorMulta: fmtBRL(mj.multa),
-        valorJuros: fmtBRL(mj.juros),
-        valorTotal: fmtBRL(mj.total),
-        nomeEmpresa: nomeEmpresa,
-        chavePix: chavePix,
-        linkPagamento: '', // Será preenchido se necessário
-        portalCliente: portalLink
-      }
-
-      // Verificar metodo de pagamento para decidir se envia link ou não
-      if (mensagemTemplate.includes('{{linkPagamento}}') || mensagemTemplate.includes('{{portalCliente}}')) {
-        const { data: configMetodo } = await supabase
-          .from('config')
-          .select('chave, valor')
-          .eq('chave', `${ownerId}_metodo_pagamento_whatsapp`)
-          .maybeSingle()
-
-        const metodoPagamento = configMetodo?.valor || 'pix_manual'
-
-        if (metodoPagamento === 'asaas_link') {
-          // Asaas ativo: envia link do portal (checkout com QR do Asaas)
-          dadosSubstituicao.linkPagamento = portalLink
-          console.log('🔗 Asaas ativo - link do portal:', portalLink)
-        } else {
-          // PIX manual: sem link, só chave PIX na mensagem
-          dadosSubstituicao.linkPagamento = ''
-          console.log('🔑 PIX manual - sem link, usando chavePix')
-        }
-      }
-
-      console.log('📝 Template usado:', mensagemTemplate)
-      console.log('📊 Dados para substituição:', dadosSubstituicao)
-
-      // Gerar mensagem final (usa customizada se fornecida, senão gera do template)
-      let mensagemFinal
-      if (mensagemCustomizada && mensagemCustomizada.trim()) {
-        console.log('📝 Usando mensagem customizada')
-        mensagemFinal = mensagemCustomizada
-
-        // Verificar metodo para {{linkPagamento}} em msg customizada
-        if (mensagemFinal.includes('{{linkPagamento}}')) {
-          const { data: configMetodo } = await supabase
-            .from('config')
-            .select('chave, valor')
-            .eq('chave', `${ownerId}_metodo_pagamento_whatsapp`)
-            .maybeSingle()
-
-          const metodoPagamento = configMetodo?.valor || 'pix_manual'
-          const linkGerado = metodoPagamento === 'asaas_link' ? portalLink : ''
-          mensagemFinal = mensagemFinal.replace(/\{\{linkPagamento\}\}/g, linkGerado)
-        }
-
-        // Se a mensagem customizada contém {{chavePix}}, substituir também
-        if (mensagemFinal.includes('{{chavePix}}')) {
-          mensagemFinal = mensagemFinal.replace(/\{\{chavePix\}\}/g, chavePix || '')
-        }
-
-        // Se a mensagem customizada contém {{portalCliente}}, substituir com link do portal
-        if (mensagemFinal.includes('{{portalCliente}}')) {
-          mensagemFinal = mensagemFinal.replace(/\{\{portalCliente\}\}/g, portalLink)
-        }
-      } else {
-        mensagemFinal = this.substituirVariaveis(mensagemTemplate, dadosSubstituicao)
-      }
-      console.log('📨 Mensagem final após substituição:', mensagemFinal)
+      const { mensagemFinal, telefoneEnvio } = await this.montarMensagemCobranca(mensalidade, tipoMensagem, mensagemCustomizada)
 
       // Enviar via Evolution API (usando instância do dono da mensalidade)
       const ownerInstanceName = await this.getInstanceNameForUser(ownerId)
-      const telefoneEnvio = destinatario.telefone
       const resultado = await this.enviarMensagem(telefoneEnvio, mensagemFinal, ownerInstanceName)
 
       // Registrar log no banco
@@ -1337,62 +1414,7 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
       }
 
       // Atualizar mensalidade e contabilizar uso
-      if (resultado.sucesso) {
-        const { error: updateError } = await supabase
-          .from('mensalidades')
-          .update({
-            enviado_hoje: true,
-            ultima_mensagem_enviada_em: new Date().toISOString(),
-            total_mensagens_enviadas: (mensalidade.total_mensagens_enviadas || 0) + 1
-          })
-          .eq('id', mensalidadeId)
-
-        if (updateError) {
-          console.error('Erro ao atualizar mensalidade:', updateError)
-        }
-
-        // Incrementar contador de uso no controle_planos (do dono)
-        const { data: controleAtual, error: controleError } = await supabase
-          .from('controle_planos')
-          .select('usage_count')
-          .eq('user_id', ownerId)
-          .maybeSingle()
-
-        if (controleError) {
-          console.error('Erro ao buscar controle de planos:', controleError)
-        } else if (controleAtual) {
-          // Atualizar registro existente
-          const { error: updateUsageError } = await supabase
-            .from('controle_planos')
-            .update({
-              usage_count: (controleAtual.usage_count || 0) + 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', ownerId)
-
-          if (updateUsageError) {
-            console.error('Erro ao incrementar usage_count:', updateUsageError)
-          } else {
-            console.log('✅ Usage count incrementado para:', (controleAtual.usage_count || 0) + 1)
-          }
-        } else {
-          // Criar registro se não existir
-          const { error: insertUsageError } = await supabase
-            .from('controle_planos')
-            .insert({
-              user_id: ownerId,
-              usage_count: 1,
-              limite_mensal: 100,
-              updated_at: new Date().toISOString()
-            })
-
-          if (insertUsageError) {
-            console.error('Erro ao criar controle de planos:', insertUsageError)
-          } else {
-            console.log('✅ Controle de planos criado com usage_count: 1')
-          }
-        }
-      }
+      if (resultado.sucesso) await this.registrarUsoCobranca(mensalidade, ownerId)
 
       return resultado
     } catch (error) {
