@@ -336,6 +336,17 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa
   const [alunos, setAlunos] = useState(lead.alunos ?? '')
   const [motivo, setMotivo] = useState(lead.motivo_saida || 'esgotou')
   const [salvando, setSalvando] = useState(false)
+  const [telCopiado, setTelCopiado] = useState(false)
+
+  const copiarTelefone = async () => {
+    try {
+      await navigator.clipboard.writeText(String(lead.telefone))
+      setTelCopiado(true)
+      setTimeout(() => setTelCopiado(false), 1500)
+    } catch {
+      window.prompt('Copie o telefone:', String(lead.telefone))
+    }
+  }
 
   const acao = proximaAcao(lead)
   // As variáveis usam o que está digitado agora, mesmo antes de salvar
@@ -378,11 +389,23 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa
   }
 
   return (
-    <Modal isOpen onClose={onFechar} size="md"
+    <Modal isOpen onClose={onFechar} size="md" centered style={{ marginTop: 0 }}
       title={lead.nome || lead.usuario_nome || 'Sem nome'}
-      subtitle={`${lead.telefone ? formatarTelefone(lead.telefone) : 'sem número (LID)'} · ${diasNaEtapa(lead) === 0 ? 'entrou hoje' : `${diasNaEtapa(lead)} dias`} em ${tituloColuna(lead.status)}`}>
+      subtitle={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+          {lead.telefone ? formatarTelefone(lead.telefone) : 'sem número (LID)'}
+          {lead.telefone && (
+            <button type="button" onClick={copiarTelefone} title="Copiar telefone" aria-label="Copiar telefone"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', background: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: '4px', color: telCopiado ? '#16a34a' : '#64748b', fontSize: 'inherit' }}>
+              <Icon icon={telCopiado ? 'mdi:check' : 'mdi:content-copy'} width="14" />
+              {telCopiado && 'Copiado'}
+            </button>
+          )}
+          {` · ${diasNaEtapa(lead) === 0 ? 'entrou hoje' : `${diasNaEtapa(lead)} dias`} em ${tituloColuna(lead.status)}`}
+        </span>
+      }>
       <Modal.Body>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
 
           <ContaVinculada lead={lead} onVincular={onVincular} />
 
@@ -420,18 +443,15 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 84px', gap: '10px', alignItems: 'start' }}>
             <Select label="Etapa" size="sm" fullWidth value={status} onChange={setStatus}
               options={COLUNAS.map(c => ({ value: c.id, label: c.auto ? `${c.titulo} (auto)` : c.titulo }))} />
-            {status === 'perdido'
-              ? <Select label="Motivo da saída" size="sm" fullWidth value={motivo} onChange={setMotivo} options={MOTIVOS_SAIDA} />
-              : <div />}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '10px', alignItems: 'start' }}>
             <Input label="Nicho" size="sm" fullWidth value={nicho} onChange={(e) => setNicho(e.target.value)} placeholder="CT de luta, personal…" />
             <Input label="Alunos" type="number" min="0" size="sm" fullWidth value={alunos} onChange={(e) => setAlunos(e.target.value)} placeholder="—" />
           </div>
+          {status === 'perdido' && (
+            <Select label="Motivo da saída" size="sm" fullWidth value={motivo} onChange={setMotivo} options={MOTIVOS_SAIDA} />
+          )}
           {plano && (
             <div style={{ fontSize: '11.5px', color: '#1d4ed8', marginTop: '-8px' }}>
               Plano da faixa: <strong>{plano.nome} · R$ {plano.preco}/mês</strong>
