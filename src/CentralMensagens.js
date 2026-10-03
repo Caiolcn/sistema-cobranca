@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 import { showToast } from './Toast'
-import { reenviarMensagem } from './services/reenvioMensagem'
+import { reenviarMensagem, enviarMensagemBarrada } from './services/reenvioMensagem'
 import Table from './design-system/components/Table'
 import Badge from './design-system/components/Badge'
 import Select from './design-system/components/Select'
@@ -88,6 +88,13 @@ const SITUACOES = {
  * duas falhas dessas em contas diferentes foram lidas como "2 clientes off" —
  * com as contas funcionando perfeitamente.
  */
+/** A data (no fuso de SP) de `iso` é hoje? Mesmo critério do expirar_fila. */
+function ehHojeSP(iso) {
+  if (!iso) return false
+  const dia = (d) => d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  return dia(new Date(iso)) === dia(new Date())
+}
+
 function ehNumeroRecusado(r) {
   if (!r) return false
   if (r.erro_codigo === 'numero_inexistente') return true
@@ -213,7 +220,10 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
     if (reenviando) return
     setReenviando(linha.id)
     try {
-      const r = await reenviarMensagem(linha.ref_id)
+      // Barrada não tem log nem texto: o envio monta a mensagem agora.
+      const r = linha.fonte === 'fila'
+        ? await enviarMensagemBarrada(linha.ref_id)
+        : await reenviarMensagem(linha.ref_id)
       showToast(r.mensagem, r.ok ? 'success' : 'error')
       // Recarrega em qualquer desfecho: sucesso cria log novo, falha também —
       // e a linha antiga deixa de ser reenviável nos dois casos.
@@ -373,7 +383,12 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
         // Conta caída: a mensagem FICA registrada aqui e o caminho é
         // reconectar. Reenviar contra socket morto é falha garantida e carga
         // à toa na Evolution — por isso aqui não existe "tentar mesmo assim".
-        if (!r.pode_reenviar && r.falha_classe === 'transitoria' && !r.conta_conectada) {
+        // Barrada só ganha "Enviar agora" no mesmo dia: a régua expira a linha
+        // na virada, e cobrança de vencimento no dia seguinte é pior que nada.
+        const ehBarrada = r.fonte === 'fila' && r.situacao === 'barrada'
+        const podeEnviarBarrada = ehBarrada && r.conta_conectada && ehHojeSP(r.quando)
+        if ((ehBarrada && !r.conta_conectada) ||
+            (!r.pode_reenviar && r.falha_classe === 'transitoria' && !r.conta_conectada)) {
           return (
             <button
               onClick={(e) => { e.stopPropagation(); irParaConexao?.() }}
@@ -392,15 +407,20 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
             </button>
           )
         }
-        if (!r.pode_reenviar) {
+        if (!r.pode_reenviar && !podeEnviarBarrada) {
           return <Icon icon="mdi:chevron-right" width={18} style={{ color: '#bbb' }} />
         }
         const emVoo = reenviando === r.id
+        const rotulo = podeEnviarBarrada
+          ? (emVoo ? 'Enviando...' : 'Enviar agora')
+          : (emVoo ? 'Reenviando...' : 'Reenviar')
         return (
           <button
             onClick={(e) => { e.stopPropagation(); aoReenviar(r) }}
             disabled={!!reenviando}
-            title="Reenvia o mesmo texto, pela mesma instância. Não gera cobrança nova."
+            title={podeEnviarBarrada
+              ? 'Envia agora a mensagem que a régua não mandou, com o template da conta. Não envia se a mensalidade já foi paga ou se já saiu hoje.'
+              : 'Reenvia o mesmo texto, pela mesma instância. Não gera cobrança nova.'}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '6px 12px', borderRadius: 7, whiteSpace: 'nowrap',
@@ -414,7 +434,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
           >
             <Icon icon={emVoo ? 'mdi:loading' : 'mdi:refresh'} width={15}
               style={emVoo ? { animation: 'ds-spin 1s linear infinite' } : undefined} />
-            {emVoo ? 'Reenviando...' : 'Reenviar'}
+            {rotulo}
           </button>
         )
       }
@@ -440,6 +460,8 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
           entregue não deve ser reenviada — reenviar ali duplicaria a cobrança do aluno.
           Com o WhatsApp da conta desconectado, a mensagem <strong>fica registrada aqui</strong> e
           o caminho é reconectar primeiro; o reenvio passa a ficar disponível depois.
+          Mensagem <strong>barrada</strong> ganha <strong>Enviar agora</strong> quando a conta
+          volta a ficar conectada, só no mesmo dia e só se a mensalidade continuar pendente.
         </span>
       </div>
 
