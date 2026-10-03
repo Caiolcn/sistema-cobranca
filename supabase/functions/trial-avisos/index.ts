@@ -2,7 +2,11 @@
 // ---------------------------------------------------------------------------
 // Dois marcos, pela instancia MASTER, assinados pelo Caio:
 //
-//  1. ATIVACAO 24h -- 24h depois do cadastro, SO pra quem ainda nao conectou o
+//  1. ATIVACAO 24h -- DESLIGADA POR PADRAO desde 03/10/2026. Esse toque agora e
+//     manual: coluna "Sem conectar" do CRM (/admin > Leads > Funil), onde o gestor
+//     manda um audio explicando. Para religar o automatico:
+//     update config set valor = 'true' where chave = 'trial_ativacao_24h_ativo';
+//     24h depois do cadastro, SO pra quem ainda nao conectou o
 //     WhatsApp. Base (75 dias ate 01/10/2026): quem conecta vira pagante em ~50%,
 //     quem nao conecta em ~7%; e 9 de 14 conexoes aconteceram nas primeiras 24h.
 //     Quem passou de 24h sem conectar quase nunca conecta sozinho.
@@ -189,7 +193,7 @@ serve(async (req) => {
   // ---- Config: flag on/off + Evolution ----
   const { data: cfgRows } = await supabase
     .from('config').select('chave, valor')
-    .in('chave', ['trial_avisos_ativo', 'evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
+    .in('chave', ['trial_avisos_ativo', 'trial_ativacao_24h_ativo', 'evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
   const cfg: Record<string, string> = {}
   for (const r of cfgRows || []) cfg[r.chave] = r.valor
 
@@ -200,6 +204,8 @@ serve(async (req) => {
   const apiUrl = (cfg.evolution_api_url || '').replace(/\/+$/, '')
   const apiKey = cfg.evolution_api_key
   const instancia = cfg.evolution_master_instance || INSTANCIA_MASTER_FALLBACK
+  // O aviso das 24h (marco 1) e manual no CRM; so sai daqui com a chave propria ligada.
+  const ativacao24hLigada = cfg.trial_ativacao_24h_ativo === 'true'
   if (!dryRun && (!apiUrl || !apiKey)) return json({ error: 'Evolution nao configurada' }, 500)
 
   // ---- Candidatas: contas em trial, nunca pagaram, com telefone ----
@@ -283,7 +289,7 @@ serve(async (req) => {
     // Marco 1 -- ativacao 24h, so pra quem nao conectou e com trial ainda de pe.
     const naJanelaAtivacao = idadeH >= ATIVACAO_MIN_H && idadeH <= ATIVACAO_MAX_H
     const trialDePe = fimEmH === null || fimEmH > FIM_JANELA_MIN_H
-    if (naJanelaAtivacao && trialDePe && !conectado && !c.retencao_d_enviado_em && !fimJaEnviado) {
+    if (ativacao24hLigada && naJanelaAtivacao && trialDePe && !conectado && !c.retencao_d_enviado_em && !fimJaEnviado) {
       const tipo = nAlunos === 0 ? 'trial_24h_sem_alunos' : 'trial_24h_com_alunos'
       alvos.push({ conta: c, tipo, flag: 'retencao_d_enviado_em' })
     }
