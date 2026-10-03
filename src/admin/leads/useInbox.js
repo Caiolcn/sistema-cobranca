@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '../../supabaseClient'
+import { classificarEstagio } from './estagioConversa'
 
 // Estado da caixa de entrada: a lista de leads, o tempo real e as mutações.
 //
@@ -34,11 +35,88 @@ function tocarBipe() {
   }
 }
 
+// Sinais de uso das contas pagantes e em teste (alunos, mensagens do mês, WhatsApp, último
+// acesso), da mesma vw_admin_contas que a aba Contas usa. Alimentam as colunas
+// Recém pago / Ativando / Pagante / Em risco. Se a view falhar, o funil segue
+// funcionando: o lead só fica sem `uso_*` e ninguém é marcado como em risco.
+async function comUsoDasContas(leads) {
+  const ids = [...new Set(leads.filter(l => ['pagante', 'criou_conta'].includes(l.status) && l.usuario_id).map(l => l.usuario_id))]
+  if (ids.length === 0) return leads
+  try {
+    const { data, error } = await supabase
+      .from('vw_admin_contas')
+      .select('id, total_alunos, mensagens_mes, whatsapp_conectado, ultimo_acesso, ultima_acao_em, retencao_a_enviado_em, ciclo, plano_vencimento')
+      .in('id', ids)
+    if (error) throw error
+    const porId = Object.fromEntries((data || []).map(c => [c.id, c]))
+    return leads.map(l => {
+      const c = porId[l.usuario_id]
+      return c ? {
+        ...l,
+        uso_alunos: Number(c.total_alunos || 0),
+        uso_msgs_mes: Number(c.mensagens_mes || 0),
+        uso_whatsapp: c.whatsapp_conectado === true,
+        uso_ultimo_acesso: c.ultimo_acesso,
+        uso_ultima_acao_em: c.ultima_acao_em,
+        // aviso automático de fim de teste (edge trial-avisos): o CRM não repete o D2
+        uso_aviso_fim_em: c.retencao_a_enviado_em,
+        // ciclo de vida da conta (vw_admin_contas): 'inadimplente' = plano vencido, ainda marcado como pago
+        uso_ciclo: c.ciclo,
+        uso_vencimento: c.plano_vencimento
+      } : l
+    })
+  } catch (err) {
+    console.warn('[inbox] sem dados de uso das contas:', err.message || err)
+    return leads
+  }
+}
+
+// Estágio da conversa (A, B, C ou D) dos leads parados: lê o histórico de mensagens e
+// classifica por palavras-chave (estagioConversa.js). O cache é por lead + última
+// interação, então só busca de novo quando chegou mensagem nova. Falhou? Sem estágio,
+// e os toques usam o texto padrão.
+const SETE_DIAS = 7 * 86400000
+async function estagiosDosLeads(leads, cache) {
+  const agora = Date.now()
+  const alvo = leads.filter(l => !l.arquivado && !l.ignorado && (
+    l.status === 'a_toque_1' || l.status === 'a_toque_2' ||
+    (l.status === 'conversando' && l.ultima_interacao && agora - new Date(l.ultima_interacao).getTime() > SETE_DIAS)
+  ))
+  const chave = (l) => l.id + ':' + l.ultima_interacao
+  const faltando = alvo.filter(l => cache[chave(l)] === undefined)
+
+  for (let i = 0; i < faltando.length; i += 10) {
+    const grupo = faltando.slice(i, i + 10)
+    const ids = grupo.map(l => l.id)
+    const msgs = []
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await supabase
+        .from('mensalli_lead_mensagens')
+        .select('lead_id, direcao, tipo, texto')
+        .in('lead_id', ids)
+        .order('enviado_em', { ascending: true })
+        .range(de, de + 999)
+      if (error) throw error
+      msgs.push(...(data || []))
+      if (!data || data.length < 1000) break
+    }
+    const porLead = {}
+    msgs.forEach(m => { (porLead[m.lead_id] = porLead[m.lead_id] || []).push(m) })
+    grupo.forEach(l => { cache[chave(l)] = classificarEstagio(porLead[l.id] || []) })
+  }
+
+  const mapa = {}
+  alvo.forEach(l => { mapa[l.id] = cache[chave(l)] })
+  return mapa
+}
+
 export function useInbox(isAdmin) {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [tempoReal, setTempoReal] = useState(false)
+  const [estagios, setEstagios] = useState({})
+  const cacheEstagios = useRef({})
   const [somLigado, setSomLigado] = useState(() => {
     try { return localStorage.getItem('mensalli:inbox:som') !== 'off' } catch { return true }
   })
@@ -67,8 +145,11 @@ export function useInbox(isAdmin) {
         .select('*')
         .order('ultima_interacao', { ascending: false })
       if (error) throw error
-      setLeads(data || [])
+      setLeads(await comUsoDasContas(data || []))
       setErro(null)
+      estagiosDosLeads(data || [], cacheEstagios.current)
+        .then(setEstagios)
+        .catch(err => console.warn('[inbox] sem estágio das conversas:', err.message || err))
     } catch (err) {
       console.error('[inbox] erro ao carregar leads:', err)
       setErro(err.message || 'Não consegui carregar a caixa')
@@ -200,8 +281,14 @@ export function useInbox(isAdmin) {
       .eq('id', leadId)
   }, [leads, aplicarLocal])
 
+  // Cada lead parado recebe o estágio da conversa (estagio_conversa: A, B, C ou D)
+  const leadsComEstagio = useMemo(
+    () => leads.map(l => (estagios[l.id] ? { ...l, estagio_conversa: estagios[l.id] } : l)),
+    [leads, estagios]
+  )
+
   return {
-    leads, loading, erro, tempoReal,
+    leads: leadsComEstagio, loading, erro, tempoReal,
     somLigado, alternarSom,
     recarregar: carregar,
     salvarLead, moverStatus, vincularConta, ignorarLead, marcarLido,

@@ -8,18 +8,33 @@
 // 'perdido' é o id histórico da coluna "Fora do funil".
 export const COLUNAS = [
   { id: 'conversando', titulo: 'Conversando',   cor: '#8b5cf6', bg: '#f5f3ff', hint: 'Papo em andamento' },
+  // Duas colunas calculadas do mesmo status 'conversando' (funilFollowup.ehPuxarConversa / ehBaseAntiga):
+  //   Puxar conversa  parado de 8 a 30 dias: tentar retomar (sugere o Toque 1)
+  //   Reaquecimento   parado há mais de 30 dias: toques 30/60/90, contados da última conversa
+  { id: 'puxar_conversa', titulo: 'Puxar conversa', cor: '#9333ea', bg: '#faf5ff', hint: 'Parado de 8 a 30 dias · tente retomar', auto: true, derivada: true },
+  { id: 'base_antiga', titulo: 'Reaquecimento', cor: '#be185d', bg: '#fdf2f8', hint: 'Parado há 30+ dias · toques 30/60/90', auto: true, derivada: true },
   { id: 'aguardando',  titulo: 'Aguardando',    cor: '#f59e0b', bg: '#fffbeb', hint: 'Pediu pra chamar outro dia' },
-  { id: 'a_toque_1',   titulo: 'Toque 1',       cor: '#0ea5e9', bg: '#f0f9ff', hint: 'Enviado · próximo no D3' },
-  { id: 'a_toque_2',   titulo: 'Toque 2',       cor: '#0ea5e9', bg: '#f0f9ff', hint: 'Enviado · próximo no D7' },
-  { id: 'a_toque_3',   titulo: 'Toque 3',       cor: '#0284c7', bg: '#f0f9ff', hint: 'Enviado · próximo no D14' },
-  { id: 'a_toque_4',   titulo: 'Toque 4',       cor: '#0369a1', bg: '#f0f9ff', hint: 'Enviado · próximo no D24' },
-  { id: 'a_toque_5',   titulo: 'Toque 5',       cor: '#075985', bg: '#f0f9ff', hint: 'Enviado · despedida no D36' },
-  { id: 'a_final',     titulo: 'Despedida',     cor: '#64748b', bg: '#f1f5f9', hint: 'Enviada · 3 dias e sai' },
-  { id: 'criou_conta', titulo: 'Criou conta',   cor: '#06b6d4', bg: '#ecfeff', hint: 'Teste e ativação', auto: true },
-  { id: 'pagante',     titulo: 'Pagante',       cor: '#16a34a', bg: '#f0fdf4', hint: 'Virou cliente', auto: true },
+  { id: 'a_toque_1',   titulo: 'Toque 1',       cor: '#0ea5e9', bg: '#f0f9ff', hint: 'Enviado · Toque 2 em 6 dias' },
+  { id: 'a_toque_2',   titulo: 'Toque 2',       cor: '#0284c7', bg: '#f0f9ff', hint: 'Enviado · sem resposta vai pro Fora do funil' },
+  // criou_conta, sem_conectar e trial_vencido são o mesmo status 'criou_conta' no banco:
+  // a coluna é calculada pelo uso da conta e pelo prazo do teste (funilFollowup.estadoConta).
+  { id: 'criou_conta',   titulo: 'Trial',          cor: '#06b6d4', bg: '#ecfeff', hint: 'Teste de 3 dias · D0, D1, D2', auto: true },
+  { id: 'sem_conectar',  titulo: 'Sem conectar',   cor: '#d97706', bg: '#fffbeb', hint: '24h+ sem WhatsApp · mandar áudio', auto: true, derivada: true },
+  { id: 'trial_vencido', titulo: 'Trial vencido',  cor: '#64748b', bg: '#f1f5f9', hint: 'Teste acabou · D4, D8, D15, D30', auto: true, derivada: true },
+  // As quatro colunas abaixo são do mesmo status 'pagante' no banco: o estado é
+  // calculado pelo uso da conta (funilFollowup.estadoPagante). Não aceitam arrastar.
+  { id: 'recem_pago',  titulo: 'Recém pago',    cor: '#0d9488', bg: '#f0fdfa', hint: 'Até 7 dias · conferir D2 e D5', auto: true, derivada: true },
+  { id: 'ativando',    titulo: 'Ativando',      cor: '#d97706', bg: '#fffbeb', hint: 'Pagou, falta conectar, cadastrar ou disparar', auto: true, derivada: true },
+  { id: 'pagante',     titulo: 'Pagante',       cor: '#16a34a', bg: '#f0fdf4', hint: 'Usando · check-in D30 e D60', auto: true, derivada: true },
+  { id: 'inadimplente', titulo: 'Inadimplente', cor: '#ea580c', bg: '#fff7ed', hint: 'Plano vencido · vira Churn depois de 30 dias', auto: true, derivada: true },
+  { id: 'em_risco',    titulo: 'Em risco',      cor: '#dc2626', bg: '#fef2f2', hint: 'Pagou e parou de usar · prioridade', auto: true, derivada: true },
   { id: 'churn',       titulo: 'Churn',         cor: '#dc2626', bg: '#fef2f2', hint: 'Pagou e cancelou', auto: true },
   { id: 'perdido',     titulo: 'Fora do funil', cor: '#94a3b8', bg: '#f8fafc', hint: 'Reaquecimento 30/60/90' }
 ]
+
+// Etapas que o gestor escolhe à mão (sem as colunas calculadas pelo uso da conta)
+export const COLUNAS_ETAPA = COLUNAS.filter(c => !c.derivada || c.id === 'pagante')
+// (criou_conta não é derivada: é a coluna "Trial", que o gestor também escolhe à mão)
 
 export const MOTIVOS_SAIDA = [
   { value: 'esgotou',      label: 'Esgotou a sequência (reaquece 30/60/90)' },
@@ -123,7 +138,10 @@ export function resolverVariaveis(texto, lead) {
     alunos: lead?.alunos ? String(lead.alunos) : '',
     nicho: lead?.nicho || '',
     plano: plano ? plano.nome : '',
-    preco: plano ? plano.preco : ''
+    preco: plano ? plano.preco : '',
+    // Uso real da conta (vem da vw_admin_contas, mesclado em useInbox)
+    alunos_conta: lead?.uso_alunos ? String(lead.uso_alunos) : '',
+    msgs_mes: lead?.uso_msgs_mes ? String(lead.uso_msgs_mes) : ''
   }
 
   return texto.replace(/\{\{(\w+)\}\}/g, (original, chave) => {

@@ -4,77 +4,44 @@
     "titulo": "Toque 1",
     "trilha": "a",
     "dia": 1,
-    "objetivo": "Reabrir com a oferta da lista",
+    "objetivo": "Retomar de acordo com onde a conversa parou (estágios A, B, C ou D)",
     "mensagens": [
       "{{nome}}, ficou alguma dúvida de como funciona pra {{nicho}}? Se preferir, me manda a lista dos seus alunos (pode ser print da planilha ou foto do caderno) que eu deixo tudo montado pra você ver rodando. Consegue me mandar hoje?",
       "Oi {{nome}}, o jeito mais rápido de testar é você me mandar a lista dos alunos e eu monto tudo. Quer que eu te mostre antes como o lembrete chega no zap do aluno?"
     ],
     "se_responder": "conversando",
-    "se_nao_responder": "a_toque_2"
+    "se_nao_responder": "a_toque_2",
+    "variantes": {
+      "A": [
+        "Oi {{nome}}, é o Caio, do Mensalli. Você me chamou sobre cobrança de aluno e a conversa ficou pra trás por aqui. Hoje você ainda cobra mensalidade na mão ou já resolveu isso?",
+        "{{nome}}, uma pergunta rápida: quando um aluno atrasa a mensalidade, como você cobra hoje? Pergunto porque tenho ajudado quem vive de aluno recorrente a automatizar isso e queria ver se faz sentido pra você.",
+        "Oi {{nome}}! Você me chamou sobre o Mensalli e a gente não chegou a conversar direito. Me diz seu tipo de negócio e quantos alunos tem que eu te falo em 2 linhas como ficaria pra você?"
+      ],
+      "B": [
+        "{{nome}}, lembrei de você: você tem uns {{alunos}} alunos no {{nicho}}, né? Ainda cobra tudo na mão? Se sim, tenho um vídeo de 1 minuto que mostra como isso sai sozinho do seu número. Quer ver?",
+        "Oi {{nome}}, retomando nossa conversa. Se a cobrança dos seus {{alunos}} alunos ainda toma seu tempo, me manda a lista (print da planilha serve) que eu monto o teste e você só confere. Topa?",
+        "[ÁUDIO] {{nome}}, é o Caio, do Mensalli. Lembrei da nossa conversa sobre cobrar os alunos do seu {{nicho}}. Se ainda for uma dor, me manda a lista que eu monto tudo pra você ver funcionando, sem compromisso. Pode ser?"
+      ],
+      "C": [
+        "{{nome}}, posso te perguntar uma coisa sincera? Depois que te passei o valor a gente parou. Foi o valor, falta de tempo ou você ainda estava decidindo? Pode falar à vontade, só quero saber se faz sentido continuar.",
+        "{{nome}}, pros seus {{alunos}} alunos o plano {{plano}} sai R$ {{preco}}/mês, sem fidelidade, e você testa 3 dias antes de pagar. Se eu montar com a sua lista, você vê funcionando antes de decidir qualquer coisa. Quer me mandar a lista?",
+        "{{nome}}, a conta costuma ser simples: se o sistema recuperar uma única mensalidade atrasada por mês, ele já se paga. Quantos dos seus alunos costumam atrasar por mês?"
+      ],
+      "D": [
+        "[ÁUDIO] {{nome}}, é o Caio. Fiquei pensando na nossa conversa: você tinha gostado do vídeo e a gente não fechou o próximo passo. Ficou alguma dúvida que eu possa resolver? Se preferir, me manda a lista dos alunos que eu deixo tudo pronto pra você testar hoje.",
+        "{{nome}}, você tinha gostado do sistema e a conversa parou por aqui. Aconteceu alguma coisa ou foi só a correria? Se foi correria, me manda a lista que eu monto e você só confere.",
+        "{{nome}}, vou ser direto: a cobrança automática ainda faz sentido pra você? Se sim, eu monto tudo hoje com a sua lista. Se não, me fala que eu paro de te chamar, sem problema nenhum."
+      ]
+    }
   },
   {
     "id": "a_toque_2",
     "titulo": "Toque 2",
     "trilha": "a",
-    "dia": 3,
-    "objetivo": "Prova concreta e tirar o medo de configurar",
-    "mensagens": [
-      "{{nome}}, {{caso}}. Dá pra fazer o mesmo com os seus {{alunos}} alunos. Me manda a lista que eu monto?",
-      "{{nome}}, o que mais trava é achar que dá trabalho configurar. Não dá: você só me manda a lista e eu cadastro tudo. Quer ver um print de como a cobrança aparece pro aluno?",
-      "{{nome}}, nem precisa organizar tudo pra testar. Se me mandar uns 3 alunos com valor e vencimento, eu monto um exemplo pra você ver funcionando. Quer fazer assim?"
-    ],
-    "se_responder": "conversando",
-    "se_nao_responder": "a_toque_3"
-  },
-  {
-    "id": "a_toque_3",
-    "titulo": "Toque 3",
-    "trilha": "a",
     "dia": 7,
-    "objetivo": "Áudio pessoal para reduzir esforço",
+    "objetivo": "Última por aqui: pedir um \"quero\" ou deixar o contato (todos os estágios)",
     "mensagens": [
-      "[ÁUDIO] Oi {{nome}}, é o {{seu_nome}}, do Mensalli. Passando rapidinho: sei que a rotina de {{nicho}} é corrida. Se você me mandar a lista dos seus alunos aqui no zap, eu monto tudo e você só confere, sem compromisso. Pode ser?",
-      "{{nome}}, sem pressão. Se você me mandar a lista dos {{alunos}} alunos, eu monto e você só olha rodando. Quer que eu te explique em 3 linhas como funciona?"
-    ],
-    "se_responder": "conversando",
-    "se_nao_responder": "a_toque_4"
-  },
-  {
-    "id": "a_toque_4",
-    "titulo": "Toque 4",
-    "trilha": "a",
-    "dia": 14,
-    "objetivo": "Custo do atraso e preço do plano certo",
-    "mensagens": [
-      "{{nome}}, quantos dos seus {{alunos}} alunos costumam atrasar a mensalidade no mês? Se forem uns 5 ou mais, recuperar uma ou duas mensalidades já costuma pagar o sistema. Me conta quantos são?",
-      "{{nome}}, pra quem tem {{alunos}} alunos o plano {{plano}} sai R$ {{preco}}/mês, sem fidelidade. Quer que eu monte seu teste de 3 dias pra você ver antes de decidir?",
-      "{{nome}}, uma dúvida que ficou: você está hoje mais perto de 50, 150 ou 500 alunos? Dependendo disso eu consigo te mostrar exatamente como eu montaria sua cobrança."
-    ],
-    "se_responder": "conversando",
-    "se_nao_responder": "a_toque_5"
-  },
-  {
-    "id": "a_toque_5",
-    "titulo": "Toque 5",
-    "trilha": "a",
-    "dia": 24,
-    "objetivo": "Checar timing e abrir caminho pra Aguardando",
-    "mensagens": [
-      "{{nome}}, ainda faz sentido pra você agora, ou é melhor eu te chamar mais pra frente? Se for, me fala um mês que eu anoto aqui.",
-      "Oi {{nome}}, não quero te encher. Prefere que eu retome em algum mês específico ou posso montar seu teste agora?"
-    ],
-    "se_responder": "conversando",
-    "se_nao_responder": "a_final"
-  },
-  {
-    "id": "a_final",
-    "titulo": "Despedida",
-    "trilha": "a",
-    "dia": 36,
-    "objetivo": "Despedida que deixa a porta aberta",
-    "mensagens": [
-      "{{nome}}, vou parar de te chamar pra não encher seu zap. Se um dia cansar de cobrar aluno no braço, é só me mandar um \"quero\" aqui que eu monto tudo pra você, a qualquer hora. Valeu pela conversa!",
-      "Fechando por aqui, {{nome}}! Quando quiser testar com a sua lista de alunos, me chama e eu monto na hora. É só mandar um \"oi\"."
+      "{{nome}}, última por aqui: se a cobrança dos alunos ainda te dá trabalho, me manda um \"quero\" que eu monto tudo pra você. Se não for o momento, tudo bem, fica meu contato."
     ],
     "se_responder": "conversando",
     "se_nao_responder": "fora_do_funil"
@@ -103,11 +70,11 @@
       "{{nome}}, só confirmando: quer que eu retome na semana que vem? Me diz um dia que eu anoto."
     ],
     "se_responder": "conversando",
-    "se_nao_responder": "a_toque_3"
+    "se_nao_responder": "a_toque_2"
   },
   {
-    "id": "conta_1",
-    "titulo": "Conta: dia 0",
+    "id": "c_d0",
+    "titulo": "Conta: D0",
     "trilha": "c",
     "dia": 0,
     "objetivo": "Conseguir a lista e importar os alunos",
@@ -116,24 +83,37 @@
       "Conta criada! Quer que eu importe seus {{alunos}} alunos pra você? É só me mandar a lista."
     ],
     "se_responder": "criou_conta",
-    "se_nao_responder": "conta_2"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "conta_2",
-    "titulo": "Conta: dia 1",
+    "id": "c_d1",
+    "titulo": "Conta: D1",
     "trilha": "c",
     "dia": 1,
-    "objetivo": "Destravar a conexão do WhatsApp",
+    "objetivo": "Destravar a conexão do WhatsApp (áudio explicando)",
     "mensagens": [
-      "[ÁUDIO] {{nome}}, é o {{seu_nome}}. Queria saber se você já conseguiu conectar seu WhatsApp no sistema. Se travou em algum passo, me fala qual que eu resolvo agora.",
-      "{{nome}}, já conseguiu conectar o WhatsApp? Se travou, me manda um print da tela que eu te guio."
+      "{{nome}}, como foi o primeiro dia no Mensalli? Se tem alguma parte que ainda não ficou clara, me fala que eu resolvo."
     ],
+    "variantes": {
+      "zap": [
+        "[ÁUDIO] Oi {{nome}}, é o {{seu_nome}}, do Mensalli. Vi que você criou a conta mas o WhatsApp ainda não conectou, e é ele que faz a cobrança sair sozinha pro seu aluno. Funciona igual ao WhatsApp Web: você abre o Mensalli no computador, vai em WhatsApp e lê o QR Code com o celular. Leva um minuto. Se travar em qualquer passo, me manda um print que eu te guio, ou me manda a lista dos alunos que eu cadastro tudo pra você.",
+        "{{nome}}, já conseguiu conectar o WhatsApp? Se travou, me manda um print da tela que eu te guio passo a passo."
+      ],
+      "alunos": [
+        "[ÁUDIO] Oi {{nome}}, é o {{seu_nome}}. Vi que seu WhatsApp já está conectado, parabéns! Agora falta só colocar os alunos pra cobrança começar a sair. Você pode me mandar a lista do jeito que tiver, planilha, print ou foto do caderno, que eu cadastro tudo pra você.",
+        "{{nome}}, seu WhatsApp já está conectado. Me manda a lista dos alunos (pode ser print) que eu cadastro agora e você já vê a primeira cobrança."
+      ],
+      "disparo": [
+        "[ÁUDIO] Oi {{nome}}, é o {{seu_nome}}. Sua conta está pronta, com WhatsApp e alunos, falta só a primeira cobrança sair. Quer que eu dispare uma junto com você pra ver como chega no zap do aluno? É rapidinho.",
+        "{{nome}}, tudo pronto na sua conta. Quer que eu dispare a primeira cobrança com você pra ver como chega pro aluno?"
+      ]
+    },
     "se_responder": "criou_conta",
-    "se_nao_responder": "conta_3"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "conta_3",
-    "titulo": "Conta: dia 2",
+    "id": "c_d2",
+    "titulo": "Conta: D2",
     "trilha": "c",
     "dia": 2,
     "objetivo": "Fazer ver um lembrete saindo antes do fim do teste",
@@ -141,38 +121,47 @@
       "{{nome}}, seu teste termina amanhã. Já deu pra ver um lembrete saindo pro aluno? Se não, me manda 3 alunos que eu disparo um de teste agora pra você ver.",
       "{{nome}}, falta 1 dia de teste. Quer que eu cadastre seus alunos hoje pra você aproveitar?"
     ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, seu teste termina amanhã e o WhatsApp ainda não conectou. Se quiser, resolvo isso agora com você em 2 minutos pra você ver a cobrança saindo ainda dentro do teste."
+      ],
+      "alunos": [
+        "{{nome}}, seu teste termina amanhã e ainda não tem aluno na conta. Me manda 3 alunos (nome, WhatsApp, vencimento e valor) que eu cadastro agora e você vê a cobrança saindo."
+      ],
+      "disparo": [
+        "{{nome}}, seu teste termina amanhã e falta só uma cobrança sair. Quer que eu dispare uma de teste agora pra você ver como chega?"
+      ]
+    },
     "se_responder": "criou_conta",
-    "se_nao_responder": "conta_fim_teste"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "conta_fim_teste",
-    "titulo": "Conta: fim do teste",
+    "id": "c_d4",
+    "titulo": "Conta: D4",
     "trilha": "c",
-    "dia": 3,
-    "objetivo": "Último dia do teste: colocar pelo menos uma cobrança real pra rodar",
-    "mensagens": [
-      "{{nome}}, seu teste termina hoje e não queria que você saísse sem ver uma cobrança rodando de verdade. Me manda 3 alunos (nome, WhatsApp, vencimento e valor) que eu deixo funcionando agora?",
-      "Último dia de teste, {{nome}}! Antes de decidir, quer que eu coloque pelo menos um aluno pra receber a cobrança hoje? Leva 2 minutos."
-    ],
-    "se_responder": "criou_conta",
-    "se_nao_responder": "conta_4"
-  },
-  {
-    "id": "conta_4",
-    "titulo": "Conta: dia 5",
-    "trilha": "c",
-    "dia": 5,
-    "objetivo": "Converter no plano certo após o teste",
+    "dia": 4,
+    "objetivo": "Teste acabou: converter no plano certo ou reabrir o teste",
     "mensagens": [
       "[ÁUDIO] {{nome}}, seu teste acabou. Pelo que você me contou, o plano {{plano}} (R$ {{preco}}/mês, sem fidelidade) é o que cabe. Quer que eu deixe ativo e com os alunos importados hoje?",
       "{{nome}}, deu pra ver o sistema funcionando? Se fez sentido, ativo seu plano {{plano}} agora. Posso ativar?"
     ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, seu teste acabou sem você ter visto a cobrança saindo, e isso é culpa de eu não ter ajudado a conectar o WhatsApp. Posso reabrir seu teste por mais 3 dias e conectar junto com você? Leva 2 minutos."
+      ],
+      "alunos": [
+        "{{nome}}, seu teste acabou e a conta ficou sem alunos. Se me mandar a lista agora eu cadastro, reabro o teste por 3 dias e você vê a cobrança saindo de verdade. Topa?"
+      ],
+      "disparo": [
+        "{{nome}}, seu teste acabou com tudo pronto mas sem nenhuma cobrança enviada. Quer que eu dispare uma de teste agora pra você ver como chega no aluno, antes de decidir o plano?"
+      ]
+    },
     "se_responder": "criou_conta",
-    "se_nao_responder": "conta_5"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "conta_5",
-    "titulo": "Conta: dia 8",
+    "id": "c_d8",
+    "titulo": "Conta: D8",
     "trilha": "c",
     "dia": 8,
     "objetivo": "Diagnosticar o que travou, sem desconto",
@@ -181,11 +170,11 @@
       "{{nome}}, quero entender o que faltou pra você seguir. Foi tempo, dúvida ou preço? Qualquer resposta ajuda."
     ],
     "se_responder": "criou_conta",
-    "se_nao_responder": "conta_6"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "conta_6",
-    "titulo": "Conta: dia 15",
+    "id": "c_d15",
+    "titulo": "Conta: D15",
     "trilha": "c",
     "dia": 15,
     "objetivo": "Oferecer reabrir o teste já configurado",
@@ -194,11 +183,11 @@
       "{{nome}}, que tal eu deixar tudo configurado pra você e você só testa? Me confirma se posso reabrir."
     ],
     "se_responder": "criou_conta",
-    "se_nao_responder": "conta_7"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "conta_7",
-    "titulo": "Conta: dia 30",
+    "id": "c_d30",
+    "titulo": "Conta: D30",
     "trilha": "c",
     "dia": 30,
     "objetivo": "Despedida que deixa a porta aberta",
@@ -207,30 +196,244 @@
       "Fechando por aqui, {{nome}}! Quando fizer sentido, me chama que eu monto tudo de novo em minutos. Combinado?"
     ],
     "se_responder": "criou_conta",
-    "se_nao_responder": "fora_do_funil"
+    "se_nao_responder": "proximo"
   },
   {
-    "id": "pagante_d2",
-    "titulo": "Pagante: dia 2",
+    "id": "f_d2",
+    "titulo": "Recém pago: D2",
     "trilha": "f",
     "dia": 2,
-    "objetivo": "Confirmar que as primeiras cobranças saíram",
+    "objetivo": "Conferir se conectou o WhatsApp e cadastrou os primeiros alunos",
     "mensagens": [
-      "{{nome}}, deu tudo certo com os primeiros envios? Ficou alguma coisa que você quer ajustar?",
-      "{{nome}}, passando pra ver se as primeiras cobranças já saíram pros seus alunos. Algum aluno estranhou ou ficou alguma dúvida?"
+      "{{nome}}, tudo certo com a conta? Conseguiu conectar o WhatsApp e cadastrar os primeiros alunos? Se travou em algum passo, me fala qual que eu resolvo por aqui.",
+      "Oi {{nome}}, passando pra ver como foi o começo. Já deu pra conectar o WhatsApp? Se preferir, me manda a lista dos alunos que eu cadastro pra você."
     ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, vi que o WhatsApp ainda não conectou na sua conta. É o passo que mais trava, e leva 2 minutos: você escaneia o QR Code e pronto. Quer que eu te guie agora?",
+        "Oi {{nome}}, o WhatsApp ainda não está conectado, e sem ele as cobranças não saem. Se travou, me manda um print da tela que eu te ajudo."
+      ],
+      "alunos": [
+        "{{nome}}, seu WhatsApp já está conectado, falta só cadastrar os alunos. Me manda a lista (pode ser print da planilha ou foto do caderno) que eu cadastro tudo pra você.",
+        "Oi {{nome}}, falta pouco: conta pronta e WhatsApp conectado, só faltam os alunos. Quer me mandar a lista que eu cadastro?"
+      ],
+      "disparo": [
+        "{{nome}}, tudo pronto na sua conta, falta só a primeira cobrança sair. Quer que eu dispare a primeira junto com você pra ver como chega no zap do aluno?",
+        "Oi {{nome}}, seus alunos já estão cadastrados. Quer que eu te ajude a mandar o primeiro lembrete? Leva 2 minutos e você já vê chegando."
+      ]
+    },
     "se_responder": "pagante",
-    "se_nao_responder": "pagante_d7"
+    "se_nao_responder": "pagante"
   },
   {
-    "id": "pagante_d7",
-    "titulo": "Pagante: dia 7",
+    "id": "f_d5",
+    "titulo": "Recém pago: D5",
     "trilha": "f",
-    "dia": 7,
-    "objetivo": "Virar rotina: tirar o que ainda é manual",
+    "dia": 5,
+    "objetivo": "Confirmar que a primeira cobrança saiu e o aluno recebeu",
     "mensagens": [
-      "{{nome}}, agora que rodou alguns dias, tem alguma parte da cobrança que você ainda está fazendo manualmente e queria tirar da sua mão?",
-      "{{nome}}, já deu uma semana rodando. Algum aluno já pagou pelo link da cobrança? Se quiser, te mostro onde ver quem já pagou e quem está em atraso."
+      "{{nome}}, já saiu a primeira cobrança pros seus alunos? Algum aluno comentou alguma coisa ou ficou com dúvida?",
+      "Oi {{nome}}, como foi a primeira semana? Os alunos já receberam o lembrete? Se quiser, te mostro onde ver quem já pagou e quem está em atraso."
+    ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, já faz alguns dias e o WhatsApp ainda não conectou. Sem isso o sistema não cobra por você. Posso te ajudar agora? É rápido.",
+        "Oi {{nome}}, queria muito ver o Mensalli funcionando pra você, mas o WhatsApp segue desconectado. Me chama que eu faço isso com você em 2 minutos."
+      ],
+      "alunos": [
+        "{{nome}}, vi que ainda não entraram alunos na conta. Me manda a lista e eu cadastro hoje, aí já cai na rotina da cobrança.",
+        "Oi {{nome}}, a conta está pronta mas sem alunos ainda. Se for falta de tempo, me manda a lista como estiver (até foto do caderno) que eu monto."
+      ],
+      "disparo": [
+        "{{nome}}, seus alunos já estão lá, mas nenhuma cobrança saiu ainda. Quer que eu configure o dia do lembrete com você? Leva 2 minutos.",
+        "Oi {{nome}}, falta só a primeira cobrança sair. Quer que a gente deixe os lembretes automáticos de uma vez, pra você não pensar mais nisso?"
+      ]
+    },
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_a8",
+    "titulo": "Ativando: D8",
+    "trilha": "f",
+    "dia": 8,
+    "objetivo": "Destravar o marco que falta (conectar, cadastrar ou disparar)",
+    "mensagens": [
+      "{{nome}}, como está sendo o Mensalli por aí? Se tem alguma parte que ainda não rodou, me fala qual que eu resolvo."
+    ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, faz uma semana e o WhatsApp da sua conta ainda não conectou. Posso fazer isso com você agora por chamada ou por print? Sem ele as cobranças não saem."
+      ],
+      "alunos": [
+        "{{nome}}, sua conta ainda está com poucos alunos. Me manda a lista do jeito que estiver (print, foto, planilha) que eu cadastro por você hoje."
+      ],
+      "disparo": [
+        "{{nome}}, tudo está montado, mas nenhuma cobrança saiu ainda. Quer que eu escolha com você o dia do primeiro lembrete e deixe automático?"
+      ]
+    },
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_a12",
+    "titulo": "Ativando: D12",
+    "trilha": "f",
+    "dia": 12,
+    "objetivo": "Oferecer fazer junto, tirando o esforço do cliente",
+    "mensagens": [
+      "{{nome}}, quer que eu deixe tudo configurado pra você? Você me passa o que tem e eu monto, é só conferir depois."
+    ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, o WhatsApp ainda não conectou e entendo que pode parecer chato. Se quiser, marcamos 5 minutos e eu conecto junto com você, sem você precisar entender nada técnico."
+      ],
+      "alunos": [
+        "{{nome}}, sei que cadastrar aluno dá preguiça. Me manda a lista como estiver, até áudio com os nomes serve, e eu cadastro tudo pra você."
+      ],
+      "disparo": [
+        "{{nome}}, vamos fazer assim: me confirma o dia de vencimento da maioria dos seus alunos e eu deixo os lembretes ligados. Aí você nunca mais manda cobrança no braço."
+      ]
+    },
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_a18",
+    "titulo": "Ativando: D18",
+    "trilha": "f",
+    "dia": 18,
+    "objetivo": "Último empurrão: entender se o plano ainda faz sentido pra ele",
+    "mensagens": [
+      "{{nome}}, queria te perguntar com sinceridade: o Mensalli está fazendo sentido pra sua rotina? Se algo travou, me fala que eu resolvo. Se não for o momento, também me avisa, tá?"
+    ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, vou ser direto: sem o WhatsApp conectado o Mensalli não faz o principal, que é cobrar por você. Quer que eu resolva isso hoje, ou prefere me contar o que travou?"
+      ],
+      "alunos": [
+        "{{nome}}, sua conta continua sem os alunos. O que está pesando mais: falta de tempo ou dúvida no sistema? Me fala que eu resolvo o que for."
+      ],
+      "disparo": [
+        "{{nome}}, está tudo pronto e só falta ligar a cobrança. Tem algum receio de mandar pros alunos? Se for isso, me conta que eu te mostro como ela chega pra eles."
+      ]
+    },
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_d30",
+    "titulo": "Pagante: D30",
+    "trilha": "f",
+    "dia": 30,
+    "objetivo": "Check-in de 1 mês: ouvir como está e o que falta",
+    "mensagens": [
+      "{{nome}}, fez 1 mês que você está com a gente! Pelo que vi aqui são {{alunos_conta}} alunos cadastrados e {{msgs_mes}} mensagens enviadas este mês. Como está sendo pra você? Tem alguma parte que ainda dá trabalho?",
+      "Oi {{nome}}, completou 1 mês de Mensalli. O que mudou na sua rotina de cobrança de lá pra cá? Se tem algo que você queria que o sistema fizesse e ainda não faz, me conta que eu levo pra equipe."
+    ],
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_d60",
+    "titulo": "Pagante: D60",
+    "trilha": "f",
+    "dia": 60,
+    "objetivo": "Pedir indicação ou um depoimento curto",
+    "mensagens": [
+      "{{nome}}, 2 meses juntos! Posso te pedir um favor? Se o Mensalli tem te ajudado, você conhece outro dono de {{nicho}} que ainda cobra no braço? Se indicar, eu monto tudo pra ele do mesmo jeito que montei pra você.",
+      "Oi {{nome}}, faz 2 meses que você usa o Mensalli. Se estiver gostando, topa mandar um áudio de 20 segundos contando como era antes e como ficou? Eu uso como depoimento e te marco, combinado?"
+    ],
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_risco_1",
+    "titulo": "Em risco: 1º toque",
+    "trilha": "f",
+    "dia": 0,
+    "objetivo": "Mostrar que notou e perguntar o que travou, sem vender nada",
+    "mensagens": [
+      "{{nome}}, passando pra ver como estão as coisas por aí com o Mensalli. Aconteceu algo, ou ficou alguma dúvida que eu possa resolver?"
+    ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, vi que o WhatsApp da sua conta desconectou, e enquanto isso as cobranças não saem. Costuma ser só escanear o QR Code de novo. Quer que eu te guie agora?"
+      ],
+      "sumiu": [
+        "{{nome}}, faz um tempo que não vejo você por aqui no Mensalli. Aconteceu alguma coisa, ou ficou alguma dúvida que eu possa resolver?"
+      ],
+      "sem_disparo": [
+        "{{nome}}, notei que as cobranças pararam de sair este mês. Mudou algo na sua rotina, ou travou em algum ponto do sistema? Me conta que eu resolvo."
+      ],
+      "sem_alunos": [
+        "{{nome}}, sua conta está pronta mas ainda sem alunos cadastrados. Me manda a lista (pode ser print) que eu cadastro agora e já deixo rodando."
+      ]
+    },
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_risco_2",
+    "titulo": "Em risco: 2º toque",
+    "trilha": "f",
+    "dia": 5,
+    "objetivo": "Ajuda concreta: oferecer resolver junto antes que vire cancelamento",
+    "mensagens": [
+      "{{nome}}, sei que a rotina aperta. Se quiser, resolvo isso por você: me diga o que travou e eu deixo tudo funcionando, sem você precisar mexer."
+    ],
+    "variantes": {
+      "zap": [
+        "{{nome}}, o WhatsApp segue desconectado e as cobranças continuam paradas. Se preferir, marcamos 5 minutos e eu reconecto junto com você. Qual horário fica bom?"
+      ],
+      "sumiu": [
+        "{{nome}}, queria muito que o Mensalli estivesse te ajudando. Se algo não encaixou na sua rotina, me fala sem filtro. Se eu puder ajustar, ajusto."
+      ],
+      "sem_disparo": [
+        "{{nome}}, as cobranças seguem paradas. Quer que eu reative os lembretes automáticos pra você? É só me confirmar e eu deixo ligado."
+      ],
+      "sem_alunos": [
+        "{{nome}}, ainda sem alunos na conta. Se for falta de tempo, me manda um áudio com os nomes que eu cadastro tudo por você hoje."
+      ]
+    },
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_inad_5",
+    "titulo": "Inadimplente: 5 dias",
+    "trilha": "f",
+    "dia": 5,
+    "objetivo": "Lembrar do vencimento sem pressão e abrir espaço pra resolver",
+    "mensagens": [
+      "{{nome}}, tudo bem? Vi que o plano do Mensalli venceu há alguns dias. Aconteceu alguma coisa ou foi só esquecimento? Se quiser renovar, é por aqui: https://www.mensalli.com.br/app/assinatura",
+      "Oi {{nome}}, passando pra avisar que o seu plano do Mensalli venceu e as cobranças automáticas dos seus alunos podem ter parado de sair. Quer que eu te ajude a renovar? Leva 1 minuto."
+    ],
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_inad_12",
+    "titulo": "Inadimplente: 12 dias",
+    "trilha": "f",
+    "dia": 12,
+    "objetivo": "Entender o motivo e oferecer ajuda, sem desconto",
+    "mensagens": [
+      "{{nome}}, queria entender o que aconteceu com a renovação. Foi o valor, o momento ou alguma coisa que não funcionou como você esperava? Me conta que eu vejo como te ajudar.",
+      "Oi {{nome}}, seu plano segue vencido. Se foi o valor ou o momento, me fala. Se foi dificuldade no sistema, eu resolvo com você. Qualquer resposta me ajuda."
+    ],
+    "se_responder": "pagante",
+    "se_nao_responder": "pagante"
+  },
+  {
+    "id": "f_inad_22",
+    "titulo": "Inadimplente: 22 dias",
+    "trilha": "f",
+    "dia": 22,
+    "objetivo": "Aviso final antes de virar churn: a conta fica guardada",
+    "mensagens": [
+      "{{nome}}, última passada por aqui: seu plano segue vencido e, nos próximos dias, vou encerrar o acompanhamento. Seus alunos e dados ficam guardados, e quando quiser voltar é só me chamar que eu reativo na hora.",
+      "{{nome}}, vou deixar sua conta guardada com os {{alunos_conta}} alunos cadastrados. Se quiser reativar o plano a qualquer momento, me manda um \"quero\" aqui e eu resolvo."
     ],
     "se_responder": "pagante",
     "se_nao_responder": "pagante"
@@ -246,7 +449,13 @@
       "{{nome}}, posso te perguntar o motivo do cancelamento? Qualquer resposta ajuda e não vou tentar te convencer de nada."
     ],
     "se_responder": "churn",
-    "se_nao_responder": "churn_2"
+    "se_nao_responder": "churn_2",
+    "variantes": {
+      "venceu": [
+        "{{nome}}, vi que seu plano do Mensalli não foi renovado e a conta ficou parada. Sem problema nenhum. Só queria entender o que pesou: valor, pouco uso ou algo que não funcionou? Isso me ajuda a melhorar.",
+        "{{nome}}, posso te perguntar o que aconteceu com a renovação? Qualquer resposta ajuda, e não vou tentar te convencer de nada."
+      ]
+    }
   },
   {
     "id": "churn_2",
@@ -286,7 +495,29 @@
       "{{nome}}, mudou algo por aí desde a nossa conversa? Se a cobrança ainda é manual, me manda a lista dos alunos que eu monto o teste."
     ],
     "se_responder": "conversando",
-    "se_nao_responder": "reaq_60"
+    "se_nao_responder": "reaq_60",
+    "variantes": {
+      "A": [
+        "Oi {{nome}}, é o Caio, do Mensalli. Você me chamou sobre cobrança de aluno e a conversa ficou pra trás por aqui. Hoje você ainda cobra mensalidade na mão ou já resolveu isso?",
+        "{{nome}}, uma pergunta rápida: quando um aluno atrasa a mensalidade, como você cobra hoje? Pergunto porque tenho ajudado quem vive de aluno recorrente a automatizar isso e queria ver se faz sentido pra você.",
+        "Oi {{nome}}! Você me chamou sobre o Mensalli e a gente não chegou a conversar direito. Me diz seu tipo de negócio e quantos alunos tem que eu te falo em 2 linhas como ficaria pra você?"
+      ],
+      "B": [
+        "{{nome}}, lembrei de você: você tem uns {{alunos}} alunos no {{nicho}}, né? Ainda cobra tudo na mão? Se sim, tenho um vídeo de 1 minuto que mostra como isso sai sozinho do seu número. Quer ver?",
+        "Oi {{nome}}, retomando nossa conversa. Se a cobrança dos seus {{alunos}} alunos ainda toma seu tempo, me manda a lista (print da planilha serve) que eu monto o teste e você só confere. Topa?",
+        "[ÁUDIO] {{nome}}, é o Caio, do Mensalli. Lembrei da nossa conversa sobre cobrar os alunos do seu {{nicho}}. Se ainda for uma dor, me manda a lista que eu monto tudo pra você ver funcionando, sem compromisso. Pode ser?"
+      ],
+      "C": [
+        "{{nome}}, posso te perguntar uma coisa sincera? Depois que te passei o valor a gente parou. Foi o valor, falta de tempo ou você ainda estava decidindo? Pode falar à vontade, só quero saber se faz sentido continuar.",
+        "{{nome}}, pros seus {{alunos}} alunos o plano {{plano}} sai R$ {{preco}}/mês, sem fidelidade, e você testa 3 dias antes de pagar. Se eu montar com a sua lista, você vê funcionando antes de decidir qualquer coisa. Quer me mandar a lista?",
+        "{{nome}}, a conta costuma ser simples: se o sistema recuperar uma única mensalidade atrasada por mês, ele já se paga. Quantos dos seus alunos costumam atrasar por mês?"
+      ],
+      "D": [
+        "[ÁUDIO] {{nome}}, é o Caio. Fiquei pensando na nossa conversa: você tinha gostado do vídeo e a gente não fechou o próximo passo. Ficou alguma dúvida que eu possa resolver? Se preferir, me manda a lista dos alunos que eu deixo tudo pronto pra você testar hoje.",
+        "{{nome}}, você tinha gostado do sistema e a conversa parou por aqui. Aconteceu alguma coisa ou foi só a correria? Se foi correria, me manda a lista que eu monto e você só confere.",
+        "{{nome}}, vou ser direto: a cobrança automática ainda faz sentido pra você? Se sim, eu monto tudo hoje com a sua lista. Se não, me fala que eu paro de te chamar, sem problema nenhum."
+      ]
+    }
   },
   {
     "id": "reaq_60",

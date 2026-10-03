@@ -8,12 +8,16 @@ import Button from '../../design-system/components/Button'
 import Input from '../../design-system/components/Input'
 import Select from '../../design-system/components/Select'
 import {
-  COLUNAS, MOTIVOS_SAIDA, formatarTelefone, tempoDesde, formatarDataCurta, hojeISO, dataLocal,
+  COLUNAS, COLUNAS_ETAPA, MOTIVOS_SAIDA, formatarTelefone, tempoDesde, formatarDataCurta, hojeISO, dataLocal,
   resolverVariaveis, planoPara
 } from './utils'
-import { proximaAcao, diasNaEtapa, diasEntre, ehAudio, semMarcaAudio } from './funilFollowup'
+import {
+  proximaAcao, diasNaEtapa, diasEntre, ehAudio, semMarcaAudio,
+  colunaDoLead, estadoPagante, estadoConta, mensagensDaVez, MOTIVOS_RISCO, DIAS_PARA_CHURN, DIAS_BASE_ANTIGA
+} from './funilFollowup'
 import { estiloColuna, ESTILO_CARD, ESTILO_TITULO_COLUNA, ESTILO_HINT_COLUNA } from '../kanbanEstilo'
 import { ehOutbound } from './ListaConversas'
+import { ESTAGIOS, ORDEM_ESTAGIOS } from './estagioConversa'
 
 // Funil de follow-up (funilFollowup.json + funilFollowup.js).
 // Coluna de toque = "esse já foi". O card mostra há quantos dias está ali e
@@ -87,7 +91,124 @@ function TagAcao({ acao }) {
   </Tag>
 }
 
-function CardLead({ lead, acao, onAbrir, onDragStart, onDragEnd }) {
+const ROTULO_MARCO = { zap: 'WhatsApp', alunos: 'alunos', disparo: '1ª cobrança' }
+
+// Estado calculado pelo uso: pagante (Recém pago, Ativando, Pagante, Em risco) ou
+// conta em teste (Trial, Sem conectar, Trial vencido). Outros status: null.
+const estadoDoLead = (lead) =>
+  lead.status === 'pagante' ? estadoPagante(lead)
+    : lead.status === 'criou_conta' ? estadoConta(lead)
+    : null
+
+const fraseTrial = (n) => n > 1 ? `teste acaba em ${n}d` : n === 1 ? 'teste acaba amanhã' : n === 0 ? 'teste acaba hoje' : `teste venceu há ${-n}d`
+
+// Números de uso da conta no cartão do pagante: dá pra decidir o toque sem abrir a ficha
+function UsoTags({ info }) {
+  const { uso } = info
+  if (!uso.tem) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+      {info.estado === 'em_risco' && (
+        <Tag bg="#fee2e2" cor="#b91c1c" icon="mdi:alert-outline" forte title="Por que está em risco">{MOTIVOS_RISCO[info.motivo]}</Tag>
+      )}
+      {info.estado === 'inadimplente' && (
+        <>
+          <Tag bg="#fee2e2" cor="#b91c1c" icon="mdi:cash-remove" forte title="O plano venceu e a conta ainda está marcada como paga">
+            {info.diasVencido === null ? 'Plano vencido (sem data)' : `Plano venceu há ${info.diasVencido}d`}
+          </Tag>
+          {info.diasParaChurn !== null && (
+            <Tag bg="#ffedd5" cor="#9a3412" icon="mdi:timer-sand" title={`Passando de ${DIAS_PARA_CHURN} dias vencido, vira Churn sozinho`}>
+              {info.diasParaChurn === 0 ? 'vira Churn hoje' : `vira Churn em ${info.diasParaChurn}d`}
+            </Tag>
+          )}
+        </>
+      )}
+      {info.estado === 'sem_conectar' && (
+        <Tag bg="#fef3c7" cor="#92400e" icon="mdi:whatsapp" forte title="Criou a conta há mais de 24h e não conectou o WhatsApp: mandar áudio">
+          Sem WhatsApp há {Math.floor(info.horas / 24) >= 1 ? `${Math.floor(info.horas / 24)}d` : `${Math.floor(info.horas)}h`}
+        </Tag>
+      )}
+      {info.trialRestante !== undefined && (
+        <Tag bg={info.trialRestante < 0 ? '#f1f5f9' : '#e0f2fe'} cor={info.trialRestante < 0 ? '#64748b' : '#075985'} icon="mdi:timer-sand" title="Prazo do teste de 3 dias">
+          {fraseTrial(info.trialRestante)}
+        </Tag>
+      )}
+      {info.avisoFimEm && (
+        <Tag bg="#ede9fe" cor="#5b21b6" icon="mdi:robot-outline" title="O aviso automático de fim de teste já foi enviado: o CRM pula o D2">
+          aviso de fim de teste (auto) enviado
+        </Tag>
+      )}
+      {info.estado === 'ativando' && info.faltam.length > 0 && (
+        <Tag bg="#fef3c7" cor="#92400e" icon="mdi:progress-wrench" forte title="O que ainda falta para a conta rodar">
+          Falta: {info.faltam.map(m => ROTULO_MARCO[m]).join(' · ')}
+        </Tag>
+      )}
+      <Tag bg="#f1f5f9" cor="#475569" icon="mdi:account-multiple-outline" title="Alunos cadastrados">{uso.alunos}</Tag>
+      <Tag bg="#f1f5f9" cor="#475569" icon="mdi:send-check-outline" title="Mensagens enviadas neste mês">{uso.msgsMes}</Tag>
+      <Tag bg={uso.zap ? '#dcfce7' : '#fee2e2'} cor={uso.zap ? '#166534' : '#b91c1c'} icon="mdi:whatsapp" title={uso.zap ? 'WhatsApp conectado' : 'WhatsApp desconectado'}>
+        {uso.zap ? 'ok' : 'off'}
+      </Tag>
+      {(uso.nuncaEntrou || (uso.diasSemAcesso !== null && uso.diasSemAcesso >= 3)) && (
+        <Tag bg="#fef3c7" cor="#92400e" icon="mdi:clock-outline" title="Último acesso ao Mensalli">
+          {uso.nuncaEntrou ? 'nunca entrou' : `${uso.diasSemAcesso}d sem entrar`}
+        </Tag>
+      )}
+    </div>
+  )
+}
+
+// Linha do painel "Uso da conta" na ficha
+function LinhaUso({ ok, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12.5px', color: ok ? '#166534' : '#b91c1c' }}>
+      <Icon icon={ok ? 'mdi:check-circle' : 'mdi:close-circle'} width="16" />
+      <span style={{ color: '#334155' }}>{children}</span>
+    </div>
+  )
+}
+
+function PainelUso({ info }) {
+  const { uso } = info
+  if (!uso.tem) return null
+  const titulos = {
+    recem_pago: 'Recém pago', ativando: 'Ativando', pagante: 'Pagante', em_risco: 'Em risco',
+    criou_conta: 'Trial', sem_conectar: 'Sem conectar', trial_vencido: 'Trial vencido', inadimplente: 'Inadimplente'
+  }
+  return (
+    <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
+        <strong style={{ fontSize: '13px', color: '#0f172a' }}>Uso da conta</strong>
+        <span style={{ fontSize: '11.5px', fontWeight: 700, color: info.estado === 'em_risco' ? '#b91c1c' : '#475569' }}>
+          {titulos[info.estado]} · {info.estado === 'inadimplente'
+            ? (info.diasVencido === null ? 'sem data de vencimento' : `venceu há ${info.diasVencido}d`)
+            : info.trialRestante !== undefined
+            ? (info.dias === 0 ? 'criou hoje' : `criou há ${info.dias}d`)
+            : (info.dias === 0 ? 'pagou hoje' : `pagou há ${info.dias}d`)}
+        </span>
+      </div>
+      <div style={{ display: 'grid', gap: '5px' }}>
+        <LinhaUso ok={uso.zap}>WhatsApp {uso.zap ? 'conectado' : 'desconectado'}</LinhaUso>
+        <LinhaUso ok={uso.alunos >= 5}>{uso.alunos} {uso.alunos === 1 ? 'aluno cadastrado' : 'alunos cadastrados'}</LinhaUso>
+        <LinhaUso ok={uso.msgsMes > 0}>{uso.msgsMes} {uso.msgsMes === 1 ? 'mensagem enviada' : 'mensagens enviadas'} neste mês</LinhaUso>
+        <LinhaUso ok={!uso.nuncaEntrou && (uso.diasSemAcesso === null || uso.diasSemAcesso < 14)}>
+          {uso.nuncaEntrou ? 'Nunca entrou na plataforma' : uso.diasSemAcesso === 0 ? 'Entrou hoje' : `Último acesso há ${uso.diasSemAcesso}d`}
+        </LinhaUso>
+      </div>
+      {info.estado === 'inadimplente' && info.diasParaChurn !== null && (
+        <div style={{ marginTop: '8px', fontSize: '12px', color: '#9a3412', fontWeight: 600 }}>
+          {info.diasParaChurn === 0 ? 'Vira Churn hoje, na próxima atualização' : `Vira Churn sozinho em ${info.diasParaChurn} dias (${DIAS_PARA_CHURN} dias de atraso)`}
+        </div>
+      )}
+      {info.estado === 'em_risco' && (
+        <div style={{ marginTop: '8px', fontSize: '12px', color: '#b91c1c', fontWeight: 600 }}>
+          Motivo: {MOTIVOS_RISCO[info.motivo]}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CardLead({ lead, acao, estado, onAbrir, onDragStart, onDragEnd }) {
   const dias = diasNaEtapa(lead)
 
   return (
@@ -118,6 +239,26 @@ function CardLead({ lead, acao, onAbrir, onDragStart, onDragEnd }) {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '6px 0' }}>
         <TagAcao acao={acao} />
+        {lead.estagio_conversa && ESTAGIOS[lead.estagio_conversa] && (
+          <Tag bg={ESTAGIOS[lead.estagio_conversa].bg} cor={ESTAGIOS[lead.estagio_conversa].cor} icon="mdi:chat-processing-outline"
+            forte={lead.estagio_conversa === 'D'} title={'Onde a conversa parou: ' + ESTAGIOS[lead.estagio_conversa].dica}>
+            {ESTAGIOS[lead.estagio_conversa].sigla} · {ESTAGIOS[lead.estagio_conversa].titulo}
+          </Tag>
+        )}
+        {['base_antiga', 'puxar_conversa'].includes(colunaDoLead(lead)) && lead.ultima_interacao && (() => {
+          const parado = diasEntre(new Date(lead.ultima_interacao).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), hojeISO())
+          const faltam = DIAS_BASE_ANTIGA - parado + 1
+          return (
+            <>
+              <Tag bg="#fce7f3" cor="#9d174d" icon="mdi:history" title="Há quanto tempo a conversa parou">parado há {parado}d</Tag>
+              {colunaDoLead(lead) === 'puxar_conversa' && (
+                <Tag bg="#f3e8ff" cor="#6b21a8" icon="mdi:timer-sand" title={'Passando de ' + DIAS_BASE_ANTIGA + ' dias parado, vai pro Reaquecimento sozinho'}>
+                  reaquece em {faltam}d
+                </Tag>
+              )}
+            </>
+          )
+        })()}
         {lead.esperando_resposta && lead.status === 'conversando' && (
           <Tag bg="#fee2e2" cor="#b91c1c" icon="mdi:message-reply-text-outline" title="A última mensagem foi dele — falta você responder">Responder</Tag>
         )}
@@ -144,6 +285,8 @@ function CardLead({ lead, acao, onAbrir, onDragStart, onDragEnd }) {
           <Tag bg="#dcfce7" cor="#166534">PAGANTE</Tag>
         )}
       </div>
+
+      {estado && <UsoTags info={estado} />}
 
       {lead.observacoes && (
         <div title={lead.observacoes} style={{
@@ -401,13 +544,25 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa
               {telCopiado && 'Copiado'}
             </button>
           )}
-          {` · ${diasNaEtapa(lead) === 0 ? 'entrou hoje' : `${diasNaEtapa(lead)} dias`} em ${tituloColuna(lead.status)}`}
+          {` · ${diasNaEtapa(lead) === 0 ? 'entrou hoje' : `${diasNaEtapa(lead)} dias`} em ${tituloColuna(colunaDoLead(lead))}`}
         </span>
       }>
       <Modal.Body>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
 
           <ContaVinculada lead={lead} onVincular={onVincular} />
+
+          {estadoDoLead(lead) && <PainelUso info={estadoDoLead(lead)} />}
+
+          {lead.estagio_conversa && ESTAGIOS[lead.estagio_conversa] && (
+            <div style={{
+              backgroundColor: ESTAGIOS[lead.estagio_conversa].bg, color: ESTAGIOS[lead.estagio_conversa].cor,
+              borderRadius: '10px', padding: '8px 12px', fontSize: '12.5px', lineHeight: 1.4
+            }}>
+              <strong>Estágio {ESTAGIOS[lead.estagio_conversa].sigla} · {ESTAGIOS[lead.estagio_conversa].titulo}.</strong>{' '}
+              {ESTAGIOS[lead.estagio_conversa].dica}. As mensagens abaixo seguem esse estágio.
+            </div>
+          )}
 
           {acao?.tipo === 'toque' && (
             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px' }}>
@@ -417,7 +572,7 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa
               </div>
               <div style={{ fontSize: '11.5px', color: '#64748b', marginBottom: '8px' }}>{acao.toque.objetivo}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                {acao.toque.mensagens.map((m, i) => <MensagemDaVez key={i} texto={m} lead={leadVivo} />)}
+                {mensagensDaVez(acao.toque, lead).map((m, i) => <MensagemDaVez key={i} texto={m} lead={leadVivo} />)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '10px' }}>
                 <span style={{ fontSize: '11px', color: '#64748b' }}>
@@ -445,7 +600,7 @@ function FichaLead({ lead, foco, onFechar, onSalvar, onVincular, onAbrirConversa
 
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 84px', gap: '10px', alignItems: 'start' }}>
             <Select label="Etapa" size="sm" fullWidth value={status} onChange={setStatus}
-              options={COLUNAS.map(c => ({ value: c.id, label: c.auto ? `${c.titulo} (auto)` : c.titulo }))} />
+              options={COLUNAS_ETAPA.map(c => ({ value: c.id, label: c.auto ? `${c.titulo} (auto)` : c.titulo }))} />
             <Input label="Nicho" size="sm" fullWidth value={nicho} onChange={(e) => setNicho(e.target.value)} placeholder="CT de luta, personal…" />
             <Input label="Alunos" type="number" min="0" size="sm" fullWidth value={alunos} onChange={(e) => setAlunos(e.target.value)} placeholder="—" />
           </div>
@@ -511,6 +666,7 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
   const { leads, salvarLead, vincularConta } = inbox
   const [busca, setBusca] = useState('')
   const [soHoje, setSoHoje] = useState(false)
+  const [estagioFiltro, setEstagioFiltro] = useState(null)
   const [verArquivados, setVerArquivados] = useState(false)
   const [ficha, setFicha] = useState(null) // { id, foco }
   const [arrastando, setArrastando] = useState(false)
@@ -525,17 +681,25 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
   const comAcao = useMemo(
     () => leads
       .filter(l => !ehOutbound(l) || ETAPAS_CLIENTE.includes(l.status))
-      .map(l => ({ lead: l, acao: proximaAcao(l) })),
+      .map(l => ({ lead: l, acao: proximaAcao(l), coluna: colunaDoLead(l) })),
     [leads]
   )
 
+  const emRisco = comAcao.filter(x => x.coluna === 'em_risco')
+  const semConectar = comAcao.filter(x => x.coluna === 'sem_conectar')
+  const inadimplentes = comAcao.filter(x => x.coluna === 'inadimplente')
   const fila = comAcao.filter(x => x.acao && x.acao.due <= hoje)
   const atrasados = fila.filter(x => x.acao.due < hoje).length
   const arquivados = comAcao.filter(x => x.lead.arquivado).length
+  const contagemEstagios = {}
+  comAcao.forEach(x => {
+    if (x.lead.estagio_conversa && !x.lead.arquivado) contagemEstagios[x.lead.estagio_conversa] = (contagemEstagios[x.lead.estagio_conversa] || 0) + 1
+  })
 
   const filtrados = useMemo(() => {
     let lista = comAcao.filter(x => verArquivados || !x.lead.arquivado)
     if (soHoje) lista = lista.filter(x => x.acao && x.acao.due <= hoje)
+    if (estagioFiltro) lista = lista.filter(x => x.lead.estagio_conversa === estagioFiltro)
     const termo = busca.trim().toLowerCase()
     if (!termo) return lista
     const digitos = termo.replace(/\D/g, '')
@@ -546,18 +710,21 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
       (l.nicho || '').toLowerCase().includes(termo) ||
       (digitos && String(l.telefone || '').includes(digitos))
     )
-  }, [comAcao, busca, soHoje, verArquivados, hoje])
+  }, [comAcao, busca, soHoje, verArquivados, hoje, estagioFiltro])
 
   // Prioridade: ação mais vencida em cima; sem ação vai pro fim; empate = mais
   // tempo na etapa primeiro.
   const porColuna = useMemo(() => {
     const mapa = {}
     COLUNAS.forEach(c => { mapa[c.id] = [] })
-    filtrados.forEach(x => { if (mapa[x.lead.status]) mapa[x.lead.status].push(x) })
+    filtrados.forEach(x => { if (mapa[x.coluna]) mapa[x.coluna].push(x) })
     Object.values(mapa).forEach(lista => lista.sort((a, b) => {
       const da = a.acao?.due || '9999-12-31'
       const db = b.acao?.due || '9999-12-31'
       if (da !== db) return da.localeCompare(db)
+      const ra = ORDEM_ESTAGIOS.indexOf(a.lead.estagio_conversa)
+      const rb = ORDEM_ESTAGIOS.indexOf(b.lead.estagio_conversa)
+      if (ra !== rb) return (ra === -1 ? 9 : ra) - (rb === -1 ? 9 : rb)
       return String(a.lead.etapa_desde || '').localeCompare(String(b.lead.etapa_desde || ''))
     }))
     return mapa
@@ -590,6 +757,84 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
 
   return (
     <div>
+      {emRisco.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px',
+          backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '8px 12px'
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 800, color: '#b91c1c' }}>
+            <Icon icon="mdi:alert-circle" width="18" />
+            {emRisco.length} {emRisco.length === 1 ? 'cliente em risco' : 'clientes em risco'}
+          </span>
+          {emRisco.map(({ lead }) => {
+            const info = estadoPagante(lead)
+            return (
+              <button key={lead.id} type="button" onClick={() => setFicha({ id: lead.id, foco: null })}
+                title="Abrir a ficha"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontFamily: 'inherit',
+                  backgroundColor: '#fff', border: '1px solid #fca5a5', borderRadius: '999px', padding: '3px 10px', fontSize: '12px', color: '#7f1d1d'
+                }}>
+                <strong>{lead.nome || lead.usuario_nome || 'Sem nome'}</strong>
+                <span style={{ color: '#b91c1c' }}>· {MOTIVOS_RISCO[info.motivo]}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {inadimplentes.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px',
+          backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '8px 12px'
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 800, color: '#9a3412' }}>
+            <Icon icon="mdi:cash-remove" width="18" />
+            {inadimplentes.length} {inadimplentes.length === 1 ? 'cliente inadimplente' : 'clientes inadimplentes'}
+          </span>
+          {inadimplentes.map(({ lead }) => {
+            const info = estadoPagante(lead)
+            return (
+              <button key={lead.id} type="button" onClick={() => setFicha({ id: lead.id, foco: null })}
+                title="Abrir a ficha"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontFamily: 'inherit',
+                  backgroundColor: '#fff', border: '1px solid #fdba74', borderRadius: '999px', padding: '3px 10px', fontSize: '12px', color: '#7c2d12'
+                }}>
+                <strong>{lead.nome || lead.usuario_nome || 'Sem nome'}</strong>
+                <span style={{ color: '#c2410c' }}>
+                  · {info.diasVencido === null ? 'sem data' : `${info.diasVencido}d vencido`}
+                  {info.diasParaChurn !== null ? ` · churn em ${info.diasParaChurn}d` : ''}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {semConectar.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px',
+          backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '8px 12px'
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 800, color: '#92400e' }}>
+            <Icon icon="mdi:whatsapp" width="18" />
+            {semConectar.length} {semConectar.length === 1 ? 'conta sem conectar o WhatsApp' : 'contas sem conectar o WhatsApp'}
+          </span>
+          {semConectar.map(({ lead }) => (
+            <button key={lead.id} type="button" onClick={() => setFicha({ id: lead.id, foco: null })}
+              title="Abrir a ficha"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontFamily: 'inherit',
+                backgroundColor: '#fff', border: '1px solid #fcd34d', borderRadius: '999px', padding: '3px 10px', fontSize: '12px', color: '#78350f'
+              }}>
+              <strong>{lead.nome || lead.usuario_nome || 'Sem nome'}</strong>
+              <span style={{ color: '#b45309' }}>· {fraseTrial(estadoConta(lead).trialRestante)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div style={{ width: '280px', maxWidth: '100%' }}>
           <SearchInput value={busca} onChange={(e) => setBusca(e.target.value)}
@@ -603,6 +848,18 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
           Fila de hoje ({fila.length})
           {atrasados > 0 && <span style={{ color: '#b91c1c', marginLeft: '4px' }}>· {atrasados} atrasados</span>}
         </Button>
+        {ORDEM_ESTAGIOS.some(k => contagemEstagios[k]) && (
+          <>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Estágio:</span>
+            {ORDEM_ESTAGIOS.filter(k => contagemEstagios[k]).map(k => (
+              <Button key={k} variant="outline" size="sm" selected={estagioFiltro === k} selectedTone="info"
+                title={ESTAGIOS[k].dica}
+                onClick={() => setEstagioFiltro(v => (v === k ? null : k))}>
+                {ESTAGIOS[k].sigla} · {ESTAGIOS[k].titulo} ({contagemEstagios[k]})
+              </Button>
+            ))}
+          </>
+        )}
         {arquivados > 0 && (
           <Button variant="ghost" size="sm" icon="mdi:archive-outline"
             selected={verArquivados} selectedTone="info"
@@ -627,7 +884,15 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
                 setArrastando(false)
                 setSobre(null)
                 const leadId = e.dataTransfer.getData('leadId')
-                if (leadId) mover(leadId, col.id)
+                if (leadId) {
+                  // Coluna calculada: o lead continua com o status que já tem (pagante ou criou_conta)
+                  const lead = leads.find(l => l.id === leadId)
+                  const alvo = !col.derivada ? col.id
+                    : ['base_antiga', 'puxar_conversa'].includes(col.id) ? 'conversando'
+                    : ['sem_conectar', 'trial_vencido'].includes(col.id) ? 'criou_conta'
+                    : 'pagante'
+                  if (lead && lead.status !== alvo) mover(leadId, alvo)
+                }
               }}
               style={estiloColuna(col, ativo)}
             >
@@ -656,6 +921,7 @@ export default function AbaFunil({ inbox, onAbrirConversa }) {
                   key={lead.id}
                   lead={lead}
                   acao={acao}
+                  estado={estadoDoLead(lead)}
                   onAbrir={() => setFicha({ id: lead.id, foco: null })}
                   onDragStart={() => setArrastando(true)}
                   onDragEnd={() => { setArrastando(false); setSobre(null) }}

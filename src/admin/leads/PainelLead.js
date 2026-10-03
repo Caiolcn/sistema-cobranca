@@ -3,7 +3,7 @@ import { Icon } from '@iconify/react'
 import Input from '../../design-system/components/Input'
 import Select from '../../design-system/components/Select'
 import Button from '../../design-system/components/Button'
-import { COLUNAS, FILAS, planoPara, formatarDataHora, formatarTelefone, formatarDataCurta } from './utils'
+import { COLUNAS_ETAPA, FILAS, planoPara, formatarDataHora, formatarTelefone, formatarDataCurta } from './utils'
 
 // Painel de contexto da conversa aberta.
 //
@@ -104,7 +104,7 @@ export default function PainelLead({ lead, onSalvar, onIgnorar, salvando }) {
         </div>
       )}
 
-      <Select label="Etapa do funil" options={COLUNAS.map(c => ({ value: c.id, label: c.titulo }))}
+      <Select label="Etapa do funil" options={COLUNAS_ETAPA.map(c => ({ value: c.id, label: c.titulo }))}
         value={form.status} onChange={(v) => mudar('status', v)} size="sm" fullWidth />
 
       <div>
