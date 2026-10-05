@@ -58,7 +58,6 @@ const AdminLeads = lazy(() => import('./AdminLeads'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const Autocadastro = lazy(() => import('./pages/Autocadastro'))
-const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
 const LandingEscolinha = lazy(() => import('./pages/LandingEscolinha'))
 const LandingPilates = lazy(() => import('./pages/LandingPilates'))
 const LandingLuta = lazy(() => import('./pages/LandingLuta'))
@@ -301,7 +300,7 @@ function App() {
                   Deve ser a ULTIMA rota — React Router prioriza as rotas
                   nomeadas acima (/login, /app/*, etc) sobre esta dinamica. */}
               <Route path="/:slug/bio" element={<BioAcademia />} />
-              <Route path="/:slug" element={<LandingAcademia />} />
+              <Route path="/:slug" element={<BioAcademia />} />
             </Routes>
           </Suspense>
           {/* Fica fora do Suspense de proposito: o convite de instalacao nao

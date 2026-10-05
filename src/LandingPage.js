@@ -55,7 +55,7 @@ export default function LandingPage() {
   ]
 
   const suite = [
-    { icon: MdLanguage, titulo: 'Criador de Sites', desc: 'Monte o site da sua empresa em minutos — com planos, horários e botão direto pro WhatsApp. Sem precisar de programador.' },
+    { icon: MdLanguage, titulo: 'Link na bio', desc: 'Uma página para a bio do Instagram: botão de WhatsApp, redes, fotos e vídeos no ar em minutos, e no Premium o botão de agendar aula. Sem precisar de programador.' },
     { icon: MdGroups, titulo: 'CRM completo', desc: 'Acompanhe cada lead e aluno num só lugar, do primeiro contato à matrícula. Ninguém escapa pelo caminho.' },
     { icon: MdSmartToy, titulo: 'Bot de WhatsApp', desc: 'Um assistente que responde sozinho: o aluno consulta mensalidade, horários e agenda aula sem te interromper.' },
     { icon: MdEventAvailable, titulo: 'Agendamento online', desc: 'Compartilhe um link e deixe seus alunos marcarem aula ou avaliação direto na sua agenda.' },
@@ -89,9 +89,9 @@ export default function LandingPage() {
     { nome: 'Starter', eyebrow: 'Ideal para começar', preco: 49, perMsg: 'R$0,25 por mensagem', cta: 'Começar no Starter', destaque: false,
       features: ['Até 50 clientes ativos', '200 mensagens/mês', 'Mensagem automática no vencimento', '1 template personalizado', 'Dashboard básico'] },
     { nome: 'Pro', eyebrow: 'Para negócios em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', destaque: false,
-      features: ['Até 150 clientes ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
+      features: ['Até 150 clientes ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Link na bio', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
     { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: true,
-      features: ['Até 500 clientes ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Criador de Sites', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online (link de agendamento)', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
+      features: ['Até 500 clientes ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Link na bio com botão de agendar', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online (link de agendamento)', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
   ]
 
   const faqs = [

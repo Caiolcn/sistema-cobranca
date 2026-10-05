@@ -33,8 +33,7 @@ export const CONFIG_TABS = [
   // Marketing
   // Aba "Artes" temporariamente escondida (feature em construção) — descomentar p/ reativar
   // { id: 'artes', label: 'Artes', icon: 'mdi:palette-outline', group: 'marketing' },
-  { id: 'landing', label: 'Site', icon: 'mdi:web', group: 'marketing' },
-  { id: 'bio', label: 'Bio', icon: 'mdi:link-variant', group: 'marketing' },
+  { id: 'bio', label: 'Link na bio', icon: 'mdi:link-variant', group: 'marketing' },
   { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor', group: 'marketing' },
   // Modelos & Documentos
   { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline', group: 'modelos' },
@@ -46,7 +45,7 @@ export const CONFIG_TABS = [
 // Ids que já circularam em link e ficaram pra trás. `?aba=upgrade` está em
 // novidade JÁ PUBLICADA no banco e em link antigo espalhado pelo app — some
 // da UI, mas não pode deixar de resolver.
-const ABAS_LEGADAS = { upgrade: 'assinatura' }
+const ABAS_LEGADAS = { upgrade: 'assinatura', landing: 'bio' }
 
 export function resolverAba(id) {
   return ABAS_LEGADAS[id] || id

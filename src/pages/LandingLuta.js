@@ -26,8 +26,8 @@ const recursos = [
 ]
 const planos = [
   { nome: 'Starter', eyebrow: 'Ideal para começar', preco: 49, perMsg: 'R$0,25 por mensagem', cta: 'Começar no Starter', features: ['Até 50 alunos ativos', '200 mensagens/mês', 'Mensagem automática no vencimento', '1 template personalizado', 'Dashboard básico'] },
-  { nome: 'Pro', eyebrow: 'Para CTs em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', features: ['Até 150 alunos ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
-  { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: true, features: ['Até 500 alunos ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Criador de Sites', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
+  { nome: 'Pro', eyebrow: 'Para CTs em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', features: ['Até 150 alunos ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Link na bio', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
+  { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: true, features: ['Até 500 alunos ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Link na bio com botão de agendar', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
 ]
 const faqs = [
   ['As mensagens saem do WhatsApp do meu CT?', 'Sim. Você conecta o número do CT por QR Code. O aluno recebe do contato que já conhece e pode responder normalmente.'],

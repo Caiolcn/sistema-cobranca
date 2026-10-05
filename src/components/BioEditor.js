@@ -49,7 +49,7 @@ function Chave({ ligado, onChange, children }) {
   )
 }
 
-export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
+export default function BioEditor({ onIrParaAgendamento }) {
   const { userId } = useUser()
   const navigate = useNavigate()
   const { isLocked, loading: planoCarregando } = useUserPlan()
@@ -146,16 +146,15 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
 
   const cfg = resolverBio(empresa, bio)
   const temas = todosOsTemas(empresa.cor_primaria)
-  // Endereço: o mesmo landing_slug do site. Se o site está no ar, ele é compartilhado e só muda na aba Site.
+  // Endereço público da academia (usuarios.landing_slug). A bio abre em /<endereço> (e também em /<endereço>/bio).
   const slugSalvo = linha.landing_slug || ''
-  const slugTravado = !!slugSalvo && !!linha.landing_ativo
   const slugLimpo = slugCampo.trim().toLowerCase()
   const slugMudou = slugLimpo !== slugSalvo
   const avisoSlug = slugMudou && slugLimpo ? validarSlug(slugLimpo) : null
   // Bio no ar: interruptor próprio, independente de o site estar publicado
   const noAr = bioPublicada(bio, linha.landing_ativo)
   const alterado = JSON.stringify(bio) !== salvo || slugMudou
-  const linkBio = slugSalvo ? `${window.location.origin}/${slugSalvo}/bio` : ''
+  const linkBio = slugSalvo ? `${window.location.origin}/${slugSalvo}` : ''
 
   const atualizar = (patch) => setBio(prev => ({ ...prev, ...patch }))
   const setRede = (chave, valor) => setBio(prev => ({ ...prev, redes: { ...(prev.redes || {}), [chave]: valor } }))
@@ -295,10 +294,9 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
         <div style={{ fontSize: '12px', fontWeight: 700, color: noAr && slugSalvo ? '#166534' : '#92400e', marginBottom: '8px' }}>Endereço da sua bio</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '14px', color: '#475569' }}>{window.location.host}/</span>
-          <input value={slugCampo} disabled={slugTravado} maxLength={40} placeholder="nome-da-sua-academia"
+          <input value={slugCampo} maxLength={40} placeholder="nome-da-sua-academia"
             onChange={(e) => setSlugCampo(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-            style={{ ...campo, width: 'auto', flex: '1 1 160px', minWidth: '140px', fontWeight: 700, backgroundColor: slugTravado ? '#f3f4f6' : '#fff' }} />
-          <span style={{ fontSize: '14px', color: '#475569' }}>/bio</span>
+            style={{ ...campo, width: 'auto', flex: '1 1 160px', minWidth: '140px', fontWeight: 700, backgroundColor: '#fff' }} />
           {!slugCampo && !slugSalvo && slugificar(empresa.nome_empresa).length >= 3 && (
             <button type="button" onClick={() => setSlugCampo(slugificar(empresa.nome_empresa))}
               style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
@@ -309,13 +307,7 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
         {avisoSlug && !avisoSlug.ok && (
           <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c' }}>{avisoSlug.erro}</div>
         )}
-        {slugTravado && (
-          <div style={{ marginTop: '6px', fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
-            Esse é o mesmo endereço do seu site, que está no ar. Para trocar, use a aba <strong>Site</strong>.
-            {onIrParaSite && <> <button type="button" onClick={onIrParaSite} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ir para Site</button></>}
-          </div>
-        )}
-        {!slugTravado && slugSalvo && slugMudou && (
+        {slugSalvo && slugMudou && (
           <div style={{ marginTop: '6px', fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
             Atenção: trocar o endereço faz os links que você já divulgou pararem de funcionar.
           </div>
@@ -543,7 +535,7 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
             <input value={youtubeCampo} onChange={(e) => setYoutubeCampo(e.target.value)} placeholder="Ou cole um link do YouTube" style={campo}
               onKeyDown={(e) => { if (e.key === 'Enter') adicionarYoutube() }} />
             <button type="button" onClick={adicionarYoutube}
-              style={{ padding: '0 14px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Adicionar</button>
+              style={{ padding: '0 14px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Adicionar</button>
           </div>
         </div>
       </Bloco>
@@ -564,7 +556,7 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
       <div>
         {formulario}
         <button type="button" onClick={() => setPreviewAberto(v => !v)}
-          style={{ width: '100%', margin: '4px 0 14px', padding: '12px', borderRadius: '10px', border: '1px solid #d1d5db', backgroundColor: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+          style={{ width: '100%', margin: '4px 0 14px', padding: '12px', borderRadius: '10px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
           {previewAberto ? 'Esconder prévia' : 'Ver como fica'}
         </button>
         {previewAberto && preview}

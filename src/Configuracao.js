@@ -5465,10 +5465,9 @@ function Configuracao({ secao = 'config' }) {
               )}
               */}
               {abaAtiva === 'agendamento' && renderAgendamento()}
-              {abaAtiva === 'landing' && renderLanding()}
               {abaAtiva === 'bio' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
-                  <BioEditor onIrParaSite={() => setAbaAtiva('landing')} onIrParaAgendamento={() => setAbaAtiva('agendamento')} />
+                  <BioEditor onIrParaAgendamento={() => setAbaAtiva('agendamento')} />
                 </Suspense>
               )}
               {abaAtiva === 'anamnese' && renderAnamnese()}

@@ -29,7 +29,7 @@ const recursos = [
 const planos = [
   {nome:'Starter',eyebrow:'Ideal para começar',preco:49,cta:'Começar no Starter',features:['Até 50 alunos ativos','200 mensagens/mês','Mensagem automática no vencimento','1 template personalizado','Dashboard básico']},
   {nome:'Pro',eyebrow:'Escolas em crescimento',preco:99,cta:'Escolher o Pro',features:['Até 150 alunos ativos','600 mensagens/mês','Cobranças automáticas','Turmas, agenda e presença','Contratos e ficha do aluno','Suporte via WhatsApp']},
-  {nome:'Premium',eyebrow:'Gestão profissional',preco:149,cta:'Ativar Premium',destaque:true,features:['Até 500 alunos ativos','3.000 mensagens/mês','Tudo do plano Pro','Criador de Sites','CRM completo','Bot de WhatsApp','Agendamento online','Campanhas de WhatsApp','Suporte prioritário']}
+  {nome:'Premium',eyebrow:'Gestão profissional',preco:149,cta:'Ativar Premium',destaque:true,features:['Até 500 alunos ativos','3.000 mensagens/mês','Tudo do plano Pro','Link na bio com botão de agendar','CRM completo','Bot de WhatsApp','Agendamento online','Campanhas de WhatsApp','Suporte prioritário']}
 ]
 const faqs = [
   ['As mensagens saem do WhatsApp da escola?','Sim. Você conecta o número da escola por QR Code e os responsáveis recebem do contato que já conhecem.'],

@@ -50,7 +50,7 @@ export const PLANOS = [
       '3 templates personalizados',
       'Régua de cobrança completa',
       'Dashboard com gráficos',
-      'Contratos com assinatura',
+      'Contratos com assinatura', 'Link na bio',
       'Anamnese / Ficha do aluno',
       'Suporte via WhatsApp'
     ]
@@ -69,7 +69,7 @@ export const PLANOS = [
       'Até 500 clientes ativos',
       '3.000 mensagens/mês',
       'Tudo do plano Pro',
-      'Criador de Sites',
+      'Link na bio com botão de agendar',
       'CRM completo',
       'Bot de WhatsApp',
       'Agendamento online (link de agendamento)',
