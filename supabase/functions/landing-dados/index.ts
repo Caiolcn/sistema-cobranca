@@ -205,7 +205,8 @@ serve(async (req) => {
           cidade: empresa.cidade,
           estado: empresa.estado,
           agendamento_slug: empresa.agendamento_slug,
-          agendamento_ativo: empresa.agendamento_ativo,
+          // Link de agendamento e exclusivo do Premium: no Pro o botao nao aparece na bio nem no site
+          agendamento_ativo: !!empresa.agendamento_ativo && empresa.plano === 'premium',
           hero_titulo: empresa.landing_hero_titulo,
           hero_subtitulo: empresa.landing_hero_subtitulo,
           cta_texto: empresa.landing_cta_texto,

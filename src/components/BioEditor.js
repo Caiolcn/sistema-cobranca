@@ -48,7 +48,7 @@ function Chave({ ligado, onChange, children }) {
   )
 }
 
-export default function BioEditor({ onIrParaSite }) {
+export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
   const { userId } = useUser()
   const navigate = useNavigate()
   const { isLocked, loading: planoCarregando } = useUserPlan()
@@ -87,6 +87,9 @@ export default function BioEditor({ onIrParaSite }) {
     return () => { cancelado = true }
   }, [userId])
 
+  // O link de agendamento é exclusivo do Premium (a edge landing-dados aplica a mesma regra)
+  const premium = !isLocked('premium')
+
   // Mesmo formato que a edge function landing-dados devolve
   const empresa = useMemo(() => {
     if (!linha) return null
@@ -105,10 +108,10 @@ export default function BioEditor({ onIrParaSite }) {
       site: linha.site,
       endereco_completo: [linha.endereco, linha.numero, linha.bairro, linha.cidade, linha.estado].filter(Boolean).join(', '),
       agendamento_slug: linha.agendamento_slug,
-      agendamento_ativo: linha.agendamento_ativo,
+      agendamento_ativo: !!linha.agendamento_ativo && premium,
       galeria: Array.isArray(linha.landing_galeria) ? linha.landing_galeria : []
     }
-  }, [linha])
+  }, [linha, premium])
 
   if (planoCarregando) {
     return <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>
@@ -379,8 +382,30 @@ export default function BioEditor({ onIrParaSite }) {
 
       {/* Botões */}
       <Bloco icone="mdi:gesture-tap-button" nome="Botões">
-        {empresa.agendamento_ativo && empresa.agendamento_slug && (
+        {!premium ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '12px 14px', margin: '2px 0 8px', borderRadius: '12px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa' }}>
+            <Icon icon="mdi:lock" width="20" style={{ color: '#ea580c', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: '190px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#7c2d12' }}>
+                Agendar aula
+                <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.04em', color: '#fff', backgroundColor: '#ea580c', borderRadius: '5px', padding: '2px 6px' }}>PREMIUM</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#9a3412', lineHeight: 1.45, marginTop: '2px' }}>
+                O aluno marca a aula experimental direto da sua bio e já cai na sua agenda. Exclusivo do plano Premium.
+              </div>
+            </div>
+            <button type="button" onClick={() => navigate('/app/configuracao?aba=assinatura')}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#ea580c', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+              Conhecer o Premium
+            </button>
+          </div>
+        ) : empresa.agendamento_ativo && empresa.agendamento_slug ? (
           <Chave ligado={cfg.mostrar.agendar} onChange={(v) => setMostrar('agendar', v)}>Agendar aula</Chave>
+        ) : (
+          <div style={{ padding: '10px 12px', margin: '2px 0 8px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
+            Para mostrar o botão <strong>Agendar aula</strong> na bio, ative o <strong>Agendamento online</strong>.
+            {onIrParaAgendamento && <> <button type="button" onClick={onIrParaAgendamento} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ativar agora</button></>}
+          </div>
         )}
         <Chave ligado={cfg.mostrar.whatsapp} onChange={(v) => setMostrar('whatsapp', v)}>
           WhatsApp {empresa.telefone ? '' : <em style={{ color: '#9ca3af' }}>(cadastre o telefone em Dados da Empresa)</em>}
