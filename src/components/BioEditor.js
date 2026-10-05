@@ -8,8 +8,9 @@ import useWindowSize from '../hooks/useWindowSize'
 import { useUserPlan } from '../hooks/useUserPlan'
 import { BioView } from '../pages/BioAcademia'
 import {
-  FONTES_BIO, todosOsTemas, resolverBio, carregarFontesBio, youtubeId, tipoDaMidia, TEMA_PADRAO, FONTE_PADRAO
+  FONTES_BIO, todosOsTemas, resolverBio, carregarFontesBio, youtubeId, tipoDaMidia, bioPublicada, TEMA_PADRAO, FONTE_PADRAO
 } from '../data/bioTemas'
+import { validarSlug, slugificar } from '../utils/slugs'
 
 // Editor do link na bio (Marketing › Bio). Salva em usuarios.bio_config (jsonb).
 // O preview ao lado usa o mesmo BioView da página pública: clicou, mudou.
@@ -65,6 +66,7 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
   const [youtubeCampo, setYoutubeCampo] = useState('')
   const [previewAberto, setPreviewAberto] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const [slugCampo, setSlugCampo] = useState('')       // endereço digitado (landing_slug)
 
   useEffect(() => { carregarFontesBio(FONTES_BIO.map(f => f.id)) }, [])
 
@@ -78,6 +80,7 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
         showToast('Erro ao carregar a bio: ' + error.message, 'error')
       } else {
         setLinha(data)
+        setSlugCampo(data.landing_slug || '')
         const inicial = data.bio_config && typeof data.bio_config === 'object' ? data.bio_config : {}
         setBio(inicial)
         setSalvo(JSON.stringify(inicial))
@@ -143,9 +146,16 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
 
   const cfg = resolverBio(empresa, bio)
   const temas = todosOsTemas(empresa.cor_primaria)
-  const alterado = JSON.stringify(bio) !== salvo
-  const slug = linha.landing_slug
-  const linkBio = slug ? `${window.location.origin}/${slug}/bio` : ''
+  // Endereço: o mesmo landing_slug do site. Se o site está no ar, ele é compartilhado e só muda na aba Site.
+  const slugSalvo = linha.landing_slug || ''
+  const slugTravado = !!slugSalvo && !!linha.landing_ativo
+  const slugLimpo = slugCampo.trim().toLowerCase()
+  const slugMudou = slugLimpo !== slugSalvo
+  const avisoSlug = slugMudou && slugLimpo ? validarSlug(slugLimpo) : null
+  // Bio no ar: interruptor próprio, independente de o site estar publicado
+  const noAr = bioPublicada(bio, linha.landing_ativo)
+  const alterado = JSON.stringify(bio) !== salvo || slugMudou
+  const linkBio = slugSalvo ? `${window.location.origin}/${slugSalvo}/bio` : ''
 
   const atualizar = (patch) => setBio(prev => ({ ...prev, ...patch }))
   const setRede = (chave, valor) => setBio(prev => ({ ...prev, redes: { ...(prev.redes || {}), [chave]: valor } }))
@@ -226,8 +236,19 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
         ...bio,
         links: links.filter(l => (l.titulo || '').trim() && (l.url || '').trim())
       }
-      const { error } = await supabase.from('usuarios').update({ bio_config: limpo }).eq('id', userId)
+      if (slugMudou && slugLimpo) {
+        const v = validarSlug(slugLimpo)
+        if (!v.ok) { showToast(v.erro, 'warning'); return }
+      }
+      if (noAr && !slugLimpo) { showToast('Defina o endereço antes de colocar a bio no ar', 'warning'); return }
+      const atualizacao = { bio_config: limpo }
+      if (slugMudou) atualizacao.landing_slug = slugLimpo || null
+      const { error } = await supabase.from('usuarios').update(atualizacao).eq('id', userId)
       if (error) {
+        if (error.code === '23505' || /landing_slug/.test(error.message)) {
+          showToast('Esse endereço já está em uso por outra conta. Escolha outro.', 'warning')
+          return
+        }
         if (error.code === '42703' || error.code === 'PGRST204' || /bio_config/.test(error.message)) {
           showToast('A coluna bio_config ainda não existe no banco. Rode o SQL sql-criar-bio-config.sql.', 'error')
         } else {
@@ -237,7 +258,8 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
       }
       setBio(limpo)
       setSalvo(JSON.stringify(limpo))
-      showToast('Bio salva!', 'success')
+      if (slugMudou) setLinha(prev => ({ ...prev, landing_slug: slugLimpo || null }))
+      showToast(noAr ? 'Bio salva e no ar!' : 'Bio salva!', 'success')
     } catch (err) {
       showToast('Erro ao salvar: ' + err.message, 'error')
     } finally {
@@ -268,23 +290,45 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
   const formulario = (
     <div style={{ flex: 1, minWidth: 0, maxWidth: '640px' }}>
 
-      {/* Página desativada: a edge só devolve dados de página publicada */}
-      {linha.landing_slug && !linha.landing_ativo && (
-        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 16px', marginBottom: '14px', fontSize: '13px', color: '#92400e', lineHeight: 1.5 }}>
-          <strong>Sua página está desativada, então o link ainda não abre.</strong>{' '}
-          Ative a página na aba <strong>Site</strong> para a bio ficar no ar.
-          {onIrParaSite && <> <button type="button" onClick={onIrParaSite} style={{ background: 'none', border: 'none', color: '#92400e', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ir para Site</button></>}
+      {/* Endereço e publicação da bio */}
+      <div style={{ backgroundColor: noAr && slugSalvo ? '#f0fdf4' : '#fffbeb', border: `1px solid ${noAr && slugSalvo ? '#bbf7d0' : '#fde68a'}`, borderRadius: '14px', padding: '14px 16px', marginBottom: '14px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: noAr && slugSalvo ? '#166534' : '#92400e', marginBottom: '8px' }}>Endereço da sua bio</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '14px', color: '#475569' }}>{window.location.host}/</span>
+          <input value={slugCampo} disabled={slugTravado} maxLength={40} placeholder="nome-da-sua-academia"
+            onChange={(e) => setSlugCampo(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+            style={{ ...campo, width: 'auto', flex: '1 1 160px', minWidth: '140px', fontWeight: 700, backgroundColor: slugTravado ? '#f3f4f6' : '#fff' }} />
+          <span style={{ fontSize: '14px', color: '#475569' }}>/bio</span>
+          {!slugCampo && !slugSalvo && slugificar(empresa.nome_empresa).length >= 3 && (
+            <button type="button" onClick={() => setSlugCampo(slugificar(empresa.nome_empresa))}
+              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
+              Sugerir
+            </button>
+          )}
         </div>
-      )}
+        {avisoSlug && !avisoSlug.ok && (
+          <div style={{ marginTop: '6px', fontSize: '12px', color: '#b91c1c' }}>{avisoSlug.erro}</div>
+        )}
+        {slugTravado && (
+          <div style={{ marginTop: '6px', fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+            Esse é o mesmo endereço do seu site, que está no ar. Para trocar, use a aba <strong>Site</strong>.
+            {onIrParaSite && <> <button type="button" onClick={onIrParaSite} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ir para Site</button></>}
+          </div>
+        )}
+        {!slugTravado && slugSalvo && slugMudou && (
+          <div style={{ marginTop: '6px', fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
+            Atenção: trocar o endereço faz os links que você já divulgou pararem de funcionar.
+          </div>
+        )}
 
-      {/* Link da bio */}
-      <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px', padding: '14px 16px', marginBottom: '14px' }}>
-        {slug ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '12px', color: '#166534', fontWeight: 600 }}>Seu link na bio</div>
-              <div style={{ fontSize: '14px', color: '#14532d', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{linkBio}</div>
-            </div>
+        <div style={{ height: '1px', backgroundColor: 'rgba(0,0,0,0.07)', margin: '12px 0 4px' }} />
+        <Chave ligado={noAr} onChange={(v) => atualizar({ publicada: v })}>
+          <strong>Bio no ar</strong> <span style={{ color: '#6b7280' }}>(qualquer pessoa com o link consegue abrir)</span>
+        </Chave>
+
+        {slugSalvo && noAr && !slugMudou && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '6px' }}>
+            <div style={{ flex: 1, minWidth: 0, fontSize: '13px', color: '#14532d', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{linkBio}</div>
             <button type="button" onClick={copiarLink}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #86efac', backgroundColor: '#fff', color: '#166534', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
               <Icon icon={copiado ? 'mdi:check' : 'mdi:content-copy'} width="16" /> {copiado ? 'Copiado' : 'Copiar'}
@@ -294,10 +338,15 @@ export default function BioEditor({ onIrParaSite, onIrParaAgendamento }) {
               <Icon icon="mdi:open-in-new" width="16" /> Abrir
             </a>
           </div>
-        ) : (
-          <div style={{ fontSize: '13px', color: '#166534' }}>
-            Para ter um link, defina primeiro o endereço da sua página na aba <strong>Site</strong>.
-            {onIrParaSite && <> <button type="button" onClick={onIrParaSite} style={{ background: 'none', border: 'none', color: '#166534', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ir para Site</button></>}
+        )}
+        {slugSalvo && !noAr && (
+          <div style={{ marginTop: '4px', fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
+            Fora do ar: o link ainda não abre. Ligue <strong>Bio no ar</strong> e salve.
+          </div>
+        )}
+        {!slugSalvo && (
+          <div style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>
+            Escolha um endereço, ligue <strong>Bio no ar</strong> e clique em <strong>Salvar bio</strong>.
           </div>
         )}
       </div>

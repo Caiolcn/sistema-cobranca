@@ -135,6 +135,11 @@ export const BIO_PADRAO = {
   mostrar: {}
 }
 
+// A bio está no ar? Ligada de propósito no editor (bio.publicada) ou, pra quem nunca mexeu,
+// herda o estado do site. A edge landing-dados (modo=bio) aplica a mesma regra.
+export const bioPublicada = (bio, landingAtivo) =>
+  bio && typeof bio.publicada === 'boolean' ? bio.publicada : !!landingAtivo
+
 const pegar = (obj, chave, fallback) => (obj && chave in obj ? obj[chave] : fallback)
 
 // Junta o que o cliente configurou na bio com o que já tinha preenchido no site,

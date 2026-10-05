@@ -1,5 +1,5 @@
 import {
-  resolverBio, resolverTema, temaDaMarca, todosOsTemas, tipoDaMidia, youtubeId, luminancia, textoSobre, TEMAS_FIXOS
+  resolverBio, resolverTema, temaDaMarca, todosOsTemas, tipoDaMidia, youtubeId, luminancia, textoSobre, TEMAS_FIXOS, bioPublicada
 } from './bioTemas'
 
 // Empresa no formato que a edge landing-dados devolve
@@ -103,5 +103,21 @@ describe('mídia', () => {
     expect(youtubeId('https://youtu.be/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
     expect(youtubeId('https://www.youtube.com/shorts/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
     expect(youtubeId('https://example.com')).toBeNull()
+  })
+})
+
+describe('bio no ar', () => {
+  test('quem nunca mexeu herda o estado do site', () => {
+    expect(bioPublicada(null, true)).toBe(true)
+    expect(bioPublicada({}, true)).toBe(true)
+    expect(bioPublicada({}, false)).toBe(false)
+    expect(bioPublicada(undefined, null)).toBe(false)
+  })
+
+  test('a escolha feita no editor vale mais que o site', () => {
+    // Pro: site fora do ar, mas liga a bio
+    expect(bioPublicada({ publicada: true }, false)).toBe(true)
+    // Premium: tira só a bio do ar e mantém o site
+    expect(bioPublicada({ publicada: false }, true)).toBe(false)
   })
 })

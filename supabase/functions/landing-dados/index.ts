@@ -73,7 +73,13 @@ serve(async (req) => {
       )
     }
 
-    if (!empresa.landing_ativo) {
+    // modo=bio (pagina /slug/bio): liga no proprio editor da bio (bio_config.publicada) e NAO
+    // depende do site estar publicado. Quem nunca mexeu herda o estado do site. Sem modo, e a
+    // landing longa e vale landing_ativo, como sempre.
+    const modoBio = url.searchParams.get('modo') === 'bio'
+    const cfgBio = empresa.bio_config && typeof empresa.bio_config === 'object' ? empresa.bio_config : {}
+    const bioNoAr = typeof cfgBio.publicada === 'boolean' ? cfgBio.publicada : !!empresa.landing_ativo
+    if (!(modoBio ? bioNoAr : empresa.landing_ativo)) {
       return new Response(
         JSON.stringify({ error: 'Pagina desativada' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

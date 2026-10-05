@@ -16,6 +16,7 @@ import { useUser } from './contexts/UserContext'
 import { useUserPlan } from './hooks/useUserPlan'
 import { SITE_TEMPLATES } from './data/siteTemplates'
 import { SITE_FONTS } from './data/siteFonts'
+import { slugEhReservado } from './utils/slugs'
 import { CONFIG_TABS, groupedConfigTabs, configTabIds, resolverAba } from './configTabs'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
@@ -3233,25 +3234,7 @@ function Configuracao({ secao = 'config' }) {
 
   const CORES_PRESET = ['#344848', '#007bff', '#16a34a', '#dc2626', '#f59e0b', '#7c3aed', '#0891b2', '#db2777']
 
-  // Slugs que conflitam com rotas do sistema - nao podem ser usados
-  const SLUGS_RESERVADOS = new Set([
-    'login', 'signup', 'logout', 'reset-password', 'reset',
-    'pagar', 'portal', 'agendar', 'academia', 'app', 'admin', 'api',
-    'www', 'assets', 'static', 'public', 'img', 'images', 'css', 'js',
-    'help', 'ajuda', 'home', 'sobre', 'about', 'contact', 'contato',
-    'upgrade', 'success', 'onboarding', 'configuracao', 'dashboard',
-    'mensalli', 'suporte', 'termos', 'privacidade', 'financeiro',
-    'clientes', 'horarios', 'relatorios', 'whatsapp', 'crm', 'avisos',
-    'null', 'undefined', 'index', 'root',
-    // Landings de nicho (rotas de campanha). Sem isso um cliente pode registrar
-    // o site dele em /escolinha e tomar a URL que esta rodando em anuncio.
-    'escolinha', 'escolinhas', 'futebol'
-  ])
-
-  const slugEhReservado = (slug) => {
-    const s = String(slug || '').trim().toLowerCase()
-    return SLUGS_RESERVADOS.has(s)
-  }
+  // Endereços reservados (rotas do sistema): lista única em utils/slugs.js, a mesma do editor da bio
 
   const LABELS_SECAO = {
     sobre: 'Sobre nós',

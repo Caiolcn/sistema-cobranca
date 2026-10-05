@@ -233,7 +233,7 @@ export default function BioAcademia() {
     let cancelado = false
     async function carregar() {
       try {
-        const res = await fetch(`${FUNCTIONS_URL}/landing-dados?slug=${encodeURIComponent(slug)}`, { headers })
+        const res = await fetch(`${FUNCTIONS_URL}/landing-dados?slug=${encodeURIComponent(slug)}&modo=bio`, { headers })
         if (!res.ok) {
           const json = await res.json().catch(() => ({}))
           throw new Error(json.error || 'Página não encontrada')
