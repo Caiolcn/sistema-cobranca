@@ -64,6 +64,7 @@ const LandingPilates = lazy(() => import('./pages/LandingPilates'))
 const LandingLuta = lazy(() => import('./pages/LandingLuta'))
 const LandingNatacao = lazy(() => import('./pages/LandingNatacao'))
 const LinkInBio = lazy(() => import('./pages/LinkInBio'))
+const BioAcademia = lazy(() => import('./pages/BioAcademia'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
 const VerComo = lazy(() => import('./pages/VerComo'))
 
@@ -299,6 +300,7 @@ function App() {
               {/* Landing page publica da academia por slug raiz.
                   Deve ser a ULTIMA rota — React Router prioriza as rotas
                   nomeadas acima (/login, /app/*, etc) sobre esta dinamica. */}
+              <Route path="/:slug/bio" element={<BioAcademia />} />
               <Route path="/:slug" element={<LandingAcademia />} />
             </Routes>
           </Suspense>

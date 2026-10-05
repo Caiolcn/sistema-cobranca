@@ -34,6 +34,7 @@ export const CONFIG_TABS = [
   // Aba "Artes" temporariamente escondida (feature em construção) — descomentar p/ reativar
   // { id: 'artes', label: 'Artes', icon: 'mdi:palette-outline', group: 'marketing' },
   { id: 'landing', label: 'Site', icon: 'mdi:web', group: 'marketing' },
+  { id: 'bio', label: 'Bio', icon: 'mdi:link-variant', group: 'marketing' },
   { id: 'agendamento', label: 'Agendamento Online', icon: 'mdi:calendar-cursor', group: 'marketing' },
   // Modelos & Documentos
   { id: 'anamnese', label: 'Anamnese', icon: 'mdi:clipboard-text-outline', group: 'modelos' },

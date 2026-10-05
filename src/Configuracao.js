@@ -30,6 +30,7 @@ const PREVIEW_DEVICES = [
 const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 // Aba "Minha Assinatura": mesmo componente que a rota /app/assinatura renderiza sozinha.
 const MinhaAssinatura = lazy(() => import('./assinatura/MinhaAssinatura'))
+const BioEditor = lazy(() => import('./components/BioEditor'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
 // const Artes = lazy(() => import('./Artes')) // aba Artes temporariamente escondida — descomentar p/ reativar
 
@@ -5482,6 +5483,11 @@ function Configuracao({ secao = 'config' }) {
               */}
               {abaAtiva === 'agendamento' && renderAgendamento()}
               {abaAtiva === 'landing' && renderLanding()}
+              {abaAtiva === 'bio' && (
+                <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
+                  <BioEditor onIrParaSite={() => setAbaAtiva('landing')} />
+                </Suspense>
+              )}
               {abaAtiva === 'anamnese' && renderAnamnese()}
               {abaAtiva === 'colaboradores' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
