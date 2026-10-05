@@ -51,7 +51,7 @@ function Home() {
   const navigate = useNavigate();
   const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, isAdmin, adminViewingAs, userData, loading: loadingUser } = useUser();
   // "Precisam de você hoje" (fila de ação + cobrança direta) é exclusivo do plano Pro
-  const { isProOrAbove } = useUserPlan();
+  const { isProOrAbove, planoPago } = useUserPlan();
   const [loading, setLoading] = useState(true);
 
   // Estado unificado para todos os dados do dashboard
@@ -617,6 +617,15 @@ function Home() {
   // inclusive zerado: aí o zero é informação legítima ("nada recuperado no mês").
   const mostrarHeroRecuperado = !mostrarChecklist || recuperadoValor > 0 || cobrancasEnviadas > 0;
 
+  // Indicação: cada cliente indicado que assinar vale 1 mês grátis, sem limite.
+  // Só para quem já paga — no teste o mês grátis ainda não significa nada.
+  const indicarPeloWhatsApp = () => {
+    const texto = 'Oi! Uso o Mensalli pra cobrar as mensalidades dos meus alunos no automático pelo WhatsApp e tem me ajudado muito. '
+      + 'Dá uma olhada: https://www.mensalli.com.br\n\n'
+      + `Se for assinar, fala que foi indicação da ${nomeEmpresa} 😉`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+  };
+
   // Destaca a próxima aula do dia (primeira cujo horário ainda não passou)
   const agoraHHMM = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
   const idxProximaAula = aulasHojeLista.findIndex((a) => a.horario && a.horario >= agoraHHMM);
@@ -670,6 +679,25 @@ function Home() {
           <h1>{getHoraSaudacao()}! 👋</h1>
           <p>{subtitulo}, <strong>{nomeCompleto ? nomeCompleto.split(' ')[0] : nomeEmpresa}</strong></p>
         </div>
+
+        {/* Programa de indicação: fixo no cabeçalho, no espaço que sobrava ao lado
+            da saudação — não soma mais uma linha ao painel. Não vai pro pop-up de
+            novidades, que fica só pra lançamento de funcionalidade. */}
+        {planoPago && (
+          <div className="home-indicacao">
+            <div className="home-indicacao-icon">
+              <Icon icon="mdi:gift" width="24" />
+            </div>
+            <div className="home-indicacao-texto">
+              <strong>Indique e ganhe <span className="home-indicacao-destaque">1 mês grátis</span></strong>
+              <span>Sem limite: indicou 3 que assinaram, ganha 3 meses.</span>
+            </div>
+            <button type="button" className="home-indicacao-btn" onClick={indicarPeloWhatsApp}>
+              <Icon icon="mdi:whatsapp" width="18" />
+              Indicar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Fora do modo foco: quem escolheu explorar ganha uma faixa pra retomar;

@@ -11,6 +11,7 @@ import { useUserPlan } from './hooks/useUserPlan'
 import { useUser } from './contexts/UserContext'
 import { exportarDespesas } from './utils/exportUtils'
 import { gerarRelatorioDespesasPDF } from './utils/pdfGenerator'
+import { hojeISO } from './utils/dataLocal'
 
 export default function Despesas({ embedded = false, buttonsPortal = null, onCountUpdate = null, autoAbrirNova = false, onAutoAbrirConsumido = null }) {
   const navigate = useNavigate()
@@ -384,7 +385,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
         data_vencimento: formDataVencimento,
         status: formStatus,
         forma_pagamento: formStatus === 'pago' ? (formFormaPagamento || null) : null,
-        data_pagamento: formStatus === 'pago' ? new Date().toISOString().split('T')[0] : null,
+        data_pagamento: formStatus === 'pago' ? hojeISO() : null,
         observacoes: formObservacoes.trim() || null,
         is_recorrente: formIsRecorrente,
         recorrencia_tipo: formIsRecorrente ? formRecorrenciaTipo : null
@@ -424,7 +425,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
     try {
       const updateData = {
         status: 'pago',
-        data_pagamento: new Date().toISOString().split('T')[0]
+        data_pagamento: hojeISO()
       }
       const { error } = await supabase
         .from('despesas')

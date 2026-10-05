@@ -11,7 +11,8 @@ const DIAS_HEADER = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const COR = '#344848'
 const SEL = '#16a34a'
 
-export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right', popupZIndex = 1100, pastYears = 5, futureYears = 5 }) {
+export default function AgendaDatePicker({ value, onChange, renderTrigger, align = 'right', popupZIndex = 1100, pastYears = 5, futureYears = 5, maxDate }) {
+  // maxDate ('YYYY-MM-DD', opcional): dias depois dele ficam bloqueados
   const [aberto, setAberto] = useState(false)
   // Se value vier vazio (ex: filtro "Tudo"), navega a partir de hoje
   const valorObj = value ? parseISO(value) : new Date()
@@ -97,9 +98,14 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
   const hojeRef = isoDate(new Date())
   const valorFmt = `${String(valorObj.getDate()).padStart(2, '0')}/${String(valorObj.getMonth() + 1).padStart(2, '0')}/${valorObj.getFullYear()}`
 
+  const bloqueado = (iso) => !!maxDate && iso > maxDate
+  const maxObj = maxDate ? parseISO(maxDate) : null
+  const proximoMesBloqueado = !!maxObj && (ano > maxObj.getFullYear() || (ano === maxObj.getFullYear() && mes >= maxObj.getMonth()))
+
   const selecionar = (dia) => {
     if (!dia) return
     const novo = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+    if (bloqueado(novo)) return
     onChange(novo)
     setAberto(false)
   }
@@ -123,7 +129,7 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
   // anos: janela ao redor do ano atual (ou do ano selecionado), configurável
   const anoBase = new Date().getFullYear()
   const min = Math.min(anoBase, ano) - pastYears
-  const max = Math.max(anoBase, ano) + futureYears
+  const max = maxObj ? maxObj.getFullYear() : Math.max(anoBase, ano) + futureYears
   const anos = []
   for (let a = min; a <= max; a++) anos.push(a)
 
@@ -170,7 +176,8 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
             <select value={ano} onChange={e => setAno(Number(e.target.value))} style={selectStyle}>
               {anos.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
-            <button onClick={() => irMes(1)} title="Próximo mês" style={navBtn}>
+            <button onClick={() => irMes(1)} title="Próximo mês" disabled={proximoMesBloqueado}
+              style={{ ...navBtn, opacity: proximoMesBloqueado ? 0.3 : 1, cursor: proximoMesBloqueado ? 'default' : 'pointer' }}>
               <Icon icon="mdi:chevron-right" width="20" />
             </button>
           </div>
@@ -191,18 +198,19 @@ export default function AgendaDatePicker({ value, onChange, renderTrigger, align
               const iso = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
               const ehHoje = iso === hojeRef
               const ehSel = iso === value
+              const off = bloqueado(iso)
               return (
-                <button key={i} onClick={() => selecionar(dia)}
+                <button key={i} onClick={() => selecionar(dia)} disabled={off}
                   style={{
                     width: '32px', height: '32px', margin: '2px auto', borderRadius: '50%',
                     border: ehHoje && !ehSel ? `1px solid ${COR}` : 'none',
                     backgroundColor: ehSel ? SEL : 'transparent',
-                    color: ehSel ? '#fff' : '#1a1a1a',
+                    color: ehSel ? '#fff' : off ? '#d1d5db' : '#1a1a1a',
                     fontSize: '13px', fontWeight: ehHoje || ehSel ? '700' : '500',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: off ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'background-color 0.15s'
                   }}
-                  onMouseEnter={e => { if (!ehSel) e.currentTarget.style.backgroundColor = '#f3f4f6' }}
+                  onMouseEnter={e => { if (!ehSel && !off) e.currentTarget.style.backgroundColor = '#f3f4f6' }}
                   onMouseLeave={e => { if (!ehSel) e.currentTarget.style.backgroundColor = 'transparent' }}>
                   {dia}
                 </button>

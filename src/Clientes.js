@@ -30,6 +30,7 @@ import Dropdown from './design-system/components/Dropdown'
 import DateField from './components/DateField'
 import RadarEvasao from './components/RadarEvasao'
 import AprovacaoCadastros from './components/AprovacaoCadastros'
+import { hojeISO } from './utils/dataLocal'
 
 // Soft-delete: mensalidades na lixeira têm lixo = true.
 // SEMPRE busque mensalidades para exibição/contagem/edição por aqui, para o filtro
@@ -3312,7 +3313,7 @@ Equipe ${nomeEmpresa}`
                               is_mensalidade: true,
                               numero_mensalidade: 1,
                               forma_pagamento: 'pix',
-                              data_pagamento: new Date().toISOString().split('T')[0]
+                              data_pagamento: hojeISO()
                             })
 
                             setClienteSelecionado(prev => ({

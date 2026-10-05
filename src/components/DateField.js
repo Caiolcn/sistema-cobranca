@@ -17,7 +17,7 @@ function isoParaBR(iso) {
   return `${d}/${m}/${y}`
 }
 
-export default function DateField({ value, onChange, label, required, placeholder = 'dd/mm/aaaa', style, pastYears = 100, futureYears = 10 }) {
+export default function DateField({ value, onChange, label, required, placeholder = 'dd/mm/aaaa', style, pastYears = 100, futureYears = 10, maxDate }) {
   const [texto, setTexto] = useState(isoParaBR(value))
   const [focado, setFocado] = useState(false)
 
@@ -35,8 +35,10 @@ export default function DateField({ value, onChange, label, required, placeholde
       const d = +digitos.slice(0, 2), m = +digitos.slice(2, 4), y = +digitos.slice(4)
       const dt = new Date(y, m - 1, d)
       // valida data real (ex.: 31/02 não passa)
-      if (y > 1900 && dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d) {
-        onChange(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+      const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      // depois do maxDate não entra (o blur volta o texto pro valor anterior)
+      if (y > 1900 && dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d && !(maxDate && iso > maxDate)) {
+        onChange(iso)
       }
     } else if (digitos.length === 0) {
       onChange('')
@@ -46,7 +48,7 @@ export default function DateField({ value, onChange, label, required, placeholde
   const handleBlur = () => {
     setFocado(false)
     // se ficou incompleto/inválido, reverte pro value atual
-    if (texto.length !== 10) setTexto(isoParaBR(value))
+    if (texto !== isoParaBR(value)) setTexto(isoParaBR(value))
   }
 
   return (
@@ -63,6 +65,7 @@ export default function DateField({ value, onChange, label, required, placeholde
         popupZIndex={10100}
         pastYears={pastYears}
         futureYears={futureYears}
+        maxDate={maxDate}
         renderTrigger={({ aberto, abrir }) => (
           <div style={{
             display: 'flex', alignItems: 'center', width: '100%', boxSizing: 'border-box',
