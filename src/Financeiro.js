@@ -12,6 +12,7 @@ import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton
 import { baixarRecibo, imprimirRecibo, gerarReciboBlob } from './utils/pdfGenerator'
 import { resolverDestinatario } from './utils/destinatario'
 import { calcularMultaJuros, valorEfetivoMensalidade, resumoValorEfetivo, corValorEfetivo } from './utils/multaJuros'
+import { hojeISO } from './utils/dataLocal'
 import { QRCodeSVG } from 'qrcode.react'
 import { gerarPixCopiaCola, gerarTxId } from './services/pixService'
 import Despesas from './Despesas'
@@ -27,6 +28,9 @@ import Table from './design-system/components/Table'
 import Card from './design-system/components/Card'
 import Checkbox from './design-system/components/Checkbox'
 import DateField from './components/DateField'
+
+// Gravadas como texto em mensalidades.forma_pagamento — não renomear sem migrar os dados
+const FORMAS_PAGAMENTO_BAIXA = ['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência Bancária', 'Boleto', 'Cheque', 'Outro']
 
 const formatarMoeda = (valor) =>
   `R$ ${(parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -130,6 +134,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [multaJurosConfig, setMultaJurosConfig] = useState({ ativo: false, multa_percent: 0, juros_mes_percent: 0 })
   const [baixaMulta, setBaixaMulta] = useState('0.00')
   const [baixaJuros, setBaixaJuros] = useState('0.00')
+  // Data em que o aluno pagou de fato. Nasce com hoje, mas o gestor pode voltar
+  // pra quando recebeu (ex.: pagou dia 3 e a baixa só foi dada dia 10).
+  const [dataBaixa, setDataBaixa] = useState(hojeISO())
   // Desconto concedido na baixa (sempre disponível, não só em parcela vencida).
   // Nasce vazio de propósito: com '0.00' pré-preenchido, o gestor tem que apagar
   // antes de digitar. Vazio conta como zero em todo o cálculo.
@@ -604,14 +611,26 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
   }
 
+  // Multa/juros sugeridos contam o atraso até a data do pagamento, não até hoje:
+  // quem pagou no dia 3 não deve juros dos dias em que a baixa ficou esquecida.
+  const sugerirMultaJuros = (mensalidade, dataPagamento) => {
+    const { multa, juros } = calcularMultaJuros(mensalidade.valor, mensalidade.data_vencimento, multaJurosConfig, dataPagamento)
+    setBaixaMulta(multa.toFixed(2))
+    setBaixaJuros(juros.toFixed(2))
+  }
+
+  const alterarDataBaixa = (novaData) => {
+    setDataBaixa(novaData)
+    if (novaData && mensalidadeParaAtualizar) sugerirMultaJuros(mensalidadeParaAtualizar, novaData)
+  }
+
   const alterarStatusPagamento = (mensalidade, novoPago) => {
     setMensalidadeParaAtualizar(mensalidade)
     setNovoStatusPagamento(novoPago)
+    setDataBaixa(hojeISO())
     // Pré-calcular multa/juros sugeridos (só quando estiver dando baixa numa parcela vencida)
     if (novoPago) {
-      const { multa, juros } = calcularMultaJuros(mensalidade.valor, mensalidade.data_vencimento, multaJurosConfig)
-      setBaixaMulta(multa.toFixed(2))
-      setBaixaJuros(juros.toFixed(2))
+      sugerirMultaJuros(mensalidade, hojeISO())
     } else {
       setBaixaMulta('0.00')
       setBaixaJuros('0.00')
@@ -627,6 +646,11 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     // Validar forma de pagamento se estiver marcando como pago
     if (novoStatusPagamento && !formaPagamento) {
       showToast('Por favor, selecione a forma de pagamento', 'warning')
+      return
+    }
+
+    if (novoStatusPagamento && (!dataBaixa || dataBaixa > hojeISO())) {
+      showToast('Informe a data do pagamento (não pode ser no futuro)', 'warning')
       return
     }
 
@@ -649,7 +673,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       // Adicionar forma e data de pagamento se estiver marcando como pago
       if (novoStatusPagamento) {
         updateData.forma_pagamento = formaPagamento
-        updateData.data_pagamento = new Date().toISOString().split('T')[0] // Data atual em formato ISO
+        updateData.data_pagamento = dataBaixa
         // Multa/juros informados na baixa (pré-preenchidos pela config, editáveis)
         const multa = Math.max(0, parseFloat(baixaMulta) || 0)
         const juros = Math.max(0, parseFloat(baixaJuros) || 0)
@@ -2693,34 +2717,25 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               {/* Campo de forma de pagamento - só aparece ao confirmar pagamento */}
               {novoStatusPagamento && (
                 <div style={{ marginTop: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-                    Forma de Pagamento *
-                  </label>
-                  <select
+                  <Select
+                    label="Forma de pagamento"
+                    required
+                    portal
+                    placeholder="Selecione a forma de pagamento"
                     value={formaPagamento}
-                    onChange={(e) => setFormaPagamento(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      fontSize: '16px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      backgroundColor: 'white',
-                      color: '#344848',
-                      cursor: 'pointer',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="">Selecione a forma de pagamento</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="PIX">PIX</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito</option>
-                    <option value="Cartão de Débito">Cartão de Débito</option>
-                    <option value="Transferência Bancária">Transferência Bancária</option>
-                    <option value="Boleto">Boleto</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Outro">Outro</option>
-                  </select>
+                    onChange={(v) => setFormaPagamento(v || '')}
+                    options={FORMAS_PAGAMENTO_BAIXA.map(f => ({ value: f, label: f }))}
+                  />
+
+                  <div style={{ marginTop: '16px' }}>
+                    <DateField
+                      label="Data do pagamento"
+                      required
+                      value={dataBaixa}
+                      onChange={alterarDataBaixa}
+                      maxDate={hojeISO()}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -2728,7 +2743,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   Multa/juros aparecem apenas em parcela vencida (é o que a config calcula);
                   desconto vale sempre, porque negociação acontece com parcela em dia também. */}
               {novoStatusPagamento && mensalidadeParaAtualizar && (() => {
-                const atrasado = calcularStatus(mensalidadeParaAtualizar) === 'atrasado'
+                // Atraso medido na data do pagamento: pago antes do vencimento não tem multa
+                const atrasado = !!dataBaixa && mensalidadeParaAtualizar.data_vencimento < dataBaixa
                 const base = parseFloat(mensalidadeParaAtualizar.valor) || 0
                 const multa = atrasado ? Math.max(0, parseFloat(baixaMulta) || 0) : 0
                 const juros = atrasado ? Math.max(0, parseFloat(baixaJuros) || 0) : 0

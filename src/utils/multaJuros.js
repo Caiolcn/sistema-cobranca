@@ -1,3 +1,5 @@
+import { hojeISO } from './dataLocal'
+
 /**
  * Cálculo de multa e juros por atraso de mensalidade.
  *
@@ -21,7 +23,7 @@ export function calcularMultaJuros(valorBase, dataVencimento, config, hoje) {
   const base = parseFloat(String(valorBase)) || 0
   const mj = config || {}
 
-  const hojeMs = hoje ? Date.parse(hoje) : Date.parse(new Date().toISOString().split('T')[0])
+  const hojeMs = Date.parse(hoje || hojeISO())
   const vencMs = Date.parse(dataVencimento)
   const diasAtraso = Number.isNaN(vencMs)
     ? 0

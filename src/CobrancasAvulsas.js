@@ -14,6 +14,7 @@ import SearchInput from './design-system/components/SearchInput'
 import Input from './design-system/components/Input'
 import Select from './design-system/components/Select'
 import DateField from './components/DateField'
+import { hojeISO } from './utils/dataLocal'
 
 const CATEGORIAS_PADRAO = [
   { value: 'uniforme', label: 'Uniforme', icon: 'mdi:tshirt-crew-outline', cor: '#E91E63' },
@@ -333,7 +334,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         data_vencimento: formDataVencimento || new Date().toISOString().split('T')[0],
         status: formStatus,
         forma_pagamento: formStatus === 'pago' ? (formFormaPagamento || null) : null,
-        data_pagamento: formStatus === 'pago' ? new Date().toISOString().split('T')[0] : null,
+        data_pagamento: formStatus === 'pago' ? hojeISO() : null,
         devedor_id: formDevedorId || null,
         observacoes: formObservacoes.trim() || null
       }
@@ -385,7 +386,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         .from('cobrancas_avulsas')
         .update({
           status: 'pago',
-          data_pagamento: new Date().toISOString().split('T')[0]
+          data_pagamento: hojeISO()
         })
         .eq('id', cobranca.id)
       if (error) throw error
