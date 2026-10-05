@@ -60,7 +60,8 @@ serve(async (req) => {
         landing_mostrar_cta_whatsapp, landing_mostrar_cta_agendar, landing_mostrar_cta_final,
         landing_cta_final_mostrar_botao,
         landing_cta_final_destino, landing_cta_final_url, landing_cta_final_texto,
-        agendamento_slug, agendamento_ativo
+        agendamento_slug, agendamento_ativo,
+        bio_config
       `)
       .eq('landing_slug', slug)
       .maybeSingle()
@@ -232,6 +233,7 @@ serve(async (req) => {
           cta_final_url: empresa.landing_cta_final_url || null,
           cta_final_texto: empresa.landing_cta_final_texto || null,
         },
+        bio: empresa.bio_config || null,
         planos,
         aulas,
         depoimentos,
