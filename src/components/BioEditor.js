@@ -437,7 +437,7 @@ export default function BioEditor({ onIrParaAgendamento }) {
             </div>
             <button type="button" onClick={() => navigate('/app/configuracao?aba=assinatura')}
               style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#ea580c', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
-              Conhecer o Premium
+              Fazer upgrade do plano
             </button>
           </div>
         ) : empresa.agendamento_ativo && empresa.agendamento_slug ? (
