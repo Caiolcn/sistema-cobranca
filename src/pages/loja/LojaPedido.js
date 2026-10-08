@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { carregarFontesBio } from '../../data/bioTemas'
-import { lojaApi, resolverAparenciaLoja, fmtBRL, fmtDataHora, copiarTexto, telefoneWa } from './lojaTema'
+import { lojaApi, resolverAparenciaLoja, fmtBRL, fmtDataHora, copiarTexto, telefoneWa, rotulosPassos } from './lojaTema'
 import { LojaShell, TelaCarregando, TelaIndisponivel } from './LojaVitrine'
 import { Aviso, Passos } from './LojaItem'
 
@@ -131,7 +131,7 @@ export default function LojaPedido() {
     return (
       <LojaShell empresa={empresa} aparencia={aparencia} titulo={aparencia.titulo} voltar={() => navigate(`/loja/${slugReal}`)}>
         {resumo}
-        <Passos tema={tema} atual={2} />
+        <Passos tema={tema} atual={2} rotulos={rotulosPassos(pedido.produto)} />
 
         {expirado ? (
           <div style={{ ...card, textAlign: 'center' }}>
@@ -204,7 +204,7 @@ export default function LojaPedido() {
     return (
       <LojaShell empresa={empresa} aparencia={aparencia} titulo={aparencia.titulo}>
         {resumo}
-        <Passos tema={tema} atual={3} total={3} rotulos={['Cadastro', 'Pagamento', 'Horário']} />
+        <Passos tema={tema} atual={3} rotulos={rotulosPassos(pedido.produto)} />
         <Aviso tema={tema} compacto>Pagamento confirmado! Agora escolha seu horário.</Aviso>
         <div style={{ height: '12px' }} />
         <EscolhaTurma slug={slugReal} token={token} pedido={pedido} tema={tema} fonte={fonte} card={card} botaoPrimario={botaoPrimario} onConcluido={() => carregar()} />
@@ -231,10 +231,9 @@ export default function LojaPedido() {
   // ---------------- CONFIRMAÇÃO ----------------
   const wa = telefoneWa(empresa.loja?.suporte_whatsapp || empresa.telefone)
   const retirada = empresa.loja?.retirada
-  const boasVindas = empresa.loja?.boas_vindas
   return (
     <LojaShell empresa={empresa} aparencia={aparencia} titulo={aparencia.titulo} voltar={() => navigate(`/loja/${slugReal}`)}>
-      <Passos tema={tema} atual={3} />
+      <Passos tema={tema} atual={3} rotulos={rotulosPassos(pedido.produto)} />
       <div style={{ ...card, textAlign: 'center', paddingTop: '26px' }}>
         <div style={{ width: '64px', height: '64px', borderRadius: '50%', margin: '0 auto', backgroundColor: tema.destaque, color: tema.destaqueTexto, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon icon="mdi:check-bold" width="34" />
@@ -243,7 +242,6 @@ export default function LojaPedido() {
           {pedido.tipo === 'plano' ? 'Matrícula confirmada!' : pedido.tipo === 'evento' ? 'Inscrição confirmada!' : 'Pagamento confirmado!'}
         </h2>
         <p style={{ margin: 0, fontSize: '14px', opacity: 0.85 }}>{pedido.item_nome}{pedido.variacao ? ` · ${pedido.variacao}` : ''} · {fmtBRL(pedido.valor)}</p>
-        {boasVindas && <p style={{ margin: '14px 0 0', fontSize: '14px', lineHeight: 1.55, whiteSpace: 'pre-line' }}>{boasVindas}</p>}
       </div>
 
       <div style={{ ...card, marginTop: '12px' }}>

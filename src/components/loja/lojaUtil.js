@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Icon } from '@iconify/react'
 import { supabase } from '../../supabaseClient'
 
@@ -15,15 +16,28 @@ export const titulo = { display: 'block', fontSize: '13px', fontWeight: 600, col
 export const dica = { fontSize: '12px', color: '#6b7280', margin: '0 0 10px' }
 export const campo = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', backgroundColor: '#fff' }
 
-export function Bloco({ icone, nome, acao, children }) {
+// Cartão de seção do editor. Com `colapsavel`, o cabeçalho vira botão e o conteúdo
+// abre/fecha (fechado por padrão, a não ser que `abertoInicial`). `resumo` é um texto
+// curto que aparece ao lado do título quando fechado (ex.: "no ar", "3 de 7 ligadas").
+export function Bloco({ icone, nome, acao, children, colapsavel = false, abertoInicial = false, resumo }) {
+  const [aberto, setAberto] = useState(abertoInicial)
+  const mostrar = !colapsavel || aberto
   return (
-    <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '18px', marginBottom: '14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+    <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: mostrar ? '18px' : '0', marginBottom: '14px', overflow: 'hidden' }}>
+      <div
+        role={colapsavel ? 'button' : undefined} tabIndex={colapsavel ? 0 : undefined} aria-expanded={colapsavel ? aberto : undefined}
+        onClick={colapsavel ? () => setAberto(v => !v) : undefined}
+        onKeyDown={colapsavel ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAberto(v => !v) } } : undefined}
+        style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: mostrar ? '14px' : 0, padding: mostrar ? 0 : '14px 18px', cursor: colapsavel ? 'pointer' : 'default', userSelect: colapsavel ? 'none' : 'auto' }}>
         <Icon icon={icone} width="20" style={{ color: '#344848' }} />
-        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1f2937', flex: 1 }}>{nome}</h3>
-        {acao}
+        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1f2937', flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          {nome}
+          {colapsavel && !aberto && resumo && <span style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {resumo}</span>}
+        </h3>
+        {acao && <span onClick={(e) => e.stopPropagation()}>{acao}</span>}
+        {colapsavel && <Icon icon="mdi:chevron-down" width="20" style={{ color: '#6b7280', transform: aberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }} />}
       </div>
-      {children}
+      {mostrar && children}
     </div>
   )
 }
@@ -52,10 +66,10 @@ export const CATEGORIAS_PADRAO = [
 ]
 
 export const TIPOS_ITEM = {
-  plano: { label: 'Plano', icon: 'mdi:calendar-sync-outline', cor: '#2563eb', fundo: '#dbeafe', descricao: 'Mensalidade recorrente. O aluno vira cliente ativo e já escolhe a turma.' },
-  pacote: { label: 'Pacote', icon: 'mdi:ticket-confirmation-outline', cor: '#7c3aed', fundo: '#ede9fe', descricao: 'Pacote de aulas avulsas com número fechado de aulas.' },
-  produto: { label: 'Produto', icon: 'mdi:tshirt-crew-outline', cor: '#ea580c', fundo: '#ffedd5', descricao: 'Uniforme, suplemento, material. Com variações e estoque.' },
-  evento: { label: 'Evento', icon: 'mdi:calendar-star', cor: '#16a34a', fundo: '#dcfce7', descricao: 'Campeonato, workshop, aulão. Com data, local e vagas.' }
+  plano: { label: 'Plano', plural: 'Planos', icon: 'mdi:calendar-sync-outline', cor: '#2563eb', fundo: '#dbeafe', descricao: 'Mensalidade recorrente. O aluno vira cliente ativo e já escolhe a turma.' },
+  pacote: { label: 'Pacote', plural: 'Pacotes', icon: 'mdi:ticket-confirmation-outline', cor: '#7c3aed', fundo: '#ede9fe', descricao: 'Pacote de aulas avulsas com número fechado de aulas.' },
+  produto: { label: 'Produto', plural: 'Produtos', icon: 'mdi:tshirt-crew-outline', cor: '#ea580c', fundo: '#ffedd5', descricao: 'Uniforme, suplemento, material. Com variações e estoque.' },
+  evento: { label: 'Evento', plural: 'Eventos', icon: 'mdi:calendar-star', cor: '#16a34a', fundo: '#dcfce7', descricao: 'Campeonato, workshop, aulão. Com data, local e vagas.' }
 }
 
 // Status do pedido -> rótulo e cor do Badge
@@ -85,7 +99,7 @@ export const CFG_PADRAO = {
   boas_vindas: '',
   retirada: { ativa: false, endereco: '', horario: '' },
   // estilo: 'claro' (loja clara com a cor da marca, padrão) | 'bio' (igual ao link na bio) | 'tema' (tema/fonte próprios)
-  aparencia: { estilo: 'claro', herdar_bio: false, tema: 'marca', fonte: 'inter' },
+  aparencia: { estilo: 'claro', herdar_bio: false, tema: 'claro', fonte: 'inter' },
   mostrar_experimental: true,
   // Seções da página: liga/desliga + o pouco de conteúdo que não existe em outro lugar.
   // Galeria, FAQ, depoimentos manuais e chamada final caem no que a academia já

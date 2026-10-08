@@ -1,5 +1,5 @@
 import { FUNCTIONS_URL, SUPABASE_ANON_KEY } from '../../supabaseClient'
-import { resolverTema, getFonteBio, resolverBio, TEMA_PADRAO, FONTE_PADRAO, luminancia, misturar, textoSobre } from '../../data/bioTemas'
+import { resolverTema, getFonteBio, resolverBio, todosOsTemas, FONTE_PADRAO, luminancia, misturar, textoSobre } from '../../data/bioTemas'
 
 // Utilidades da Loja pública (/loja/:slug): chamadas às edge functions,
 // aparência (tema claro de loja por padrão; pode herdar a bio ou usar tema
@@ -61,21 +61,50 @@ export function temaLojaClaro(cor) {
 // define a COR de destaque: 'marca' usa a cor da marca; os temas fixos usam a
 // cor de destaque deles, ou a cor de fundo quando o destaque é claro demais
 // para segurar texto branco (oceano = branco, roxo = amarelo).
-export function corDaLoja(temaBio, corMarca) {
-  if (!temaBio || temaBio.id === 'marca') return corMarca || '#344848'
-  return luminancia(temaBio.destaque) > 170 ? temaBio.fundo[1] : temaBio.destaque
+// Completa um tema da bio (escuro, com degradê) com os tokens que só a loja usa
+function completarTemaBio(t) {
+  return {
+    ...t, claro: false,
+    header: `${t.fundo[0]}e6`,
+    sutil: 'rgba(255,255,255,0.08)',
+    destaqueSuave: 'rgba(255,255,255,0.14)',
+    erro: '#fca5a5', avisoBg: 'rgba(255,255,255,0.12)', avisoBorda: t.cardBorda, avisoTexto: t.texto,
+    sombra: '0 1px 2px rgba(0,0,0,0.12)',
+  }
+}
+
+export const TEMA_LOJA_CLARO = 'claro'
+
+// Lista de temas da loja: "Loja clara" (padrão) + os mesmos temas da bio, que
+// aqui valem inteiros (fundo, cards, texto), igual ao link na bio.
+// Destaque da "Loja clara": neutro escuro, sem depender de cor cadastrada na conta
+export const COR_LOJA_CLARA = '#111827'
+
+export function temasDaLoja() {
+  const claro = temaLojaClaro(COR_LOJA_CLARA)
+  return [
+    { id: TEMA_LOJA_CLARO, nome: 'Loja clara', fundo: ['#ffffff', '#eef0f3'], destaque: claro.destaque, claro: true },
+    ...todosOsTemas('#344848').filter((t) => t.id !== 'marca'),
+  ]
+}
+
+// Compat: configs salvas antes dos temas inteiros guardavam tema 'marca' com estilo 'claro'
+function temaEscolhidoDe(ap) {
+  if (!ap.tema || ap.tema === TEMA_LOJA_CLARO || ap.tema === 'marca') return TEMA_LOJA_CLARO
+  return ap.tema
 }
 
 export function resolverAparenciaLoja(empresa) {
   const ap = empresa?.loja?.aparencia || {}
   const bio = resolverBio(empresa || {}, empresa?.bio || {})
-  const corMarca = empresa?.cor_primaria
-  const temaEscolhido = resolverTema(ap.tema || TEMA_PADRAO, corMarca)
-  const tema = temaLojaClaro(corDaLoja(temaEscolhido, corMarca))
+  const temaId = temaEscolhidoDe(ap)
+  const tema = temaId === TEMA_LOJA_CLARO
+    ? temaLojaClaro(COR_LOJA_CLARA)
+    : completarTemaBio(resolverTema(temaId, '#344848'))
   const fonteId = ap.fonte || bio.fonte || FONTE_PADRAO
 
   return {
-    estilo: 'claro',
+    estilo: temaId === TEMA_LOJA_CLARO ? 'claro' : 'tema',
     tema,
     fonte: getFonteBio(fonteId),
     fonteId,
@@ -196,7 +225,18 @@ export function fmtDataHora(iso) {
 
 export const TIPO_LABEL = { plano: 'Plano', pacote: 'Pacote', produto: 'Produto', evento: 'Evento' }
 export const TIPO_ICONE = { plano: 'mdi:calendar-sync', pacote: 'mdi:ticket-confirmation-outline', produto: 'mdi:tshirt-crew-outline', evento: 'mdi:calendar-star' }
-export const TIPO_CTA = { plano: 'Matricular', pacote: 'Comprar pacote', produto: 'Comprar', evento: 'Inscrever-se' }
+export const TIPO_CTA = { plano: 'Escolher plano', pacote: 'Comprar pacote', produto: 'Comprar', evento: 'Inscrever-se' }
+// Texto do botão principal na página do item (a pessoa já escolheu; agora segue)
+export const TIPO_CTA_ITEM = { plano: 'Continuar com este plano', pacote: 'Comprar pacote', produto: 'Comprar', evento: 'Fazer inscrição' }
+
+// Passos do checkout conforme o tipo do item: o terceiro passo muda
+// (Horário para plano com turma, Retirada para produto com retirada presencial).
+export function rotulosPassos(produto) {
+  if (!produto) return ['Dados', 'Pagamento', 'Confirmação']
+  if (produto.tipo === 'plano' && produto.exigir_turma) return ['Dados', 'Pagamento', 'Horário']
+  if (produto.tipo === 'produto' && produto.retirada_presencial) return ['Dados', 'Pagamento', 'Retirada']
+  return ['Dados', 'Pagamento', 'Confirmação']
+}
 
 export function telefoneWa(tel) {
   let t = String(tel || '').replace(/\D/g, '')

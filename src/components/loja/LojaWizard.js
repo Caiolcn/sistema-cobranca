@@ -6,7 +6,7 @@ import { formatarBRL } from '../../planosMensalli'
 import Button from '../../design-system/components/Button'
 import Checkbox from '../../design-system/components/Checkbox'
 import LojaLink from './LojaLink'
-import { Chave, titulo, dica, campo, SELECT_PRODUTO, erroDeSchema, MSG_SQL, colocarNaBio, lojaNaBio, VERDE } from './lojaUtil'
+import { Chave, titulo, dica, campo, SELECT_PRODUTO, erroDeSchema, MSG_SQL, lojaNaBio, VERDE } from './lojaUtil'
 
 // Primeira vez na loja (loja_produtos vazia): três passos num card.
 // 1) importar planos  2) aparência  3) publicar.
@@ -77,7 +77,7 @@ export default function LojaWizard({
       const final = {
         ...cfg,
         titulo: cfg.titulo.trim() || nomeEmpresa || '',
-        suporte_whatsapp: cfg.suporte_whatsapp.trim() || telefoneEmpresa || ''
+        suporte_whatsapp: ''   // a loja usa sempre o WhatsApp da conta
       }
       const { error } = await supabase.from('usuarios').update({ loja_config: final }).eq('id', userId)
       if (error) {
@@ -107,19 +107,6 @@ export default function LojaWizard({
       showToast('Sua loja está no ar!', 'success')
     } catch (err) {
       showToast('Erro ao publicar: ' + err.message, 'error')
-    } finally {
-      setOcupado('')
-    }
-  }
-
-  const naBio = async () => {
-    setOcupado('bio')
-    try {
-      const novo = await colocarNaBio(userId)
-      onBioAtualizada(novo)
-      showToast('A loja agora aparece na sua bio', 'success')
-    } catch (err) {
-      showToast('Erro ao atualizar a bio: ' + err.message, 'error')
     } finally {
       setOcupado('')
     }
@@ -197,11 +184,6 @@ export default function LojaWizard({
               <strong>Herdar o visual da bio</strong> <span style={{ color: '#6b7280' }}>(mesmas cores e fonte do link na bio)</span>
             </Chave>
             <div>
-              <span style={titulo}>WhatsApp de suporte</span>
-              <input value={cfg.suporte_whatsapp} maxLength={20} onChange={(e) => setCfg(prev => ({ ...prev, suporte_whatsapp: e.target.value }))} placeholder={telefoneEmpresa || '(11) 99999-9999'} style={campo} />
-              <p style={{ ...dica, margin: '6px 0 0' }}>Aparece na loja e na confirmação de compra para dúvidas.</p>
-            </div>
-            <div>
               <Chave ligado={cfg.retirada.ativa} onChange={(v) => setRetirada({ ativa: v })}>
                 <strong>Retirada presencial</strong> <span style={{ color: '#6b7280' }}>(para produtos físicos)</span>
               </Chave>
@@ -246,14 +228,10 @@ export default function LojaWizard({
             ) : (
               <Button variant="primary" icon="mdi:rocket-launch-outline" onClick={colocarNoAr} loading={ocupado === 'ar'} disabled={!asaasOk}>Colocar loja no ar</Button>
             )}
-            {jaNaBio ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#166534' }}>
-                <Icon icon="mdi:check-circle" width="18" style={{ color: VERDE }} /> Está na bio
-              </span>
-            ) : (
-              <Button variant="outline" icon="mdi:link-variant" onClick={naBio} loading={ocupado === 'bio'}>Colocar na bio</Button>
-            )}
           </div>
+          <p style={{ ...dica, margin: '10px 0 0' }}>
+            {jaNaBio ? 'O botão da loja já está na sua bio.' : 'Para mostrar o botão da loja na sua bio, ligue "Loja e matrícula" em Marketing › Link na bio.'}
+          </p>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginTop: '18px' }}>
             <Button variant="secondary" onClick={onConcluir}>Ir para o editor</Button>

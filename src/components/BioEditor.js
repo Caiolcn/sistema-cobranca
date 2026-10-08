@@ -482,14 +482,16 @@ export default function BioEditor({ onIrParaAgendamento }) {
           ))}
         </div>
 
-        <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '16px 0' }} />
-        <span style={titulo}>Links extras</span>
-        <p style={dica}>Ex.: "Grupo do WhatsApp", "Loja", "Tabela de preços". Até {MAX_LINKS}.</p>
+      </Bloco>
+
+      {/* Botões personalizados: título + link, viram botões na página */}
+      <Bloco icone="mdi:plus-box-multiple-outline" nome="Seus botões">
+        <p style={dica}>Crie botões com o título e o link que quiser. Ex.: "Grupo do WhatsApp", "Tabela de preços", "Nosso cardápio". Até {MAX_LINKS}; aparecem abaixo dos botões fixos.</p>
         {links.map((l, i) => (
           <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-            <input value={l.titulo || ''} onChange={(e) => setLink(i, { titulo: e.target.value })} placeholder="Título" maxLength={30} style={{ ...campo, flex: '0 0 36%' }} />
+            <input value={l.titulo || ''} onChange={(e) => setLink(i, { titulo: e.target.value })} placeholder="Texto do botão" maxLength={30} style={{ ...campo, flex: '0 0 36%' }} />
             <input value={l.url || ''} onChange={(e) => setLink(i, { url: e.target.value })} placeholder="https://..." style={campo} />
-            <button type="button" onClick={() => atualizar({ links: links.filter((_, k) => k !== i) })} aria-label="Remover link"
+            <button type="button" onClick={() => atualizar({ links: links.filter((_, k) => k !== i) })} aria-label="Remover botão"
               style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}>
               <Icon icon="mdi:close" width="20" />
             </button>
@@ -498,7 +500,7 @@ export default function BioEditor({ onIrParaAgendamento }) {
         {links.length < MAX_LINKS && (
           <button type="button" onClick={() => atualizar({ links: [...links, { titulo: '', url: '' }] })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px', border: '1px dashed #9ca3af', backgroundColor: '#fff', color: '#374151', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-            <Icon icon="mdi:plus" width="16" /> Adicionar link
+            <Icon icon="mdi:plus" width="16" /> Adicionar botão
           </button>
         )}
       </Bloco>

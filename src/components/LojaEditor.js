@@ -5,18 +5,18 @@ import { showToast } from '../Toast'
 import { useUser } from '../contexts/UserContext'
 import useWindowSize from '../hooks/useWindowSize'
 import { useUserPlan } from '../hooks/useUserPlan'
-import { FONTES_BIO, todosOsTemas, carregarFontesBio, bioPublicada } from '../data/bioTemas'
+import { FONTES_BIO, carregarFontesBio } from '../data/bioTemas'
 import Tabs from '../design-system/components/Tabs'
 import Button from '../design-system/components/Button'
 import { LojaView } from '../pages/loja/LojaVitrine'
-import { montarEmpresaPreview, montarSecoesPreview, PASSOS_PADRAO, corDaLoja } from '../pages/loja/lojaTema'
+import { montarEmpresaPreview, montarSecoesPreview, PASSOS_PADRAO, temasDaLoja } from '../pages/loja/lojaTema'
 import LojaWizard from './loja/LojaWizard'
 import LojaProdutos from './loja/LojaProdutos'
 import LojaPedidos from './loja/LojaPedidos'
 import LojaLink from './loja/LojaLink'
 import {
   Bloco, Chave, titulo, dica, campo, VERDE, PRECO_ADDON,
-  normalizarCfg, produtosVisiveis, SELECT_PRODUTO, erroDeSchema, MSG_SQL, colocarNaBio, lojaNaBio
+  normalizarCfg, produtosVisiveis, SELECT_PRODUTO, erroDeSchema, MSG_SQL
 } from './loja/lojaUtil'
 
 // Editor da Loja (Marketing › Loja) — lado do gestor do Mensalli Vendas.
@@ -77,7 +77,7 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
   const [subAba, setSubAba] = useState('produtos')
   const [previewAberto, setPreviewAberto] = useState(false)
   const [previewTelaCheia, setPreviewTelaCheia] = useState(false)
-  const [bioOcupado, setBioOcupado] = useState(false)
+  const [checklistAberto, setChecklistAberto] = useState(false)   // colapsado; abre no clique
   const gerandoSlug = useRef(false)
 
   const temAddon = hasAddon('vendas')
@@ -146,8 +146,6 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
   const temItemAtivo = produtos.some(p => p.ativo)
   const alterado = JSON.stringify({ cfg, noAr }) !== salvo
   const premiumComAgendamento = !!linha && String(linha.plano || '').toLowerCase() === 'premium' && !!linha.agendamento_ativo
-  const bioNoAr = !!linha && bioPublicada(linha.bio_config, linha.landing_ativo)
-  const jaNaBio = lojaNaBio(linha?.bio_config)
 
   const empresaPreview = useMemo(() => {
     if (!linha) return null
@@ -178,8 +176,8 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
         ...cfg,
         titulo: cfg.titulo.trim(),
         frase: cfg.frase.trim(),
-        boas_vindas: cfg.boas_vindas.trim(),
-        suporte_whatsapp: cfg.suporte_whatsapp.trim(),
+        boas_vindas: '',   // campo retirado do editor: a confirmação já vai pelo WhatsApp (template Loja - Compra Confirmada)
+        suporte_whatsapp: '',   // campo retirado: a loja usa sempre o WhatsApp da conta (usuarios.telefone)
         retirada: { ...cfg.retirada, endereco: (cfg.retirada.endereco || '').trim(), horario: (cfg.retirada.horario || '').trim() }
       }
       const mudouAr = noAr !== !!linha.loja_ativa
@@ -202,18 +200,6 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
     }
   }
 
-  const colocarLojaNaBio = async () => {
-    setBioOcupado(true)
-    try {
-      const novo = await colocarNaBio(userId)
-      setLinha(prev => ({ ...prev, bio_config: novo }))
-      showToast('A loja agora aparece na sua bio', 'success')
-    } catch (err) {
-      showToast('Erro ao atualizar a bio: ' + err.message, 'error')
-    } finally {
-      setBioOcupado(false)
-    }
-  }
 
   // ---------- gates ----------
   if (planoCarregando) return <Carregando />
@@ -280,38 +266,57 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
 
   if (loading || !linha) return <Carregando />
 
-  const temas = todosOsTemas(linha.landing_cor_primaria || '#344848')
+  const temas = temasDaLoja()
+  // compat: config antiga guardava 'marca' + estilo 'claro' para a loja clara
+  const temaAtual = (!cfg.aparencia.tema || cfg.aparencia.tema === 'claro' || (cfg.aparencia.tema === 'marca' && cfg.aparencia.estilo === 'claro' && cfg.aparencia.herdar_bio !== true)) ? 'claro' : cfg.aparencia.tema
 
-  // ---------- checklist ----------
+  // ---------- checklist (colapsado; o cabeçalho resume o que falta) ----------
   const tudoOk = asaasOk && !!slug && temItemAtivo
+  const pendencias = [!asaasOk, !slug, !temItemAtivo].filter(Boolean).length   // bloqueiam a loja
+  const avisos = [!zapConectado].filter(Boolean).length                         // não bloqueiam
+  const corFundo = pendencias ? '#fef2f2' : avisos || !noAr ? '#fffbeb' : '#f0fdf4'
+  const corBorda = pendencias ? '#fecaca' : avisos || !noAr ? '#fde68a' : '#bbf7d0'
+  const corTexto = pendencias ? '#991b1b' : avisos || !noAr ? '#92400e' : '#166534'
+  const titulo_ = noAr && linha.loja_ativa ? 'Sua loja está no ar' : 'Para a loja funcionar'
+  const resumo = pendencias
+    ? `${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'}`
+    : avisos ? `${avisos} ${avisos === 1 ? 'aviso' : 'avisos'}` : 'tudo certo'
   const checklist = (
-    <div style={{ backgroundColor: tudoOk && noAr ? '#f0fdf4' : '#fffbeb', border: `1px solid ${tudoOk && noAr ? '#bbf7d0' : '#fde68a'}`, borderRadius: '14px', padding: '14px 16px', marginBottom: '14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: tudoOk && noAr ? '#166534' : '#92400e' }}>
-          {noAr && linha.loja_ativa ? 'Sua loja está no ar' : 'Para a loja funcionar'}
+    <div style={{ backgroundColor: corFundo, border: `1px solid ${corBorda}`, borderRadius: '14px', marginBottom: '14px', overflow: 'hidden' }}>
+      <button type="button" onClick={() => setChecklistAberto(v => !v)} aria-expanded={checklistAberto}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '12px 16px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <Icon icon={pendencias ? 'mdi:alert-circle' : avisos ? 'mdi:alert' : 'mdi:check-circle'} width="18" style={{ color: pendencias ? '#dc2626' : avisos ? '#d97706' : VERDE, flexShrink: 0 }} />
+          <span style={{ fontSize: '13px', fontWeight: 700, color: corTexto }}>{titulo_}</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', backgroundColor: '#fff', color: corTexto, border: `1px solid ${corBorda}` }}>{resumo}</span>
+          {visualizandoCliente && (
+            <span style={{ fontSize: '11px', color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Icon icon="mdi:eye-outline" width="14" /> vendo como cliente
+            </span>
+          )}
+        </span>
+        <Icon icon="mdi:chevron-down" width="20" style={{ color: corTexto, flexShrink: 0, transform: checklistAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+      </button>
+      {checklistAberto && (
+        <div style={{ padding: '0 16px 12px' }}>
+          <ItemChecklist ok={asaasOk} texto="Asaas conectado"
+            detalhe={asaasOk ? null : 'É por ele que o aluno paga. Sem Asaas a loja não pode ir ao ar.'}
+            acao={onIrParaIntegracoes && <Button variant="outline" size="sm" onClick={onIrParaIntegracoes}>Conectar Asaas</Button>} />
+          <ItemChecklist ok={!!slug} texto="Endereço público" detalhe={slug ? `${window.location.host}/loja/${slug}` : 'Gerando o endereço da sua loja...'} />
+          <ItemChecklist ok={zapConectado} aviso texto="WhatsApp conectado"
+            detalhe={zapConectado ? null : 'Sem ele a confirmação de compra e o contrato não chegam ao aluno. A venda continua funcionando.'} />
+          <ItemChecklist ok={temItemAtivo} texto="Pelo menos 1 item ativo"
+            detalhe={temItemAtivo ? null : 'Adicione um plano, produto ou evento na aba Produtos.'}
+            acao={!wizard && <Button variant="outline" size="sm" onClick={() => setSubAba('produtos')}>Adicionar</Button>} />
         </div>
-        {visualizandoCliente && (
-          <span style={{ fontSize: '11px', color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Icon icon="mdi:eye-outline" width="14" /> vendo como cliente · uploads desativados
-          </span>
-        )}
-      </div>
-      <ItemChecklist ok={asaasOk} texto="Asaas conectado"
-        detalhe={asaasOk ? null : 'É por ele que o aluno paga. Sem Asaas a loja não pode ir ao ar.'}
-        acao={onIrParaIntegracoes && <Button variant="outline" size="sm" onClick={onIrParaIntegracoes}>Conectar Asaas</Button>} />
-      <ItemChecklist ok={!!slug} texto="Endereço público" detalhe={slug ? `${window.location.host}/loja/${slug}` : 'Gerando o endereço da sua loja...'} />
-      <ItemChecklist ok={zapConectado} aviso texto="WhatsApp conectado"
-        detalhe={zapConectado ? null : 'Sem ele a confirmação de compra e o contrato não chegam ao aluno. A venda continua funcionando.'} />
-      <ItemChecklist ok={temItemAtivo} texto="Pelo menos 1 item ativo"
-        detalhe={temItemAtivo ? null : 'Adicione um plano, produto ou evento na aba Produtos.'}
-        acao={!wizard && <Button variant="outline" size="sm" onClick={() => setSubAba('produtos')}>Adicionar</Button>} />
+      )}
     </div>
   )
 
   // ---------- sub-aba Configurar ----------
   const configurar = (
     <div>
-      <Bloco icone="mdi:rocket-launch-outline" nome="Publicação">
+      <Bloco icone="mdi:rocket-launch-outline" nome="Publicação" colapsavel abertoInicial={!linha.loja_ativa} resumo={noAr ? 'no ar' : 'fora do ar'}>
         <Chave ligado={noAr} disabled={!asaasOk} onChange={setNoAr}>
           <strong>Loja no ar</strong> <span style={{ color: '#6b7280' }}>(qualquer pessoa com o link consegue comprar)</span>
         </Chave>
@@ -327,19 +332,23 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
         <LojaLink slug={slug} nomeEmpresa={linha.nome_empresa || nomeEmpresa} noAr={!!linha.loja_ativa} />
       </Bloco>
 
-      <Bloco icone="mdi:palette-outline" nome="Aparência">
-        <span style={titulo}>Cor</span>
-        <p style={dica}>A loja é sempre clara; a cor escolhida vai para botões, selos e detalhes. "Minha cor" usa a cor da sua marca.</p>
+      <Bloco icone="mdi:palette-outline" nome="Aparência" colapsavel resumo={(temas.find(t => t.id === temaAtual)?.nome || 'Loja clara') + ' · ' + (FONTES_BIO.find(f => f.id === (cfg.aparencia.fonte || 'inter'))?.label || 'Inter')}>
+        <span style={titulo}>Cores</span>
+        <p style={dica}>"Loja clara" é o fundo branco com botões escuros. As outras pintam a página inteira, como no link na bio.</p>
         <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '22px' }}>
           {temas.map(t => {
-            const ativo = (cfg.aparencia.tema || 'marca') === t.id
+            const ativo = temaAtual === t.id
             return (
-              <button key={t.id} type="button" onClick={() => setAparencia({ tema: t.id })} title={t.nome} aria-label={t.nome}
+              <button key={t.id} type="button" onClick={() => setAparencia({ tema: t.id, estilo: t.id === 'claro' ? 'claro' : 'tema', herdar_bio: false })} title={t.nome} aria-label={t.nome}
                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'center' }}>
                 <span style={{
-                  display: 'block', width: '46px', height: '46px', borderRadius: '50%', backgroundColor: corDaLoja(t, linha.landing_cor_primaria || '#344848'),
+                  display: 'block', width: '46px', height: '46px', borderRadius: '50%', position: 'relative',
+                  background: `linear-gradient(135deg, ${t.fundo[0]} 0%, ${t.fundo[1]} 100%)`,
+                  border: t.claro ? '1px solid #d1d5db' : 'none',
                   boxShadow: ativo ? '0 0 0 3px #fff, 0 0 0 5px #111827' : '0 1px 4px rgba(0,0,0,0.25)', transition: 'box-shadow 0.15s'
-                }} />
+                }}>
+                  <span style={{ position: 'absolute', right: '-2px', bottom: '-2px', width: '18px', height: '18px', borderRadius: '50%', backgroundColor: t.destaque, border: '2px solid #fff' }} />
+                </span>
                 <span style={{ display: 'block', marginTop: '8px', fontSize: '11px', fontWeight: ativo ? 700 : 500, color: ativo ? '#111827' : '#6b7280' }}>{t.nome}</span>
               </button>
             )
@@ -359,48 +368,16 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
         </div>
       </Bloco>
 
-      <Bloco icone="mdi:text-box-outline" nome="Textos">
-        <div style={{ display: 'grid', gap: '14px' }}>
-          <div>
-            <span style={titulo}>Título da loja</span>
-            <input value={cfg.titulo} maxLength={60} onChange={(e) => setCfgCampo({ titulo: e.target.value })} placeholder={linha.nome_empresa || 'Nome da academia'} style={campo} />
+      <Bloco icone="mdi:view-sequential-outline" nome="Seções da página" colapsavel resumo={`${['como_funciona','resultados','depoimentos','horarios','faq','sobre','chamada_final'].filter(k => cfg.secoes[k]).length + (premiumComAgendamento && cfg.mostrar_experimental ? 1 : 0)} de ${7 + (premiumComAgendamento ? 1 : 0)} ligadas`}>
+        <p style={dica}>Na ordem em que aparecem na página. Capa e itens à venda são fixos; as demais você liga e desliga. Seção sem conteúdo fica oculta.</p>
+        <div style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>Capa <span style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>· sempre aparece</span></div>
+          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', lineHeight: 1.4 }}>Logo e foto de capa vêm da bio. Aqui só o título e a frase.</div>
+          <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
+            <input value={cfg.titulo} maxLength={60} onChange={(e) => setCfgCampo({ titulo: e.target.value })} placeholder={`Título · padrão: ${linha.nome_empresa || 'nome da academia'}`} style={campo} />
+            <input value={cfg.frase} maxLength={120} onChange={(e) => setCfgCampo({ frase: e.target.value })} placeholder="Frase curta. Ex.: Planos, pacotes e produtos oficiais" style={campo} />
           </div>
-          <div>
-            <span style={titulo}>Frase curta</span>
-            <input value={cfg.frase} maxLength={120} onChange={(e) => setCfgCampo({ frase: e.target.value })} placeholder="Ex.: Planos, pacotes e produtos oficiais" style={campo} />
-          </div>
-          <div>
-            <span style={titulo}>Boas-vindas na confirmação</span>
-            <textarea value={cfg.boas_vindas} rows={3} maxLength={400} onChange={(e) => setCfgCampo({ boas_vindas: e.target.value })}
-              placeholder="Ex.: Seja bem-vindo à família! Chegue 10 minutos antes da primeira aula para conhecer a equipe." style={{ ...campo, resize: 'vertical' }} />
-            <div style={{ textAlign: 'right', fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>{cfg.boas_vindas.length}/400</div>
-          </div>
-          <div>
-            <span style={titulo}>WhatsApp de suporte</span>
-            <input value={cfg.suporte_whatsapp} maxLength={20} onChange={(e) => setCfgCampo({ suporte_whatsapp: e.target.value })} placeholder={linha.telefone || telefoneEmpresa || '(11) 99999-9999'} style={campo} />
-            <p style={{ ...dica, margin: '6px 0 0' }}>Em branco usa o telefone da conta.</p>
-          </div>
-          <div>
-            <Chave ligado={cfg.retirada.ativa} onChange={(v) => setRetirada({ ativa: v })}>
-              <strong>Retirada presencial</strong> <span style={{ color: '#6b7280' }}>(endereço e horário para produtos físicos)</span>
-            </Chave>
-            {cfg.retirada.ativa && (
-              <div style={{ display: 'grid', gap: '8px', marginTop: '6px' }}>
-                <input value={cfg.retirada.endereco} maxLength={160} onChange={(e) => setRetirada({ endereco: e.target.value })} placeholder="Endereço de retirada" style={campo} />
-                <input value={cfg.retirada.horario} maxLength={120} onChange={(e) => setRetirada({ horario: e.target.value })} placeholder="Horário. Ex.: seg a sex, 8h às 20h" style={campo} />
-              </div>
-            )}
-          </div>
-          {premiumComAgendamento && (
-            <Chave ligado={cfg.mostrar_experimental} onChange={(v) => setCfgCampo({ mostrar_experimental: v })}>
-              <strong>Mostrar aula experimental</strong> <span style={{ color: '#6b7280' }}>(card com o botão de agendar grátis)</span>
-            </Chave>
-          )}
         </div>
-      </Bloco>
-
-      <Bloco icone="mdi:view-sequential-outline" nome="Seções da página">
-        <p style={dica}>Capa e itens à venda sempre aparecem. As demais você liga e desliga aqui. Seção sem conteúdo fica oculta na página.</p>
         <SecaoToggle ligado={cfg.secoes.como_funciona} onChange={(v) => setSecoes({ como_funciona: v })} nome="Como funciona" sub="Três passos curtos. Deixe em branco para usar o texto padrão.">
           {cfg.secoes.como_funciona && (
             <div style={{ display: 'grid', gap: '6px' }}>
@@ -411,7 +388,7 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
             </div>
           )}
         </SecaoToggle>
-        <SecaoToggle ligado={cfg.secoes.resultados} onChange={(v) => setSecoes({ resultados: v })} nome="Resultados" sub={`Grade com as fotos da sua bio${secoesPreview.galeria?.length ? ` (${secoesPreview.galeria.length} fotos)` : ' — adicione fotos em Marketing › Bio para ativar'}.`} />
+        <SecaoToggle ligado={cfg.secoes.resultados} onChange={(v) => setSecoes({ resultados: v })} nome="Nosso espaço" sub={`Carrossel com as fotos da sua bio${secoesPreview.galeria?.length ? ` (${secoesPreview.galeria.length} fotos)` : ' — adicione fotos em Marketing › Bio para ativar'}.`} />
         <SecaoToggle ligado={cfg.secoes.depoimentos} onChange={(v) => setSecoes({ depoimentos: v })} nome="Depoimentos" sub="Notas 9 e 10 do NPS entram sozinhas. Você pode somar até três depoimentos próprios.">
           {cfg.secoes.depoimentos && (
             <ListaEditavel
@@ -440,7 +417,7 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
           )}
         </SecaoToggle>
         <SecaoToggle ligado={cfg.secoes.sobre} onChange={(v) => setSecoes({ sobre: v })} nome="Sobre e como chegar" sub="Descrição, endereço e Instagram do seu cadastro." />
-        <SecaoToggle ligado={cfg.secoes.chamada_final} onChange={(v) => setSecoes({ chamada_final: v })} nome="Chamada final" sub="Bloco colorido no fim da página com botão para os planos." ultimo>
+        <SecaoToggle ligado={cfg.secoes.chamada_final} onChange={(v) => setSecoes({ chamada_final: v })} nome="Chamada final" sub="Bloco colorido no fim da página com botão para os planos." ultimo={!premiumComAgendamento}>
           {cfg.secoes.chamada_final && (
             <div style={{ display: 'grid', gap: '6px' }}>
               <input value={cfg.secoes.chamada_titulo} maxLength={60} placeholder="Pronto para começar?" style={campo} onChange={(e) => setSecoes({ chamada_titulo: e.target.value })} />
@@ -448,25 +425,23 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
             </div>
           )}
         </SecaoToggle>
+        {premiumComAgendamento && (
+          <SecaoToggle ligado={cfg.mostrar_experimental} onChange={(v) => setCfgCampo({ mostrar_experimental: v })} nome="Aula experimental" sub="Botão na capa que leva ao agendamento online grátis. Fluxo próprio: cadastro e horário, sem pagamento." ultimo />
+        )}
       </Bloco>
 
-      <Bloco icone="mdi:link-variant" nome="Link na bio">
-        <p style={dica}>Coloca o botão da loja na sua página de bio, junto dos outros botões.</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {jaNaBio ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#166534' }}>
-              <Icon icon="mdi:check-circle" width="18" style={{ color: VERDE }} /> A loja já está na bio
-            </span>
-          ) : (
-            <Button variant="outline" icon="mdi:link-variant" onClick={colocarLojaNaBio} loading={bioOcupado}>Colocar na bio</Button>
-          )}
-          {!bioNoAr && (
-            <span style={{ fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
-              Sua bio está fora do ar. Publique em Marketing › Link na bio para o botão aparecer.
-            </span>
-          )}
-        </div>
+      <Bloco icone="mdi:storefront-outline" nome="Retirada de produtos" colapsavel resumo={cfg.retirada.ativa ? 'ligada' : 'desligada'}>
+        <Chave ligado={cfg.retirada.ativa} onChange={(v) => setRetirada({ ativa: v })}>
+          <strong>Retirada presencial</strong> <span style={{ color: '#6b7280' }}>(endereço e horário mostrados ao aluno depois de comprar um produto físico)</span>
+        </Chave>
+        {cfg.retirada.ativa && (
+          <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
+            <input value={cfg.retirada.endereco} maxLength={160} onChange={(e) => setRetirada({ endereco: e.target.value })} placeholder="Endereço de retirada" style={campo} />
+            <input value={cfg.retirada.horario} maxLength={120} onChange={(e) => setRetirada({ horario: e.target.value })} placeholder="Horário. Ex.: seg a sex, 8h às 20h" style={campo} />
+          </div>
+        )}
       </Bloco>
+
 
       <div style={{ position: 'sticky', bottom: 0, padding: '12px 0', background: 'linear-gradient(transparent, #f9fafb 30%)', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button type="button" onClick={salvar} disabled={salvando || !alterado}

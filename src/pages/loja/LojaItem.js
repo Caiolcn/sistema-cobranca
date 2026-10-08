@@ -4,7 +4,7 @@ import { Icon } from '@iconify/react'
 import { FUNCTIONS_URL } from '../../supabaseClient'
 import { carregarFontesBio } from '../../data/bioTemas'
 import { mascaraTelefone, mascaraCPF, mascaraData, validarTelefone, validarCPF, dataNascimentoParaISO, idadeEmAnos } from '../../utils/validators'
-import { lojaApi, headersPublicos, resolverAparenciaLoja, fmtBRL, sufixoPreco, fmtDataHora, TIPO_ICONE, TIPO_CTA } from './lojaTema'
+import { lojaApi, headersPublicos, resolverAparenciaLoja, fmtBRL, sufixoPreco, fmtDataHora, TIPO_ICONE, TIPO_CTA_ITEM, rotulosPassos } from './lojaTema'
 import { LojaShell, TelaCarregando, TelaIndisponivel } from './LojaVitrine'
 
 // Página do item (/loja/:slug/p/:produtoId) com o checkout embutido:
@@ -235,7 +235,7 @@ export default function LojaItem() {
 
         <div style={{ marginTop: '24px' }}>
           <button type="button" onClick={irParaFicha} disabled={indisponivel || !pagamentoDisponivel} style={{ ...botaoPrimario, opacity: indisponivel || !pagamentoDisponivel ? 0.5 : 1, cursor: indisponivel || !pagamentoDisponivel ? 'default' : 'pointer' }}>
-            {produto.esgotado ? 'Esgotado' : produto.lotado ? 'Vagas esgotadas' : TIPO_CTA[produto.tipo]}
+            {produto.esgotado ? 'Esgotado' : produto.lotado ? 'Vagas esgotadas' : TIPO_CTA_ITEM[produto.tipo]}
             {!indisponivel && <Icon icon="mdi:arrow-right" width="20" />}
           </button>
           <p style={{ textAlign: 'center', fontSize: '12px', color: tema.textoSuave, margin: '18px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
@@ -264,7 +264,7 @@ export default function LojaItem() {
         </div>
       </div>
 
-      <Passos tema={tema} atual={1} />
+      <Passos tema={tema} atual={1} rotulos={rotulosPassos(produto)} />
 
       <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>{exigeNascimento ? 'Dados do aluno' : 'Seus dados'}</h3>
@@ -367,7 +367,7 @@ export function Aviso({ tema, tipo, compacto, children }) {
   )
 }
 
-export function Passos({ tema, atual, total = 3, rotulos = ['Cadastro', 'Pagamento', 'Confirmação'] }) {
+export function Passos({ tema, atual, total = 3, rotulos = ['Dados', 'Pagamento', 'Confirmação'] }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 14px' }}>
       {rotulos.slice(0, total).map((r, i) => {

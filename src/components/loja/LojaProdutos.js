@@ -13,6 +13,8 @@ import { TIPOS_ITEM, Chave, formatarDataHora, erroDeSchema, MSG_SQL } from './lo
 // Sub-aba Produtos: lista ordenada por `ordem`, com ativar/desativar,
 // reordenar, editar e excluir. Tudo salva na hora (não passa pela barra Salvar).
 
+const ORDEM_GRUPOS = ['plano', 'pacote', 'evento', 'produto']
+
 const botaoIcone = (disabled) => ({ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', backgroundColor: '#fff', color: disabled ? '#d1d5db' : '#374151', cursor: disabled ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 })
 
 function resumoEstoque(p) {
@@ -50,6 +52,7 @@ export default function LojaProdutos({ produtos, setProdutos, planos, modalidade
   const [modal, setModal] = useState({ aberto: false, produto: null })
   const [excluindo, setExcluindo] = useState(null)      // produto em confirmação
   const [ocupado, setOcupado] = useState(false)
+  const [gruposAbertos, setGruposAbertos] = useState({})   // tipo -> aberto; fechados por padrão
 
   const atualizarLocal = (row) => setProdutos(prev => {
     const existe = prev.some(p => p.id === row.id)
@@ -78,7 +81,9 @@ export default function LojaProdutos({ produtos, setProdutos, planos, modalidade
   }
 
   const mover = async (i, d) => {
-    const j = i + d
+    // vizinho do mesmo tipo: a lista é agrupada, então subir/descer é dentro do grupo
+    let j = i + d
+    while (j >= 0 && j < produtos.length && produtos[j].tipo !== produtos[i].tipo) j += d
     if (j < 0 || j >= produtos.length || ocupado) return
     const novo = [...produtos]
     ;[novo[i], novo[j]] = [novo[j], novo[i]]
@@ -138,43 +143,76 @@ export default function LojaProdutos({ produtos, setProdutos, planos, modalidade
             secondary={onImportarPlanos && <Button variant="ghost" icon="mdi:import" onClick={onImportarPlanos}>Importar planos</Button>} />
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: '8px' }}>
-          {produtos.map((p, i) => {
-            const t = TIPOS_ITEM[p.tipo] || TIPOS_ITEM.produto
-            const extra = resumoEstoque(p)
-            const precoPlano = p.planos && p.planos.valor != null ? Number(p.planos.valor) : null
-            const precoDesatualizado = precoPlano != null && Math.abs(precoPlano - Number(p.valor)) >= 0.01
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {ORDEM_GRUPOS.map((tipo) => {
+            const t = TIPOS_ITEM[tipo]
+            const itens = produtos.map((p, i) => ({ p, i })).filter(({ p }) => p.tipo === tipo)
+            if (!itens.length) return null
+            const aberto = !!gruposAbertos[tipo]
+            const ativos = itens.filter(({ p }) => p.ativo).length
+            const destaques = itens.filter(({ p }) => p.destaque).length
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', opacity: p.ativo ? 1 : 0.6 }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, backgroundColor: t.fundo, color: t.cor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {p.imagem_url ? <img src={p.imagem_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon icon={t.icon} width="24" />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: '14px', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</span>
-                    <Badge customColor={t.fundo} customTextColor={t.cor} size="xs">{t.label}</Badge>
-                    {!p.ativo && <Badge variant="default" size="xs">Oculto</Badge>}
+              <div key={tipo} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', overflow: 'hidden' }}>
+                {/* Cabeçalho do grupo (colapsável) */}
+                <button type="button" onClick={() => setGruposAbertos(prev => ({ ...prev, [tipo]: !aberto }))} aria-expanded={aberto}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', border: 'none', background: '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: t.fundo, color: t.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon icon={t.icon} width="20" />
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, color: '#374151' }}>{formatarBRL(p.valor)}</span>
-                    {extra && <span>· {extra}</span>}
-                    {precoDesatualizado && (
-                      <span style={{ color: '#b45309' }} title="O preço do plano mudou. Abra o item e salve para atualizar.">· plano agora custa {formatarBRL(precoPlano)}</span>
-                    )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: '#111827' }}>{t.plural} <span style={{ color: '#6b7280', fontWeight: 600 }}>· {itens.length}</span></div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>
+                      {ativos === itens.length ? 'todos visíveis' : `${ativos} de ${itens.length} visíveis`}
+                      {destaques ? ` · ${destaques} em destaque` : ''}
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <button type="button" onClick={() => alternarDestaque(p)} disabled={ocupado}
-                    aria-label={p.destaque ? 'Tirar dos destaques' : 'Marcar como destaque'} title={p.destaque ? 'Em destaque na loja' : 'Marcar como destaque'}
-                    style={{ ...botaoIcone(false), color: p.destaque ? '#f59e0b' : '#9ca3af', ...(p.destaque ? { borderColor: '#fde68a', backgroundColor: '#fffbeb' } : {}) }}>
-                    <Icon icon={p.destaque ? 'mdi:star' : 'mdi:star-outline'} width="17" />
-                  </button>
-                  <Chave ligado={!!p.ativo} onChange={(v) => alternarAtivo(p, v)} />
-                  <button type="button" onClick={() => mover(i, -1)} disabled={i === 0 || ocupado} aria-label="Subir" style={botaoIcone(i === 0)}><Icon icon="mdi:arrow-up" width="16" /></button>
-                  <button type="button" onClick={() => mover(i, 1)} disabled={i === produtos.length - 1 || ocupado} aria-label="Descer" style={botaoIcone(i === produtos.length - 1)}><Icon icon="mdi:arrow-down" width="16" /></button>
-                  <button type="button" onClick={() => setModal({ aberto: true, produto: p })} aria-label="Editar" style={botaoIcone(false)}><Icon icon="mdi:pencil-outline" width="16" /></button>
-                  <button type="button" onClick={() => setExcluindo(p)} aria-label="Excluir" style={{ ...botaoIcone(false), color: '#ef4444', borderColor: '#fecaca' }}><Icon icon="mdi:trash-can-outline" width="16" /></button>
-                </div>
+                  <Icon icon="mdi:chevron-down" width="20" style={{ color: '#6b7280', transform: aberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }} />
+                </button>
+
+                {aberto && (
+                  <div style={{ display: 'grid', gap: '6px', padding: '0 10px 10px' }}>
+                    {itens.map(({ p, i }, k) => {
+                      const extra = resumoEstoque(p)
+                      const precoPlano = p.planos && p.planos.valor != null ? Number(p.planos.valor) : null
+                      const precoDesatualizado = precoPlano != null && Math.abs(precoPlano - Number(p.valor)) >= 0.01
+                      const primeiro = k === 0
+                      const ultimo = k === itens.length - 1
+                      return (
+                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', backgroundColor: '#f9fafb', border: '1px solid #eef0f3', borderRadius: '12px', opacity: p.ativo ? 1 : 0.6 }}>
+                          <div style={{ width: '44px', height: '44px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, backgroundColor: t.fundo, color: t.cor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {p.imagem_url ? <img src={p.imagem_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon icon={t.icon} width="22" />}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, fontSize: '14px', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</span>
+                              {!p.ativo && <Badge variant="default" size="xs">Oculto</Badge>}
+                              {p.destaque && <Badge customColor="#fffbeb" customTextColor="#b45309" size="xs">Destaque</Badge>}
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, color: '#374151' }}>{formatarBRL(p.valor)}</span>
+                              {extra && <span>· {extra}</span>}
+                              {precoDesatualizado && (
+                                <span style={{ color: '#b45309' }} title="O preço do plano mudou. Abra o item e salve para atualizar.">· plano agora custa {formatarBRL(precoPlano)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            <button type="button" onClick={() => alternarDestaque(p)} disabled={ocupado}
+                              aria-label={p.destaque ? 'Tirar dos destaques' : 'Marcar como destaque'} title={p.destaque ? 'Em destaque na loja' : 'Marcar como destaque'}
+                              style={{ ...botaoIcone(false), color: p.destaque ? '#f59e0b' : '#9ca3af', ...(p.destaque ? { borderColor: '#fde68a', backgroundColor: '#fffbeb' } : {}) }}>
+                              <Icon icon={p.destaque ? 'mdi:star' : 'mdi:star-outline'} width="17" />
+                            </button>
+                            <Chave ligado={!!p.ativo} onChange={(v) => alternarAtivo(p, v)} />
+                            <button type="button" onClick={() => mover(i, -1)} disabled={primeiro || ocupado} aria-label="Subir" style={botaoIcone(primeiro)}><Icon icon="mdi:arrow-up" width="16" /></button>
+                            <button type="button" onClick={() => mover(i, 1)} disabled={ultimo || ocupado} aria-label="Descer" style={botaoIcone(ultimo)}><Icon icon="mdi:arrow-down" width="16" /></button>
+                            <button type="button" onClick={() => setModal({ aberto: true, produto: p })} aria-label="Editar" style={botaoIcone(false)}><Icon icon="mdi:pencil-outline" width="16" /></button>
+                            <button type="button" onClick={() => setExcluindo(p)} aria-label="Excluir" style={{ ...botaoIcone(false), color: '#ef4444', borderColor: '#fecaca' }}><Icon icon="mdi:trash-can-outline" width="16" /></button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}

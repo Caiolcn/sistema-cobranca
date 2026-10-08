@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { carregarFontesBio } from '../../data/bioTemas'
-import { lojaApi, resolverAparenciaLoja, normalizarSecoes, PASSOS_PADRAO, fmtBRL, sufixoPreco, fmtDataHora, TIPO_ICONE, TIPO_CTA, CICLO_NOME, telefoneWa } from './lojaTema'
+import { lojaApi, resolverAparenciaLoja, normalizarSecoes, PASSOS_PADRAO, fmtBRL, sufixoPreco, fmtDataHora, TIPO_ICONE, TIPO_CTA, TIPO_LABEL, CICLO_NOME, telefoneWa } from './lojaTema'
 
 // Loja pública da academia (/loja/:slug). Cara de site de vendas, não de link
 // na bio: capa larga, menu por categoria, planos em cards de preço, produtos em
@@ -11,6 +11,35 @@ import { lojaApi, resolverAparenciaLoja, normalizarSecoes, PASSOS_PADRAO, fmtBRL
 // `LojaView` é só visual e também alimenta o preview do editor.
 
 const WA_VERDE = '#25D366'
+const ALTURA_MENU = 52
+
+// Rolagem animada até a seção, descontando o menu fixo. Feita à mão porque o
+// scrollIntoView suave não é confiável dentro da prévia do editor (container
+// com rolagem própria) e não sabe descontar o cabeçalho fixo.
+function rolarAte(el) {
+  if (!el) return
+  let pai = el.parentElement
+  while (pai && pai !== document.body) {
+    const { overflowY } = getComputedStyle(pai)
+    if ((overflowY === 'auto' || overflowY === 'scroll') && pai.scrollHeight > pai.clientHeight) break
+    pai = pai.parentElement
+  }
+  const janela = !pai || pai === document.body
+  const atual = janela ? window.scrollY : pai.scrollTop
+  const topoEl = janela ? el.getBoundingClientRect().top + window.scrollY : el.getBoundingClientRect().top - pai.getBoundingClientRect().top + pai.scrollTop
+  const destino = Math.max(0, topoEl - ALTURA_MENU - 8)
+  const distancia = destino - atual
+  const duracao = Math.min(700, Math.max(300, Math.abs(distancia) * 0.6))
+  const inicio = performance.now()
+  const easing = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+  const passo = (agora) => {
+    const t = Math.min(1, (agora - inicio) / duracao)
+    const y = atual + distancia * easing(t)
+    if (janela) window.scrollTo(0, y); else pai.scrollTop = y
+    if (t < 1) requestAnimationFrame(passo)
+  }
+  requestAnimationFrame(passo)
+}
 const DIAS_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 // CSS responsivo da loja (inline styles não fazem media query). Prefixo lj- para não vazar.
@@ -59,7 +88,14 @@ function EstilosLoja({ tema, fonte }) {
     .lj-sec-h span{font-size:12.5px;color:${tema.textoSuave}}
     .lj-grid{display:grid;gap:12px;grid-template-columns:1fr}
     .lj-grid-planos{grid-template-columns:1fr}
-    .lj-grid-prod{grid-template-columns:repeat(3,1fr);gap:10px}
+    .lj-grid-prod{grid-template-columns:repeat(2,1fr);gap:12px}
+    .lj-grid-dest{grid-template-columns:repeat(2,1fr);gap:10px}
+    .lj-card.lj-dest{padding:14px 14px 16px;gap:6px;overflow:visible}
+    .lj-dest-topo{display:flex;align-items:center;justify-content:space-between;gap:6px;color:${tema.destaque};margin-bottom:2px}
+    .lj-dest-nome{font-weight:700;font-size:14px;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .lj-dest-preco{font-weight:800;font-size:18px;letter-spacing:-0.01em;line-height:1.1;margin-top:auto}
+    .lj-dest-preco small{font-size:11.5px;font-weight:600;color:${tema.textoSuave};margin-left:2px}
+    .lj-dest-meta{font-size:12px;color:${tema.textoSuave}}
 
     /* ---- cards ---- */
     .lj-card{position:relative;display:flex;flex-direction:column;text-align:left;background:${tema.card};color:${tema.cardTexto};border:1.5px solid ${tema.cardBorda};border-radius:18px;overflow:hidden;cursor:pointer;font-family:inherit;padding:0;box-shadow:${tema.sombra};transition:transform .15s ease,border-color .15s ease;min-width:0}
@@ -76,16 +112,17 @@ function EstilosLoja({ tema, fonte }) {
     .lj-tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:${tema.destaqueSuave};color:${tema.claro ? tema.destaque : tema.texto}}
     .lj-tag.lj-off{background:${tema.sutil};color:${tema.textoSuave}}
 
-    /* produto (estilo cardápio): foto quadrada, preço forte, nome embaixo, sem botão */
-    .lj-prod{background:transparent;border:none;box-shadow:none;border-radius:0;gap:6px}
-    .lj-prod:hover{transform:none}
-    .lj-prod-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;background:${tema.sutil};display:flex;align-items:center;justify-content:center;color:${tema.textoSuave};position:relative}
+    /* produto: card com foto grande, nome, preço, contexto e botão Comprar */
+    .lj-card.lj-prod{gap:0}
+    .lj-prod-img{width:100%;aspect-ratio:1;object-fit:cover;background:${tema.sutil};display:flex;align-items:center;justify-content:center;color:${tema.textoSuave};position:relative;overflow:hidden}
     .lj-prod-img .lj-selo{position:absolute;top:8px;left:8px;background:rgba(17,24,39,0.85);color:#fff;font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:999px}
-    .lj-prod-img .lj-selo-off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.65);color:#111827;font-weight:800;font-size:12px;border-radius:14px}
-    .lj-prod-preco{font-weight:800;font-size:15px;line-height:1.1;display:flex;align-items:center;gap:4px;color:${tema.texto}}
+    .lj-prod-img .lj-selo-off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.65);color:#111827;font-weight:800;font-size:12px}
+    .lj-prod-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;flex:1}
+    .lj-prod-nome{font-size:13.5px;font-weight:700;line-height:1.3;color:${tema.texto};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+    .lj-prod-preco{font-weight:800;font-size:16px;line-height:1.15;color:${tema.texto}}
     .lj-prod-preco small{font-size:11px;font-weight:600;color:${tema.textoSuave}}
-    .lj-prod-nome{font-size:13px;line-height:1.3;color:${tema.texto};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-    .lj-prod-meta{font-size:11.5px;color:${tema.destaque};font-weight:700}
+    .lj-prod-meta{font-size:11.5px;color:${tema.textoSuave}}
+    .lj-prod-btn{margin-top:8px;align-self:flex-start;padding:7px 12px;border-radius:9px;background:${tema.destaque};color:${tema.destaqueTexto};font-size:12.5px;font-weight:700;line-height:1}
 
     /* plano / pacote: um por linha */
     .lj-plano{padding:18px 16px;gap:10px}
@@ -106,6 +143,8 @@ function EstilosLoja({ tema, fonte }) {
 
     /* seções de conteúdo */
     .lj-two{display:grid;gap:14px;grid-template-columns:1fr}
+    .lj-contato-btns{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+    .lj-contato-btns .lj-btn{width:100%;justify-content:flex-start;padding:12px 14px}
     .lj-box{background:${tema.card};border:1.5px solid ${tema.cardBorda};border-radius:18px;padding:18px;box-shadow:${tema.sombra}}
     .lj-box h3{margin:0 0 10px;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
     .lj-box p{margin:0;font-size:14px;line-height:1.6;color:${tema.textoSuave};white-space:pre-line}
@@ -123,8 +162,11 @@ function EstilosLoja({ tema, fonte }) {
     .lj-passos{display:grid;gap:10px;grid-template-columns:1fr}
     .lj-passo{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:16px;background:${tema.card};border:1.5px solid ${tema.cardBorda};box-shadow:${tema.sombra};font-size:14.5px;font-weight:600;line-height:1.35}
     .lj-passo-n{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${tema.destaque};color:${tema.destaqueTexto};font-weight:800;font-size:15px}
-    .lj-galeria{display:grid;gap:8px;grid-template-columns:repeat(3,1fr)}
-    .lj-galeria img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;background:${tema.sutil}}
+    .lj-faixa{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-radius:20px}
+    .lj-faixa::-webkit-scrollbar{display:none}
+    .lj-slide{flex:0 0 100%;width:100%;aspect-ratio:4/5;object-fit:cover;scroll-snap-align:center;border-radius:20px;background:${tema.sutil}}
+    .lj-root button.lj-seta,.lj-root button.lj-seta:hover{background:rgba(255,255,255,0.92);color:#18181b}
+    .lj-seta{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.9);color:#18181b;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
     .lj-grid-dep{grid-template-columns:1fr}
     .lj-dep-card{display:flex;flex-direction:column;gap:6px}
     .lj-dep-card p{font-size:14.5px;line-height:1.55;color:${tema.texto}}
@@ -150,7 +192,8 @@ function EstilosLoja({ tema, fonte }) {
       .lj-capa{height:220px}
       .lj-cartao{padding:56px 28px 20px}
       .lj-h1{font-size:28px}
-      .lj-grid-prod{grid-template-columns:repeat(4,1fr);gap:14px}
+      .lj-grid-prod{grid-template-columns:repeat(3,1fr);gap:14px}
+      .lj-grid-dest{grid-template-columns:repeat(3,1fr);gap:12px}
       .lj-prod-preco{font-size:16px}
       .lj-prod-nome{font-size:14px}
       .lj-plano{flex-direction:row;align-items:center;gap:22px;padding:22px 24px}
@@ -159,7 +202,7 @@ function EstilosLoja({ tema, fonte }) {
       .lj-sec-h h2{font-size:22px}
       .lj-passos{grid-template-columns:repeat(3,1fr)}
       .lj-passo{flex-direction:column;align-items:flex-start;gap:10px;padding:18px}
-      .lj-galeria{grid-template-columns:repeat(4,1fr)}
+      .lj-slide{flex:0 0 calc((100% - 20px) / 3);width:calc((100% - 20px) / 3);scroll-snap-align:start}
       .lj-grid-dep{grid-template-columns:repeat(2,1fr)}
       .lj-cta-final{padding:44px 32px}
       .lj-cta-final h2{font-size:30px}
@@ -167,7 +210,7 @@ function EstilosLoja({ tema, fonte }) {
     @container (min-width:900px){
       .lj-capa{height:280px}
       .lj-cartao-wrap{margin-top:-64px}
-      .lj-grid-prod{grid-template-columns:repeat(5,1fr)}
+      .lj-grid-prod{grid-template-columns:repeat(4,1fr)}
       .lj-two{grid-template-columns:1fr 1fr}
     }
   `
@@ -237,19 +280,46 @@ function CardProduto({ produto, onClick, selo }) {
     ? fmtDataHora(produto.data_evento)
     : produto.tipo === 'pacote' && produto.plano?.numero_aulas ? `${produto.plano.numero_aulas} aulas`
     : produto.tipo === 'plano' ? (CICLO_NOME[produto.plano?.ciclo_cobranca] || 'Mensal')
+    : produto.retirada_presencial ? 'Retirada no local'
     : (produto.variacoes?.length ? `${produto.variacoes.length} opções` : '')
   return (
     <Clicavel className="lj-card lj-prod" onClick={onClick} disabled={indisponivel}>
       <div className="lj-prod-img">
         {produto.imagem_url
-          ? <img src={produto.imagem_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '14px' }} />
-          : <Icon icon={TIPO_ICONE[produto.tipo] || 'mdi:tag-outline'} width="34" style={{ opacity: 0.5 }} />}
+          ? <img src={produto.imagem_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <Icon icon={TIPO_ICONE[produto.tipo] || 'mdi:tag-outline'} width="38" style={{ opacity: 0.45 }} />}
         {selo && !indisponivel && <span className="lj-selo">{selo}</span>}
         {indisponivel && <span className="lj-selo-off">{produto.esgotado ? 'Esgotado' : 'Lotado'}</span>}
       </div>
-      <div className="lj-prod-preco">{fmtBRL(produto.valor)}{produto.tipo === 'plano' && <small>{sufixoPreco(produto)}</small>}</div>
-      <div className="lj-prod-nome">{produto.nome}</div>
-      {meta && <div className="lj-prod-meta">{meta}</div>}
+      <div className="lj-prod-body">
+        <div className="lj-prod-nome">{produto.nome}</div>
+        <div className="lj-prod-preco">{fmtBRL(produto.valor)}{produto.tipo === 'plano' && <small>{sufixoPreco(produto)}</small>}</div>
+        {meta && <div className="lj-prod-meta">{meta}</div>}
+        {!indisponivel && <span className="lj-prod-btn">{TIPO_CTA[produto.tipo] || 'Comprar'}</span>}
+      </div>
+    </Clicavel>
+  )
+}
+
+// Destaque: card compacto sem foto (nome, preço, contexto e selo). Dois por linha no
+// celular, três em tela larga. A foto fica para a seção de produtos.
+function CardDestaque({ produto, onClick, selo }) {
+  const indisponivel = produto.esgotado || produto.lotado
+  const meta = produto.tipo === 'evento'
+    ? fmtDataHora(produto.data_evento)
+    : produto.tipo === 'pacote' && produto.plano?.numero_aulas ? `${produto.plano.numero_aulas} aulas`
+    : produto.tipo === 'plano' ? (CICLO_NOME[produto.plano?.ciclo_cobranca] || 'Mensal')
+    : TIPO_LABEL[produto.tipo]
+  return (
+    <Clicavel className="lj-card lj-dest" onClick={onClick} disabled={indisponivel}>
+      <div className="lj-dest-topo">
+        <Icon icon={TIPO_ICONE[produto.tipo] || 'mdi:tag-outline'} width="18" />
+        {selo && !indisponivel && <span className="lj-tag">{selo}</span>}
+        {indisponivel && <span className="lj-tag lj-off">{produto.esgotado ? 'Esgotado' : 'Lotado'}</span>}
+      </div>
+      <div className="lj-dest-nome">{produto.nome}</div>
+      <div className="lj-dest-preco">{fmtBRL(produto.valor)}{produto.tipo === 'plano' && <small>{sufixoPreco(produto)}</small>}</div>
+      {meta && <div className="lj-dest-meta">{meta}</div>}
     </Clicavel>
   )
 }
@@ -324,7 +394,7 @@ function CardEvento({ produto, onClick }) {
 
 const GRUPOS = [
   { tipo: 'plano', id: 'planos', titulo: 'Planos', sub: 'Escolha, pague e já garanta seu horário' },
-  { tipo: 'pacote', id: 'pacotes', titulo: 'Pacotes de aulas', sub: 'Sem compromisso mensal' },
+  { tipo: 'pacote', id: 'pacotes', titulo: 'Pacotes de aulas', menu: 'Pacotes', sub: 'Sem compromisso mensal' },
   { tipo: 'evento', id: 'eventos', titulo: 'Eventos e inscrições', sub: null },
   { tipo: 'produto', id: 'produtos', titulo: 'Produtos', sub: null },
 ]
@@ -355,11 +425,9 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
   // mais vendidos. A seção aparece quando há item marcado ou quando a loja tem mais de
   // 4 itens. "Mais pedido" só aparece quando houve venda de verdade.
   const maisVendido = produtos.reduce((m, p) => ((p.vendas || 0) > (m?.vendas || 0) ? p : m), null)
-  const marcados = produtos.filter((p) => p.destaque)
-  const porVendas = produtos.filter((p) => !p.destaque).sort((a, b) => (b.vendas || 0) - (a.vendas || 0))
-  const destaques = produtos.length > 4
-    ? [...marcados, ...porVendas].slice(0, 6)   // loja grande: estrelas + mais vendidos
-    : marcados.slice(0, 6)                        // loja pequena: só o que foi marcado
+  // Só o que o gestor marcou com estrela, no máximo 3: destaque que repete a lista inteira
+  // não destaca nada e só alonga a página.
+  const destaques = produtos.filter((p) => p.destaque).slice(0, 3)
   const seloDe = (p) => (maisVendido && p.id === maisVendido.id && (p.vendas || 0) > 0 ? 'Mais pedido' : null)
 
   // Seções: ligadas no editor E com conteúdo
@@ -382,8 +450,8 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
   const irPara = (id) => (e) => {
     e.preventDefault()
     setChipAtivo(id)
-    if (preview) return
-    document.getElementById(`lj-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // rola até a seção (também dentro da prévia do editor, que é um container com rolagem própria)
+    rolarAte(document.getElementById(`lj-${id}`))
   }
 
   const aulasPorDia = aulas.reduce((acc, a) => {
@@ -393,10 +461,9 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
   }, {})
 
   const chips = [
-    destaques.length > 0 && { id: 'destaques', titulo: 'Destaques' },
-    ...grupos.map((g) => ({ id: g.id, titulo: g.titulo })),
+    ...grupos.map((g) => ({ id: g.id, titulo: g.menu || g.titulo })),
     mostraComoFunciona && { id: 'como', titulo: 'Como funciona' },
-    mostraResultados && { id: 'resultados', titulo: 'Resultados' },
+    mostraResultados && { id: 'resultados', titulo: 'Nosso espaço' },
     mostraDepoimentos && { id: 'depoimentos', titulo: 'Depoimentos' },
     mostraHorarios && { id: 'horarios', titulo: 'Horários' },
     mostraFaq && { id: 'faq', titulo: 'Dúvidas' },
@@ -406,10 +473,42 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
   const Chip = ({ id, children }) => (
     <a className={`lj-chip ${chipAtivo === id ? 'lj-on' : ''}`} href={`#lj-${id}`} onClick={irPara(id)}>{children}</a>
   )
+
+  // Indicador de seção ativa ao rolar: a aba sublinhada acompanha a seção que
+  // está logo abaixo do menu, tanto na página real quanto na prévia do editor.
+  const rootRef = useRef(null)
+  const idsChips = chips.map((c) => c.id).join(',')
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || !idsChips) return
+    let pai = root.parentElement
+    while (pai && pai !== document.body) {
+      const { overflowY } = getComputedStyle(pai)
+      if ((overflowY === 'auto' || overflowY === 'scroll') && pai.scrollHeight > pai.clientHeight) break
+      pai = pai.parentElement
+    }
+    const alvo = pai && pai !== document.body ? pai : window
+    const ids = idsChips.split(',')
+    let agendado = false
+    const medir = () => {
+      agendado = false
+      const linha = (alvo === window ? 0 : alvo.getBoundingClientRect().top) + ALTURA_MENU + 24
+      let ativo = null
+      for (const id of ids) {
+        const el = document.getElementById(`lj-${id}`)
+        if (el && el.getBoundingClientRect().top <= linha) ativo = id
+      }
+      setChipAtivo((atual) => (atual === ativo ? atual : ativo))
+    }
+    const onScroll = () => { if (!agendado) { agendado = true; requestAnimationFrame(medir) } }
+    alvo.addEventListener('scroll', onScroll, { passive: true })
+    medir()
+    return () => alvo.removeEventListener('scroll', onScroll)
+  }, [idsChips])
   const linkExterno = (e) => { if (preview) e.preventDefault() }
 
   return (
-    <div className="lj-root" style={{ minHeight: preview ? '100%' : '100vh', ...varsTema(tema) }}>
+    <div ref={rootRef} className="lj-root" style={{ minHeight: preview ? '100%' : '100vh', ...varsTema(tema) }}>
       <EstilosLoja tema={tema} fonte={fonte} />
 
       {/* Capa */}
@@ -437,8 +536,8 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
             {(avaliacao || produtos.length > 0) && (
               <div className="lj-info">
                 {avaliacao && <span><Icon icon="mdi:star" width="15" className="lj-estrela" style={{ verticalAlign: '-2px' }} /> <b>{avaliacao.media.toFixed(1).replace('.', ',')}</b> ({avaliacao.total} {avaliacao.total === 1 ? 'avaliação' : 'avaliações'})</span>}
-                {produtos.length > 0 && <span><b>{produtos.length}</b> {produtos.length === 1 ? 'item' : 'itens'} à venda</span>}
-                {pagamentoDisponivel && <span>Pix{empresa.formas_pagamento?.cartao ? ' · cartão' : ''}</span>}
+                {produtos.length > 0 && <span><b>{produtos.length}</b> {produtos.length === 1 ? 'opção disponível' : 'opções disponíveis'}</span>}
+                {pagamentoDisponivel && <span>{[empresa.formas_pagamento?.pix !== false && 'Pix', empresa.formas_pagamento?.cartao && 'cartão', empresa.formas_pagamento?.boleto && 'boleto'].filter(Boolean).join(' e ')}</span>}
               </div>
             )}
             {(temPlano || linkAgendar) && (
@@ -476,8 +575,8 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
         {destaques.length > 0 && (
           <section id="lj-destaques" className="lj-sec">
             <div className="lj-sec-h"><h2>Destaques</h2></div>
-            <div className="lj-grid lj-grid-prod">
-              {destaques.map((p) => <CardProduto key={p.id} produto={p} selo={seloDe(p)} onClick={() => abrir(p)} />)}
+            <div className="lj-grid lj-grid-dest">
+              {destaques.map((p) => <CardDestaque key={p.id} produto={p} selo={seloDe(p)} onClick={() => abrir(p)} />)}
             </div>
           </section>
         )}
@@ -508,10 +607,8 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
         {/* Resultados (galeria) */}
         {mostraResultados && (
           <section id="lj-resultados" className="lj-sec">
-            <div className="lj-sec-h"><h2>Resultados</h2><span>Quem treina com a gente</span></div>
-            <div className="lj-galeria">
-              {galeria.slice(0, 8).map((url, i) => <img key={i} src={url} alt="" loading="lazy" />)}
-            </div>
+            <div className="lj-sec-h"><h2>Nosso espaço</h2><span>Conheça a estrutura</span></div>
+            <CarrosselFotos fotos={galeria.slice(0, 8)} tema={tema} />
           </section>
         )}
 
@@ -574,7 +671,7 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
                 <div className="lj-box">
                   <h3><Icon icon="mdi:map-marker-outline" width="18" /> Contato e localização</h3>
                   {empresa.endereco_completo && <p>{empresa.endereco_completo}</p>}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                  <div className="lj-contato-btns">
                     {linkMapa && <a className="lj-btn lj-btn-s" href={linkMapa} target="_blank" rel="noopener noreferrer" onClick={linkExterno}><Icon icon="mdi:directions" width="18" /> Como chegar</a>}
                     {empresa.instagram_url && <a className="lj-btn lj-btn-s" href={empresa.instagram_url} target="_blank" rel="noopener noreferrer" onClick={linkExterno}><Icon icon="mdi:instagram" width="18" /> Instagram</a>}
                     {linkWa && <a className="lj-btn lj-btn-s" href={linkWa} target="_blank" rel="noopener noreferrer" onClick={linkExterno}><Icon icon="mdi:whatsapp" width="18" /> WhatsApp</a>}
@@ -609,6 +706,62 @@ export function LojaView({ empresa, produtos = [], secoes = {}, preview = false,
 
         <div className="lj-foot">Loja criada com <a href="https://www.mensalli.com.br" target="_blank" rel="noopener noreferrer">Mensalli</a></div>
       </main>
+    </div>
+  )
+}
+
+// Carrossel de fotos (Resultados), no estilo do carrossel da bio: slides em retrato,
+// rolagem por toque com encaixe, setas e bolinhas. No celular um slide por vez; em
+// container largo, três (ver .lj-slide no CSS).
+function CarrosselFotos({ fotos, tema }) {
+  const faixa = useRef(null)
+  const [atual, setAtual] = useState(0)
+
+  const passo = () => {
+    const el = faixa.current
+    const largura = el?.firstChild?.getBoundingClientRect().width || 1
+    return largura + 10
+  }
+  // quantos slides cabem na faixa (1 no celular, 3 em container largo)
+  const porVista = () => { const el = faixa.current; return el ? Math.max(1, Math.round(el.clientWidth / passo())) : 1 }
+  const [ultimo, setUltimo] = useState(fotos.length - 1)
+  const aoRolar = () => { const el = faixa.current; if (el) { setAtual(Math.round(el.scrollLeft / passo())); setUltimo(Math.max(0, fotos.length - porVista())) } }
+  const ir = (i) => faixa.current?.scrollTo({ left: i * passo(), behavior: 'smooth' })
+
+  useEffect(() => {
+    setAtual(0); faixa.current?.scrollTo({ left: 0 })
+    setUltimo(Math.max(0, fotos.length - porVista()))
+    const onResize = () => setUltimo(Math.max(0, fotos.length - porVista()))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fotos.length])
+  return (
+    <div>
+      <div style={{ position: 'relative' }}>
+        <div ref={faixa} onScroll={aoRolar} className="lj-faixa">
+          {fotos.map((url, i) => <img key={url + i} className="lj-slide" src={url} alt="" loading="lazy" />)}
+        </div>
+        {atual > 0 && (
+          <button type="button" aria-label="Anterior" onClick={() => ir(atual - 1)} className="lj-seta" style={{ left: '10px' }}>
+            <Icon icon="mdi:chevron-left" width="24" />
+          </button>
+        )}
+        {atual < ultimo && (
+          <button type="button" aria-label="Próximo" onClick={() => ir(atual + 1)} className="lj-seta" style={{ right: '10px' }}>
+            <Icon icon="mdi:chevron-right" width="24" />
+          </button>
+        )}
+      </div>
+      {fotos.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '12px' }}>
+          {fotos.map((_, i) => (
+            <button key={i} type="button" aria-label={`Foto ${i + 1}`} onClick={() => ir(i)}
+              style={{ width: i === atual ? '22px' : '7px', height: '7px', borderRadius: '999px', border: 'none', padding: 0, cursor: 'pointer',
+                backgroundColor: i === atual ? tema.destaque : tema.textoSuave, opacity: i === atual ? 1 : 0.4, transition: 'all 0.2s ease' }} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
