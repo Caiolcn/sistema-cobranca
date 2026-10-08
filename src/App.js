@@ -58,6 +58,10 @@ const AdminLeads = lazy(() => import('./AdminLeads'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const Autocadastro = lazy(() => import('./pages/Autocadastro'))
+// Loja pública da academia (Mensalli Vendas): vitrine, item/checkout e pedido
+const LojaVitrine = lazy(() => import('./pages/loja/LojaVitrine'))
+const LojaItem = lazy(() => import('./pages/loja/LojaItem'))
+const LojaPedido = lazy(() => import('./pages/loja/LojaPedido'))
 const LandingEscolinha = lazy(() => import('./pages/LandingEscolinha'))
 const LandingPilates = lazy(() => import('./pages/LandingPilates'))
 const LandingLuta = lazy(() => import('./pages/LandingLuta'))
@@ -187,6 +191,10 @@ function App() {
               <Route path="/contrato/:token" element={<PaginaContrato />} />
               <Route path="/agendar/:slug" element={<Agendamento />} />
               <Route path="/cadastro/:slug" element={<Autocadastro />} />
+              {/* Loja pública (fica ANTES do catch-all /:slug; 'loja' é slug reservado) */}
+              <Route path="/loja/:slug" element={<LojaVitrine />} />
+              <Route path="/loja/:slug/p/:produtoId" element={<LojaItem />} />
+              <Route path="/loja/:slug/pedido/:token" element={<LojaPedido />} />
               <Route path="/preview-recibo" element={<PreviewRecibo />} />
               {/* Ver como cliente: resgata o token e abre a sessão dele (modo espelho) */}
               <Route path="/ver-como/:token" element={<VerComo />} />

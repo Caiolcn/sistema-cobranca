@@ -12,6 +12,7 @@ const TIPOS = {
   atrasada: { icon: 'fluent:error-circle-20-regular', cor: '#ef4444', bg: '#fef2f2' },
   evasao: { icon: 'mdi:shield-alert-outline', cor: '#dc2626', bg: '#fef2f2' },
   novidade: { icon: 'material-symbols:campaign-outline-rounded', cor: '#8867A1', bg: '#f3eefa' },
+  venda: { icon: 'mdi:storefront-outline', cor: '#059669', bg: '#ecfdf5' },
 }
 
 // 📢 Changelog do produto no sino. Antes era um array hardcoded aqui — e por
@@ -52,7 +53,7 @@ export async function carregarNotificacoes(userId) {
 
   const desdeNovidade = new Date(agora.getTime() - DIAS_NOVIDADE_NO_SINO * 86400000).toISOString()
 
-  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes, novRes, cadRes] = await Promise.all([
+  const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes, novRes, cadRes, vendaRes] = await Promise.all([
     supabase
       .from('mensalidades')
       .select('id, valor, data_pagamento, devedores(nome)')
@@ -116,9 +117,31 @@ export async function carregarNotificacoes(userId) {
       .gte('created_at', hojeIni)
       .order('created_at', { ascending: false })
       .limit(10),
+    // Vendas da Loja (Mensalli Vendas) pagas hoje. Se a tabela ainda não existe,
+    // o PostgREST devolve erro e data=null; o loop abaixo só ignora.
+    supabase
+      .from('loja_pedidos')
+      .select('id, nome, item_nome, variacao, valor, status, pago_em')
+      .eq('user_id', userId)
+      .in('status', ['pago', 'turma_pendente', 'aguardando_retirada', 'concluido', 'retirado'])
+      .gte('pago_em', hojeIni)
+      .order('pago_em', { ascending: false })
+      .limit(10),
   ])
 
   const itens = []
+
+  for (const v of vendaRes?.data || []) {
+    const pend = v.status === 'turma_pendente' ? ' · falta escolher turma' : v.status === 'aguardando_retirada' ? ' · aguardando retirada' : ''
+    itens.push({
+      tipo: 'venda',
+      id: `vd-${v.id}`,
+      titulo: `${v.nome || 'Aluno'} comprou ${v.item_nome}${v.variacao ? ` (${v.variacao})` : ''}`,
+      sub: `Loja · ${fmtValor(v.valor)}${pend}`,
+      timestamp: v.pago_em,
+      link: '/app/marketing?aba=loja',
+    })
+  }
 
   for (const m of pgRes.data || []) {
     itens.push({

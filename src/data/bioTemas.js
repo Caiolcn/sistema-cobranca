@@ -173,7 +173,9 @@ export function resolverBio(empresa, bio) {
     mostrar: {
       agendar: mostrar.agendar !== false,
       whatsapp: mostrar.whatsapp !== false,
-      mapa: mostrar.mapa !== false
+      mapa: mostrar.mapa !== false,
+      // Botão da Loja (Mensalli Vendas): só liga de propósito, pelo wizard da loja ou pelo editor
+      loja: mostrar.loja === true
     }
   }
 }

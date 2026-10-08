@@ -50,7 +50,7 @@ function Chave({ ligado, onChange, children }) {
 }
 
 export default function BioEditor({ onIrParaAgendamento }) {
-  const { userId } = useUser()
+  const { userId, lojaAtiva, agendamentoSlug } = useUser()
   const navigate = useNavigate()
   const { isLocked, loading: planoCarregando } = useUserPlan()
   const { width } = useWindowSize()
@@ -110,11 +110,12 @@ export default function BioEditor({ onIrParaAgendamento }) {
       youtube_url: linha.landing_youtube_url,
       site: linha.site,
       endereco_completo: [linha.endereco, linha.numero, linha.bairro, linha.cidade, linha.estado].filter(Boolean).join(', '),
-      agendamento_slug: linha.agendamento_slug,
+      agendamento_slug: linha.agendamento_slug || agendamentoSlug,
       agendamento_ativo: !!linha.agendamento_ativo && premium,
+      loja_ativa: !!lojaAtiva,
       galeria: Array.isArray(linha.landing_galeria) ? linha.landing_galeria : []
     }
-  }, [linha, premium])
+  }, [linha, premium, lojaAtiva, agendamentoSlug])
 
   if (planoCarregando) {
     return <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>
@@ -448,6 +449,14 @@ export default function BioEditor({ onIrParaAgendamento }) {
             {onIrParaAgendamento && <> <button type="button" onClick={onIrParaAgendamento} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ativar agora</button></>}
           </div>
         )}
+        {lojaAtiva ? (
+          <Chave ligado={cfg.mostrar.loja} onChange={(v) => setMostrar('loja', v)}>Loja e matrícula</Chave>
+        ) : (
+          <div style={{ padding: '10px 12px', margin: '2px 0 8px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
+            Para mostrar o botão <strong>Loja e matrícula</strong>, coloque sua loja no ar em <strong>Marketing › Loja</strong>.
+            {' '}<button type="button" onClick={() => navigate('/app/marketing?aba=loja')} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Abrir Loja</button>
+          </div>
+        )}
         <Chave ligado={cfg.mostrar.whatsapp} onChange={(v) => setMostrar('whatsapp', v)}>
           WhatsApp {empresa.telefone ? '' : <em style={{ color: '#9ca3af' }}>(cadastre o telefone em Dados da Empresa)</em>}
         </Chave>
@@ -473,14 +482,16 @@ export default function BioEditor({ onIrParaAgendamento }) {
           ))}
         </div>
 
-        <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '16px 0' }} />
-        <span style={titulo}>Links extras</span>
-        <p style={dica}>Ex.: "Grupo do WhatsApp", "Loja", "Tabela de preços". Até {MAX_LINKS}.</p>
+      </Bloco>
+
+      {/* Botões personalizados: título + link, viram botões na página */}
+      <Bloco icone="mdi:plus-box-multiple-outline" nome="Seus botões">
+        <p style={dica}>Crie botões com o título e o link que quiser. Ex.: "Grupo do WhatsApp", "Tabela de preços", "Nosso cardápio". Até {MAX_LINKS}; aparecem abaixo dos botões fixos.</p>
         {links.map((l, i) => (
           <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-            <input value={l.titulo || ''} onChange={(e) => setLink(i, { titulo: e.target.value })} placeholder="Título" maxLength={30} style={{ ...campo, flex: '0 0 36%' }} />
+            <input value={l.titulo || ''} onChange={(e) => setLink(i, { titulo: e.target.value })} placeholder="Texto do botão" maxLength={30} style={{ ...campo, flex: '0 0 36%' }} />
             <input value={l.url || ''} onChange={(e) => setLink(i, { url: e.target.value })} placeholder="https://..." style={campo} />
-            <button type="button" onClick={() => atualizar({ links: links.filter((_, k) => k !== i) })} aria-label="Remover link"
+            <button type="button" onClick={() => atualizar({ links: links.filter((_, k) => k !== i) })} aria-label="Remover botão"
               style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}>
               <Icon icon="mdi:close" width="20" />
             </button>
@@ -489,7 +500,7 @@ export default function BioEditor({ onIrParaAgendamento }) {
         {links.length < MAX_LINKS && (
           <button type="button" onClick={() => atualizar({ links: [...links, { titulo: '', url: '' }] })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px', border: '1px dashed #9ca3af', backgroundColor: '#fff', color: '#374151', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-            <Icon icon="mdi:plus" width="16" /> Adicionar link
+            <Icon icon="mdi:plus" width="16" /> Adicionar botão
           </button>
         )}
       </Bloco>

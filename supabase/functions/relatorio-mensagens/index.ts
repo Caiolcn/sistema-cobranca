@@ -22,11 +22,20 @@
 //   - { "dia": "2026-08-21" }           -> reprocessa um dia específico
 //   - { "dryRun": true }                -> devolve o JSON e o HTML, NÃO envia
 //   - { "to": "outro@email.com" }       -> sobrescreve o destinatário
+//   - { "canal": "whatsapp" }           -> resumo curto pelo WhatsApp master
+//                                          (cron das 12h BRT), em vez do e-mail
 //
 // Segredos necessários (supabase secrets set):
 //   RESEND_API_KEY      chave da Resend
 //   RELATORIO_EMAIL_TO  destinatário (aceita vários separados por vírgula)
 //   RELATORIO_EMAIL_FROM (opcional) remetente verificado na Resend
+//   RELATORIO_WHATSAPP_TO (opcional) número que recebe o resumo no WhatsApp.
+//                       Sem ele, vai para o PRÓPRIO número conectado na
+//                       instância master (ownerJid).
+//
+// Canal WhatsApp: são DUAS chamadas à Evolution, as duas só na instância
+// master da Mensalli (ler o ownerJid e mandar o texto). Nenhuma instância de
+// cliente é tocada — a regra 1 abaixo continua valendo.
 // ============================================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -40,6 +49,7 @@ const EMAIL_TO = Deno.env.get('RELATORIO_EMAIL_TO')
 // e-mail dono da conta Resend. Para entregar em qualquer caixa, verifique
 // mensalli.com.br na Resend e troque este segredo.
 const EMAIL_FROM = Deno.env.get('RELATORIO_EMAIL_FROM') || 'Mensalli <onboarding@resend.dev>'
+const WHATSAPP_TO = Deno.env.get('RELATORIO_WHATSAPP_TO')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -300,6 +310,149 @@ function montarTexto(r: Relatorio, alertas: string[]): string {
   return l.join('\n')
 }
 
+// ------------------------------------------------------------
+// Canal WhatsApp
+// ------------------------------------------------------------
+
+interface Falha {
+  conta: string
+  aluno: string | null
+  telefone: string | null
+  classe: string
+  codigo: string
+  recuperada: boolean
+}
+
+// Rótulo curto por classe — a linha do WhatsApp tem que caber na tela.
+const ROTULO_CURTO: Record<string, string> = {
+  transitoria:   'instabilidade',
+  permanente:    'número não existe no WhatsApp',
+  config:        'credencial/instância inválida',
+  indeterminada: 'motivo não informado',
+}
+
+// Num dia de instância caída são centenas de falhas; a mensagem não pode
+// virar um rolo. Até N nomes por conta e M linhas no total, o resto em "+X".
+const NOMES_POR_CONTA = 5
+const LINHAS_MAX = 30
+
+function formatarTelefone(t: string | null): string {
+  let n = String(t || '').replace(/\D/g, '')
+  if (n.startsWith('55') && n.length >= 12) n = n.slice(2)
+  if (n.length === 11) return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`
+  if (n.length === 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`
+  return n || 'sem telefone'
+}
+
+function montarWhatsapp(r: Relatorio, falhas: Falha[], alertas: string[]): string {
+  const res = r.resumo
+  const total = Number(res.falhas_reais ?? 0)
+  const l: string[] = [`📊 *Mensalli · Mensagens de ${formatarData(r.dia)}*`, '']
+
+  l.push(`✅ ${res.enviadas} enviadas`)
+  if (total === 0) {
+    l.push('Nenhuma falha. 👍')
+  } else {
+    const recuperadas = falhas.filter((f) => f.recuperada).length
+    l.push(`❌ ${total} falharam (${String(res.pct_falha).replace('.', ',')}%)`)
+    if (recuperadas > 0) l.push(`↩️ ${recuperadas} já receberam depois, no reenvio`)
+  }
+
+  if (alertas.length) {
+    l.push('', '⚠️ *Atenção*')
+    for (const a of alertas) l.push(`• ${a}`)
+  }
+
+  // Só quem AINDA não recebeu. Quem foi recuperado já está no número acima.
+  // Agrupa por pessoa: o retry gera várias falhas para o mesmo aluno, e listar
+  // "Célia, Alisson, Célia, Alisson" esconde quantas pessoas ficaram sem mensagem.
+  const pendentes = falhas.filter((f) => !f.recuperada)
+  if (pendentes.length) {
+    const porConta = new Map<string, Map<string, Falha & { vezes: number }>>()
+    for (const f of pendentes) {
+      if (!porConta.has(f.conta)) porConta.set(f.conta, new Map())
+      const pessoas = porConta.get(f.conta)!
+      const chave = String(f.telefone || '').replace(/\D/g, '') || `nome:${f.aluno}`
+      const atual = pessoas.get(chave)
+      if (atual) atual.vezes++
+      else pessoas.set(chave, { ...f, vezes: 1 })
+    }
+
+    l.push('', '*Quem não recebeu*')
+    let linhas = 0
+    let omitidas = 0
+    // Conta com mais gente sem mensagem primeiro: é onde está o problema.
+    const contas = [...porConta.entries()]
+      .map(([conta, m]) => [conta, [...m.values()]] as const)
+      .sort((a, b) => b[1].length - a[1].length)
+    for (const [conta, lista] of contas) {
+      if (linhas >= LINHAS_MAX) { omitidas += lista.length; continue }
+      l.push('', `🏢 *${conta}* — ${lista.length} aluno(s)`)
+      const mostrar = lista.slice(0, Math.min(NOMES_POR_CONTA, LINHAS_MAX - linhas))
+      for (const f of mostrar) {
+        const vezes = f.vezes > 1 ? ` (${f.vezes}x)` : ''
+        l.push(`• ${f.aluno || 'sem nome'} — ${formatarTelefone(f.telefone)} — ${ROTULO_CURTO[f.classe] || f.codigo}${vezes}`)
+      }
+      linhas += mostrar.length
+      if (lista.length > mostrar.length) l.push(`  _+${lista.length - mostrar.length} desta conta_`)
+    }
+    if (omitidas > 0) l.push('', `_+${omitidas} aluno(s) em outras contas — detalhes no e-mail das 11h._`)
+  }
+
+  return l.join('\n')
+}
+
+/** Credenciais da Evolution, mesma leitura do whatsapp-health-check. */
+async function configEvolution(supabase: ReturnType<typeof createClient>) {
+  const { data } = await supabase
+    .from('config')
+    .select('chave, valor')
+    .in('chave', ['evolution_api_key', 'evolution_api_url', 'evolution_master_instance'])
+  const m: Record<string, string> = {}
+  data?.forEach((c: { chave: string; valor: string }) => { m[c.chave] = c.valor })
+  return {
+    apiKey: m.evolution_api_key,
+    apiUrl: m.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host',
+    master: m.evolution_master_instance || 'mensalli_master',
+  }
+}
+
+async function enviarWhatsapp(
+  supabase: ReturnType<typeof createClient>,
+  texto: string,
+  destinoForcado: string | null,
+): Promise<{ enviado: boolean; destino?: string; motivo?: string }> {
+  const { apiKey, apiUrl, master } = await configEvolution(supabase)
+  if (!apiKey) return { enviado: false, motivo: 'evolution_api_key não configurada na tabela config' }
+
+  // Destino: o próprio número conectado no master (de mim para mim), salvo
+  // se um número for passado no body ou no segredo.
+  let destino = destinoForcado
+  if (!destino) {
+    const r = await fetch(`${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(master)}`, {
+      headers: { apikey: apiKey },
+    })
+    if (!r.ok) return { enviado: false, motivo: `fetchInstances HTTP ${r.status}` }
+    const d = await r.json()
+    const i = (Array.isArray(d) ? d : [d])[0]
+    // Versões antigas da Evolution aninhavam em .instance (ver AdminWhatsAppMaster.js).
+    const estado = i?.connectionStatus || i?.instance?.status
+    destino = i?.ownerJid || i?.instance?.owner || null
+    if (estado && estado !== 'open') return { enviado: false, motivo: `instância master "${master}" está ${estado}` }
+    if (!destino) return { enviado: false, motivo: `instância master "${master}" sem número conectado` }
+  }
+  const number = destino.includes('@') ? destino : `${destino.replace(/\D/g, '')}@s.whatsapp.net`
+
+  const resp = await fetch(`${apiUrl}/message/sendText/${master}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: apiKey },
+    body: JSON.stringify({ number, text: texto }),
+  })
+  if (resp.ok) return { enviado: true, destino: number }
+  const corpo = await resp.text().catch(() => '')
+  return { enviado: false, destino: number, motivo: `sendText HTTP ${resp.status}: ${corpo.slice(0, 200)}` }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -317,6 +470,25 @@ serve(async (req) => {
 
     const relatorio = data as Relatorio
     const alertas = montarAlertas(relatorio)
+
+    if (body?.canal === 'whatsapp') {
+      const { data: falhas, error: errF } = await supabase.rpc('relatorio_mensagens_falhas_dia', { p_dia: dia })
+      if (errF) throw new Error(`RPC relatorio_mensagens_falhas_dia falhou: ${errF.message}`)
+      const texto = montarWhatsapp(relatorio, (falhas || []) as Falha[], alertas)
+
+      if (dryRun) {
+        return new Response(JSON.stringify({ dryRun: true, canal: 'whatsapp', texto }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      // Mesmo critério do e-mail: 200 com enviado:false para o cron não
+      // ficar em retry, mas dizendo por que não saiu.
+      const r = await enviarWhatsapp(supabase, texto, body?.to || WHATSAPP_TO || null)
+      return new Response(JSON.stringify({ canal: 'whatsapp', ...r, resumo: relatorio.resumo }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const html = montarHtml(relatorio, alertas)
     const texto = montarTexto(relatorio, alertas)
 

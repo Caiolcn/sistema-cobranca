@@ -32,6 +32,7 @@ const ContratosTemplates = lazy(() => import('./ContratosTemplates'))
 // Aba "Minha Assinatura": mesmo componente que a rota /app/assinatura renderiza sozinha.
 const MinhaAssinatura = lazy(() => import('./assinatura/MinhaAssinatura'))
 const BioEditor = lazy(() => import('./components/BioEditor'))
+const LojaEditor = lazy(() => import('./components/LojaEditor'))
 const ColaboradoresConfig = lazy(() => import('./ColaboradoresConfig'))
 // const Artes = lazy(() => import('./Artes')) // aba Artes temporariamente escondida — descomentar p/ reativar
 
@@ -3274,7 +3275,9 @@ function Configuracao({ secao = 'config' }) {
     async function carregarDadosPreview() {
       try {
         const [planosR, aulasR, npsR] = await Promise.all([
-          supabase.from('planos').select('nome, valor, ciclo, descricao')
+          // A coluna é ciclo_cobranca (ciclo não existe e a query falhava em silêncio,
+          // deixando o preview de planos vazio). A landing lê `p.ciclo`, então renomeia aqui.
+          supabase.from('planos').select('nome, valor, ciclo:ciclo_cobranca, descricao')
             .eq('user_id', contextUserId).eq('ativo', true).order('valor', { ascending: true }),
           supabase.from('aulas').select('dia_semana, horario, descricao')
             .eq('user_id', contextUserId).eq('ativo', true)
@@ -5468,6 +5471,11 @@ function Configuracao({ secao = 'config' }) {
               {abaAtiva === 'bio' && (
                 <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
                   <BioEditor onIrParaAgendamento={() => setAbaAtiva('agendamento')} />
+                </Suspense>
+              )}
+              {abaAtiva === 'loja' && (
+                <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>}>
+                  <LojaEditor onIrParaAssinatura={() => setAbaAtiva('assinatura')} onIrParaIntegracoes={() => setAbaAtiva('integracoes')} />
                 </Suspense>
               )}
               {abaAtiva === 'anamnese' && renderAnamnese()}

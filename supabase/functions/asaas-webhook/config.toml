@@ -1,0 +1,3 @@
+# Chamado pelo Asaas (sem JWT) — precisa ser publico
+[functions.asaas-webhook]
+verify_jwt = false

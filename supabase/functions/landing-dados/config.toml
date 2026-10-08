@@ -1,0 +1,3 @@
+# Chamado pela bio/site com a anon key (sb_publishable_), que nao e JWT
+[functions.landing-dados]
+verify_jwt = false

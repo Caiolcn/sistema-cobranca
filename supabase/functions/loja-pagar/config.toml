@@ -1,0 +1,3 @@
+# Loja publica: chamada com a anon key (sb_publishable_), que nao e JWT
+[functions.loja-pagar]
+verify_jwt = false

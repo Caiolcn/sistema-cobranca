@@ -13,7 +13,29 @@ const UserContext = createContext(null)
 const CAMPOS_CONTA =
   'id, email, plano, plano_pago, plano_vencimento, limite_mensal, nome_empresa, ' +
   'nome_completo, chave_pix, cpf_cnpj, email_empresa, telefone, logo_url, ' +
-  'trial_fim, virou_pagante_em, cancelado_em, role, ultimo_acesso'
+  'trial_fim, virou_pagante_em, cancelado_em, role, ultimo_acesso, agendamento_slug'
+
+// Extras da Loja (Mensalli Vendas), carregados à parte de propósito: se o SQL
+// sql-criar-loja.sql ainda não rodou, a falha fica aqui e não derruba a carga
+// da conta inteira. Add-ons vivem em assinaturas_addons (gate do servidor:
+// usuario_tem_addon()); loja_ativa é a coluna nova em usuarios.
+const EXTRAS_VAZIO = { addons: [], lojaAtiva: false }
+async function carregarExtras(usuarioId) {
+  if (!usuarioId) return EXTRAS_VAZIO
+  const hoje = new Date().toISOString().slice(0, 10)
+  try {
+    const [{ data: addons }, { data: conta }] = await Promise.all([
+      supabase.from('assinaturas_addons').select('addon, fim').eq('user_id', usuarioId).eq('status', 'ativo').lte('inicio', hoje),
+      supabase.from('usuarios').select('loja_ativa').eq('id', usuarioId).maybeSingle()
+    ])
+    return {
+      addons: (addons || []).filter(a => !a.fim || a.fim >= hoje).map(a => a.addon),
+      lojaAtiva: !!conta?.loja_ativa
+    }
+  } catch {
+    return EXTRAS_VAZIO
+  }
+}
 
 const CAMPOS_CONTA_COM_ONBOARDING = `${CAMPOS_CONTA}, onboarding_completed, onboarding_step`
 
@@ -25,6 +47,10 @@ export function UserProvider({ children }) {
   // Admin: estado para visualizar como outro usuário
   const [adminViewingAs, setAdminViewingAs] = useState(null)
   const [adminClientData, setAdminClientData] = useState(null)
+
+  // Extras (add-ons + loja) da conta própria e do cliente que o admin visualiza
+  const [extras, setExtras] = useState(EXTRAS_VAZIO)
+  const [adminClientExtras, setAdminClientExtras] = useState(EXTRAS_VAZIO)
 
   // Carimbar ultimo_acesso: a coluna existe desde criar-tabela-usuarios.sql mas
   // nunca foi escrita, o que deixa a ativação (quem realmente volta ao app)
@@ -90,6 +116,7 @@ export function UserProvider({ children }) {
       // Fire-and-forget: não segura o carregamento da UI
       if (!falhouBuscar && usuarioData) {
         registrarAcesso(authUser.id, usuarioData.ultimo_acesso)
+        carregarExtras(authUser.id).then(setExtras)
       }
     } catch (error) {
       console.error('Erro ao carregar usuário:', error)
@@ -138,6 +165,7 @@ export function UserProvider({ children }) {
 
     // Falha de rede não pode zerar userData (rebaixaria o plano na UI)
     setUserData(prev => (falhouBuscar ? prev : data))
+    carregarExtras(user.id).then(setExtras)
   }, [user])
 
   // Admin: verificar se é admin
@@ -148,18 +176,23 @@ export function UserProvider({ children }) {
     if (!clientUserId) {
       setAdminViewingAs(null)
       setAdminClientData(null)
+      setAdminClientExtras(EXTRAS_VAZIO)
       return
     }
 
     setAdminViewingAs(clientUserId)
 
-    const { data } = await supabase
-      .from('usuarios')
-      .select(CAMPOS_CONTA_COM_ONBOARDING)
-      .eq('id', clientUserId)
-      .maybeSingle()
+    const [{ data }, extrasCliente] = await Promise.all([
+      supabase
+        .from('usuarios')
+        .select(CAMPOS_CONTA_COM_ONBOARDING)
+        .eq('id', clientUserId)
+        .maybeSingle(),
+      carregarExtras(clientUserId)
+    ])
 
     setAdminClientData(data)
+    setAdminClientExtras(extrasCliente)
   }, [])
 
   // Status de acesso da conta — SEMPRE por data, nunca por flag.
@@ -248,12 +281,28 @@ export function UserProvider({ children }) {
 
   // Dados efetivos: se admin está visualizando um cliente, usa os dados do cliente
   const effectiveData = (isAdmin && adminViewingAs && adminClientData) ? adminClientData : userData
+  const effectiveExtras = (isAdmin && adminViewingAs) ? adminClientExtras : extras
+
+  // Recarrega só add-ons e loja (depois de ligar a loja, por exemplo)
+  const refreshExtras = useCallback(async () => {
+    const alvo = (isAdmin && adminViewingAs) ? adminViewingAs : user?.id
+    if (!alvo) return
+    const novos = await carregarExtras(alvo)
+    if (isAdmin && adminViewingAs) setAdminClientExtras(novos)
+    else setExtras(novos)
+  }, [isAdmin, adminViewingAs, user])
 
   const value = useMemo(() => ({
     user,
     userData,
     loading,
     refreshUserData,
+    refreshExtras,
+    // Add-ons ativos da conta efetiva (ex.: ['vendas']) e estado da loja
+    addons: effectiveExtras.addons,
+    hasAddon: (nome) => effectiveExtras.addons.includes(nome),
+    lojaAtiva: effectiveExtras.lojaAtiva,
+    agendamentoSlug: effectiveData?.agendamento_slug || null,
     // Helpers úteis - usa dados efetivos (cliente selecionado ou próprio usuário)
     userId: (isAdmin && adminViewingAs) ? adminViewingAs : user?.id,
     plano: effectiveData?.plano || 'starter',
@@ -271,7 +320,7 @@ export function UserProvider({ children }) {
     adminViewingAs,
     setAdminClient,
     realUserId: user?.id
-  }), [user, userData, loading, refreshUserData, trialStatus, isAdmin, adminViewingAs, setAdminClient, effectiveData])
+  }), [user, userData, loading, refreshUserData, refreshExtras, trialStatus, isAdmin, adminViewingAs, setAdminClient, effectiveData, effectiveExtras])
 
   return (
     <UserContext.Provider value={value}>

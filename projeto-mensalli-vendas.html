@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projeto Mensalli Vendas</title>
+<style>
+:root{--bg:#f7f8fa;--surface:#fff;--surface2:#f1f3f7;--ink:#0f1720;--ink2:#3d4a58;--ink3:#6b7885;--line:#e2e6ec;--accent:#2e7d32;--accent-soft:#e8f5e9;--amber:#9a6412;--amber-soft:#fdf3e2;--red:#b4342c;--red-soft:#fbeceb;--blue:#1f5c9e;--blue-soft:#e9f1fa;--purple:#5b3fa8;--purple-soft:#efeafb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1117;--surface:#151b23;--surface2:#1c242e;--ink:#e8edf3;--ink2:#b3bfcc;--ink3:#8695a5;--line:#252d38;--accent:#4caf50;--accent-soft:#12301f;--amber:#e3ac52;--amber-soft:#33260f;--red:#f08a80;--red-soft:#361a19;--blue:#77b1ec;--blue-soft:#14263a;--purple:#a98ce8;--purple-soft:#231a3a}}
+:root[data-theme="dark"]{--bg:#0d1117;--surface:#151b23;--surface2:#1c242e;--ink:#e8edf3;--ink2:#b3bfcc;--ink3:#8695a5;--line:#252d38;--accent:#4caf50;--accent-soft:#12301f;--amber:#e3ac52;--amber-soft:#33260f;--red:#f08a80;--red-soft:#361a19;--blue:#77b1ec;--blue-soft:#14263a;--purple:#a98ce8;--purple-soft:#231a3a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.65 Inter,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 16px 80px}
+.wrap{max-width:1040px;margin:0 auto}
+header{padding:48px 0 28px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--accent);margin:0 0 10px}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.1;margin:0 0 10px;letter-spacing:-.8px}
+.sub{color:var(--ink3);margin:0;font-size:16px;max-width:760px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:24px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.stat .l{font-size:11.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:2px}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin-bottom:30px}
+.toc h4{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin:0 0 10px}
+.toc ol{margin:0;padding-left:20px;columns:2;column-gap:28px;font-size:14px}
+.toc li{margin-bottom:3px;break-inside:avoid}
+.toc a{color:var(--ink2);text-decoration:none}.toc a:hover{color:var(--accent)}
+h2{font-size:23px;margin:46px 0 6px;letter-spacing:-.5px;padding-top:12px;border-top:3px solid var(--ink);display:inline-block;scroll-margin-top:16px}
+h3{font-size:17px;margin:26px 0 10px}
+h4{font-size:15px;margin:18px 0 6px}
+p{color:var(--ink2);margin:0 0 12px}
+strong{color:var(--ink)}
+ul,ol{color:var(--ink2);margin:0 0 14px 20px}li{margin-bottom:5px}
+.call{border:1px solid;border-radius:10px;padding:14px 16px;margin:16px 0;font-size:14.5px}
+.call .t{font-weight:750;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.g{background:var(--accent-soft);border-color:var(--accent)}.g .t{color:var(--accent)}
+.a{background:var(--amber-soft);border-color:var(--amber)}.a .t{color:var(--amber)}
+.r{background:var(--red-soft);border-color:var(--red)}.r .t{color:var(--red)}
+.b{background:var(--blue-soft);border-color:var(--blue)}.b .t{color:var(--blue)}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--surface2);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid;white-space:nowrap}
+.t-ex{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.t-new{color:var(--blue);border-color:var(--blue);background:var(--blue-soft)}
+.t-fix{color:var(--red);border-color:var(--red);background:var(--red-soft)}
+.t-v2{color:var(--purple);border-color:var(--purple);background:var(--purple-soft)}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.86em;background:var(--surface2);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:13px/1.5 "JetBrains Mono",Consolas,monospace;color:var(--ink)}
+pre code{border:0;background:none;padding:0;font-size:inherit}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px;margin:14px 0}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;position:relative}
+.step b{display:block;font-size:12px;color:var(--accent);margin-bottom:4px;letter-spacing:.04em}
+.step span{font-size:13.5px;color:var(--ink2)}
+.step.alt b{color:var(--blue)}
+.screen{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+.screen h4{margin:0 0 6px;display:flex;gap:8px;align-items:center}
+.screen .route{font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;color:var(--ink3);font-weight:400}
+.screen ul{margin-bottom:0}
+.sm{font-size:13px;color:var(--ink3)}
+</style>
+</head>
+<body><div class="wrap">
+<header>
+<p class="kicker">Projeto de produto · 07/10/2026</p>
+<h1>Mensalli Vendas</h1>
+<p class="sub">A página onde o aluno compra, se cadastra, paga e escolhe a turma sem passar pelo WhatsApp. Fluxo completo de ponta a ponta: lado do gestor, lado do aluno e bastidores, apoiado no que já existe no código.</p>
+<div class="stats">
+<div class="stat"><div class="v">R$ 69,90</div><div class="l">add-on / mês · Pro e Premium</div></div>
+<div class="stat"><div class="v">27</div><div class="l">contas elegíveis</div></div>
+<div class="stat"><div class="v">8 de 36</div><div class="l">já têm Asaas</div></div>
+<div class="stat"><div class="v">34 de 36</div><div class="l">têm planos cadastrados</div></div>
+<div class="stat"><div class="v">17 dias</div><div class="l">MVP (fases 1 e 2)</div></div>
+<div class="stat"><div class="v">~70%</div><div class="l">das peças já existem</div></div>
+</div>
+</header>
+
+<div class="toc"><h4>Índice</h4><ol>
+<li><a href="#s1">Visão e princípios</a></li>
+<li><a href="#s2">Fluxo do gestor</a></li>
+<li><a href="#s3">Fluxo do aluno</a></li>
+<li><a href="#s4">Bastidores: o pagamento confirmou</a></li>
+<li><a href="#s5">Estados do pedido</a></li>
+<li><a href="#s6">Modelo de dados</a></li>
+<li><a href="#s7">Edge functions</a></li>
+<li><a href="#s8">Telas e arquivos</a></li>
+<li><a href="#s9">Casos de borda</a></li>
+<li><a href="#s10">Bugs no caminho</a></li>
+<li><a href="#s11">Fases e esforço</a></li>
+<li><a href="#s12">Verificação de ponta a ponta</a></li>
+<li><a href="#s13">Fora do escopo (V2)</a></li>
+</ol></div>
+
+<h2 id="s1">1. Visão e princípios</h2>
+<p><strong>Em uma frase:</strong> o gestor liga a loja em Marketing › Loja, escolhe o que vender (planos já cadastrados, pacotes, produtos, eventos) e divulga <code>mensalli.com.br/loja/&lt;slug&gt;</code> na bio e no WhatsApp. O aluno abre, escolhe, preenche a ficha, paga por Pix ou cartão, escolhe a turma e recebe a confirmação. O pedido cai no Financeiro, o aluno aparece em Alunos já ativo com turma na Agenda, e o gestor é avisado.</p>
+<p>Para o gestor o módulo chama <strong>Mensalli Vendas</strong>. Para o aluno, o link é a <strong>Loja</strong> da academia.</p>
+<h3>Princípios</h3>
+<ul>
+<li><strong>Nada de dinheiro paralelo.</strong> Pedido pago vira <code>mensalidades</code> (plano) ou <code>cobrancas_avulsas</code> (pacote, produto, evento). O Financeiro, a Home e os relatórios já somam essas tabelas.</li>
+<li><strong>Nada de aluno paralelo.</strong> O comprador vira ou reaproveita um <code>devedores</code>. Se já era aluno, não duplica ficha.</li>
+<li><strong>Pagamento só pelo Asaas do gestor.</strong> Sem conta Asaas conectada, a loja não liga. Sem comissão do Mensalli.</li>
+<li><strong>Reaproveitar, não reescrever.</strong> Checkout, webhook, criação de aluno, grade de turmas, bio, templates de WhatsApp e design system já existem. A loja é a vitrine, o pedido e a costura.</li>
+<li><strong>A loja nasce funcionando.</strong> O wizard importa os planos existentes e liga o botão na bio. Add-on contratado e não configurado é cancelamento em 60 dias.</li>
+</ul>
+<div class="call a"><div class="t">Pré-condição de negócio</div><p>Só 8 das 36 contas têm Asaas. A loja depende dele. O onboarding de Asaas das outras 28 contas (serviço de implantação, R$ 197, grátis para as 10 primeiras) corre em paralelo ao desenvolvimento, começando por quem mais vende avulso hoje.</p></div>
+
+<h2 id="s2">2. Fluxo do gestor</h2>
+
+<h3>2.1 Pré-requisitos</h3>
+<p>A aba Loja abre sempre, mas antes de qualquer coisa mostra um checklist com o que falta. Cada item tem link direto para onde resolver.</p>
+<div class="tw"><table>
+<tr><th>Requisito</th><th>Onde está hoje no código</th><th>Como a tela trata</th></tr>
+<tr><td>Plano Pro ou Premium</td><td><code>useUserPlan().isLocked('pro')</code></td><td>Tela de upgrade padrão (mesmo molde da bio em <code>BioEditor.js</code>)</td></tr>
+<tr><td>Add-on Mensalli Vendas ativo</td><td>Não existe. Nova função SQL <code>usuario_tem_addon(uid, 'vendas')</code> e <code>hasAddon()</code> no hook de plano</td><td>CTA "Ativar Mensalli Vendas por R$ 69,90" levando a Minha Assinatura</td></tr>
+<tr><td>Asaas conectado</td><td><code>usuarios.asaas_api_key</code> preenchida e <code>modo_integracao = 'asaas'</code> (Configuração › Integrações)</td><td>Item vermelho com botão "Conectar Asaas". Sem isso o botão "Publicar" fica travado</td></tr>
+<tr><td>Slug público</td><td><code>usuarios.agendamento_slug</code>, RPC <code>gerar_agendamento_slug</code> (mesmo slug de agendar, portal e cadastro)</td><td>Gera sozinho no primeiro acesso, como o <code>LinkPortalConta.js</code> faz</td></tr>
+<tr><td>WhatsApp conectado</td><td><code>mensallizap.conectado</code></td><td>Aviso amarelo: a loja funciona, mas as confirmações automáticas não saem</td></tr>
+</table></div>
+
+<h3>2.2 Primeira vez: wizard em 3 passos</h3>
+<div class="flow">
+<div class="step"><b>PASSO 1 · IMPORTAR PLANOS</b><span>Lista os <code>planos</code> ativos da conta com checkbox "vender online". Recorrente vira item tipo plano; pacote vira item tipo pacote. Em 34 das 36 contas a loja já sai populada.</span></div>
+<div class="step"><b>PASSO 2 · APARÊNCIA</b><span>Herda tema, fonte, logo e capa da bio (<code>bio_config</code> via <code>resolverBio</code>). Campos próprios: título da loja, frase curta, WhatsApp de suporte, retirada presencial (endereço e horário).</span></div>
+<div class="step"><b>PASSO 3 · PUBLICAR</b><span>Liga <code>usuarios.loja_ativa</code>. Mostra o link, o QR e o texto pronto para grupo. Botão "Colocar na bio" liga <code>bio_config.mostrar.loja</code>.</span></div>
+</div>
+
+<h3>2.3 Uso contínuo: aba Marketing › Loja</h3>
+<p>Componente novo <code>src/components/LojaEditor.js</code>, no molde do <code>BioEditor</code>: formulário à esquerda, preview sticky à direita com o mesmo componente <code>LojaView</code> que a página pública usa, barra "Salvar" fixa com detecção de alteração. Registrado em <code>configTabs.js</code> no grupo Marketing e carregado por lazy import em <code>Configuracao.js</code>.</p>
+
+<div class="screen"><h4>Sub-aba Produtos</h4>
+<ul>
+<li>Lista ordenável por arrastar, toggle ativo/inativo, badge do tipo, foto em miniatura, preço, contador de vendas.</li>
+<li>Botão "Novo item" abre modal com escolha do tipo. Campos por tipo:</li>
+</ul>
+<div class="tw"><table>
+<tr><th>Tipo</th><th>Campos</th><th>Observação</th></tr>
+<tr><td><strong>Plano</strong> (matrícula)</td><td>Plano de origem (select de <code>planos</code> recorrentes; nome e preço somente leitura), descrição, foto, "exigir escolha de turma", quantas turmas (1, 2, 3 ou livre), modalidade para filtrar turmas, contrato a disparar ao pagar (template de <code>contratos_templates</code>)</td><td>Preço sempre igual ao do plano, para a mensalidade seguinte bater</td></tr>
+<tr><td><strong>Pacote</strong></td><td>Plano de origem tipo pacote (mostra "N aulas"), descrição, foto, validade em dias (opcional)</td><td>Aluno sai com <code>aulas_restantes</code> preenchido</td></tr>
+<tr><td><strong>Produto</strong></td><td>Nome, preço, foto, descrição, variações (lista: P, M, G), estoque por variação (opcional, vazio = ilimitado), categoria de venda avulsa, retirada presencial</td><td>Categorias são as de <code>CobrancasAvulsas.js</code> (uniforme, material, suplemento, taxa, outros)</td></tr>
+<tr><td><strong>Evento</strong></td><td>Nome, preço, foto, descrição, data e hora, vagas, local</td><td>Vagas restantes = vagas menos inscrições pagas</td></tr>
+</table></div>
+<ul>
+<li>Em qualquer tipo: <strong>campos extras do pré-cadastro</strong> (ex.: "Nome na camisa", "Posição", "Tem alergia?"), texto ou opção, obrigatório ou não.</li>
+</ul>
+</div>
+
+<div class="screen"><h4>Sub-aba Pedidos</h4>
+<ul>
+<li>Tabela do design system com data, comprador (e aluno, se diferente), item e variação, valor, método, status com cor.</li>
+<li>Filtros por status e período, busca por nome ou telefone, exportar CSV (mesmo util do Financeiro).</li>
+<li>Ações por linha: abrir ficha do aluno, ver detalhes (respostas dos campos extras, turma escolhida), <strong>Reprocessar</strong> (consulta o Asaas pelo id da cobrança e corrige o status), <strong>Marcar retirado</strong> (produto com retirada), <strong>Cancelar</strong> (pedido não pago).</li>
+<li>Resumo no topo: vendido no mês, pedidos aguardando pagamento, aguardando retirada, turma pendente.</li>
+</ul></div>
+
+<div class="screen"><h4>Sub-aba Configurar</h4>
+<ul>
+<li>Loja no ar (liga/desliga), link e QR, texto pronto para grupo de WhatsApp.</li>
+<li>Aparência: herdar da bio (padrão) ou tema e fonte próprios.</li>
+<li>Textos: título, frase, mensagem de boas-vindas na confirmação, instruções de retirada.</li>
+<li>Avisos: Asaas, WhatsApp, formas de pagamento liberadas (lidas de <code>asaas_formas_pagamento</code>, editadas em Integrações).</li>
+<li>Aula experimental: se a conta é Premium com agendamento ativo, mostra "card de aula experimental na vitrine" para ligar.</li>
+</ul></div>
+
+<h3>2.4 Divulgação</h3>
+<ul>
+<li><strong>Bio</strong>: botão "Loja" em <code>BioAcademia.js</code> quando <code>bio_config.mostrar.loja</code> e <code>loja_ativa</code>, ao lado de "Agendar aula". Editor da bio ganha o toggle.</li>
+<li><strong>Ficha do aluno</strong> (<code>Clientes.js</code>): item "Link da loja" no dropdown "Links pros alunos" e botão "Enviar produto" no cabeçalho da ficha, que abre um seletor de item e manda pelo WhatsApp o link com <code>?aluno=&lt;portal_token&gt;</code>, pré-preenchendo a ficha do comprador.</li>
+<li><strong>Campanhas</strong> (<code>WhatsAppConexao.js</code>): placeholder <code>{{linkLoja}}</code> e botão "Inserir produto" que cola o link do item.</li>
+<li><strong>Home</strong>: card "Vendas da loja" com total do mês e pendências, visível quando a loja está ativa.</li>
+</ul>
+
+<h3>2.5 Avisos ao gestor</h3>
+<ul>
+<li><strong>WhatsApp</strong>: "Nova venda na loja: Fulano comprou Camisa (M) por R$ 150. Retirada presencial." Sai do webhook, pela instância da academia, para o telefone do gestor. Mesmo padrão do aviso de novo experimental.</li>
+<li><strong>Sino</strong>: tipo novo "venda" em <code>NotificacoesDropdown.js</code>, lendo pedidos pagos do dia.</li>
+<li><strong>Toast em tempo real</strong>: hook <code>useVendaNotifications</code> ouvindo <code>loja_pedidos</code>, montado no Dashboard junto dos hooks de pagamento e agendamento.</li>
+</ul>
+
+<h2 id="s3">3. Fluxo do aluno</h2>
+<p>Público, sem login, mobile first. Rotas novas em <code>App.js</code>, declaradas <strong>antes</strong> do catch-all <code>/:slug</code>: <code>/loja/:slug</code>, <code>/loja/:slug/p/:produtoId</code> e <code>/loja/:slug/pedido/:token</code>. As palavras <code>loja</code> e <code>vendas</code> entram em <code>SLUGS_RESERVADOS</code>. A página <code>src/pages/Loja.js</code> exporta <code>LojaView</code> para o preview do editor.</p>
+
+<div class="flow">
+<div class="step"><b>1 · VITRINE</b><span>Logo, nome, frase, itens agrupados: Planos, Pacotes, Produtos, Eventos. Card de aula experimental quando Premium.</span></div>
+<div class="step"><b>2 · ITEM</b><span>Foto, preço, descrição, variação, ciclo (plano), data e vagas (evento). Botão Matricular / Comprar / Inscrever.</span></div>
+<div class="step"><b>3 · FICHA</b><span>Nome, WhatsApp, nascimento, CPF. Menor: responsável. Campos extras do item. Pré-preenche se veio da ficha.</span></div>
+<div class="step"><b>4 · PAGAMENTO</b><span>Pix com QR na tela e polling. Cartão ou boleto abrem o checkout do Asaas. Botão "Já paguei".</span></div>
+<div class="step"><b>5 · TURMA</b><span>Só plano com "exigir turma". Lista horários com vagas reais; escolha atômica; pode fazer depois pelo link.</span></div>
+<div class="step"><b>6 · CONFIRMAÇÃO</b><span>Resumo, próximos passos, botão do portal, contrato, WhatsApp da academia. Mensagem automática chega no WhatsApp.</span></div>
+</div>
+
+<div class="screen"><h4>Vitrine <span class="route">/loja/:slug</span></h4>
+<ul>
+<li>Chama <code>GET loja-dados?slug=</code>. Recebe empresa (nome, logo, tema e fonte já resolvidos, WhatsApp, retirada), itens ativos agrupados e flags (<code>agendamento_ativo</code>, <code>whatsapp_conectado</code>).</li>
+<li>Estados: loja fora do ar (página amigável com WhatsApp da academia), sem itens, item esgotado ou evento lotado (badge e botão desabilitado).</li>
+<li>Rodapé "Loja criada com Mensalli" com link para a landing, igual à bio.</li>
+</ul></div>
+
+<div class="screen"><h4>Item <span class="route">/loja/:slug/p/:produtoId</span></h4>
+<ul>
+<li>Foto grande, nome, preço, descrição. Plano: ciclo e o que inclui. Produto: chips de variação com indicação de esgotado. Evento: data, local, vagas restantes.</li>
+<li>Botão principal muda o texto por tipo. Para plano, abaixo do botão: "Você escolhe seu horário depois de pagar".</li>
+</ul></div>
+
+<div class="screen"><h4>Checkout, etapa 1: Ficha</h4>
+<ul>
+<li>Campos: nome, WhatsApp, data de nascimento, CPF (obrigatório, o Asaas exige), e-mail opcional, variação, campos extras do item. Se a data indica menor de 18, aparecem nome, WhatsApp e CPF do responsável e o CPF do responsável é o que vai para o Asaas.</li>
+<li>Validações e máscaras de <code>src/utils/validators.js</code>. Campo oculto anti-robô. Se o link veio com <code>?aluno=&lt;portal_token&gt;</code>, preenche e trava o telefone.</li>
+<li>Ao avançar: <code>POST loja-comprar</code> com slug, item, variação, ficha, método escolhido e o campo anti-robô. O servidor devolve o pedido criado e os dados de pagamento.</li>
+<li>Erros tratados na tela: CPF inválido, telefone inválido, menor sem responsável, item inativo, esgotado, lotado, muitas tentativas, loja fora do ar, pagamento indisponível.</li>
+</ul></div>
+
+<div class="screen"><h4>Checkout, etapa 2: Pagamento</h4>
+<ul>
+<li>Seletor Pix, cartão e boleto conforme <code>asaas_formas_pagamento</code> do gestor. Pix sempre disponível.</li>
+<li><strong>Pix</strong>: QR e copia-e-cola na tela (mesma UI do portal do aluno). Polling em <code>GET loja-pedido-status?token=</code> a cada 4 segundos. Ao confirmar, avança sozinho.</li>
+<li><strong>Cartão ou boleto</strong>: abre <code>invoice_url</code> do Asaas em nova aba. A tela fica em "aguardando confirmação" com o mesmo polling e botão "Já paguei", que força uma consulta ao Asaas.</li>
+<li>Trocar de método depois de gerar: <code>POST loja-pagar</code> com o token do pedido e o novo método; reaproveita cobrança existente quando há.</li>
+</ul></div>
+
+<div class="screen"><h4>Checkout, etapa 3: Turma</h4>
+<ul>
+<li>Só aparece para plano com "exigir turma". Lista as <code>aulas</code> ativas da conta que são turmas (sem aluno fixo individual), filtradas pela modalidade do item, agrupadas por dia da semana, com horário, professor e <strong>vagas reais</strong> = capacidade menos alunos fixos ativos.</li>
+<li>Permite escolher a quantidade definida no item. <code>POST loja-escolher-turma</code> com token e lista de aulas. No servidor, função SQL com trava de linha garante que dois alunos não levem a última vaga.</li>
+<li>Se lotou no meio do caminho, a lista atualiza e pede outra escolha. O aluno pode fechar e voltar depois pelo link do pedido; o gestor também pode vincular pela Agenda.</li>
+</ul></div>
+
+<div class="screen"><h4>Confirmação <span class="route">/loja/:slug/pedido/:token</span></h4>
+<ul>
+<li>Resumo do pedido e "o que acontece agora" por tipo: plano (seu portal, sua turma, próximo vencimento), pacote (quantas aulas, como agendar), produto (retirada ou aguarde contato), evento (data e local).</li>
+<li>Botões: "Abrir meu portal" (<code>/portal/&lt;portal_token&gt;</code>), "Assinar contrato" quando houver, "Falar com a academia".</li>
+<li>Esta página é o destino do polling e de qualquer reabertura do link. Enquanto não pago, mostra o Pix de novo ou o botão de gerar novo Pix se expirou.</li>
+</ul></div>
+
+<h3>3.1 WhatsApp que o aluno recebe</h3>
+<p>Sai do webhook, pela instância da academia, respeitando <code>comunicacoes_ativas</code>, <code>bloquear_mensagens</code> e a flag de confirmação de pagamento em <code>configuracoes_cobranca</code>. Tudo gravado em <code>logs_mensagens</code> com tipo <code>loja_pedido</code>.</p>
+<ul>
+<li><strong>Plano</strong>: uma mensagem só, template novo <code>loja_pedido_confirmado</code>, com nome, item, valor, link do portal, turmas escolhidas e próximo vencimento. Variáveis: <code>{{nomeAluno}} {{item}} {{valor}} {{linkPortal}} {{turmas}} {{proximoVencimento}} {{nomeEmpresa}}</code>. Se o gestor não editou o template, usa o texto padrão do código.</li>
+<li><strong>Pacote</strong>: mesmo template com "{{aulas}} aulas disponíveis" e como agendar.</li>
+<li><strong>Produto e evento</strong>: confirmação com instruções de retirada ou data e local.</li>
+<li><strong>Contrato</strong>: quando o item dispara contrato, segunda mensagem com o link <code>/contrato/&lt;token&gt;</code>.</li>
+</ul>
+
+<h2 id="s4">4. Bastidores: o pagamento confirmou</h2>
+<p>O Asaas chama <code>asaas-webhook</code>. Hoje a função busca a cobrança em <code>boletos</code> pelo id do Asaas e, se não encontra, ignora. A loja grava cada cobrança em <code>boletos</code> com a coluna nova <code>pedido_id</code>, e o webhook ganha um ramo: se <code>pedido_id</code> existe, chama <code>processarPedidoLoja</code>.</p>
+<ol>
+<li><strong>Idempotência.</strong> <code>UPDATE loja_pedidos SET status = 'pago' WHERE id = $1 AND status = 'aguardando_pagamento' RETURNING *</code>. Sem linha de volta, já foi processado: sai. Isso resolve o cartão, que manda RECEIVED e CONFIRMED.</li>
+<li><strong>Materializar por tipo.</strong>
+<div class="tw"><table>
+<tr><th>Tipo</th><th>Aluno</th><th>Financeiro</th><th>Status final</th></tr>
+<tr><td>Plano</td><td><code>assinatura_ativa = true</code>, <code>plano_id</code>, <code>experimental = false</code>, <code>data_inicio_assinatura = hoje</code></td><td>Mensalidade 1 paga hoje (<code>is_mensalidade</code>, forma, valor pago, descrição "Loja") + mensalidade 2 pendente no próximo vencimento <strong>respeitando o ciclo do plano</strong>. <code>boletos.mensalidade_id</code> aponta para a paga</td><td><code>turma_pendente</code> se exige turma, senão <code>concluido</code></td></tr>
+<tr><td>Pacote</td><td><code>assinatura_ativa = true</code>, <code>plano_id</code>, <code>aulas_restantes = aulas_total = numero_aulas</code>, <code>experimental = false</code></td><td>Cobrança avulsa paga, categoria "pacote", <code>origem = 'loja'</code>, <code>pedido_id</code></td><td><code>concluido</code></td></tr>
+<tr><td>Produto</td><td>Reaproveitado ou criado como experimental (não é matrícula)</td><td>Cobrança avulsa paga com descrição "Camisa (M)", categoria do item, <code>origem = 'loja'</code>; estoque da variação decrementado</td><td><code>aguardando_retirada</code> se retirada presencial, senão <code>concluido</code></td></tr>
+<tr><td>Evento</td><td>Idem produto</td><td>Cobrança avulsa paga, categoria "evento"; linha em <code>loja_inscricoes</code></td><td><code>concluido</code></td></tr>
+</table></div>
+</li>
+<li><strong>Contrato.</strong> Se o item tem template, cria <code>contratos_enviados</code> com snapshot do texto via <code>gerar_token_contrato()</code>. A função <code>substituirVariaveis</code> hoje vive só no front (<code>ContratosSection.js</code>) e precisa ser portada para Deno.</li>
+<li><strong>Mensagens.</strong> WhatsApp ao aluno (seção 3.1) e ao gestor (seção 2.5).</li>
+<li><strong>Eventos negativos.</strong> <code>PAYMENT_REFUNDED</code> e <code>PAYMENT_DELETED</code>: pedido vira <code>estornado</code> ou <code>cancelado</code>, cobrança avulsa cancelada, mensalidade volta a pendente, estoque e vaga devolvidos, <code>aulas_fixos</code> do pedido desativados. <code>PAYMENT_OVERDUE</code> (boleto vencido): pedido <code>expirado</code>.</li>
+<li><strong>Expiração.</strong> Pedido em <code>aguardando_pagamento</code> há mais de 24 horas vira <code>expirado</code> por pg_cron diário. Estoque só é reservado na criação do pedido quando o item tem estoque finito, e a expiração devolve.</li>
+</ol>
+
+<h2 id="s5">5. Estados do pedido</h2>
+<div class="tw"><table>
+<tr><th>Status</th><th>Quando entra</th><th>Quem muda</th><th>O aluno vê</th><th>O gestor vê</th></tr>
+<tr><td><code>aguardando_pagamento</code></td><td>Ficha enviada, cobrança criada</td><td><code>loja-comprar</code></td><td>QR Pix ou "aguardando"</td><td>Pendente, com botão cancelar</td></tr>
+<tr><td><code>pago</code></td><td>Webhook confirmou; estado transitório dentro do processamento</td><td>webhook</td><td>Tela atualizando</td><td>—</td></tr>
+<tr><td><code>turma_pendente</code></td><td>Plano pago que exige turma, ainda sem escolha</td><td>webhook</td><td>Etapa de turma</td><td>Alerta "escolher turma", botão vincular pela Agenda</td></tr>
+<tr><td><code>aguardando_retirada</code></td><td>Produto pago com retirada presencial</td><td>webhook</td><td>Instruções de retirada</td><td>Botão "Marcar retirado"</td></tr>
+<tr><td><code>concluido</code></td><td>Tudo materializado</td><td>webhook, <code>loja-escolher-turma</code>, gestor</td><td>Confirmação final</td><td>Concluído</td></tr>
+<tr><td><code>retirado</code></td><td>Gestor confirmou entrega</td><td>gestor</td><td>Confirmação final</td><td>Retirado, com data</td></tr>
+<tr><td><code>expirado</code></td><td>24 h sem pagar, ou boleto vencido</td><td>cron, webhook</td><td>"Gerar novo Pix"</td><td>Expirado</td></tr>
+<tr><td><code>cancelado</code></td><td>Gestor cancelou antes do pagamento, ou cobrança apagada no Asaas</td><td>gestor, webhook</td><td>"Pedido cancelado, fale com a academia"</td><td>Cancelado</td></tr>
+<tr><td><code>estornado</code></td><td>Reembolso no Asaas</td><td>webhook</td><td>"Pagamento estornado"</td><td>Estornado; efeitos desfeitos</td></tr>
+</table></div>
+
+<h2 id="s6">6. Modelo de dados</h2>
+<p>Arquivo <code>sql-criar-loja.sql</code> na raiz, idempotente, aditivo, RLS no padrão <code>auth.uid() = user_id OR is_admin()</code>. Leitura pública só pelas edge functions com service role; nenhuma policy anônima aberta.</p>
+<pre><code>-- usuarios
+loja_ativa boolean default false
+loja_config jsonb        -- {titulo, frase, suporte_whatsapp, retirada:{ativa,endereco,horario},
+                         --  aparencia:{herdar_bio, tema, fonte}, boas_vindas, mostrar_experimental}
+
+-- loja_produtos
+id, user_id, tipo ('plano'|'pacote'|'produto'|'evento'),
+plano_id → planos (obrigatório em plano/pacote),
+nome, descricao, valor numeric, imagem_url,
+categoria_avulsa text,                 -- produto/evento
+variacoes jsonb,                       -- [{nome:'M', estoque: 10|null}]
+estoque int null,                      -- produto sem variação
+exigir_turma bool, qtd_turmas int, modalidade_id → modalidades,   -- plano
+data_evento timestamptz, vagas int, local text,                   -- evento
+validade_dias int,                     -- pacote
+campos_extras jsonb,                   -- [{chave, rotulo, tipo:'texto'|'opcao', opcoes[], obrigatorio}]
+contrato_template_id → contratos_templates,
+retirada_presencial bool,
+ativo bool default true, ordem int, created_at, updated_at
+
+-- loja_pedidos
+id, user_id, produto_id, devedor_id,
+token text unique,                     -- link público do pedido
+status text,                           -- seção 5
+nome, telefone, cpf, email, data_nascimento,
+responsavel_nome, responsavel_telefone, responsavel_cpf,
+variacao text, respostas jsonb, valor numeric, metodo text,
+asaas_payment_id text, invoice_url text,
+mensalidade_id → mensalidades, cobranca_avulsa_id → cobrancas_avulsas,
+aula_ids uuid[], origem_link text,     -- 'bio'|'campanha'|'ficha'|'direto'
+ip_hash text, pago_em, retirado_em, cancelado_em, created_at
+-- índices: (user_id, status), (token), (asaas_payment_id), (devedor_id)
+
+-- loja_inscricoes (eventos)
+id, user_id, pedido_id, produto_id, devedor_id, status, created_at
+
+-- alterações
+boletos.pedido_id uuid null → loja_pedidos         -- o webhook enxerga o pedido por aqui
+cobrancas_avulsas.pedido_id uuid null, cobrancas_avulsas.origem text default 'manual'
+devedores.origem aceita 'loja'
+
+-- gate do add-on (só o necessário para o acesso)
+assinaturas_addons (id, user_id, addon text, status text, inicio date, fim date null)
+function usuario_tem_addon(p_user_id uuid, p_addon text) returns boolean
+
+-- funções
+loja_vagas_turma(p_aula_id uuid) returns int        -- capacidade - count(aulas_fixos ativos)
+loja_vincular_turmas(p_pedido_id uuid, p_aula_ids uuid[])  -- FOR UPDATE na aula, checa vaga, insere/reativa aulas_fixos
+loja_expirar_pedidos()                              -- pg_cron diário, devolve estoque reservado
+loja_reservar_estoque(p_produto_id, p_variacao) / loja_devolver_estoque(...)</code></pre>
+<p><strong>Storage:</strong> fotos no bucket público <code>logos</code>, caminho <code>${uid}/loja/&lt;item&gt;-&lt;timestamp&gt;.ext</code>, coberto pela policy atual (primeira pasta = <code>auth.uid()</code>). Como não existe util de upload no projeto, criar <code>src/utils/upload.js</code> com <code>uploadPublico(userId, file, {prefixo, maxMB})</code> e usar no editor.</p>
+
+<h2 id="s7">7. Edge functions</h2>
+<p>Padrão do projeto: Deno, service role, CORS aberto, conta localizada pelo slug, gate repetido no servidor, helpers copiados por função (não existe pasta compartilhada). Deploy com <code>supabase functions deploy &lt;nome&gt;</code> e <code>verify_jwt = false</code> nas públicas.</p>
+<div class="tw"><table>
+<tr><th>Função</th><th>Entrada</th><th>Faz</th><th>Copiar de</th></tr>
+<tr><td><code>loja-dados</code></td><td>GET <code>?slug=&amp;produto=</code></td><td>Gate completo (plano pago e no prazo, plano Pro ou Premium, add-on ativo, <code>loja_ativa</code>, Asaas configurado). Devolve vitrine ou item, com vagas de evento e, para plano, turmas com vagas via <code>loja_vagas_turma</code>. 403 com motivo quando falha o gate</td><td><code>landing-dados</code> (gate), <code>agendamento-dados</code> (contagens)</td></tr>
+<tr><td><code>loja-comprar</code></td><td>POST <code>{slug, produto_id, variacao, ficha, metodo, website}</code></td><td>Honeypot e rate limit (30/h por conta, 5/h por telefone, por IP). Valida item ativo, estoque e vagas. Dedupe de aluno por telefone (mais nome quando há responsável). Cria ou reaproveita <code>devedores</code> com <code>origem='loja'</code>. Reserva estoque. Cria pedido. Customer no Asaas (cache <code>asaas_clientes</code>), <code>POST /payments</code> com <code>externalReference = 'loja:&lt;pedido_id&gt;'</code>, grava <code>boletos</code> com <code>pedido_id</code>, <code>ensureWebhook()</code>. Devolve token do pedido e dados de pagamento</td><td><code>agendamento-cadastrar</code>, <code>autocadastro-enviar</code> (menor, responsável, anti-spam), <code>portal-pagar</code> (CPF, webhook, QR, customer)</td></tr>
+<tr><td><code>loja-pagar</code></td><td>POST <code>{token, metodo}</code></td><td>Troca de método ou novo Pix após expirar. Reaproveita cobrança existente do mesmo método</td><td><code>portal-pagar</code></td></tr>
+<tr><td><code>loja-pedido-status</code></td><td>GET <code>?token=&amp;force=</code></td><td>Status e dados mínimos para a confirmação. Com <code>force</code>, consulta o Asaas e, se pago, processa igual ao webhook</td><td>—</td></tr>
+<tr><td><code>loja-escolher-turma</code></td><td>POST <code>{token, aula_ids}</code></td><td>Só para pedido <code>turma_pendente</code>. Valida que as aulas são da conta e turmas. Chama <code>loja_vincular_turmas</code>. Devolve lista atualizada em caso de <code>lotado</code></td><td><code>agendamento-agendar</code> (pertencimento), lógica de <code>AgendaFixoModal</code></td></tr>
+<tr><td><code>asaas-webhook</code> <span class="tag t-fix">alterar</span></td><td>evento Asaas</td><td>Ramo <code>pedido_id</code> da seção 4. Correções da seção 10</td><td>já tem envio de WhatsApp</td></tr>
+<tr><td>pg_cron <code>loja-expirar-pedidos</code></td><td>diário</td><td>Chama <code>loja_expirar_pedidos()</code></td><td>padrão de <code>sql-criar-cobranca-saas-automatica.sql</code></td></tr>
+</table></div>
+
+<h2 id="s8">8. Telas e arquivos</h2>
+<div class="tw"><table>
+<tr><th>Arquivo</th><th>Estado</th><th>O que entra</th></tr>
+<tr><td><code>sql-criar-loja.sql</code></td><td><span class="tag t-new">novo</span></td><td>Seção 6 inteira</td></tr>
+<tr><td><code>supabase/functions/loja-*</code> (5 funções)</td><td><span class="tag t-new">novo</span></td><td>Seção 7</td></tr>
+<tr><td><code>supabase/functions/asaas-webhook/index.ts</code></td><td><span class="tag t-fix">alterar</span></td><td>Ramo de pedido, idempotência, ciclo, forma de pagamento do cartão</td></tr>
+<tr><td><code>src/pages/Loja.js</code> (+ <code>LojaItem</code>, <code>LojaCheckout</code>, <code>LojaPedido</code>)</td><td><span class="tag t-new">novo</span></td><td>Vitrine, item, checkout em etapas, confirmação; exporta <code>LojaView</code></td></tr>
+<tr><td><code>src/components/LojaEditor.js</code></td><td><span class="tag t-new">novo</span></td><td>Checklist, wizard, Produtos, Pedidos, Configurar, preview</td></tr>
+<tr><td><code>src/utils/upload.js</code></td><td><span class="tag t-new">novo</span></td><td><code>uploadPublico</code></td></tr>
+<tr><td><code>src/hooks/useVendaNotifications.js</code></td><td><span class="tag t-new">novo</span></td><td>Toast de nova venda</td></tr>
+<tr><td><code>src/App.js</code></td><td><span class="tag t-ex">alterar</span></td><td>Três rotas <code>/loja/...</code> antes do catch-all</td></tr>
+<tr><td><code>src/utils/slugs.js</code></td><td><span class="tag t-ex">alterar</span></td><td><code>loja</code>, <code>vendas</code> reservados</td></tr>
+<tr><td><code>src/configTabs.js</code>, <code>src/Configuracao.js</code></td><td><span class="tag t-ex">alterar</span></td><td>Aba Loja no grupo Marketing, lazy import</td></tr>
+<tr><td><code>src/hooks/useUserPlan.js</code>, <code>src/contexts/UserContext.js</code></td><td><span class="tag t-ex">alterar</span></td><td><code>hasAddon('vendas')</code>; <code>loja_ativa</code> em <code>CAMPOS_CONTA</code></td></tr>
+<tr><td><code>src/pages/BioAcademia.js</code>, <code>src/components/BioEditor.js</code>, <code>src/data/bioTemas.js</code></td><td><span class="tag t-ex">alterar</span></td><td>Botão e toggle "Loja"; <code>mostrar.loja</code> no padrão</td></tr>
+<tr><td><code>src/Clientes.js</code></td><td><span class="tag t-ex">alterar</span></td><td>"Link da loja" e "Enviar produto"</td></tr>
+<tr><td><code>src/WhatsAppConexao.js</code></td><td><span class="tag t-ex">alterar</span></td><td><code>{{linkLoja}}</code> e botão de produto nas campanhas</td></tr>
+<tr><td><code>src/Home.js</code>, <code>src/components/NotificacoesDropdown.js</code>, <code>src/Dashboard.js</code></td><td><span class="tag t-ex">alterar</span></td><td>Card de vendas, tipo "venda" no sino, hook montado</td></tr>
+<tr><td><code>src/data/templatesPadrao.js</code></td><td><span class="tag t-ex">alterar</span></td><td>Template <code>loja_pedido_confirmado</code> e título</td></tr>
+<tr><td><code>src/planosMensalli.js</code></td><td><span class="tag t-ex">alterar</span></td><td>"Loja online (add-on)" nas features de Pro e Premium</td></tr>
+<tr><td><code>sql-novidade-loja.sql</code></td><td><span class="tag t-new">novo</span></td><td>Anúncio no app, público "pagantes", CTA para <code>/app/marketing?aba=loja</code></td></tr>
+</table></div>
+
+<h2 id="s9">9. Casos de borda</h2>
+<ul>
+<li><strong>Aluno ativo compra um plano.</strong> Não cria segunda assinatura. Troca <code>plano_id</code> e só gera mensalidade se não houver pendente no ciclo (regra já usada na ativação em <code>Clientes.js</code>). A ficha avisa: "você já é aluno; esta compra renova ou troca seu plano".</li>
+<li><strong>Aluno inadimplente.</strong> Produto: pode comprar. Plano: pode comprar, e a mensalidade vencida continua em aberto; o gestor decide.</li>
+<li><strong>Irmãos no telefone do responsável.</strong> A ficha separa "quem compra" de "quem é o aluno". Dedupe por telefone mais nome, como no autocadastro.</li>
+<li><strong>Pix expirou.</strong> Pedido <code>expirado</code>; o link oferece "gerar novo Pix" sobre o mesmo pedido.</li>
+<li><strong>Cartão confirma duas vezes.</strong> Idempotência por status do pedido.</li>
+<li><strong>Turma lotou no meio.</strong> Erro <code>lotado</code>, lista atualizada, pedido fica <code>turma_pendente</code> até escolher.</li>
+<li><strong>Gestor desliga a loja, cancela o add-on ou perde o Asaas com pedidos abertos.</strong> Vitrine mostra "indisponível"; pedidos abertos expiram normalmente; pedidos pagos não mudam.</li>
+<li><strong>Admin vendo a conta de um cliente.</strong> Editor em modo leitura e upload bloqueado (a policy de storage usa <code>auth.uid()</code>).</li>
+<li><strong>Preview do link no WhatsApp.</strong> Mostra o Open Graph genérico do Mensalli, porque o app é uma SPA. Aceito no MVP; a prévia por academia vem junto com o subdomínio.</li>
+<li><strong>Estorno de plano depois de usar aulas.</strong> Mensalidade volta a pendente e a turma é desvinculada; o gestor recebe aviso para decidir o resto.</li>
+</ul>
+
+<h2 id="s10">10. Bugs no caminho</h2>
+<p>Encontrados no mapeamento e tocados diretamente pelo fluxo. Entram na implementação.</p>
+<ol>
+<li><strong><code>asaas-webhook</code> gera a próxima mensalidade sempre em +1 mês</strong>, ignorando <code>planos.ciclo_cobranca</code>, com teste de duplicata frágil. Portar <code>calcularProximoVencimento</code> de <code>Financeiro.js</code> para Deno e usar <code>limit(1)</code>.</li>
+<li><strong>Cartão gravado como "Boleto"</strong> na mensalidade. Mapear <code>CREDIT_CARD</code> para "Cartão de crédito".</li>
+<li><strong>Consulta de planos pede a coluna <code>ciclo</code></strong>, que não existe (é <code>ciclo_cobranca</code>), em <code>landing-dados</code> e em <code>Configuracao.js</code>. Hoje a lista de planos do site vem vazia.</li>
+<li><strong>Vaga pública ignora alunos fixos</strong> em <code>agendamento-agendar</code>. A função <code>loja_vagas_turma</code> vira a fonte única e as duas funções de agendamento passam a usá-la.</li>
+<li><strong><code>SLUGS_RESERVADOS</code></strong> não tem <code>loja</code> nem <code>vendas</code>.</li>
+</ol>
+<p class="sm">Registrados, fora deste projeto: validação do cabeçalho do webhook Asaas; policies anônimas abertas em <code>links_pagamento</code> e <code>contratos_enviados</code>; lógica de ativação de aluno duplicada em três lugares do front.</p>
+
+<h2 id="s11">11. Fases e esforço</h2>
+<div class="tw"><table>
+<tr><th>Fase</th><th>Entrega</th><th>Dias</th><th>Pronto quando</th></tr>
+<tr><td><strong>1. Base</strong></td><td>SQL, util de upload, <code>loja-dados</code>, <code>loja-comprar</code>, <code>loja-pedido-status</code>, ramo do webhook para plano e produto, vitrine, item, checkout Pix e cartão, confirmação, <code>LojaEditor</code> com checklist, wizard, Produtos, Pedidos e Configurar, gate, botão na bio</td><td>12</td><td>Uma conta de teste vende um plano e um produto por Pix no sandbox, e os dois aparecem no Financeiro</td></tr>
+<tr><td><strong>2. Turma e matrícula completa</strong></td><td><code>loja-escolher-turma</code> e função atômica, etapa de turma, próxima mensalidade por ciclo, contrato pós-compra, templates de WhatsApp da loja, avisos ao gestor, card na Home</td><td>5</td><td>Aluno novo compra, escolhe turma, recebe WhatsApp com portal e aparece na Agenda</td></tr>
+<tr><td colspan="2"><strong>MVP (fases 1 e 2)</strong></td><td><strong>17</strong></td><td>Três contas reais com loja no ar e uma venda cada</td></tr>
+<tr><td><strong>3. Vender melhor</strong></td><td>Eventos com vagas e inscrições, variações e estoque, retirada presencial, link pré-preenchido pela ficha, placeholder em campanhas, exportar pedidos, Reprocessar, expiração por cron</td><td>5</td><td>Uma escolinha vende campeonato e uniforme pela loja</td></tr>
+</table></div>
+<p><strong>Ordem dentro de cada fase:</strong> SQL no SQL Editor, deploy das edge functions, front, novidade no app. Build com <code>CI=false npx react-scripts build</code>.</p>
+
+<h2 id="s12">12. Verificação de ponta a ponta</h2>
+<ol>
+<li><strong>Sandbox Asaas.</strong> Conta de teste com <code>asaas_ambiente = 'sandbox'</code>. Comprar plano por Pix e pagar no sandbox. Conferir: status do pedido, <code>devedores.assinatura_ativa</code> e <code>plano_id</code>, duas mensalidades (paga hoje e próxima no ciclo certo), <code>boletos.pedido_id</code>, duas linhas em <code>logs_mensagens</code> (aluno e gestor).</li>
+<li><strong>Webhook duplicado.</strong> Reenviar o mesmo payload com <code>curl</code> duas vezes. A segunda não cria nada.</li>
+<li><strong>Cartão.</strong> Pagar com cartão de teste. Forma de pagamento correta e um único processamento apesar dos dois eventos.</li>
+<li><strong>Turma.</strong> Duas abas escolhendo a última vaga ao mesmo tempo. Uma recebe <code>lotado</code>; <code>aulas_fixos</code> com uma linha só.</li>
+<li><strong>Estoque.</strong> Produto com estoque 1: segunda compra recebe <code>esgotado</code>. Estorno no sandbox devolve o estoque e cancela a cobrança avulsa.</li>
+<li><strong>Gate.</strong> Conta Starter, Pro sem add-on, conta sem Asaas, loja desligada: <code>loja-dados</code> responde 403 com motivo e o editor mostra o checklist certo.</li>
+<li><strong>Dedupe.</strong> Comprar com telefone de aluno existente: mesma ficha. Menor sem responsável: erro.</li>
+<li><strong>Financeiro e Alunos.</strong> Pedido pago aparece na aba Vendas com origem "loja" ou como mensalidade paga. Aluno novo aparece ativo em Alunos e com turma na Agenda.</li>
+<li><strong>Rotas.</strong> <code>/loja/bio</code> e <code>/loja/&lt;slug-inexistente&gt;</code> não caem na bio; build sem erro.</li>
+</ol>
+
+<h2 id="s13">13. Fora do escopo (V2)</h2>
+<ul>
+<li><span class="tag t-v2">V2</span> Subdomínio <code>&lt;slug&gt;.mensalli.com.br</code> com prévia de link por academia (DNS já está na Vercel; detalhes na seção 2.4 de <code>plano-loja-e-addons-mensalli.html</code>).</li>
+<li><span class="tag t-v2">V2</span> Cupom de desconto, carrinho com vários itens, cobrança do add-on no checkout do Mensalli (seção 3.5 do mesmo documento).</li>
+<li><span class="tag t-v2">V2</span> Conta de recebimento criada pelo Mensalli (subconta Asaas) com split.</li>
+<li><span class="tag t-v2">V2</span> Unificar <code>agendamento_slug</code> e <code>landing_slug</code> num slug só.</li>
+</ul>
+</div></body></html>

@@ -113,12 +113,28 @@ serve(async (req) => {
       )
     }
 
+    // 1b. Loja (Mensalli Vendas): consulta separada de propósito. Se o SQL da
+    // loja ainda nao rodou, a coluna nao existe e isso nao pode derrubar a bio.
+    let lojaAtiva = false
+    let lojaTitulo: string | null = null
+    try {
+      const { data: loja } = await supabase
+        .from('usuarios')
+        .select('loja_ativa, loja_config')
+        .eq('id', empresa.id)
+        .maybeSingle()
+      lojaAtiva = !!loja?.loja_ativa
+      lojaTitulo = loja?.loja_config?.titulo || null
+    } catch (_) { /* coluna ausente: loja desligada */ }
+
     // 2. Planos (so se mostrar_planos)
+    // A coluna e `ciclo_cobranca`; `ciclo` nao existe e a query falhava em silencio,
+    // deixando a secao de planos do site sempre vazia.
     let planos: any[] = []
     if (empresa.landing_mostrar_planos) {
       const { data } = await supabase
         .from('planos')
-        .select('nome, valor, ciclo, descricao')
+        .select('nome, valor, ciclo:ciclo_cobranca, descricao')
         .eq('user_id', empresa.id)
         .eq('ativo', true)
         .order('valor', { ascending: true })
@@ -213,6 +229,9 @@ serve(async (req) => {
           agendamento_slug: empresa.agendamento_slug,
           // Link de agendamento e exclusivo do Premium: no Pro o botao nao aparece na bio nem no site
           agendamento_ativo: !!empresa.agendamento_ativo && empresa.plano === 'premium',
+          // Loja publica (/loja/:slug) — botao "Loja" na bio quando ligado em bio_config.mostrar.loja
+          loja_ativa: lojaAtiva,
+          loja_titulo: lojaTitulo,
           hero_titulo: empresa.landing_hero_titulo,
           hero_subtitulo: empresa.landing_hero_subtitulo,
           cta_texto: empresa.landing_cta_texto,

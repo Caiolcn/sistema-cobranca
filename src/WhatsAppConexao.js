@@ -123,13 +123,18 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
 
   useEffect(() => { if (contextUserId) buscarDestinatarios() }, [segmento, filtroPlanoId, contextUserId])
 
-  // Buscar nome da empresa
+  // Buscar nome da empresa (e o link da Loja, para o placeholder {{linkLoja}})
   const [nomeEmpresa, setNomeEmpresa] = useState('')
+  const [linkLoja, setLinkLoja] = useState('')
   useEffect(() => {
     if (!contextUserId) return
-    supabase.from('usuarios').select('nome_empresa').eq('id', contextUserId).single().then(({ data }) => {
+    supabase.from('usuarios').select('nome_empresa, agendamento_slug').eq('id', contextUserId).single().then(({ data }) => {
       if (data) setNomeEmpresa(data.nome_empresa || '')
     })
+    // consulta separada: se o SQL da loja não rodou, a coluna não existe e isso não pode quebrar as campanhas
+    supabase.from('usuarios').select('agendamento_slug, loja_ativa').eq('id', contextUserId).maybeSingle().then(({ data }) => {
+      if (data?.loja_ativa && data?.agendamento_slug) setLinkLoja(`${window.location.origin}/loja/${data.agendamento_slug}?o=campanha`)
+    }).catch(() => {})
   }, [contextUserId])
 
   // Enviar campanha
@@ -227,6 +232,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
         .replace(/\{\{nomeAluno\}\}/g, nomeContatoDest)
         .replace(/\{\{nomeResponsavel\}\}/g, primeiroNomeRespDest)
         .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa)
+        .replace(/\{\{linkLoja\}\}/g, linkLoja)
 
       try {
         const resultado = imagemUrl
@@ -386,7 +392,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
               placeholder="Escreva sua mensagem aqui..."
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-              {['{{nomeAluno}}', '{{nomeAlunoReal}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}'].map(v => (
+              {['{{nomeAluno}}', '{{nomeAlunoReal}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}', ...(linkLoja ? ['{{linkLoja}}'] : [])].map(v => (
                 <button key={v} onClick={() => setMensagem(prev => prev + v)} style={{
                   padding: '3px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#eef2ff',
                   color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: 4, cursor: 'pointer'
