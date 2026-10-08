@@ -17,6 +17,8 @@ export const SLUGS_RESERVADOS = new Set([
   'escolinha', 'escolinhas', 'futebol',
   // Demais rotas fixas do App.js
   'cadastro', 'contrato', 'links', 'preview-recibo', 'ver-como', 'bio',
+  // Loja pública (Mensalli Vendas): /loja/:slug
+  'loja', 'vendas', 'pedido',
   'sistema-para-academia-de-luta', 'sistema-para-escola-natacao',
   'sistema-para-escolinhas', 'sistema-para-estudio-pilates'
 ])

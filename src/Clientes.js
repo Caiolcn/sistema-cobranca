@@ -11,6 +11,8 @@ import TagFormModal from './components/TagFormModal'
 import { corTextoContrastante } from './utils/tagColors'
 import CsvImportModal from './components/CsvImportModal'
 import LinkPortalConta from './components/LinkPortalConta'
+import LinkLojaConta from './components/LinkLojaConta'
+import EnviarProdutoModal from './components/EnviarProdutoModal'
 import AnamneseSection from './components/AnamneseSection'
 import ContratosSection from './ContratosSection'
 import { validarTelefone, validarCPF } from './utils/validators'
@@ -134,6 +136,9 @@ export default function Clientes() {
   const [mostrarModalCriarPlano, setMostrarModalCriarPlano] = useState(false)
   const [mostrarImportModal, setMostrarImportModal] = useState(false)
   const [mostrarLinkPortal, setMostrarLinkPortal] = useState(false)
+  // Loja (Mensalli Vendas): link geral da loja e envio de um item pela ficha
+  const [mostrarLinkLoja, setMostrarLinkLoja] = useState(false)
+  const [mostrarEnviarProduto, setMostrarEnviarProduto] = useState(false)
   const [novoPlanoNome, setNovoPlanoNome] = useState('')
   const [novoPlanoValor, setNovoPlanoValor] = useState('')
   const [novoPlanoCiclo, setNovoPlanoCiclo] = useState('mensal')
@@ -1877,6 +1882,9 @@ Equipe ${nomeEmpresa}`
                 <Dropdown.Item onClick={() => setMostrarLinkPortal(true)}>
                   Link do portal
                 </Dropdown.Item>
+                <Dropdown.Item onClick={() => setMostrarLinkLoja(true)}>
+                  Link da loja
+                </Dropdown.Item>
               </Dropdown.Group>
               <Dropdown.Divider />
               <Dropdown.Group label="Planilha">
@@ -2740,6 +2748,29 @@ Equipe ${nomeEmpresa}`
                       >
                         <Icon icon="mdi:clipboard-account-outline" width="14" />
                         Pedir ficha
+                      </button>
+                      <button
+                        onClick={() => setMostrarEnviarProduto(true)}
+                        title="Mandar o link de um item da loja com o cadastro já preenchido"
+                        style={{
+                          background: '#f5f3ff',
+                          border: '1px solid #e9d5ff',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          padding: '3px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#7c3aed',
+                          fontWeight: '500',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ede9fe'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f3ff'}
+                      >
+                        <Icon icon="mdi:storefront-outline" width="14" />
+                        Enviar produto
                       </button>
                     </>)}
                   </div>
@@ -4811,6 +4842,17 @@ Equipe ${nomeEmpresa}`
         isOpen={mostrarLinkPortal}
         onClose={() => setMostrarLinkPortal(false)}
         userId={userId}
+      />
+      <LinkLojaConta
+        isOpen={mostrarLinkLoja}
+        onClose={() => setMostrarLinkLoja(false)}
+        userId={userId}
+      />
+      <EnviarProdutoModal
+        isOpen={mostrarEnviarProduto}
+        onClose={() => setMostrarEnviarProduto(false)}
+        userId={userId}
+        cliente={clienteSelecionado}
       />
 
       {/* Modal de Importação CSV */}

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loja Mensalli e Add-ons</title>
+<style>
+:root{--bg:#f7f8fa;--surface:#fff;--surface2:#f1f3f7;--ink:#0f1720;--ink2:#3d4a58;--ink3:#6b7885;--line:#e2e6ec;--accent:#2e7d32;--accent-soft:#e8f5e9;--amber:#9a6412;--amber-soft:#fdf3e2;--red:#b4342c;--red-soft:#fbeceb;--blue:#1f5c9e;--blue-soft:#e9f1fa}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1117;--surface:#151b23;--surface2:#1c242e;--ink:#e8edf3;--ink2:#b3bfcc;--ink3:#8695a5;--line:#252d38;--accent:#4caf50;--accent-soft:#12301f;--amber:#e3ac52;--amber-soft:#33260f;--red:#f08a80;--red-soft:#361a19;--blue:#77b1ec;--blue-soft:#14263a}}
+:root[data-theme="dark"]{--bg:#0d1117;--surface:#151b23;--surface2:#1c242e;--ink:#e8edf3;--ink2:#b3bfcc;--ink3:#8695a5;--line:#252d38;--accent:#4caf50;--accent-soft:#12301f;--amber:#e3ac52;--amber-soft:#33260f;--red:#f08a80;--red-soft:#361a19;--blue:#77b1ec;--blue-soft:#14263a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.65 Inter,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 16px 80px}
+.wrap{max-width:1000px;margin:0 auto}
+header{padding:48px 0 28px;border-bottom:1px solid var(--line);margin-bottom:32px}
+.kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--accent);margin:0 0 10px}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.1;margin:0 0 10px;letter-spacing:-.8px}
+.sub{color:var(--ink3);margin:0;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:24px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.stat .l{font-size:11.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:2px}
+h2{font-size:23px;margin:44px 0 6px;letter-spacing:-.5px;padding-top:12px;border-top:3px solid var(--ink);display:inline-block}
+h3{font-size:17px;margin:26px 0 10px}
+p{color:var(--ink2);margin:0 0 12px}
+strong{color:var(--ink)}
+ul,ol{color:var(--ink2);margin:0 0 14px 20px}li{margin-bottom:5px}
+.call{border:1px solid;border-radius:10px;padding:14px 16px;margin:16px 0;font-size:14.5px}
+.call .t{font-weight:750;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.g{background:var(--accent-soft);border-color:var(--accent)}.g .t{color:var(--accent)}
+.a{background:var(--amber-soft);border-color:var(--amber)}.a .t{color:var(--amber)}
+.r{background:var(--red-soft);border-color:var(--red)}.r .t{color:var(--red)}
+.b{background:var(--blue-soft);border-color:var(--blue)}.b .t{color:var(--blue)}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--surface2);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid;white-space:nowrap}
+.t-ex{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.t-new{color:var(--blue);border-color:var(--blue);background:var(--blue-soft)}
+.t-wait{color:var(--amber);border-color:var(--amber);background:var(--amber-soft)}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.86em;background:var(--surface2);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:14px 0}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.step b{display:block;font-size:12px;color:var(--accent);margin-bottom:4px}
+.step span{font-size:13.5px;color:var(--ink2)}
+</style>
+</head>
+<body><div class="wrap">
+<header>
+<p class="kicker">Planejamento de produto · 07/10/2026</p>
+<h1>Loja do Mensalli e add-ons para subir o ticket</h1>
+<p class="sub">Página de vendas pública + pré-cadastro + pagamento caindo no Financeiro. E o mapa do que mais dá pra vender fora da mensalidade.</p>
+<div class="stats">
+<div class="stat"><div class="v">36</div><div class="l">Contas pagantes</div></div>
+<div class="stat"><div class="v">8</div><div class="l">Com Asaas configurado</div></div>
+<div class="stat"><div class="v">34</div><div class="l">Com planos cadastrados</div></div>
+<div class="stat"><div class="v">R$ 54,7k</div><div class="l">Vendas avulsas (90 dias)</div></div>
+<div class="stat"><div class="v">87</div><div class="l">Pré-cadastros via link (90 d)</div></div>
+<div class="stat"><div class="v">R$ 200k</div><div class="l">Mensalidades geridas / mês</div></div>
+</div>
+</header>
+
+<h2>1. Veredito</h2>
+<p><strong>Vale fazer, e vale fazer como primeiro produto fora da assinatura.</strong> Três motivos vindos do banco e do código, não de opinião:</p>
+<ul>
+<li><strong>A base já vende coisas além da mensalidade.</strong> Em 90 dias passaram R$ 54,7 mil em cobranças avulsas (319 itens). Paineiras Soccer Academy sozinha registrou R$ 40 mil em 6 meses: uniforme, campeonato interno, material. Hoje isso é lançado na mão, depois de o pai pagar por Pix no WhatsApp. A loja só formaliza um fluxo que já existe.</li>
+<li><strong>Cerca de 70% das peças já estão prontas.</strong> Checkout público com Pix, cartão e boleto (portal do cliente), baixa automática por webhook com WhatsApp de confirmação, pré-cadastro que cria aluno pendente e cai na fila de aprovação, bio com botões configuráveis, tabela de planos preenchida em 34 das 36 contas. O que falta é a vitrine, o pedido e a costura.</li>
+<li><strong>É a porta para monetizar o volume que passa pelo sistema.</strong> O Mensalli gere R$ 200 mil por mês em mensalidades e fatura menos de 1% disso. Venda pela loja é pagamento online obrigatório. Pagamento online é Asaas. Asaas tem split de pagamento nativo. A loja é o jeito natural de um dia cobrar um percentual pequeno por transação, que é onde o ticket realmente cresce.</li>
+</ul>
+<div class="call a"><div class="t">O dado que muda o plano</div><p>Só <strong>8 das 36 contas pagantes têm Asaas configurado</strong>. Sem Asaas, a loja vira "manda o Pix e o comprovante no WhatsApp", que é o que eles já fazem. A fase 0 não é código: é levar a base para o recebimento online. Isso tem duas saídas, descritas na seção 4.</p></div>
+<div class="call b"><div class="t">Sobre o Wiki4Fit</div><p>A cliente usa o Wiki4Fit, que entrega exatamente isso: página de vendas, planos ilimitados em assinatura ou pacote, cobrança automática e bloqueio de quem está pendente. Ela quer linkar ao Mensalli. Se o Mensalli entregar a loja, o argumento comercial não é "mais uma função", é <strong>"cancela o Wiki4Fit"</strong>. O add-on paga a si mesmo.</p></div>
+
+<h2>2. O produto</h2>
+<p>Nome de trabalho: <strong>Loja</strong> (dentro de Marketing, ao lado de Link na bio e Agendamento). Por fora é uma vitrine. Por dentro é um checkout público que termina em três lugares já existentes: aluno cadastrado, cobrança no Financeiro, mensagem no WhatsApp.</p>
+
+<h3>2.1 Tipos de item à venda</h3>
+<div class="tw"><table>
+<tr><th>Tipo</th><th>Exemplo</th><th>O que acontece quando paga</th><th>Base já existente</th></tr>
+<tr><td><strong>Plano recorrente</strong> (matrícula online)</td><td>"Mensal 3x semana R$ 150"</td><td>Aluno criado ou ativado com <code>plano_id</code>, assinatura ativa, primeira mensalidade paga, próxima gerada. Opcional: dispara contrato digital.</td><td>tabela <code>planos</code>, fluxo de aprovação, webhook que já gera a próxima mensalidade</td></tr>
+<tr><td><strong>Pacote</strong></td><td>"10 aulas", "Trimestral à vista"</td><td>Aluno criado, cobrança única paga, validade opcional</td><td>cobranças avulsas + ciclo trimestral</td></tr>
+<tr><td><strong>Produto avulso</strong></td><td>Uniforme (tamanho), camisa do campeonato, suplemento</td><td>Cobrança avulsa paga, categoria preenchida, estoque abatido (V2)</td><td>categorias de cobranças avulsas</td></tr>
+<tr><td><strong>Evento / inscrição</strong></td><td>Campeonato interno, festival, colônia de férias</td><td>Cobrança avulsa paga + lista de inscritos com vagas e data</td><td>Paineiras e GR Esperança já vendem isso como "avulso"</td></tr>
+<tr><td><strong>Aula experimental</strong></td><td>Grátis ou paga</td><td>Encaminha ao link de agendamento já existente</td><td>agendamento online</td></tr>
+</table></div>
+
+<h3>2.2 Fluxo do comprador (mobile first, público)</h3>
+<div class="flow">
+<div class="step"><b>1. Vitrine</b><span><code>/loja/:slug</code> com logo, cores da bio, itens em cards. Chegou pela bio ou pelo link da campanha.</span></div>
+<div class="step"><b>2. Item</b><span>Foto, descrição, preço, variação (tamanho), botão comprar.</span></div>
+<div class="step"><b>3. Pré-cadastro</b><span>Nome, WhatsApp, CPF. Se escolinha: nome do aluno, nascimento, responsável. Campos extras configuráveis por item.</span></div>
+<div class="step"><b>4. Pagamento</b><span>Pix com QR na tela (já existe) ou cartão via checkout Asaas. Boleto se o gestor liberou.</span></div>
+<div class="step"><b>5. Confirmação</b><span>Tela "pago" + WhatsApp automático com recibo. Se plano: link do portal do aluno e contrato.</span></div>
+</div>
+<p>Pelo telefone, o sistema reconhece aluno que já existe (a deduplicação por telefone já está no cadastro via agendamento) e só anexa a compra, sem duplicar ficha.</p>
+
+<h3>2.3 Lado do gestor</h3>
+<ul>
+<li><strong>Marketing › Loja</strong>: três abas. <em>Produtos</em> (criar, foto, preço, tipo, ordem, ativar), <em>Pedidos</em> (lista com status pendente/pago/cancelado, filtro, exportar, botão "reprocessar"), <em>Configurar</em> (ligar loja, aviso se Asaas não estiver conectado, campos do pré-cadastro).</li>
+<li><strong>Wizard de primeiro produto</strong>: ao ligar a loja, importa os planos já cadastrados como itens com um clique. Em 34 das 36 contas isso significa loja populada em 30 segundos.</li>
+<li><strong>Botão na bio</strong>: "Loja" ou "Matricule-se" como opção em <code>bio_config.mostrar</code>, igual ao botão de agendar.</li>
+<li><strong>Na ficha do aluno</strong>: "Enviar link de produto" gera link já com os dados preenchidos (vender uniforme para quem já é aluno).</li>
+<li><strong>Em Campanhas</strong>: inserir link de produto na mensagem em massa ("inscrições abertas para o campeonato").</li>
+<li><strong>Financeiro</strong>: pedidos pagos aparecem como mensalidade ou cobrança avulsa com <code>origem = 'loja'</code>. Nada de aba paralela de dinheiro.</li>
+</ul>
+
+<h3>2.4 Subdomínio por academia: <code>guigo.mensalli.com.br</code></h3>
+<p>Viável e barato. O DNS de <code>mensalli.com.br</code> já está nos nameservers da Vercel (ns1/ns2.vercel-dns.com), que é o pré-requisito para domínio coringa com certificado automático. Passos:</p>
+<ul>
+<li><strong>Vercel</strong>: adicionar <code>*.mensalli.com.br</code> nos domínios do projeto. SSL coringa sai sozinho. Reservar <code>app</code>, <code>www</code>, <code>api</code>, <code>admin</code>, <code>mail</code>, <code>status</code>.</li>
+<li><strong>App</strong>: na inicialização, ler o host. Se for <code>&lt;slug&gt;.mensalli.com.br</code> e não reservado, entrar em "modo academia": <code>/</code> abre a loja (ou a bio, configurável), <code>/agendar</code>, <code>/cadastro</code>, <code>/portal</code>, <code>/loja</code> funcionam sem o slug no caminho; qualquer rota do painel redireciona para <code>app.mensalli.com.br</code>. Rotas antigas <code>mensalli.com.br/:slug</code> continuam valendo. Cerca de 1,5 dia.</li>
+<li><strong>Slug único</strong>: hoje existem <code>agendamento_slug</code> e <code>landing_slug</code>. Unificar num só slug público, validado (minúsculas, hífen, 3 a 30 caracteres, lista de reservados) e travado depois do primeiro uso, porque trocar o slug mata links já impressos em uniforme e banner.</li>
+<li><strong>Preview no WhatsApp</strong>: SPA entrega a mesma meta tag para todos. Para o link mostrar logo e nome da academia, servir o <code>index.html</code> da raiz do subdomínio por uma função serverless da Vercel (pasta <code>api/</code>, que ainda não existe no projeto apesar do rewrite em <code>vercel.json</code>) que injeta as tags Open Graph da conta. Mais 1 dia, e é o que faz o link parecer "da academia" quando é compartilhado.</li>
+<li><strong>Depois</strong>: domínio próprio (<code>matriculas.guigoacademia.com.br</code>) via API de domínios da Vercel, que é o item 10 do mapa de add-ons.</li>
+</ul>
+<p>Efeito colateral bom: todos os links públicos da conta (bio, agendamento, cadastro, portal, contrato, pagamento, loja) passam a viver debaixo do mesmo subdomínio, o que simplifica a comunicação com o aluno e dá ar de produto próprio sem custo adicional de hospedagem.</p>
+
+<h2>3. Arquitetura e complexidade</h2>
+<h3>3.1 Banco</h3>
+<ul>
+<li><code>loja_produtos</code>: user_id, tipo, nome, descricao, valor, imagem_url, plano_id (ref planos), categoria_avulsa, variacoes jsonb, estoque, vagas, data_evento, campos_extras jsonb, ativo, ordem.</li>
+<li><code>loja_pedidos</code>: user_id, produto_id, devedor_id, nome, telefone, cpf, variacao, respostas jsonb, valor, metodo, status, asaas_payment_id, mensalidade_id ou cobranca_avulsa_id, token, pago_em.</li>
+<li><code>usuarios.loja_ativo</code>; o slug reaproveita <code>agendamento_slug</code> (mesma identidade pública da bio e do cadastro).</li>
+<li>RLS no padrão do projeto: dono lê e escreve os seus; leitura anônima só via edge function com service role, nunca policy <code>anon USING (true)</code> como ficou em <code>links_pagamento</code>.</li>
+</ul>
+<h3>3.2 Edge functions</h3>
+<ul>
+<li><code>loja-dados</code> (público): vitrine e item pelo slug. Espelha <code>agendamento-dados</code>.</li>
+<li><code>loja-comprar</code> (público): valida item, cria ou reaproveita devedor (lógica de <code>agendamento-cadastrar</code>), cria pedido, cria cobrança no Asaas do gestor com <code>externalReference = pedido_id</code>, devolve QR ou url do checkout. Reaproveita o miolo de <code>portal-pagar</code> (ensureWebhook, QR Pix, validação de CPF, formas liberadas).</li>
+<li><code>asaas-webhook</code>: hoje busca em <code>boletos</code> pelo id do Asaas. Ganha um ramo: se o id pertence a <code>loja_pedidos</code>, marca pago, materializa a mensalidade ou cobrança avulsa, ativa o aluno se for plano, manda o WhatsApp de confirmação (função já existe no arquivo) e avisa o gestor.</li>
+</ul>
+<h3>3.3 Esforço estimado (dev solo, dias úteis)</h3>
+<div class="tw"><table>
+<tr><th>Bloco</th><th>Dias</th><th>Nota</th></tr>
+<tr><td>Banco, RLS, migração</td><td>1</td><td>Aditivo, seguro em produção</td></tr>
+<tr><td>loja-dados + loja-comprar</td><td>3</td><td>80% copiado de portal-pagar e agendamento-cadastrar</td></tr>
+<tr><td>Ramo do webhook + ativação do aluno + WhatsApp</td><td>2</td><td>Idempotência via <code>asaas_webhook_logs</code>, que já existe</td></tr>
+<tr><td>Páginas públicas (vitrine, item, checkout, confirmação)</td><td>4</td><td>Herdam tema e fonte da bio</td></tr>
+<tr><td>Painel do gestor (produtos, pedidos, config, wizard)</td><td>4</td><td>Design system já cobre tabela, modal, upload</td></tr>
+<tr><td>Botão na bio, link na ficha, gate de plano</td><td>1</td><td><code>FeatureLocked</code> e <code>useUserPlan</code> prontos</td></tr>
+<tr><td>Testes em sandbox Asaas, CPF, duplicidade, cartão</td><td>2</td><td>Cartão passa pelo checkout hospedado do Asaas</td></tr>
+<tr><td><strong>MVP</strong></td><td><strong>17</strong></td><td>Cerca de 3,5 semanas</td></tr>
+<tr><td>V2: cupom, estoque e variações, eventos com vagas, link pré-preenchido, relatório de vendas</td><td>+8</td><td></td></tr>
+<tr><td>V3: subconta Asaas criada pelo Mensalli + split, recorrência no cartão, carrinho</td><td>+12</td><td>Depende da decisão da seção 4</td></tr>
+</table></div>
+<h3>3.4 Riscos e como tratar</h3>
+<ul>
+<li><strong>Asaas obrigatório.</strong> Sem conta, a loja não liga; o painel mostra o passo a passo de conectar. Fallback "Pix manual com comprovante" existe tecnicamente (<code>links_pagamento</code>), mas não recomendo: tira a graça da baixa automática e cria suporte.</li>
+<li><strong>CPF obrigatório no Asaas.</strong> Formulário já pede. Para menor de idade, o CPF é do responsável (campo <code>responsavel_legal</code> já existe).</li>
+<li><strong>Webhook duplicado ou perdido.</strong> Log já grava tudo; botão "reprocessar" no pedido consulta o Asaas e corrige o status.</li>
+<li><strong>Estorno e chargeback.</strong> Manual na V1: pedido vira "estornado" via evento <code>PAYMENT_REFUNDED</code>, que o webhook já assina, e a cobrança no Financeiro é cancelada.</li>
+<li><strong>LGPD.</strong> Dados de menores ficam atrás do responsável; página de privacidade já existe e ganha um parágrafo sobre compras.</li>
+<li><strong>Adoção.</strong> O relatório de adoção mostra Pro e Premium sem ativar o que já têm. Add-on que ninguém liga gera churn do add-on. Regra: a loja nasce ligada pelo wizard com os planos importados e o botão na bio ativo.</li>
+</ul>
+
+<h3>3.5 Como cobrar o add-on sem criar outro plano</h3>
+<p>O plano é um texto único em <code>usuarios.plano</code> que alimenta hierarquia, limites e gate. Um "pro_vendas" contaminaria essa cadeia inteira e dobraria de novo no Premium. Add-on é outra dimensão: o plano diz o que a conta é, o add-on diz o que ela comprou a mais.</p>
+<ul>
+<li><strong>Tabela <code>assinaturas_addons</code></strong>: user_id, addon ("vendas"), preço travado na contratação, início, fim, status. Preço travado permite subir para R$ 99,90 só para contas novas.</li>
+<li><strong>Lista de add-ons em <code>planosMensalli.js</code></strong> (id, nome, preço, plano mínimo) e função que soma plano + add-ons ativos. A view <code>vw_mensalli_cobranca_saas</code> ganha a mesma soma por join; hoje o preço está em 4 lugares (front, view, create-pix-payment, create-subscription) e todos passam a somar.</li>
+<li><strong>Pix e cartão</strong>: as duas edge functions recebem plano + add-ons, calculam o valor e gravam os add-ons no registro da assinatura/pagamento.</li>
+<li><strong>Gate</strong>: <code>useUserPlan</code> ganha <code>hasAddon('vendas')</code>; a tela bloqueada diz "ativar Mensalli Vendas por R$ 69,90" com botão que gera o Pix.</li>
+<li><strong>Meio do ciclo</strong>: ativa na hora, cobra na próxima renovação, sem rateio. Cancelamento fica ativo até o vencimento.</li>
+<li><strong>Admin</strong>: cobrança do SaaS mostra plano e add-ons por conta. Não mexe em <code>controle_planos</code>: limites seguem os do plano.</li>
+<li><strong>Esforço</strong>: cerca de 2 dias, fora da loja.</li>
+</ul>
+<div class="call r"><div class="t">Bug a corrigir antes de lançar</div><p><code>mercadopago-webhook</code> infere o plano pelo valor pago (≥149 Premium, ≥99 Pro). Um Pro pagando R$ 169,80 com o add-on viraria Premium de graça. O registro em <code>assinaturas_mercadopago</code> já guarda o plano escolhido: o webhook deve ler de lá e parar de inferir pelo valor.</p></div>
+
+<h2>4. Pagamento online: a decisão que precede a loja</h2>
+<p>Duas formas de levar os 28 clientes sem Asaas para o recebimento online:</p>
+<div class="tw"><table>
+<tr><th></th><th>A. Cada gestor abre sua conta Asaas (modelo atual)</th><th>B. Mensalli cria subconta Asaas para o gestor (marketplace)</th></tr>
+<tr><td>Como funciona</td><td>Gestor cria conta no Asaas, cola a API key nas Integrações</td><td>Gestor preenche CNPJ/CPF e documentos dentro do Mensalli; a API de subcontas do Asaas devolve chave e <code>walletId</code></td></tr>
+<tr><td>Atrito</td><td>Alto: sair do app, criar conta, achar a chave. Explica os 8 de 36.</td><td>Baixo: tudo dentro do Mensalli, como no Wiki4Fit</td></tr>
+<tr><td>Take rate</td><td>Possível via split, mas o gestor vê a regra na própria conta</td><td>Natural: split vai para a carteira do Mensalli em toda cobrança</td></tr>
+<tr><td>Responsabilidade</td><td>Do gestor</td><td>Mensalli responde pelo KYC junto ao Asaas e pelo suporte de recebimento</td></tr>
+<tr><td>Esforço</td><td>Zero de código; esforço de onboarding humano</td><td>Cerca de 8 dias (fluxo de abertura, documentos, status da conta)</td></tr>
+</table></div>
+<div class="call g"><div class="t">Recomendação</div><p>Lançar a loja no modelo A, com um esforço concentrado de onboarding Asaas nos próximos 30 dias para os 28 que faltam (começando pelos que mais vendem avulso). Construir o modelo B na V3, quando houver volume para justificar o split. Não bloquear a loja esperando o B.</p></div>
+
+<h2>5. Como cobrar a loja</h2>
+<p>Revisado em 07/10 depois de dois benchmarks: a cliente que pediu a funcionalidade paga <strong>R$ 219/mês no Wiki4Fit</strong> só pela página de vendas com planos e cobrança; o Next Fit inclui o site de vendas na mensalidade e ganha na taxa por transação do Next Fit Pay (percentual não publicado, cartão retido 30 dias, Pix na hora). Primeira versão deste documento sugeria R$ 39 e foi descartada: a página não é uma vitrine, é a recepção digital inteira (comprar, cadastrar, agendar).</p>
+<p><strong>Decisão final (07/10): "Mensalli Vendas", add-on de R$ 69,90/mês para Pro e Premium. Um SKU, um preço, sem mexer no Premium agora.</strong> Convergência de dois caminhos: pelos dados da base (ARPU R$ 100, add-on não pode custar mais que a conta) e pelos concorrentes (Pacto, MatPilot a +R$ 99 pelo site, Refugio Academy a R$ 149 por captação e matrículas; Next Fit inclui e ganha na taxa; Wiki4Fit cobra R$ 219 de uma cliente). A escada anterior (Premium reprecificado para R$ 199 com loja inclusa) foi descartada porque nenhuma conta Pro está perto de limite (maior: 107 de 150 alunos, 428 de 600 mensagens), então o motivo de upgrade é fraco e um SKU só é mais simples de vender. Reprecificar o Premium continua válido, mas é decisão do plano de crescimento, não desta. Histórico: R$ 39 descartado por barato; R$ 149 descartado por exceder a conta inteira do Pro.</p>
+<ul>
+<li><strong>Pro + Vendas: R$ 169,80.</strong> Aluno entra pelo link, se cadastra, paga o plano e escolhe a turma na grade. Vende uniforme, pacote e evento, com retirada presencial (pedido ganha status "retirado"). Sem aula experimental online, que segue Premium.</li>
+<li><strong>Premium + Vendas: R$ 219,80.</strong> O mesmo mais aula experimental online no fluxo pós-compra. É o que a cliente do Wiki4Fit paga hoje só pela página, e aqui leva o sistema inteiro.</li>
+<li><strong>Starter</strong>: sem Vendas. Quem precisa vender sobe para o Pro.</li>
+<li><strong>Texto de venda</strong>: "Sua página para vender planos e produtos 24h por dia. O aluno escolhe, se cadastra, paga e agenda sozinho. Sem comissão sobre vendas."</li>
+<li><strong>"Sem comissão" sem abrir mão do take rate</strong>: quem traz o próprio Asaas nunca paga comissão. Quem usar a conta de recebimento criada pelo Mensalli (subconta da V3) paga uma tarifa por transação igual ou um pouco abaixo da do Asaas direto, e o Mensalli fica com uma fatia via split. É a tarifa do meio de pagamento, não comissão em cima, exatamente o modelo do Next Fit Pay.</li>
+<li><strong>Elegíveis no lançamento: 27 contas</strong> (20 Pro + 7 Premium). Adoção de 20% = 5 contas = +R$ 349,50; 30% = 8 = +R$ 559,20; 50% = 14 = +R$ 978,60; 100% = +R$ 1.887,30. Nenhuma dessas linhas acontece sem antes conectar Asaas nas 28 contas que não têm.</li>
+<li><strong>Depois de pagar, para onde a página manda</strong>: plano mensal leva a escolher turma na grade (todos os planos); pacote de aulas soltas ou experimental leva ao agendamento online (Premium). Os dois caminhos existem no código, muda só o destino.</li>
+<li><strong>Por que não mais caro</strong>: a V3 ganha no volume que passa pela conta de recebimento do Mensalli, e isso só rende com muitas lojas ativas. Preço de entrada baixo maximiza contas conectadas; R$ 30 a mais no add-on é pequeno perto de 1% sobre R$ 200 mil por mês.</li>
+<li><strong>Revisão</strong>: se 60 dias após o lançamento mais de 40% das 27 elegíveis tiverem aderido, o add-on vai a R$ 99,90 só para contas novas, mantendo o preço de quem entrou primeiro. Subir para novos é fácil; baixar depois queima o preço.</li>
+<li><strong>Dados de apoio (07/10)</strong>: contas Pro com mais alunos ativos: Guigo Academia 107, JR Andrade 95, Escolinha Portovilla 83, FA English School 80, Rg Movimentos 78, Studio T.S 75, Polo Runner 74. Mensagens em 30 dias: Studio T.S 428, Guigo 258, JR Andrade 250, Polo Runner 215. Achado lateral: Ponta do Saber está no Pro com limite 200 em <code>controle_planos</code> (limite do Starter), trocar; e <code>usage_count</code> não bate com <code>logs_mensagens</code>, contador segue quebrado.</li>
+</ul>
+<div class="call a"><div class="t">Regra de ancoragem</div><p>O preço de um add-on que substitui outra ferramenta se ancora no que o cliente já paga pela ferramenta, não no custo de construir. Perguntar "quanto você paga hoje por isso?" antes de dar preço, em toda conversa de validação da fase 0.</p></div>
+
+<h3>5.1 Implantação feita pelo Mensalli: R$ 197 uma vez, por fora</h3>
+<p>Serviço em que o Mensalli monta a loja para o cliente: conta Asaas, slug e subdomínio, bio, produtos com foto, compra de teste e campanha de WhatsApp anunciando a loja aos alunos. Loja no ar em 48 horas, uma chamada de 45 minutos mais o resto assíncrono. Leva de 1h30 a 2h por conta.</p>
+<ul>
+<li><strong>Por que fazer</strong>: ataca o maior risco do add-on, que é contratar e não configurar (padrão da base: anamnese 0 de 20, bot 0 de 8 ativados). E resolve o bloqueio do Asaas na mão, para as 28 contas que não têm.</li>
+<li><strong>Receita</strong>: marginal. 10 implantações = R$ 1.970 uma vez, o equivalente a 3 meses do add-on dessas contas. O valor está na recorrência que protege.</li>
+<li><strong>Cobrança</strong>: Pix por fora, sem add-on, sem código. Registro simples no admin ou planilha (quem pagou, quando entregou).</li>
+<li><strong>Lançamento</strong>: grátis para as 10 primeiras, em troca de feedback e caso de uso. Depois passa a cobrar.</li>
+<li><strong>Escala</strong>: cabe para 27 elegíveis; não cabe para 100 clientes. Se a taxa travar adesão depois das dez, o sinal é tornar o wizard autossuficiente e deixar a implantação como opção. Mercado tem os dois modelos: Pacto cobra implantação; Next Fit vende "sem taxa" como diferencial.</li>
+</ul>
+
+<h2>6. Faseamento</h2>
+<div class="tw"><table>
+<tr><th>Fase</th><th>Quando</th><th>Entrega</th><th>Critério de sucesso</th></tr>
+<tr><td>0. Validação</td><td>Semana 1</td><td>Conversar com Paineiras, GR Esperança, a cliente do Wiki4Fit e mais 2 do Pro. Confirmar tipos de item, campos do pré-cadastro, preço do add-on. Sandbox Asaas pronto. Começar onboarding Asaas da base.</td><td>5 contas dizendo "eu usaria amanhã"; 3 novas contas com Asaas</td></tr>
+<tr><td>1. MVP</td><td>Semanas 2 a 5</td><td>Produtos avulsos, pacotes e planos (matrícula online). Pix e cartão. Pré-cadastro com dedupe. Botão na bio. Pedidos no painel. Baixa automática e WhatsApp de confirmação. Wizard importando planos.</td><td>3 contas com loja ativa e pelo menos 1 venda real cada</td></tr>
+<tr><td>2. Vender melhor</td><td>Semanas 6 a 8</td><td>Eventos com vagas e data. Variações e estoque. Cupom. Link pré-preenchido na ficha. Link em campanhas. Relatório de vendas no Financeiro. Página de confirmação com próximo produto.</td><td>Paineiras passando campeonato e uniforme pela loja</td></tr>
+<tr><td>3. Monetizar volume</td><td>Mês 3 em diante</td><td>Subconta Asaas pelo Mensalli. Split. Recorrência no cartão do aluno. Carrinho.</td><td>Primeira receita de take rate</td></tr>
+</table></div>
+
+<h2>7. Mapa de add-ons para subir o ticket</h2>
+<p>Legenda: <span class="tag t-ex">existe</span> já está no produto, é só desacoplar e cobrar; <span class="tag t-new">novo</span> precisa ser construído; <span class="tag t-wait">esperar</span> existe mas ninguém usa, não vender ainda.</p>
+<div class="tw"><table>
+<tr><th>#</th><th>Add-on</th><th>Estado</th><th>Esforço</th><th>Ticket sugerido</th><th>Para quem</th><th>Por que</th></tr>
+<tr><td>1</td><td>Loja / recepção digital (comprar, cadastrar, agendar)</td><td><span class="tag t-new">novo</span></td><td>17 d</td><td>"Mensalli Vendas", add-on R$ 69,90 para Pro e Premium · tarifa da conta de recebimento na V3</td><td>Pro e Premium (27 contas)</td><td>Este documento, seção 5</td></tr>
+<tr><td>2</td><td>Pacote de mensagens extra</td><td><span class="tag t-ex">existe</span></td><td>2 d</td><td>+300 msgs R$ 19 · +1.000 R$ 39</td><td>Starter e Pro no limite</td><td>Controle de uso já existe; é só vender o excedente em vez de barrar</td></tr>
+<tr><td>3</td><td>Assentos adicionais (professor, recepção)</td><td><span class="tag t-ex">existe</span></td><td>3 d</td><td>R$ 15 por assento</td><td>Academias com equipe</td><td>Multiusuário fase 1 já está no banco; cobrar por login extra é padrão de mercado</td></tr>
+<tr><td>4</td><td>Recorrência no cartão do aluno</td><td><span class="tag t-new">novo</span></td><td>8 d</td><td>R$ 49 ou % por cobrança</td><td>Todos com Asaas</td><td>Assinaturas do Asaas. Reduz inadimplência, que é a dor número 1 que o Mensalli vende. Casa com a loja tipo plano</td></tr>
+<tr><td>5</td><td>Boletim do aluno para os pais</td><td><span class="tag t-new">novo</span></td><td>5 d</td><td>R$ 29</td><td>Escolinhas (maioria da base)</td><td>Presença já existe. Mensal no WhatsApp: frequência, evolução, foto. Diferencial que nenhum concorrente de cobrança tem</td></tr>
+<tr><td>6</td><td>Indique e ganhe (aluno indica aluno)</td><td><span class="tag t-new">novo</span></td><td>6 d</td><td>R$ 29</td><td>Todos</td><td>Aluno recebe link da loja; indicado matricula; aluno ganha desconto automático na próxima mensalidade. Depende da loja</td></tr>
+<tr><td>7</td><td>Eventos e campeonatos com inscrição</td><td><span class="tag t-new">novo</span></td><td>+3 d sobre a loja</td><td>Incluso na loja</td><td>Escolinhas, lutas</td><td>Paineiras e GR já vendem campeonato como "avulso" na mão</td></tr>
+<tr><td>8</td><td>Link na bio para o Starter</td><td><span class="tag t-ex">existe</span></td><td>0,5 d</td><td>R$ 19</td><td>Starter</td><td>Só gate. Baixo valor, mas é receita imediata</td></tr>
+<tr><td>9</td><td>Agendamento online para o Pro</td><td><span class="tag t-wait">esperar</span></td><td>0,5 d</td><td>—</td><td>—</td><td>Descartado em 07/10: o agendamento é a peça que fecha o fluxo da loja e fica exclusivo do Premium para sustentar o upgrade</td></tr>
+<tr><td>10</td><td>Domínio próprio na bio e loja</td><td><span class="tag t-new">novo</span></td><td>4 d</td><td>R$ 29</td><td>Quem já usa bio</td><td>Upsell clássico; API de domínios da Vercel</td></tr>
+<tr><td>11</td><td>Reputação no Google</td><td><span class="tag t-new">novo</span></td><td>2 d</td><td>R$ 19 ou incluso Premium</td><td>Todos</td><td>NPS existe: nota 9 ou 10 recebe link de avaliação no Google automaticamente</td></tr>
+<tr><td>12</td><td>Recibo e nota fiscal automáticos</td><td><span class="tag t-new">novo</span></td><td>5 d</td><td>R$ 29</td><td>Quem tem CNPJ</td><td>Asaas emite NFS-e pela API</td></tr>
+<tr><td>13</td><td>Avaliação física com evolução</td><td><span class="tag t-wait">esperar</span></td><td>10 d</td><td>R$ 29</td><td>Pilates, personal</td><td>Anamnese existe e 0 de 20 usam. Primeiro adoção, depois venda. É o que o Wiki4Fit faz bem</td></tr>
+<tr><td>14</td><td>Bot de WhatsApp como add-on</td><td><span class="tag t-wait">esperar</span></td><td>0,5 d</td><td>R$ 49</td><td>Pro</td><td>0 de 8 Premium ativaram. Vender agora é vender churn</td></tr>
+<tr><td>15</td><td>Cobrador com IA (negocia e parcela inadimplente)</td><td><span class="tag t-new">novo</span></td><td>10 d</td><td>R$ 49</td><td>Todos</td><td>Alto apelo de marketing; alto risco de qualidade. Só depois de a entrega de mensagens estar estável</td></tr>
+<tr><td>16</td><td>Multi-unidade (redes e franquias)</td><td><span class="tag t-new">novo</span></td><td>15 d+</td><td>Plano Enterprise R$ 299+</td><td>Rede Fit e similares</td><td>Novo tier, não add-on. Mais tarde</td></tr>
+</table></div>
+
+<h3>Prioridade</h3>
+<ul>
+<li><strong>Agora (0 a 3 meses)</strong>: Loja com eventos (1, 7), pacote de mensagens (2), assentos adicionais (3). Os dois últimos são quase só configuração e começam a pagar a loja.</li>
+<li><strong>Depois (3 a 6 meses)</strong>: Recorrência no cartão com subconta e split (4), boletim para pais (5), indique e ganhe (6). Todos se apoiam na loja e no Asaas.</li>
+<li><strong>Mais tarde</strong>: domínio próprio, Google, nota fiscal, avaliação física, bot, cobrador IA, Enterprise.</li>
+</ul>
+<div class="call r"><div class="t">O que não fazer</div><p>Não vender add-on de função que a base não ativa. Não construir a loja em cima de Pix manual com comprovante. Não começar pela subconta Asaas: é a parte mais burocrática e a loja não precisa dela para nascer.</p></div>
+
+<h2>8. Próximos 7 dias</h2>
+<ol>
+<li>Responder à cliente: "sim, estamos construindo; me manda o print da sua loja no Wiki4Fit e os 3 itens que você mais vende".</li>
+<li>Ligar para Paineiras e GR Esperança: o que vendem, como cobram hoje, o que trava.</li>
+<li>Listar os 28 sem Asaas e mandar a mensagem de onboarding, começando pelos que têm venda avulsa.</li>
+<li>Criar conta sandbox do Asaas e testar split com uma segunda conta de teste.</li>
+<li>Escrever o SQL de <code>loja_produtos</code> e <code>loja_pedidos</code> no padrão <code>sql-criar-loja.sql</code>.</li>
+<li>Decidir o nome público: Loja, Vitrine ou Matrícula online. Vai no botão da bio.</li>
+</ol>
+</div></body></html>

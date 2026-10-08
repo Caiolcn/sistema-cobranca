@@ -50,7 +50,7 @@ function Chave({ ligado, onChange, children }) {
 }
 
 export default function BioEditor({ onIrParaAgendamento }) {
-  const { userId } = useUser()
+  const { userId, lojaAtiva, agendamentoSlug } = useUser()
   const navigate = useNavigate()
   const { isLocked, loading: planoCarregando } = useUserPlan()
   const { width } = useWindowSize()
@@ -110,11 +110,12 @@ export default function BioEditor({ onIrParaAgendamento }) {
       youtube_url: linha.landing_youtube_url,
       site: linha.site,
       endereco_completo: [linha.endereco, linha.numero, linha.bairro, linha.cidade, linha.estado].filter(Boolean).join(', '),
-      agendamento_slug: linha.agendamento_slug,
+      agendamento_slug: linha.agendamento_slug || agendamentoSlug,
       agendamento_ativo: !!linha.agendamento_ativo && premium,
+      loja_ativa: !!lojaAtiva,
       galeria: Array.isArray(linha.landing_galeria) ? linha.landing_galeria : []
     }
-  }, [linha, premium])
+  }, [linha, premium, lojaAtiva, agendamentoSlug])
 
   if (planoCarregando) {
     return <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>Carregando...</div>
@@ -446,6 +447,14 @@ export default function BioEditor({ onIrParaAgendamento }) {
           <div style={{ padding: '10px 12px', margin: '2px 0 8px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
             Para mostrar o botão <strong>Agendar aula</strong> na bio, ative o <strong>Agendamento online</strong>.
             {onIrParaAgendamento && <> <button type="button" onClick={onIrParaAgendamento} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Ativar agora</button></>}
+          </div>
+        )}
+        {lojaAtiva ? (
+          <Chave ligado={cfg.mostrar.loja} onChange={(v) => setMostrar('loja', v)}>Loja e matrícula</Chave>
+        ) : (
+          <div style={{ padding: '10px 12px', margin: '2px 0 8px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
+            Para mostrar o botão <strong>Loja e matrícula</strong>, coloque sua loja no ar em <strong>Marketing › Loja</strong>.
+            {' '}<button type="button" onClick={() => navigate('/app/marketing?aba=loja')} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontWeight: 700 }}>Abrir Loja</button>
           </div>
         )}
         <Chave ligado={cfg.mostrar.whatsapp} onChange={(v) => setMostrar('whatsapp', v)}>

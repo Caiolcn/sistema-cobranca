@@ -161,7 +161,18 @@ Se quiser, me conta numa mensagem o que mais gostou ou o que podemos melhorar �
 📆 Vencimento: {{dataVencimento}} ({{diasRestantesTexto}})
 🏷️ Categoria: {{categoria}}
 
-Não esqueça de quitar pra evitar juros/multa!`
+Não esqueça de quitar pra evitar juros/multa!`,
+
+  // Loja (Mensalli Vendas): confirmação da compra feita pela página pública.
+  // {{detalhes}} é montado pelo servidor conforme o tipo (próximo vencimento,
+  // turma, retirada, link do portal, contrato). Edge: _shared/loja-pedido.ts.
+  loja_pedido_confirmado: `Olá, {{nomeCliente}}! ✅
+
+Recebemos seu pagamento de *{{item}}* ({{valor}}) na *{{nomeEmpresa}}*.
+
+{{detalhes}}
+
+Qualquer dúvida é só responder por aqui. Obrigado! 🙌`
 }
 
 /**
@@ -186,7 +197,8 @@ export const TITULOS_PADRAO = {
   recuperacao_30: 'Recuperação - 30 dias',
   recuperacao_45: 'Recuperação - 45 dias',
   nps_experimental: 'NPS - Pós-Experimental',
-  despesa_vencendo: 'Alerta de Despesa Vencendo'
+  despesa_vencendo: 'Alerta de Despesa Vencendo',
+  loja_pedido_confirmado: 'Loja - Compra Confirmada'
 }
 
 /**

@@ -9,7 +9,7 @@ import { useUser } from '../contexts/UserContext'
  * Hierarquia: starter (1) < pro (2) < premium (3)
  */
 export function useUserPlan() {
-  const { userData, loading, plano: planoFromContext } = useUser()
+  const { userData, loading, plano: planoFromContext, addons = [] } = useUser()
 
   // Limites de clientes por plano
   const limiteClientesPorPlano = {
@@ -84,8 +84,13 @@ export function useUserPlan() {
   const isProOrAbove = hasFeature('pro')
   const isPremiumOrAbove = hasFeature('premium')
 
+  // Add-ons contratados fora do plano (assinaturas_addons). Ex.: hasAddon('vendas')
+  const hasAddon = (nome) => Array.isArray(addons) && addons.includes(nome)
+
   return {
     ...planData,
+    addons,
+    hasAddon,
     hasFeature,
     isLocked,
     isStarter,

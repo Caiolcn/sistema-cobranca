@@ -3,8 +3,17 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Pedidos da Loja (Mensalli Vendas): boletos.pedido_id presente -> ramo próprio
+import { processarPedidoLoja, estornarPedidoLoja } from '../_shared/loja-pedido.ts'
+import { calcularProximoVencimento } from '../_shared/loja.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+
+// billingType do Asaas -> texto gravado em mensalidades.forma_pagamento
+// (antes cartão virava "Boleto" e sumia dos filtros do Financeiro)
+const FORMA_PAGAMENTO: Record<string, string> = {
+  PIX: 'PIX', CREDIT_CARD: 'Cartão de crédito', DEBIT_CARD: 'Cartão de débito', BOLETO: 'Boleto', UNDEFINED: 'Boleto',
+}
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const corsHeaders = {
@@ -78,11 +87,57 @@ serve(async (req) => {
 
     console.log('📄 Boleto encontrado:', boleto.id)
 
+    // ---------------------------------------------------------------
+    // Ramo da LOJA: a cobrança veio de um pedido (loja-comprar/loja-pagar).
+    // Materialização (aluno, mensalidades, cobrança avulsa, contrato, WhatsApp)
+    // fica em _shared/loja-pedido.ts e é idempotente por status do pedido.
+    // ---------------------------------------------------------------
+    if (boleto.pedido_id) {
+      const agoraIso = new Date().toISOString()
+      if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+        await supabase.from('boletos').update({
+          status: payment.status || 'RECEIVED',
+          data_pagamento: payment.paymentDate || agoraIso,
+          valor_pago: payment.value || boleto.valor,
+          forma_pagamento: payment.billingType || boleto.forma_pagamento,
+          updated_at: agoraIso,
+        }).eq('id', boleto.id)
+        const r = await processarPedidoLoja(supabase, boleto.pedido_id, payment, 'webhook')
+        console.log('🛒 Pedido da loja:', JSON.stringify(r))
+      } else if (event === 'PAYMENT_DELETED' || event === 'PAYMENT_REFUNDED') {
+        await supabase.from('boletos').update({ status: event === 'PAYMENT_REFUNDED' ? 'REFUNDED' : 'CANCELED', updated_at: agoraIso }).eq('id', boleto.id)
+        await estornarPedidoLoja(supabase, boleto.pedido_id, event === 'PAYMENT_REFUNDED' ? 'estornado' : 'cancelado')
+      } else if (event === 'PAYMENT_OVERDUE') {
+        await supabase.from('boletos').update({ status: 'OVERDUE', updated_at: agoraIso }).eq('id', boleto.id)
+        // Boleto venceu sem pagar: pedido expira (Pix já expira pelo cron em 24h)
+        await supabase.from('loja_pedidos').update({ status: 'expirado' }).eq('id', boleto.pedido_id).eq('status', 'aguardando_pagamento')
+      } else if (event === 'PAYMENT_UPDATED') {
+        await supabase.from('boletos').update({ status: payment.status, valor: payment.value || boleto.valor, updated_at: agoraIso }).eq('id', boleto.id)
+      }
+
+      await supabase.from('asaas_webhook_logs')
+        .update({ processado: true, sucesso: true, processado_at: agoraIso })
+        .eq('asaas_id', payment.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      return new Response(JSON.stringify({ received: true, processed: true, loja: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Processar baseado no evento
     switch (event) {
       case 'PAYMENT_RECEIVED':
       case 'PAYMENT_CONFIRMED':
         console.log('✅ Pagamento confirmado!')
+
+        // Cartão dispara RECEIVED e depois CONFIRMED: a mensalidade já paga não
+        // pode reprocessar (duplicaria a confirmação no WhatsApp e a próxima parcela).
+        if (boleto.mensalidade?.status === 'pago' && boleto.mensalidade?.data_pagamento) {
+          console.log('⏩ Mensalidade já estava paga, evento repetido ignorado')
+          break
+        }
 
         // Atualizar boleto
         await supabase
@@ -103,7 +158,7 @@ serve(async (req) => {
             .update({
               status: 'pago',
               data_pagamento: payment.paymentDate || new Date().toISOString(),
-              forma_pagamento: payment.billingType === 'PIX' ? 'PIX' : 'Boleto',
+              forma_pagamento: FORMA_PAGAMENTO[payment.billingType] || payment.billingType || 'Boleto',
               // O portal cobra base + multa/juros (portal-pagar). Sem gravar o que entrou,
               // o Financeiro e o recibo mostrariam so o valor da mensalidade.
               valor_pago: payment.value || boleto.valor
@@ -125,36 +180,51 @@ serve(async (req) => {
             dataPagamento: (payment.paymentDate || new Date().toISOString()).split('T')[0]
           })
 
-          // Criar próxima mensalidade se for recorrente
+          // Criar próxima mensalidade se for recorrente.
+          // Respeita o ciclo do plano (mensal/trimestral/semestral/anual) e só
+          // gera se a assinatura segue ativa — mesma regra de Financeiro.js.
+          // Antes era sempre +1 mês e um `.single()` que, com 2+ linhas futuras,
+          // dava erro silencioso e criava parcela duplicada.
           if (boleto.mensalidade?.is_mensalidade) {
-            const dataVencimentoAtual = new Date(boleto.mensalidade.data_vencimento)
-            const proximoVencimento = new Date(dataVencimentoAtual)
-            proximoVencimento.setMonth(proximoVencimento.getMonth() + 1)
+            const { data: devedorPlano } = await supabase
+              .from('devedores')
+              .select('assinatura_ativa, plano:planos(valor, ciclo_cobranca)')
+              .eq('id', boleto.devedor_id)
+              .maybeSingle()
 
-            // Verificar se já existe mensalidade para o próximo mês
-            const { data: existente } = await supabase
-              .from('mensalidades')
-              .select('id')
-              .eq('devedor_id', boleto.devedor_id)
-              .eq('user_id', boleto.user_id)
-              .gte('data_vencimento', proximoVencimento.toISOString().split('T')[0])
-              .single()
+            if (devedorPlano && devedorPlano.assinatura_ativa === false) {
+              console.log('⏩ Assinatura inativa, próxima mensalidade não gerada')
+            } else {
+              const proximoISO = calcularProximoVencimento(
+                String(boleto.mensalidade.data_vencimento),
+                devedorPlano?.plano?.ciclo_cobranca
+              )
 
-            if (!existente) {
-              // Criar próxima mensalidade
-              await supabase
+              const { data: existente } = await supabase
                 .from('mensalidades')
-                .insert({
-                  user_id: boleto.user_id,
-                  devedor_id: boleto.devedor_id,
-                  valor: boleto.mensalidade.valor,
-                  data_vencimento: proximoVencimento.toISOString().split('T')[0],
-                  status: 'pendente',
-                  is_mensalidade: true,
-                  numero_mensalidade: (boleto.mensalidade.numero_mensalidade || 0) + 1
-                })
+                .select('id')
+                .eq('devedor_id', boleto.devedor_id)
+                .eq('user_id', boleto.user_id)
+                .gte('data_vencimento', proximoISO)
+                .or('lixo.is.null,lixo.eq.false')
+                .limit(1)
+                .maybeSingle()
 
-              console.log('📅 Próxima mensalidade criada para:', proximoVencimento.toISOString().split('T')[0])
+              if (!existente) {
+                await supabase
+                  .from('mensalidades')
+                  .insert({
+                    user_id: boleto.user_id,
+                    devedor_id: boleto.devedor_id,
+                    valor: devedorPlano?.plano?.valor || boleto.mensalidade.valor,
+                    data_vencimento: proximoISO,
+                    status: 'pendente',
+                    is_mensalidade: true,
+                    numero_mensalidade: (boleto.mensalidade.numero_mensalidade || 0) + 1
+                  })
+
+                console.log('📅 Próxima mensalidade criada para:', proximoISO)
+              }
             }
           }
         }

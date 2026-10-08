@@ -10,6 +10,7 @@ import { useTrialStatus } from './useTrialStatus'
 import { useUser } from './contexts/UserContext'
 import { usePaymentNotifications } from './hooks/usePaymentNotifications'
 import { useAgendamentoNotifications } from './hooks/useAgendamentoNotifications'
+import { useVendaNotifications } from './hooks/useVendaNotifications'
 import { Icon } from '@iconify/react'
 import useWindowSize from './hooks/useWindowSize'
 import NotificacoesDropdown, { contarNaoLidas } from './components/NotificacoesDropdown'
@@ -80,6 +81,7 @@ export default function Dashboard() {
   // Notificacoes em tempo real de pagamentos e agendamentos
   usePaymentNotifications(realUserId || userId)
   useAgendamentoNotifications(realUserId || userId)
+  useVendaNotifications(realUserId || userId)
 
   // Fechar dropdown de busca ao navegar pra outra tela
   useEffect(() => {

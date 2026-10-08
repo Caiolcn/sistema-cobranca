@@ -7,6 +7,7 @@ import { useUser } from './contexts/UserContext';
 import { SkeletonDashboard } from './components/Skeleton';
 import OnboardingGuiado from './OnboardingGuiado';
 import NovidadesPainel from './components/NovidadesPainel';
+import LojaResumoCard from './components/LojaResumoCard';
 import whatsappService from './services/whatsappService';
 import { showToast } from './Toast';
 import { useUserPlan } from './hooks/useUserPlan';
@@ -49,7 +50,7 @@ const salvarDispensada = (userId, mensalidadeId) => {
 
 function Home() {
   const navigate = useNavigate();
-  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, isAdmin, adminViewingAs, userData, loading: loadingUser } = useUser();
+  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, isAdmin, adminViewingAs, userData, loading: loadingUser, lojaAtiva } = useUser();
   // "Precisam de você hoje" (fila de ação + cobrança direta) é exclusivo do plano Pro
   const { isProOrAbove, planoPago } = useUserPlan();
   const [loading, setLoading] = useState(true);
@@ -865,6 +866,13 @@ function Home() {
           </div>
         </div>
       </div>
+
+      {/* Vendas da Loja (Mensalli Vendas): só com a loja no ar */}
+      {lojaAtiva && (
+        <div className="home-cards-grid" style={{ gridTemplateColumns: '1fr' }}>
+          <LojaResumoCard userId={userId} />
+        </div>
+      )}
 
       {/* Agenda de hoje + Aniversariantes da semana */}
       <div className="home-two-columns home-acao-vitoria">

@@ -147,10 +147,15 @@ export function BioView({ empresa, bio, preview = false }) {
   const linkMapa = empresa.endereco_completo
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(empresa.endereco_completo)}`
     : null
+  // Loja (Mensalli Vendas): aparece quando a loja está no ar e o gestor ligou o botão
+  const linkLoja = (empresa.loja_ativa && empresa.agendamento_slug)
+    ? `${window.location.origin}/loja/${empresa.agendamento_slug}?o=bio`
+    : null
 
   const fundo = `linear-gradient(180deg, ${tema.fundo[0]} 0%, ${tema.fundo[1]} 100%)`
   const imagemTopo = cfg.capa || null
   const mostrarAgendar = cfg.mostrar.agendar && linkAgendar
+  const mostrarLoja = cfg.mostrar.loja && linkLoja
   const mostrarWa = cfg.mostrar.whatsapp && linkWa
 
   const redes = [
@@ -195,8 +200,9 @@ export function BioView({ empresa, bio, preview = false }) {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', marginTop: '28px' }}>
+            {mostrarLoja && <Botao fonte={fonte} href={linkLoja} icon="mdi:storefront-outline" tema={tema} destaque={!mostrarAgendar}>{empresa.loja_titulo || 'Loja e matrícula'}</Botao>}
             {mostrarAgendar && <Botao fonte={fonte} href={linkAgendar} icon="mdi:calendar-check" tema={tema} destaque>Agendar aula</Botao>}
-            {mostrarWa && (mostrarAgendar
+            {mostrarWa && (mostrarAgendar || mostrarLoja
               ? <Botao fonte={fonte} href={linkWa} icon="mdi:whatsapp" tema={tema}>Chamar no WhatsApp</Botao>
               : <Botao fonte={fonte} href={linkWa} icon="mdi:whatsapp" tema={tema} fundo={WA_VERDE} texto="#ffffff">Chamar no WhatsApp</Botao>)}
             {redes.map(r => <Botao fonte={fonte} key={r.label} href={r.href} icon={r.icon} tema={tema}>{r.label}</Botao>)}

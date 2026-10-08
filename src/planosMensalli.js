@@ -51,6 +51,7 @@ export const PLANOS = [
       'Régua de cobrança completa',
       'Dashboard com gráficos',
       'Contratos com assinatura', 'Link na bio',
+      'Loja online (add-on Mensalli Vendas)',
       'Anamnese / Ficha do aluno',
       'Suporte via WhatsApp'
     ]
@@ -70,6 +71,7 @@ export const PLANOS = [
       '3.000 mensagens/mês',
       'Tudo do plano Pro',
       'Link na bio com botão de agendar',
+      'Loja online com aula experimental (add-on Mensalli Vendas)',
       'CRM completo',
       'Bot de WhatsApp',
       'Agendamento online (link de agendamento)',
