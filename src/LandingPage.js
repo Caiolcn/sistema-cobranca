@@ -1,594 +1,764 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  MdCheck, MdCheckCircle, MdArrowForward, MdStar,
-  MdDashboardCustomize, MdMessage,
-  MdReceiptLong, MdPayments, MdTrendingUp, MdRule, MdLink,
-  MdShield, MdLock,
-  MdVerifiedUser, MdFactCheck, MdVisibility, MdSupportAgent, MdAutorenew,
-  MdSwapHoriz, MdSchool, MdAdd, MdRemove, MdDoneAll, MdBolt, MdAutoAwesome,
+  MdCheck, MdCheckCircle, MdArrowForward, MdMenu, MdClose, MdAdd,
+  MdMessage, MdReceiptLong, MdTrendingUp, MdPeople, MdDoneAll,
+  MdShield, MdVerifiedUser, MdVisibility, MdFactCheck, MdAutorenew,
   MdLanguage, MdGroups, MdSmartToy, MdEventAvailable, MdCampaign,
-  MdSchedule, MdTrendingDown, MdNotificationsActive
+  MdSignalCellularAlt, MdWifi, MdBatteryFull, MdSentimentSatisfiedAlt, MdMic
 } from 'react-icons/md'
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
-import { useState, useMemo } from 'react'
-import useWindowSize from './hooks/useWindowSize'
-// Paleta e primitivas compartilhadas com as landings de nicho (/escolinha).
-import {
-  INK, BODY, MUTED, BORDER, BG, BG_SOFT,
-  GREEN, GREEN_DK, GREEN_BRIGHT, GREEN_SOFT, DARK, GRAD, GRAD_TEXT,
-  gradText, LANDING_CSS, scrollToId, dot, btnGrad, btnGhost,
-  Blob, PhoneChat
-} from './pages/landing/ui'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { LANDING_CSS, scrollToId } from './pages/landing/ui'
+import Depoimentos from './pages/landing/Depoimentos'
+import './LandingPage.css'
+
+const WHATSAPP_CONTATO = 'https://wa.me/5562981618862'
+
+const NAV = [
+  { l: 'Recursos', id: 'recursos' },
+  { l: 'Como funciona', id: 'como-funciona' },
+  { l: 'Depoimentos', id: 'depoimentos' },
+  { l: 'Preços', id: 'precos' },
+  { l: 'Dúvidas', id: 'faq' }
+]
+
+// Régua demonstrada na seção de automação: trechos dos templates padrão
+// (src/data/templatesPadrao.js) com dados de exemplo.
+const REGUA = [
+  { quando: '3 dias antes do vencimento', hora: '09:00', status: 'Lembrete entregue',
+    texto: 'Olá, Maria! 👋\n\nPassando para te ajudar na organização da semana: sua mensalidade vence em 3 dias. 😃\n\n💰 Valor: R$ 150,00' },
+  { quando: 'No dia do vencimento', hora: '09:00', status: 'Com a chave Pix pra pagar na hora',
+    texto: 'Oi, Maria! Tudo bem? 😃\n\nHoje é o dia do vencimento da sua mensalidade.\n\n💰 Valor: R$ 150,00\n💳 Pix para pagamento: seustudio@pix' },
+  { quando: '3 dias depois', hora: '09:00', status: 'Só sai se a mensalidade continuar em aberto', condicional: true,
+    texto: 'Olá, Maria, como vai?\n\nNotamos que o pagamento da sua mensalidade (vencida em 10/10) ainda não consta em nosso sistema…' }
+]
+
+// ---- Demonstração animada do hero ----
+// O celular é o WhatsApp do studio: a cobrança sai sozinha, o aluno lê,
+// responde e, quando paga, a confirmação automática sai e a notificação
+// de pago entra no topo da cascata ao lado. Textos = templates padrão
+// (src/data/templatesPadrao.js: due_day, pre_due_3days, overdue e
+// payment_confirmed) com dados de exemplo.
+const CENAS = [
+  { nome: 'Maria', ava: '#7C3AED', valor: 'R$ 150,00', venc: '10/10', horas: ['09:00', '09:11', '09:12'],
+    cobranca: 'Oi, Maria! Tudo bem? 😃\n\nHoje é o dia do vencimento da sua mensalidade.\n\n💰 Valor: R$ 150,00\n💳 Pix para pagamento: seustudio@pix',
+    resposta: 'Vou pagar agora pelo Pix 👍',
+    detalhe: 'Pago no Pix, 12 min após a cobrança' },
+  { nome: 'Lucas', ava: '#0EA5E9', valor: 'R$ 120,00', venc: '13/10', horas: ['09:00', '09:20', '09:22'],
+    cobranca: 'Olá, Lucas! 👋\n\nPassando para te ajudar na organização da semana: sua mensalidade vence em 3 dias. 😃\n\n💰 Valor: R$ 120,00\n📆 Vencimento: 13/10\n\n🔑 Chave Pix: seustudio@pix',
+    resposta: 'Opa, já vou adiantar! 🙌',
+    detalhe: 'Pago no Pix, 3 dias antes do vencimento' },
+  { nome: 'Ana Paula', ava: '#F97316', valor: 'R$ 180,00', venc: '07/10', horas: ['09:00', '10:02', '10:03'],
+    cobranca: 'Olá, Ana Paula, como vai?\n\nNotamos que o pagamento da sua mensalidade (vencida em 07/10) ainda não consta em nosso sistema.\n\n💰 Valor: R$ 180,00\n🔑 Chave Pix: seustudio@pix',
+    resposta: 'Nossa, tinha esquecido! Pagando agora 🙏',
+    detalhe: 'Pago logo depois do lembrete' }
+]
+
+const confirmacao = c => `Olá, ${c.nome}! ✅\n\nConfirmamos o recebimento do seu pagamento.\n\n💰 Valor: ${c.valor}\n📅 Vencimento: ${c.venc}\n\nObrigado pela pontualidade! - Seu Studio`
+
+// O que já está na cascata quando a página abre (mais nova primeiro).
+const PAGOS_INICIAIS = [
+  { id: 1, nome: 'Pedro', valor: 'R$ 135,00', detalhe: 'Pago no Pix, no dia do vencimento' },
+  { id: 2, nome: 'Beatriz', valor: 'R$ 200,00', detalhe: 'Pago logo depois do lembrete' },
+  { id: 3, nome: 'João', valor: 'R$ 89,90', detalhe: 'Pago no cartão pelo link' },
+  { id: 4, nome: 'Carla', valor: 'R$ 99,00', detalhe: 'Pago no dia do vencimento' },
+  { id: 5, nome: 'Rafael', valor: 'R$ 110,00', detalhe: 'Pago pelo link da cobrança' }
+]
+// 5 visíveis + 1 invisível embaixo, que é a que está saindo (assim ela
+// some com transição em vez de desaparecer de uma vez).
+const NOTIF_CAMADAS = 6
+
+// A conversa roda mesmo com "redução de movimento" ligada (o Windows desliga
+// as animações do sistema e muita gente usa assim): nesse caso o CSS tira
+// os deslizes e zooms, e as mensagens só aparecem — a história continua sendo
+// contada, sem movimento na tela.
+function HeroDemo() {
+  const raiz = useRef(null)
+  const [cena, setCena] = useState(CENAS[0])
+  const [msgs, setMsgs] = useState([])
+  const [digitando, setDigitando] = useState(null) // texto parcial da resposta do aluno
+  const [pagos, setPagos] = useState(PAGOS_INICIAIS)
+  // abertura da cascata ao carregar: fechada -> abrindo (leque) -> aberta
+  const [fase, setFase] = useState('fechada')
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setFase('abrindo'), 350)
+    const t2 = setTimeout(() => setFase('aberta'), 2000)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [])
+
+  useEffect(() => {
+    let vivo = true
+    let visivel = true
+    const io = new IntersectionObserver(([e]) => { visivel = e.isIntersecting }, { threshold: 0.1 })
+    // observa o bloco do hero (e nao o celular): no mobile o celular fica
+    // escondido e a animacao pausaria pra sempre
+    if (raiz.current) io.observe(raiz.current.parentElement || raiz.current)
+
+    // Espera "pausável": só conta o tempo com o hero na tela e a aba visível.
+    const esperar = ms => new Promise(resolve => {
+      let resta = ms
+      const t = setInterval(() => {
+        if (!vivo) { clearInterval(t); return }
+        if (visivel && !document.hidden) resta -= 40
+        if (resta <= 0) { clearInterval(t); resolve() }
+      }, 40)
+    })
+
+    ;(async () => {
+      let n = 0
+      let id = 100
+      while (vivo) {
+        const c = CENAS[n % CENAS.length]
+        const cob = { k: `cob${n}`, de: 'studio', texto: c.cobranca, hora: c.horas[0], lido: false }
+        setCena(c); setMsgs([]); setDigitando(null)
+        await esperar(700)
+        setMsgs([cob])                                   // cobrança sai sozinha
+        await esperar(1300)
+        setMsgs([{ ...cob, lido: true }])                // aluno leu
+        await esperar(600)
+        const letras = Array.from(c.resposta)            // Array.from não quebra emoji
+        for (let i = 1; i <= letras.length && vivo; i++) {
+          setDigitando(letras.slice(0, i).join(''))
+          await esperar(55)
+        }
+        await esperar(500)
+        setDigitando(null)
+        const resp = { k: `resp${n}`, de: 'aluno', texto: c.resposta, hora: c.horas[1] }
+        setMsgs([{ ...cob, lido: true }, resp])
+        await esperar(1700)
+        const conf = { k: `conf${n}`, de: 'studio', texto: confirmacao(c), hora: c.horas[2], lido: false }
+        setMsgs([{ ...cob, lido: true }, resp, conf])   // pagou: confirmação automática
+        const novo = { id: id++, nome: c.nome, valor: c.valor, detalhe: c.detalhe, nova: true }
+        setPagos(p => [novo, ...p].slice(0, NOTIF_CAMADAS))
+        await esperar(900)
+        setMsgs([{ ...cob, lido: true }, resp, { ...conf, lido: true }])
+        await esperar(3600)
+        n++
+      }
+    })()
+
+    return () => { vivo = false; io.disconnect() }
+  }, [])
+
+  return (
+    <>
+      <div className="lp2-hv-phone" ref={raiz}>
+        <PhoneDemo cena={cena} msgs={msgs} digitando={digitando} />
+      </div>
+      <NotifCascata itens={pagos} fase={fase} />
+    </>
+  )
+}
+
+function PhoneDemo({ cena, msgs, digitando }) {
+  const iniciais = cena.nome.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
+  return (
+    <div className="lp2-phone lp2-phone--demo" role="img" aria-label="Demonstração: o Mensalli manda a cobrança pelo WhatsApp do studio, o aluno responde e recebe a confirmação de pagamento automática">
+      <div className="lp2-phone-screen" aria-hidden="true">
+        <div className="lp2-phone-status">
+          <span>9:41</span>
+          <i className="lp2-phone-island" />
+          <span className="lp2-phone-icons"><MdSignalCellularAlt size={14} /><MdWifi size={14} /><MdBatteryFull size={15} /></span>
+        </div>
+        <div className="lp2-wa-head">
+          <span className="lp2-wa-ava" style={{ background: cena.ava }}>{iniciais}</span>
+          <div><strong>{cena.nome}</strong><span>{digitando !== null ? 'digitando…' : 'online'}</span></div>
+        </div>
+        <div className="lp2-wa-body lp2-wa-body--demo">
+          <span className="lp2-wa-day">Hoje</span>
+          {msgs.map(m => {
+            const doAluno = m.de === 'aluno'
+            return (
+              <div key={m.k} className={`lp2-bubble lp2-bubble--pop ${doAluno ? 'lp2-bubble--in' : 'lp2-bubble--out'}`}>
+                {m.texto}
+                <span className={`lp2-bubble-meta${m.lido ? '' : ' is-pend'}`}>{m.hora}{!doAluno && <MdDoneAll size={14} />}</span>
+              </div>
+            )
+          })}
+          {digitando !== null && (
+            <div className="lp2-bubble lp2-bubble--in lp2-bubble--pop">
+              {digitando}<span className="lp2-caret" />
+            </div>
+          )}
+        </div>
+        <div className="lp2-wa-input">
+          <span className="lp2-wa-input-box"><MdSentimentSatisfiedAlt size={18} /> Mensagem</span>
+          <span className="lp2-wa-mic"><MdMic size={18} /></span>
+        </div>
+        <i className="lp2-phone-home" />
+      </div>
+    </div>
+  )
+}
+
+function NotifCascata({ itens, fase }) {
+  return (
+    <div className={`lp2-ncas is-${fase}`} aria-hidden="true">
+      {itens.map((n, camada) => (
+        <div key={n.id} className={`lp2-ncard${camada === 0 && n.nova ? ' is-new' : ''}`} data-camada={camada} style={{ '--i': camada }}>
+          <span className="lp2-ncard-ico"><MdCheckCircle size={20} /></span>
+          <span className="lp2-ncard-txt">
+            <strong>{n.nome} · {n.valor} pago</strong>
+            <span>{n.detalhe}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const SECUNDARIOS = [
+  { icon: MdMessage, t: 'Templates personalizados', d: 'Mensagens com a sua cara, que não parecem robô.' },
+  { icon: MdReceiptLong, t: 'Relatórios de atrasos', d: 'Há quanto tempo cada cliente está devendo.' },
+  { icon: MdTrendingUp, t: 'Indicadores financeiros', d: 'Recebido, a vencer e inadimplência num só lugar.' },
+  { icon: MdPeople, t: 'Clientes e mensalidades', d: 'Planos, vencimentos e histórico de cada aluno.' }
+]
+
+const PASSOS = [
+  { titulo: 'Conecte seu WhatsApp', descricao: 'Escaneie o QR Code e vincule seu número. Leva menos de 1 minuto.', nota: 'As mensagens saem do seu número' },
+  { titulo: 'Cadastre seus clientes', descricao: 'Adicione clientes, planos de mensalidade e datas de vencimento.', nota: 'Veio de planilha? Dá pra importar' },
+  { titulo: 'Ative a automação', descricao: 'Personalize as mensagens. Pronto, o sistema cobra sozinho.', nota: 'Os textos já vêm prontos pra editar' }
+]
+
+// Recursos além da cobrança (seção verde-escura).
+const SUITE = [
+  { id: 'bio', icon: MdLanguage, titulo: 'Link na bio', plano: 'Pro e Premium',
+    desc: 'Uma página para a bio do Instagram: botão de WhatsApp, redes, fotos e vídeos no ar em minutos, e no Premium o botão de agendar aula. Sem precisar de programador.' },
+  { id: 'crm', icon: MdGroups, titulo: 'CRM completo', plano: 'Premium',
+    desc: 'Acompanhe cada lead e aluno num só lugar, do primeiro contato à matrícula. Ninguém escapa pelo caminho.' },
+  { id: 'bot', icon: MdSmartToy, titulo: 'Bot de WhatsApp', plano: 'Premium',
+    desc: 'Um assistente que responde sozinho: o aluno consulta mensalidade, horários e agenda aula sem te interromper.' },
+  { id: 'agenda', icon: MdEventAvailable, titulo: 'Agendamento online', plano: 'Premium',
+    desc: 'Compartilhe um link e deixe seus alunos marcarem aula ou avaliação direto na sua agenda.' },
+  { id: 'campanhas', icon: MdCampaign, titulo: 'Campanhas de WhatsApp', plano: 'Premium',
+    desc: 'Avisos, promoções e comunicados para toda a sua base de uma vez, em poucos cliques.' }
+]
+
+const BENEFICIOS = [
+  { titulo: 'Menos tempo cobrando.', desc: 'O sistema cobra sozinho pelo seu WhatsApp. Você para de mandar mensagem aluno por aluno e ganha horas da semana de volta.' },
+  { titulo: 'Mais controle das mensalidades.', desc: 'Num olhar você vê quem está em dia, quem atrasou e quanto tem a receber. Nenhuma mensalidade passa batido.' },
+  { titulo: 'Mais tranquilidade na rotina.', desc: 'A parte chata roda no automático, todo mês. E a cobrança continua sendo sua: sai do seu número, com o seu tom.' }
+]
+
+// Só o que o produto de fato faz — sem selo, certificação ou criptografia prometida.
+const CONFIANCA = [
+  { icon: MdVerifiedUser, t: 'Mensagens só para clientes que você cadastrou' },
+  { icon: MdVisibility, t: 'Você edita ou remove os dados dos seus clientes quando quiser' },
+  { icon: MdFactCheck, t: 'Histórico de cada mensagem enviada' },
+  { icon: MdAutorenew, t: 'Atualizações constantes, guiadas pelo seu feedback' }
+]
+
+const PLANOS = [
+  { nome: 'Starter', eyebrow: 'Ideal para começar', preco: 49, perMsg: 'R$0,25 por mensagem', cta: 'Começar no Starter', destaque: false,
+    features: ['Até 50 clientes ativos', '200 mensagens/mês', 'Mensagem automática no vencimento', '1 template personalizado', 'Dashboard básico'] },
+  { nome: 'Pro', eyebrow: 'Para negócios em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', destaque: false,
+    features: ['Até 150 clientes ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Link na bio', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
+  { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: true,
+    features: ['Até 500 clientes ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Link na bio com botão de agendar', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online (link de agendamento)', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
+]
+
+const FAQS = [
+  { p: 'O que é o Mensalli?', r: 'Um sistema completo de cobrança de mensalidades que envia lembretes automáticos pelo seu WhatsApp e organiza tudo num dashboard.' },
+  { p: 'Como funciona a conexão com WhatsApp?', r: 'Você escaneia um QR Code que vincula seu número ao sistema. As mensagens saem do SEU número, mantendo o relacionamento direto com os clientes.' },
+  { p: 'Preciso instalar algo?', r: 'Não. É 100% online, funciona no navegador do computador e do celular.' },
+  { p: 'Posso cancelar quando quiser?', r: 'Sim, sem multa e sem burocracia. Cancele direto no painel e o sistema para de cobrar no próximo ciclo.' },
+  { p: 'O WhatsApp pode banir meu número?', r: 'Não, se usar corretamente. O Mensalli envia apenas para clientes que você cadastrou, sem spam.' },
+  { p: 'Quais formas de pagamento meus clientes podem usar?', r: 'Pix, cartão de crédito e boleto, via Asaas. O cliente escolhe e você só recebe.' },
+  { p: 'Está em conformidade com a LGPD?', r: 'Sim. Você cobra apenas clientes que cadastrou, pode editar ou remover os dados deles quando quiser e tem o histórico de cada mensagem enviada. Os detalhes estão na nossa política de privacidade.' }
+]
+
+const RECUPERACAO_HIPOTESE = 0.7
+
+const brl = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// Screenshot real sem moldura de navegador, com recorte opcional
+// (`ratio` = proporção da janela visível, `pos` = object-position).
+function Shot({ src, alt, ratio, pos = 'left top', w = 900, h = 450 }) {
+  return (
+    <figure className="lp2-shot" style={ratio ? { aspectRatio: ratio } : undefined}>
+      <img src={src} alt={alt} width={w} height={h} loading="lazy" decoding="async"
+        style={ratio ? { height: '100%', objectFit: 'cover', objectPosition: pos } : undefined} />
+    </figure>
+  )
+}
+
+// Recursos além da cobrança: os 5 lado a lado, já abertos, separados só por
+// linhas finas (sem cards nem screenshots).
+function Suite({ onPlanos }) {
+  return (
+    <section id="premium" className="lp2-sec lp2-suite" aria-labelledby="suite-titulo">
+      <div className="lp2-wrap">
+        <div className="lp2-head2">
+          <div>
+            <p className="lp2-eyebrow">Além da cobrança</p>
+            <h2 id="suite-titulo" className="lp2-h2">O Mensalli começa na cobrança. Mas não para aí.</h2>
+          </div>
+          <p className="lp2-lead">Quando seu negócio precisa de mais, a gente cuida do resto — site, relacionamento, atendimento e agenda, tudo no mesmo lugar.</p>
+        </div>
+
+        <ul className="lp2-suite-cols">
+          {SUITE.map(s => (
+            <li key={s.id} className="lp2-suite-col">
+              <div className="lp2-suite-top">
+                <span className="lp2-suite-ico"><s.icon size={22} /></span>
+                <span className="lp2-suite-plano">{s.plano}</span>
+              </div>
+              <h3>{s.titulo}</h3>
+              <p>{s.desc}</p>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="lp2-link lp2-suite-cta" onClick={onPlanos}>Ver o que vem em cada plano <MdArrowForward size={18} /></button>
+      </div>
+    </section>
+  )
+}
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  const { isMobile, isSmallScreen } = useWindowSize()
   const [faqAberto, setFaqAberto] = useState(null)
+  const [menuAberto, setMenuAberto] = useState(false)
+  const [rolou, setRolou] = useState(false)
 
-  // Calculadora de ROI
+  useEffect(() => {
+    const onScroll = () => setRolou(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Calculadora de inadimplência
   const [roiClientes, setRoiClientes] = useState('50')
   const [roiValor, setRoiValor] = useState('150')
   const [roiInad, setRoiInad] = useState('30')
   const perdaMensal = useMemo(() => (Number(roiClientes) || 0) * (Number(roiValor) || 0) * ((Number(roiInad) || 0) / 100), [roiClientes, roiValor, roiInad])
-  const recuperacao = useMemo(() => perdaMensal * 0.7, [perdaMensal])
+  const recuperacao = useMemo(() => perdaMensal * RECUPERACAO_HIPOTESE, [perdaMensal])
 
   // Formulário do CTA final
   const [formDesafio, setFormDesafio] = useState('')
   const [formClientes, setFormClientes] = useState('')
   const [formSistema, setFormSistema] = useState('')
 
-  const comoFunciona = [
-    { numero: '01', titulo: 'Conecte seu WhatsApp', descricao: 'Escaneie o QR Code e vincule seu número. Leva menos de 1 minuto.' },
-    { numero: '02', titulo: 'Cadastre seus clientes', descricao: 'Adicione clientes, planos de mensalidade e datas de vencimento.' },
-    { numero: '03', titulo: 'Ative a automação', descricao: 'Personalize as mensagens. Pronto, o sistema cobra sozinho.' }
-  ]
-
-  const features = [
-    { icon: FaWhatsapp, titulo: 'Cobrança automática', desc: 'Lembretes saem sozinhos pelo seu WhatsApp, no horário certo.' },
-    { icon: MdDashboardCustomize, titulo: 'Dashboard em tempo real', desc: 'Veja quem está devendo e por quanto tempo, em segundos.' },
-    { icon: MdMessage, titulo: 'Templates com a sua cara', desc: 'Mensagens personalizadas que não parecem robô.' },
-    { icon: MdRule, titulo: 'Régua de cobrança', desc: 'Antes, no dia e após o vencimento — você define as regras.' },
-    { icon: MdReceiptLong, titulo: 'Relatório de atrasos', desc: 'Veja há quanto tempo cada cliente está devendo e aja antes da bola de neve.' },
-    { icon: MdLink, titulo: 'Portal de pagamento', desc: 'O cliente paga por um link, sem você correr atrás.' },
-    { icon: MdPayments, titulo: 'Pix, cartão e boleto', desc: 'O cliente escolhe como pagar. Você só recebe.' },
-    { icon: MdTrendingUp, titulo: 'Indicadores do financeiro', desc: 'Recebido, a vencer e inadimplência num só lugar.' }
-  ]
-
-  const suite = [
-    { icon: MdLanguage, titulo: 'Link na bio', desc: 'Uma página para a bio do Instagram: botão de WhatsApp, redes, fotos e vídeos no ar em minutos, e no Premium o botão de agendar aula. Sem precisar de programador.' },
-    { icon: MdGroups, titulo: 'CRM completo', desc: 'Acompanhe cada lead e aluno num só lugar, do primeiro contato à matrícula. Ninguém escapa pelo caminho.' },
-    { icon: MdSmartToy, titulo: 'Bot de WhatsApp', desc: 'Um assistente que responde sozinho: o aluno consulta mensalidade, horários e agenda aula sem te interromper.' },
-    { icon: MdEventAvailable, titulo: 'Agendamento online', desc: 'Compartilhe um link e deixe seus alunos marcarem aula ou avaliação direto na sua agenda.' },
-    { icon: MdCampaign, titulo: 'Campanhas de WhatsApp', desc: 'Avisos, promoções e comunicados para toda a sua base de uma vez, em poucos cliques.' }
-  ]
-
-  const resultados = [
-    { icon: MdSchedule, titulo: 'Horas da sua semana de volta', desc: 'O sistema cobra sozinho pelo seu WhatsApp. Você para de mandar mensagem aluno por aluno.' },
-    { icon: MdTrendingDown, titulo: 'Menos inadimplência', desc: 'Lembrete certo, na hora certa. Quem esquecia de pagar passa a pagar em dia.' },
-    { icon: MdDashboardCustomize, titulo: 'Controle em segundos', desc: 'Num olhar você vê quem está em dia, quem atrasou e quanto tem a receber.' },
-    { icon: FaWhatsapp, titulo: 'A cobrança continua sendo sua', desc: 'As mensagens saem do seu próprio número, com o seu tom. O aluno responde como sempre.' },
-    { icon: MdNotificationsActive, titulo: 'Nunca mais esquece de cobrar', desc: 'A régua dispara antes, no dia e após o vencimento. Nenhuma mensalidade passa batido.' },
-    { icon: MdAutoAwesome, titulo: 'A parte chata, resolvida', desc: 'Aquela tarefa que ninguém gosta de fazer roda no automático, todo mês, sem você pensar nela.' }
-  ]
-
-  const lgpd = [
-    { icon: MdLock, titulo: 'Proteção total dos dados', desc: 'Criptografia de ponta a ponta. Seus dados financeiros ficam só no seu painel.' },
-    { icon: MdVerifiedUser, titulo: 'Consentimento e transparência', desc: 'Você cobra apenas clientes que cadastrou. Nada de spam.' },
-    { icon: MdVisibility, titulo: 'Controle nas suas mãos', desc: 'Exporte, edite ou apague dados de clientes quando quiser.' },
-    { icon: MdFactCheck, titulo: 'Pronto para auditorias', desc: 'Histórico completo de cada cobrança enviada e recebida.' }
-  ]
-
-  const motivos = [
-    { icon: MdSupportAgent, titulo: 'Suporte em português', desc: 'Gente de verdade no WhatsApp, sem robô e sem fila eterna.' },
-    { icon: MdSwapHoriz, titulo: 'Migração facilitada', desc: 'Traga seus clientes da planilha ou de outro sistema sem dor.' },
-    { icon: MdAutorenew, titulo: 'Atualizações constantes', desc: 'Novas features toda semana, guiadas pelo seu feedback.' },
-    { icon: MdSchool, titulo: 'Setup em 5 minutos', desc: 'Configure uma vez e o sistema cobra sozinho daí pra frente.' }
-  ]
-
-  const planos = [
-    { nome: 'Starter', eyebrow: 'Ideal para começar', preco: 49, perMsg: 'R$0,25 por mensagem', cta: 'Começar no Starter', destaque: false,
-      features: ['Até 50 clientes ativos', '200 mensagens/mês', 'Mensagem automática no vencimento', '1 template personalizado', 'Dashboard básico'] },
-    { nome: 'Pro', eyebrow: 'Para negócios em crescimento', preco: 99, perMsg: 'R$0,17 por mensagem', cta: 'Escolher o Pro', destaque: false,
-      features: ['Até 150 clientes ativos', '600 mensagens/mês', '3 templates personalizados', 'Régua de cobrança completa', 'Dashboard com gráficos', 'Contratos com assinatura', 'Link na bio', 'Anamnese / Ficha do aluno', 'Suporte via WhatsApp'] },
-    { nome: 'Premium', eyebrow: 'Gestão profissional', preco: 149, perMsg: 'R$0,05 por mensagem', cta: 'Ativar Premium', destaque: true,
-      features: ['Até 500 clientes ativos', '3.000 mensagens/mês', 'Tudo do plano Pro', 'Link na bio com botão de agendar', 'CRM completo', 'Bot de WhatsApp', 'Agendamento online (link de agendamento)', 'Campanhas de WhatsApp', 'Templates ilimitados', 'Consultoria inicial (1h)', 'Suporte prioritário'] }
-  ]
-
-  const faqs = [
-    { p: 'O que é o Mensalli?', r: 'Um sistema completo de cobrança de mensalidades que envia lembretes automáticos pelo seu WhatsApp e organiza tudo num dashboard.' },
-    { p: 'Como funciona a conexão com WhatsApp?', r: 'Você escaneia um QR Code que vincula seu número ao sistema. As mensagens saem do SEU número, mantendo o relacionamento direto com os clientes.' },
-    { p: 'Preciso instalar algo?', r: 'Não. É 100% online, funciona no navegador do computador e do celular.' },
-    { p: 'Posso cancelar quando quiser?', r: 'Sim, sem multa e sem burocracia. Cancele direto no painel e o sistema para de cobrar no próximo ciclo.' },
-    { p: 'O WhatsApp pode banir meu número?', r: 'Não, se usar corretamente. O Mensalli envia apenas para clientes que você cadastrou, sem spam.' },
-    { p: 'Quais formas de pagamento meus clientes podem usar?', r: 'Pix, cartão de crédito e boleto, via Asaas. O cliente escolhe e você só recebe.' },
-    { p: 'Está em conformidade com a LGPD?', r: 'Sim. Criptografia, consentimento, controle e histórico completo para auditorias.' }
-  ]
-
-  const sectionPad = isSmallScreen ? '64px 22px' : '110px 24px'
-  const h2 = { fontSize: isSmallScreen ? '30px' : '44px', fontWeight: '800', letterSpacing: '-1.4px', color: INK, lineHeight: '1.1', margin: '0 0 16px' }
-  const eyebrow = { display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: '700', color: GREEN_DK, backgroundColor: GREEN_SOFT, padding: '6px 14px', borderRadius: '100px', marginBottom: '18px' }
-  const sub = { fontSize: '17px', color: BODY, lineHeight: '1.6', maxWidth: '620px', margin: '0 auto' }
+  const irPara = id => { setMenuAberto(false); scrollToId(id) }
+  const signup = () => navigate('/signup')
 
   return (
-    <div style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: BG, color: INK, WebkitFontSmoothing: 'antialiased', overflowX: 'hidden' }}>
+    <div className="lp2">
       <style>{LANDING_CSS}</style>
 
-      {/* Navbar */}
-      <nav style={{ backgroundColor: 'rgba(255,255,255,0.82)', backdropFilter: 'saturate(180%) blur(14px)', WebkitBackdropFilter: 'saturate(180%) blur(14px)', padding: '14px 0', borderBottom: `1px solid ${BORDER}`, position: 'sticky', top: 0, zIndex: 1000 }}>
-        <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <a href="https://www.mensalli.com.br" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <img src="/Logo-Full.png" alt="Mensalli" style={{ height: '34px', width: 'auto', cursor: 'pointer' }} />
+      {/* Header */}
+      <header className={`lp2-header${rolou ? ' is-scrolled' : ''}`}>
+        <div className="lp2-wrap lp2-header-in">
+          <a href="https://www.mensalli.com.br" className="lp2-logo" aria-label="Mensalli — início">
+            <img src="/Logo-Full.png" alt="Mensalli" />
           </a>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            {!isMobile && (
-              <>
-                <button onClick={() => scrollToId('recursos')} style={navLink}>Recursos</button>
-                <button onClick={() => scrollToId('precos')} style={navLink}>Preços</button>
-                <button onClick={() => scrollToId('faq')} style={navLink}>Dúvidas</button>
-                <button onClick={() => navigate('/login')} style={{ ...navLink, color: INK, fontWeight: '600' }}>Entrar</button>
-              </>
-            )}
-            <button onClick={() => navigate('/signup')} style={btnGrad('10px 18px', '14px')} onMouseOver={e => e.currentTarget.style.opacity = '.9'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
-              Teste grátis
+          <nav className="lp2-nav" aria-label="Principal">
+            {NAV.map(n => <button key={n.id} type="button" onClick={() => irPara(n.id)}>{n.l}</button>)}
+          </nav>
+          <div className="lp2-actions">
+            <button type="button" className="lp2-entrar" onClick={() => navigate('/login')}>Entrar</button>
+            <button type="button" className="lp2-btn lp2-btn--sm" onClick={signup}>Teste grátis</button>
+            <button type="button" className="lp2-burger" aria-label={menuAberto ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={menuAberto} aria-controls="lp2-mnav" onClick={() => setMenuAberto(v => !v)}>
+              {menuAberto ? <MdClose size={22} /> : <MdMenu size={22} />}
             </button>
           </div>
         </div>
-      </nav>
+        {menuAberto && (
+          <nav id="lp2-mnav" className="lp2-mnav" aria-label="Menu">
+            {NAV.map(n => <button key={n.id} type="button" onClick={() => irPara(n.id)}>{n.l}</button>)}
+            <button type="button" onClick={() => navigate('/login')}>Entrar</button>
+          </nav>
+        )}
+      </header>
 
-      {/* Hero */}
-      <section style={{ position: 'relative', padding: isSmallScreen ? '52px 22px 0' : '92px 24px 0', overflow: 'hidden', background: 'linear-gradient(180deg, #f3fbf6 0%, #ffffff 60%)' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <div style={eyebrow}><FaWhatsapp size={14} /> Cobrança automática pelo WhatsApp</div>
-          <h1 style={{ fontSize: isSmallScreen ? '38px' : '62px', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2.2px', margin: '0 0 22px' }}>
-            Nunca mais cobre <span style={gradText}>aluno por aluno</span> no WhatsApp.
-          </h1>
-          <p style={{ ...sub, fontSize: isSmallScreen ? '17px' : '20px', marginBottom: '32px' }}>
-            Enquanto você trabalha, o Mensalli cobra seus alunos automaticamente pelo WhatsApp. Feito para estúdios, academias e escolas que vivem de mensalidade.
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexDirection: isSmallScreen ? 'column' : 'row', alignItems: 'center' }}>
-            <button onClick={() => navigate('/signup')} style={{ ...btnGrad('15px 30px', '16px'), width: isSmallScreen ? '100%' : 'auto' }}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-              Crie sua conta grátis <MdArrowForward size={20} />
-            </button>
-            <button onClick={() => scrollToId('como-funciona')} style={btnGhost('15px 26px', isSmallScreen ? '100%' : 'auto')}
-              onMouseOver={e => e.currentTarget.style.borderColor = '#cfd3da'} onMouseOut={e => e.currentTarget.style.borderColor = BORDER}>
-              Veja como funciona
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: isSmallScreen ? '14px' : '26px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '22px', fontSize: '13.5px', color: BODY }}>
-            {['Usa seu próprio WhatsApp', 'Sem cartão de crédito', 'Cancele quando quiser'].map((t, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><MdCheckCircle size={16} style={{ color: GREEN }} /> {t}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Visual do produto */}
-        <div style={{ maxWidth: '1040px', margin: isSmallScreen ? '44px auto 0' : '64px auto 0', position: 'relative', zIndex: 1, animation: 'lpFadeUp .7s ease both' }}>
-          <div style={{ borderRadius: '16px', overflow: 'hidden', border: `1px solid ${BORDER}`, boxShadow: '0 40px 90px rgba(16,24,40,0.18)', backgroundColor: 'white' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '11px 15px', borderBottom: `1px solid ${BORDER}`, backgroundColor: BG_SOFT }}>
-              <span style={dot('#ff5f57')} /><span style={dot('#febc2e')} /><span style={dot('#28c840')} />
-              {!isSmallScreen && <span style={{ margin: '0 auto', fontSize: '12px', color: MUTED, backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '4px 40px' }}>app.mensalli.com.br</span>}
-            </div>
-            <img src="/dashboard.png" alt="Dashboard do Mensalli" width="1800" height="940" fetchPriority="high" style={{ width: '100%', height: 'auto', display: 'block', aspectRatio: '1800 / 940' }} />
-          </div>
-
-          {/* Cards flutuantes */}
-          {!isSmallScreen && (
-            <>
-              <div className="lp-float" style={{ position: 'absolute', top: '70px', right: '-14px', zIndex: 3, backgroundColor: 'white', borderRadius: '14px', border: `1px solid ${BORDER}`, boxShadow: '0 16px 40px rgba(16,24,40,0.16)', padding: '12px 14px', width: '210px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ width: '26px', height: '26px', borderRadius: '50%', background: GRAD, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaWhatsapp size={14} color="white" /></span>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: INK }}>Mensagem entregue</span>
-                </div>
-                <p style={{ margin: 0, fontSize: '12px', color: BODY, lineHeight: 1.4 }}>Oi, Maria! Sua mensalidade vence amanhã 🙂</p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '3px', marginTop: '4px' }}>
-                  <span style={{ fontSize: '10px', color: MUTED }}>09:41</span>
-                  <MdDoneAll size={14} style={{ animation: 'lpTick 4s ease-in-out infinite' }} />
-                </div>
-              </div>
-              <div className="lp-floatslow" style={{ position: 'absolute', bottom: '40px', left: '-14px', zIndex: 3, backgroundColor: 'white', borderRadius: '14px', border: `1px solid ${BORDER}`, boxShadow: '0 16px 40px rgba(16,24,40,0.16)', padding: '14px 16px' }}>
-                <p style={{ margin: '0 0 2px', fontSize: '12px', color: MUTED, fontWeight: '600' }}>Inadimplência</p>
-                <p style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: INK }}>−42% <span style={{ fontSize: '13px', color: GREEN, fontWeight: '700' }}>▾</span></p>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Stats band — fatos honestos do canal */}
-      <section style={{ padding: isSmallScreen ? '56px 22px' : '88px 24px' }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto', background: `linear-gradient(135deg, ${GREEN_SOFT}, #eefaf4)`, border: `1px solid ${BORDER}`, borderRadius: '24px', padding: isSmallScreen ? '36px 24px' : '52px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-            <p style={eyebrow}><MdBolt size={15} /> Por que cobrar pelo WhatsApp</p>
-            <h2 style={{ ...h2, margin: 0 }}>O canal que seu cliente <span style={gradText}>realmente lê</span></h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)', gap: isSmallScreen ? '28px' : '24px' }}>
-            {[
-              { num: '98%', label: 'das mensagens de WhatsApp são abertas — contra ~20% do e-mail.' },
-              { num: 'Minutos', label: 'até a primeira leitura, não dias como no boleto.' },
-              { num: '5 min', label: 'para configurar uma vez e deixar cobrando sozinho.' }
-            ].map((m, i) => (
-              <div key={i} style={{ textAlign: isSmallScreen ? 'center' : 'left' }}>
-                <p style={{ fontSize: isSmallScreen ? '40px' : '46px', fontWeight: '800', margin: '0 0 8px', letterSpacing: '-1.5px', background: GRAD_TEXT, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{m.num}</p>
-                <p style={{ fontSize: '15px', color: BODY, margin: 0, lineHeight: 1.5 }}>{m.label}</p>
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize: '12px', color: MUTED, marginTop: '24px', textAlign: 'center' }}>Médias de mercado do canal WhatsApp, não resultados individuais.</p>
-        </div>
-      </section>
-
-      {/* Destaque — automação 24h com mockup de celular */}
-      <section style={{ padding: sectionPad, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: isSmallScreen ? '40px' : '64px', alignItems: 'center' }}>
-          <div style={{ order: isSmallScreen ? 2 : 1 }}>
-            <p style={eyebrow}><MdAutoAwesome size={15} /> Automação 24h</p>
-            <h2 style={h2}>A cobrança que trabalha por você, <span style={gradText}>dia e noite</span></h2>
-            <p style={{ fontSize: '17px', color: BODY, lineHeight: 1.65, marginBottom: '24px' }}>
-              Defina a régua uma vez — 3 dias antes, no dia e após o vencimento — e o Mensalli envia tudo sozinho pelo seu WhatsApp. Você acorda com as mensagens já entregues e os pagamentos entrando.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
-              {['Mensagens no seu tom de voz, com nome, valor e data', 'Para de enviar quando o cliente paga', 'Link de pagamento direto na conversa'].map((t, i) => (
-                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', color: INK, fontWeight: '500' }}><MdCheckCircle size={20} style={{ color: GREEN }} /> {t}</span>
-              ))}
-            </div>
-            <button onClick={() => navigate('/signup')} style={btnGrad('14px 26px', '15px')}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-              Quero automatizar <MdArrowForward size={18} />
-            </button>
-          </div>
-          <div style={{ order: isSmallScreen ? 1 : 2, position: 'relative', display: 'flex', justifyContent: 'center' }}>
-            <Blob style={{ top: '-40px', left: '50%', marginLeft: '-220px', width: '440px', height: '440px', opacity: 0.8 }} />
-            <PhoneChat
-              isSmall={isSmallScreen}
-              mensagens={[
-                { de: 'nos', texto: 'Oi, Maria! 👋 Sua mensalidade de R$ 150 vence amanhã.', hora: '09:41', tickAnimado: true },
-                { de: 'nos', texto: 'Pode pagar por aqui no Pix 👇', hora: '09:41', anexo: 'pix' },
-                { de: 'eles', texto: 'Acabei de pagar, obrigada! 🙏', hora: '09:43' }
-              ]}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Tudo-em-um — grid de features */}
-      <section id="recursos" style={{ padding: sectionPad, backgroundColor: BG_SOFT }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-            <p style={eyebrow}><MdDashboardCustomize size={15} /> Tudo-em-um</p>
-            <h2 style={h2}>Um sistema que resolve a <span style={gradText}>sua cobrança inteira</span></h2>
-            <p style={sub}>Da primeira mensagem ao dinheiro na conta, sem você correr atrás de ninguém. E isso é só o começo.</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-            {features.map((f, i) => (
-              <div key={i} className="lp-card" style={{ backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '26px' }}>
-                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN_SOFT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                  <f.icon size={22} style={{ color: GREEN_DK }} />
-                </div>
-                <h3 style={{ fontSize: '16.5px', fontWeight: '700', color: INK, margin: '0 0 7px' }}>{f.titulo}</h3>
-                <p style={{ fontSize: '14px', color: BODY, margin: 0, lineHeight: 1.55 }}>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Muito além da cobrança — suíte Premium */}
-      <section style={{ padding: sectionPad }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-            <p style={eyebrow}><MdAutoAwesome size={15} /> Exclusivo do Premium</p>
-            <h2 style={h2}>O Mensalli começa na cobrança. <span style={gradText}>Mas não para aí.</span></h2>
-            <p style={sub}>Quando seu negócio precisa de mais, a gente cuida do resto — site, relacionamento, atendimento e agenda, tudo no mesmo lugar.</p>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '16px' }}>
-            {suite.map((f, i) => (
-              <div key={i} className="lp-card" style={{ flex: '1 1 300px', maxWidth: isSmallScreen ? '100%' : '330px', backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '26px' }}>
-                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN_SOFT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                  <f.icon size={22} style={{ color: GREEN_DK }} />
-                </div>
-                <h3 style={{ fontSize: '16.5px', fontWeight: '700', color: INK, margin: '0 0 7px' }}>{f.titulo}</h3>
-                <p style={{ fontSize: '14px', color: BODY, margin: 0, lineHeight: 1.55 }}>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Como funciona */}
-      <section id="como-funciona" style={{ padding: sectionPad }}>
-        <div style={{ maxWidth: '980px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-            <p style={eyebrow}><MdBolt size={15} /> Em 3 passos</p>
-            <h2 style={h2}>Configure uma vez. <span style={gradText}>Esqueça pra sempre.</span></h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)', gap: '20px' }}>
-            {comoFunciona.map((p, i) => (
-              <div key={i} className="lp-card" style={{ backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '30px' }}>
-                <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: GRAD, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '800', marginBottom: '18px' }}>{p.numero}</div>
-                <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 9px', color: INK }}>{p.titulo}</h3>
-                <p style={{ color: BODY, lineHeight: 1.6, fontSize: '15px', margin: 0 }}>{p.descricao}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* O que muda no seu dia a dia */}
-      <section style={{ padding: sectionPad, backgroundColor: BG_SOFT }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <p style={eyebrow}><MdAutoAwesome size={15} /> No dia a dia</p>
-            <h2 style={h2}>O que muda quando o Mensalli <span style={gradText}>cobra por você</span></h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)', gap: '20px' }}>
-            {resultados.map((r, i) => (
-              <div key={i} className="lp-card" style={{ backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '28px' }}>
-                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN_SOFT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                  <r.icon size={22} style={{ color: GREEN_DK }} />
-                </div>
-                <h3 style={{ fontSize: '16.5px', fontWeight: '700', color: INK, margin: '0 0 7px' }}>{r.titulo}</h3>
-                <p style={{ fontSize: '14px', color: BODY, margin: 0, lineHeight: 1.55 }}>{r.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* LGPD — seção escura */}
-      <section style={{ padding: isSmallScreen ? '24px 16px' : '40px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', background: DARK, borderRadius: '28px', padding: isSmallScreen ? '48px 26px' : '72px 56px', position: 'relative', overflow: 'hidden' }}>
-          <Blob style={{ bottom: '-180px', right: '-120px', width: '500px', height: '500px', opacity: 0.5 }} />
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-              <p style={{ ...eyebrow, backgroundColor: 'rgba(34,197,94,0.14)', color: GREEN_BRIGHT }}><MdShield size={15} /> Segurança</p>
-              <h2 style={{ ...h2, color: 'white' }}>Seus dados seguros e <span style={gradText}>em conformidade com a LGPD</span></h2>
-              <p style={{ ...sub, color: 'rgba(255,255,255,0.65)' }}>Privacidade e segurança em primeiro lugar — dados protegidos e sob seu controle.</p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(4, 1fr)', gap: '20px' }}>
-              {lgpd.map((c, i) => (
-                <div key={i} style={{ borderLeft: `2px solid rgba(34,197,94,0.4)`, paddingLeft: '18px' }}>
-                  <c.icon size={24} style={{ color: GREEN_BRIGHT, marginBottom: '14px' }} />
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'white', margin: '0 0 8px' }}>{c.titulo}</h3>
-                  <p style={{ fontSize: '13.5px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.55 }}>{c.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Calculadora ROI */}
-      <section style={{ padding: sectionPad }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <p style={eyebrow}><MdTrendingUp size={15} /> Calculadora</p>
-            <h2 style={h2}>Quanto você perde com <span style={gradText}>inadimplência?</span></h2>
-            <p style={sub}>Descubra em 10 segundos quanto dinheiro está ficando para trás.</p>
-          </div>
-          <div style={{ backgroundColor: 'white', borderRadius: '22px', padding: isSmallScreen ? '24px' : '40px', border: `1px solid ${BORDER}`, boxShadow: '0 20px 50px rgba(16,24,40,0.06)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '26px' }}>
-              {[{ l: 'Quantos clientes você tem?', v: roiClientes, s: setRoiClientes }, { l: 'Valor médio da mensalidade (R$)', v: roiValor, s: setRoiValor }, { l: '% de inadimplência atual', v: roiInad, s: setRoiInad }].map((f, i) => (
-                <div key={i}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: INK, marginBottom: '8px' }}>{f.l}</label>
-                  <input type="number" value={f.v} onChange={e => f.s(e.target.value)}
-                    style={{ width: '100%', padding: '13px 16px', fontSize: '16px', backgroundColor: BG_SOFT, color: INK, border: `1.5px solid ${BORDER}`, borderRadius: '11px', outline: 'none', boxSizing: 'border-box', transition: 'border-color .2s' }}
-                    onFocus={e => { e.target.style.borderColor = GREEN; e.target.select() }} onBlur={e => e.target.style.borderColor = BORDER} />
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ backgroundColor: '#fef2f2', borderRadius: '14px', padding: '20px', border: '1px solid #fecaca' }}>
-                <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 4px', fontWeight: '600' }}>Você perde por mês</p>
-                <p style={{ fontSize: '26px', fontWeight: '800', color: '#dc2626', margin: 0 }}>R$ {perdaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-              <div style={{ background: `linear-gradient(135deg, ${GREEN_SOFT}, #e9fbf1)`, borderRadius: '14px', padding: '20px', border: '1px solid #bbf7d0' }}>
-                <p style={{ fontSize: '13px', color: GREEN_DK, margin: '0 0 4px', fontWeight: '600' }}>Recupere até 70%</p>
-                <p style={{ fontSize: '26px', fontWeight: '800', color: GREEN, margin: 0 }}>+R$ {recuperacao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-            </div>
-            <button onClick={() => navigate('/signup')} style={{ ...btnGrad('16px', '16px'), width: '100%' }}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-              Começar a recuperar agora <MdArrowForward size={20} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="precos" style={{ padding: sectionPad, backgroundColor: BG_SOFT }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <p style={eyebrow}><MdStar size={15} /> Planos</p>
-            <h2 style={h2}>Escolha o plano ideal para <span style={gradText}>o seu negócio</span></h2>
-            <p style={sub}>Comece a automatizar suas cobranças hoje mesmo.</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(3, 1fr)', gap: '20px', alignItems: 'start' }}>
-            {planos.map((pl, i) => {
-              const d = pl.destaque
-              return (
-                <div key={i} style={{ backgroundColor: 'white', padding: '34px', borderRadius: '22px', border: d ? `2px solid ${GREEN}` : `1px solid ${BORDER}`, position: 'relative', transform: (d && !isSmallScreen) ? 'scale(1.04)' : 'none', boxShadow: d ? '0 26px 60px rgba(22,163,74,0.18)' : '0 12px 30px rgba(16,24,40,0.05)' }}>
-                  {d && <div style={{ position: 'absolute', top: '-13px', left: '50%', transform: 'translateX(-50%)', background: GRAD, color: 'white', padding: '6px 16px', borderRadius: '100px', fontSize: '12px', fontWeight: '700' }}>Melhor custo-benefício</div>}
-                  <p style={{ fontSize: '12px', fontWeight: '700', color: MUTED, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '.5px' }}>{pl.eyebrow}</p>
-                  <h3 style={{ fontSize: '22px', fontWeight: '700', color: INK, margin: '0 0 16px' }}>{pl.nome}</h3>
-                  <div style={{ marginBottom: '24px' }}>
-                    <span style={{ fontSize: '46px', fontWeight: '800', letterSpacing: '-1.5px', color: INK }}>R${pl.preco}</span>
-                    <span style={{ fontSize: '16px', color: MUTED }}>/mês</span>
-                    <p style={{ fontSize: '12px', color: MUTED, margin: '6px 0 0' }}>{pl.perMsg}</p>
-                  </div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px' }}>
-                    {pl.features.map((it, j) => (
-                      <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px', fontSize: '14px', color: BODY }}>
-                        <MdCheck size={18} style={{ color: GREEN, flexShrink: 0, marginTop: '2px' }} /> {it}
-                      </li>
-                    ))}
-                  </ul>
-                  <button onClick={() => navigate('/signup')} style={d ? { ...btnGrad('14px', '15px'), width: '100%' } : { ...btnGhost('14px', '100%') }}
-                    onMouseOver={e => { if (d) e.currentTarget.style.opacity = '.9'; else e.currentTarget.style.borderColor = '#cfd3da' }}
-                    onMouseOut={e => { if (d) e.currentTarget.style.opacity = '1'; else e.currentTarget.style.borderColor = BORDER }}>
-                    {pl.cta}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Motivos para assinar */}
-      <section style={{ padding: sectionPad }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <p style={eyebrow}><MdCheckCircle size={15} /> Diferenciais</p>
-            <h2 style={h2}>Mais motivos para <span style={gradText}>assinar o Mensalli</span></h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(4, 1fr)', gap: '18px' }}>
-            {motivos.map((m, i) => (
-              <div key={i} className="lp-card" style={{ backgroundColor: 'white', border: `1px solid ${BORDER}`, borderRadius: '18px', padding: '26px' }}>
-                <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN_SOFT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                  <m.icon size={22} style={{ color: GREEN_DK }} />
-                </div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: INK, margin: '0 0 7px' }}>{m.titulo}</h3>
-                <p style={{ fontSize: '14px', color: BODY, margin: 0, lineHeight: 1.55 }}>{m.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" style={{ padding: sectionPad, backgroundColor: BG_SOFT }}>
-        <div style={{ maxWidth: '780px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <p style={eyebrow}><MdMessage size={15} /> Dúvidas frequentes</p>
-            <h2 style={h2}>Tudo que você <span style={gradText}>precisa saber</span></h2>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {faqs.map((f, i) => {
-              const open = faqAberto === i
-              return (
-                <div key={i} style={{ border: `1px solid ${open ? '#cdeed8' : BORDER}`, borderRadius: '14px', overflow: 'hidden', cursor: 'pointer', backgroundColor: 'white', transition: 'border-color .2s' }} onClick={() => setFaqAberto(open ? null : i)}>
-                  <div style={{ padding: '20px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                    <span style={{ fontSize: '16px', fontWeight: '600', color: INK }}>{f.p}</span>
-                    {open ? <MdRemove size={20} style={{ color: GREEN, flexShrink: 0 }} /> : <MdAdd size={20} style={{ color: MUTED, flexShrink: 0 }} />}
-                  </div>
-                  {open && <div style={{ padding: '0 22px 20px', color: BODY, fontSize: '15px', lineHeight: 1.6 }}>{f.r}</div>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA final com formulário */}
-      <section style={{ padding: isSmallScreen ? '24px 16px 64px' : '40px 24px 110px' }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto', background: DARK, borderRadius: '28px', padding: isSmallScreen ? '40px 26px' : '60px', position: 'relative', overflow: 'hidden' }}>
-          <Blob style={{ top: '-160px', left: '-100px', width: '460px', height: '460px', opacity: 0.5 }} />
-          <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: isSmallScreen ? '36px' : '56px', alignItems: 'center' }}>
+      <main>
+        {/* Hero */}
+        <section className="lp2-hero">
+          <div className="lp2-wrap lp2-hero-grid">
             <div>
-              <h2 style={{ fontSize: isSmallScreen ? '30px' : '42px', fontWeight: '800', color: 'white', letterSpacing: '-1.5px', lineHeight: 1.1, margin: '0 0 16px' }}>
-                Pronto para <span style={gradText}>parar de cobrar na mão?</span>
-              </h2>
-              <p style={{ fontSize: '17px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, margin: '0 0 24px' }}>
-                Configure em 5 minutos e comece a receber amanhã. Sem cartão de crédito, cancele quando quiser.
+              <p className="lp2-eyebrow">Cobrança automática pelo WhatsApp</p>
+              <h1 className="lp2-h1">Nunca mais cobre aluno por aluno no WhatsApp.</h1>
+              <p className="lp2-hero-sub">
+                Enquanto você trabalha, o Mensalli cobra seus alunos automaticamente pelo WhatsApp. Feito para estúdios, academias e escolas que vivem de mensalidade.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {['Teste grátis por 3 dias', 'Suporte em português', 'Migração de dados facilitada'].map((t, i) => (
-                  <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', color: 'rgba(255,255,255,0.85)' }}><MdCheckCircle size={20} style={{ color: GREEN_BRIGHT }} /> {t}</span>
-                ))}
+              <div className="lp2-ctas">
+                <button type="button" className="lp2-btn" onClick={signup}>Crie sua conta grátis <MdArrowForward size={19} /></button>
+                <button type="button" className="lp2-btn lp2-btn--ghost" onClick={() => scrollToId('como-funciona')}>Veja como funciona</button>
               </div>
+              <ul className="lp2-trust">
+                {['Use seu próprio WhatsApp', 'Sem cartão de crédito', 'Cancele quando quiser'].map(t => (
+                  <li key={t}><MdCheck size={16} /> {t}</li>
+                ))}
+              </ul>
             </div>
-            <div style={{ backgroundColor: 'white', borderRadius: '20px', padding: isSmallScreen ? '24px' : '32px' }}>
-              <p style={{ fontSize: '17px', fontWeight: '700', color: INK, margin: '0 0 20px' }}>Para agilizar, conta pra gente:</p>
-              <label style={formLabel}>Seu maior desafio com cobrança hoje</label>
-              <select value={formDesafio} onChange={e => setFormDesafio(e.target.value)} style={formField}>
-                <option value="">Selecione…</option>
-                <option>Inadimplência alta</option>
-                <option>Perco tempo cobrando na mão</option>
-                <option>Esqueço de cobrar</option>
-                <option>Outro</option>
-              </select>
-              <label style={formLabel}>Quantos clientes você tem?</label>
-              <input type="number" value={formClientes} onChange={e => setFormClientes(e.target.value)} placeholder="Ex: 80" style={formField} />
-              <label style={formLabel}>Usa algum sistema hoje?</label>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '22px' }}>
-                {['Sim', 'Não'].map(op => (
-                  <button key={op} onClick={() => setFormSistema(op)} style={{ flex: 1, padding: '12px', borderRadius: '11px', border: `1.5px solid ${formSistema === op ? GREEN : BORDER}`, backgroundColor: formSistema === op ? GREEN_SOFT : 'white', color: formSistema === op ? GREEN_DK : BODY, fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all .2s' }}>{op}</button>
-                ))}
-              </div>
-              <button onClick={() => navigate('/signup')} style={{ ...btnGrad('15px', '16px'), width: '100%' }}
-                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)' }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)' }}>
-                Continuar <MdArrowForward size={20} />
-              </button>
+
+            <div className="lp2-hv">
+              <HeroDemo />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <Depoimentos onCta={signup} />
+
+        {/* Cobrança automática em destaque */}
+        <section id="cobranca" className="lp2-sec lp2-auto" aria-labelledby="auto-titulo">
+          <div className="lp2-wrap lp2-auto-grid">
+            <div>
+              <p className="lp2-eyebrow">Automação 24h</p>
+              <h2 id="auto-titulo" className="lp2-h2">A cobrança que trabalha por você, dia e noite.</h2>
+              <p className="lp2-lead">
+                Defina a régua uma vez — antes, no dia e após o vencimento — e o Mensalli envia tudo sozinho pelo seu WhatsApp. Você acorda com as mensagens já entregues e os pagamentos entrando.
+              </p>
+              <ul className="lp2-checks">
+                {['Mensagens no seu tom de voz, com nome, valor e data', 'Para de enviar quando o cliente paga', 'Link de pagamento direto na conversa'].map(t => (
+                  <li key={t}><span><MdCheck size={16} /></span>{t}</li>
+                ))}
+              </ul>
+              <button type="button" className="lp2-btn" onClick={signup}>Quero automatizar <MdArrowForward size={19} /></button>
+            </div>
+
+            <div>
+              <div className="lp2-regua">
+                {REGUA.map((r, i) => (
+                  <div key={i} className={`lp2-step${r.condicional ? ' lp2-step--cond' : ''}`}>
+                    <span className="lp2-step-pill"><b>{i + 1}</b>{r.quando}</span>
+                    <div className="lp2-bubble lp2-bubble--out">
+                      {r.texto}
+                      <span className="lp2-bubble-meta">{r.hora} <MdDoneAll size={14} /></span>
+                    </div>
+                    <span className="lp2-step-status"><i />{r.status}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="lp2-regua-note">Trechos dos textos padrão do Mensalli, com dados de exemplo. Você ajusta dias e mensagens do seu jeito.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Conheça o Mensalli por dentro */}
+        <section id="recursos" className="lp2-sec lp2-bg-off" aria-labelledby="dentro-titulo">
+          <div className="lp2-wrap">
+            <div className="lp2-head2">
+              <div>
+                <p className="lp2-eyebrow">Por dentro do Mensalli</p>
+                <h2 id="dentro-titulo" className="lp2-h2">Um sistema que resolve sua cobrança <em>inteira</em>.</h2>
+              </div>
+              <p className="lp2-lead">Da primeira mensagem ao dinheiro na conta, sem você correr atrás de ninguém.</p>
+            </div>
+
+            {/* A — Automação */}
+            <div className="lp2-show">
+              <div className="lp2-show-text">
+                <p className="lp2-show-kicker">Régua de cobrança</p>
+                <h3>Configure suas cobranças e deixe o Mensalli trabalhar.</h3>
+                <p>Ligue os envios que fazem sentido pro seu negócio, ajuste o texto de cada um e veja na hora como a mensagem chega no WhatsApp do aluno.</p>
+                <ul className="lp2-mini">
+                  <li><MdCheck size={17} /> Antes, no dia e depois do vencimento, cada um com seu template</li>
+                  <li><MdCheck size={17} /> Nome, valor, vencimento e chave Pix preenchidos sozinhos</li>
+                  <li><MdCheck size={17} /> Confirmação de pagamento enviada sozinha quando o aluno paga</li>
+                </ul>
+              </div>
+              <div className="lp2-stage">
+                <Shot src="/automacoes.png" w={888} h={600} alt="Tela de automações do Mensalli com os envios de 3 dias antes, no dia, 3 dias depois, confirmação de pagamento e alerta de despesa, todos ativados" />
+              </div>
+            </div>
+
+            {/* B — Financeiro */}
+            <div className="lp2-show lp2-show--rev">
+              <div className="lp2-show-text">
+                <p className="lp2-show-kicker">Mensalidades e financeiro</p>
+                <h3>Saiba quem pagou, quem está devendo e quanto você tem a receber.</h3>
+                <p>Em atraso, próximos vencimentos e recebido do mês no topo da tela. Logo abaixo, cada mensalidade com cliente, vencimento, valor e plano.</p>
+                <ul className="lp2-mini">
+                  <li><MdCheck size={17} /> Total em atraso e quantas mensalidades estão pendentes</li>
+                  <li><MdCheck size={17} /> O que vence hoje e nos próximos 7 dias</li>
+                  <li><MdCheck size={17} /> Receita do mês, projetada e recorrente no dashboard</li>
+                </ul>
+              </div>
+              <div className="lp2-stage lp2-stage--rev">
+                <Shot src="/mensalidades.png" alt="Tela de mensalidades do Mensalli com totais em atraso, próximos vencimentos, recebido e lista de mensalidades" />
+              </div>
+            </div>
+
+            {/* C — Portal de pagamento */}
+            <div className="lp2-show">
+              <div className="lp2-show-text">
+                <p className="lp2-show-kicker">Portal do aluno</p>
+                <h3>Seu aluno recebe a cobrança e paga em poucos cliques.</h3>
+                <p>A mensagem leva o link do portal. O aluno abre no celular, vê o que está em aberto e paga sem precisar te chamar.</p>
+                <ul className="lp2-mini">
+                  <li><MdCheck size={17} /> Pix, cartão de crédito ou boleto, via Asaas</li>
+                  <li><MdCheck size={17} /> Link enviado junto da cobrança no WhatsApp</li>
+                  <li><MdCheck size={17} /> Pagou, a régua para de enviar</li>
+                </ul>
+              </div>
+              <div className="lp2-stage lp2-stage--center">
+                <div className="lp2-phone lp2-phone--demo lp2-phone--portal">
+                  <div className="lp2-phone-screen">
+                    <div className="lp2-phone-status" aria-hidden="true">
+                      <span>9:41</span>
+                      <i className="lp2-phone-island" />
+                      <span className="lp2-phone-icons"><MdSignalCellularAlt size={14} /><MdWifi size={14} /><MdBatteryFull size={15} /></span>
+                    </div>
+                    <img className="lp2-portal-shot" src="/portal-aluno.png" width="540" height="938" loading="lazy" decoding="async"
+                      alt="Portal do aluno no celular: plano, próxima aula, frequência e mensalidade pendente com o botão Pagar agora" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recursos secundários */}
+            <div className="lp2-strip">
+              {SECUNDARIOS.map(s => (
+                <div key={s.t}>
+                  <s.icon size={22} />
+                  <strong>{s.t}</strong>
+                  <span>{s.d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Como começar — linha do tempo */}
+        <section id="como-funciona" className="lp2-sec" aria-labelledby="passos-titulo">
+          <div className="lp2-wrap">
+            <div className="lp2-head2">
+              <div>
+                <p className="lp2-eyebrow">Em 3 passos</p>
+                <h2 id="passos-titulo" className="lp2-h2">Configure uma vez. Esqueça pra sempre.</h2>
+              </div>
+              <p className="lp2-lead">Uns 5 minutos de configuração e, daí pra frente, o Mensalli cobra sozinho todo mês.</p>
+            </div>
+            <ol className="lp2-tl">
+              {PASSOS.map((p, i) => (
+                <li key={i}>
+                  <span className="lp2-tl-num">{String(i + 1).padStart(2, '0')}</span>
+                  <h3>{p.titulo}</h3>
+                  <p>{p.descricao}</p>
+                  <span className="lp2-tl-nota">{p.nota}</span>
+                </li>
+              ))}
+            </ol>
+            <button type="button" className="lp2-btn lp2-tl-cta" onClick={signup}>Começar meu teste grátis <MdArrowForward size={19} /></button>
+          </div>
+        </section>
+
+        <Suite onPlanos={() => scrollToId('precos')} />
+
+        {/* Benefícios — editorial */}
+        <section className="lp2-sec lp2-benef" aria-labelledby="benef-titulo">
+          <div className="lp2-wrap">
+            <p className="lp2-eyebrow">No dia a dia</p>
+            <h2 id="benef-titulo" className="lp2-h2 lp2-h2--wide">O que muda quando o Mensalli cobra por você.</h2>
+            <div className="lp2-benef-grid">
+              {BENEFICIOS.map((b, i) => (
+                <div key={i}>
+                  <span className="lp2-benef-n">{String(i + 1).padStart(2, '0')}</span>
+                  <h3>{b.titulo}</h3>
+                  <p>{b.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Calculadora de inadimplência */}
+        <section className="lp2-sec lp2-bg-green" aria-labelledby="calc-titulo">
+          <div className="lp2-wrap lp2-calc-grid">
+            <div>
+              <p className="lp2-eyebrow">Calculadora</p>
+              <h2 id="calc-titulo" className="lp2-h2">Quanto você perde com inadimplência?</h2>
+              <p className="lp2-lead">Descubra em 30 segundos quanto dinheiro está ficando para trás.</p>
+              <div className="lp2-calc-como">
+                <strong>Como a conta é feita</strong>
+                <p>Clientes × mensalidade média × % de inadimplência = quanto fica em aberto todo mês.</p>
+                <p>A recuperação usa uma hipótese de {Math.round(RECUPERACAO_HIPOTESE * 100)}% só para dar a ordem de grandeza. Não é promessa de resultado.</p>
+              </div>
+            </div>
+
+            <div className="lp2-calc">
+              <div className="lp2-calc-fields">
+                {[
+                  { id: 'calc-clientes', l: 'Quantos clientes você tem?', v: roiClientes, s: setRoiClientes, full: true },
+                  { id: 'calc-valor', l: 'Valor médio da mensalidade (R$)', v: roiValor, s: setRoiValor },
+                  { id: 'calc-inad', l: '% de inadimplência atual', v: roiInad, s: setRoiInad }
+                ].map(f => (
+                  <div key={f.id} className={f.full ? 'lp2-field lp2-field--full' : 'lp2-field'}>
+                    <label htmlFor={f.id}>{f.l}</label>
+                    <input id={f.id} type="number" inputMode="decimal" min="0" value={f.v}
+                      onChange={e => f.s(e.target.value)} onFocus={e => e.target.select()} />
+                  </div>
+                ))}
+              </div>
+              <div className="lp2-calc-res" aria-live="polite">
+                <div>
+                  <span>Fica em aberto por mês</span>
+                  <strong className="lp2-calc-perda">R$ {brl(perdaMensal)}</strong>
+                </div>
+                <div>
+                  <span>Se recuperar {Math.round(RECUPERACAO_HIPOTESE * 100)}% <em>(hipótese)</em></span>
+                  <strong className="lp2-calc-ganho">+R$ {brl(recuperacao)}</strong>
+                </div>
+              </div>
+              <button type="button" className="lp2-btn lp2-btn--block" onClick={signup}>Começar a recuperar agora <MdArrowForward size={19} /></button>
+            </div>
+          </div>
+        </section>
+
+        {/* Planos */}
+        <section id="precos" className="lp2-sec lp2-bg-off" aria-labelledby="planos-titulo">
+          <div className="lp2-wrap">
+            <div className="lp2-head2">
+              <div>
+                <p className="lp2-eyebrow">Planos</p>
+                <h2 id="planos-titulo" className="lp2-h2">Escolha o plano ideal para o seu negócio.</h2>
+              </div>
+              <p className="lp2-lead">Comece a automatizar suas cobranças hoje mesmo, com 3 dias grátis para testar.</p>
+            </div>
+            <div className="lp2-plans">
+              {PLANOS.map(pl => (
+                <div key={pl.nome} className={`lp2-plan${pl.destaque ? ' is-pick' : ''}`}>
+                  <p className="lp2-plan-eb">{pl.eyebrow}</p>
+                  <h3 className="lp2-plan-name">{pl.nome}{pl.destaque && <span className="lp2-plan-badge">Melhor custo-benefício</span>}</h3>
+                  <p className="lp2-plan-price"><strong>R${pl.preco}</strong><span>/mês</span></p>
+                  <p className="lp2-plan-msg">{pl.perMsg}</p>
+                  <button type="button" className={`lp2-btn lp2-btn--block${pl.destaque ? '' : ' lp2-btn--ghost'}`} onClick={signup}>{pl.cta}</button>
+                  <ul>
+                    {pl.features.map(it => <li key={it}><MdCheck size={17} /> {it}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Faixa de confiança (substitui a antiga seção grande de LGPD) */}
+        <section className="lp2-trustband" aria-label="Privacidade e confiança">
+          <div className="lp2-wrap lp2-trustband-in">
+            {CONFIANCA.map(c => (
+              <div key={c.t}><c.icon size={20} /><span>{c.t}</span></div>
+            ))}
+            <button type="button" className="lp2-link" onClick={() => navigate('/privacidade')}>Privacidade e LGPD <MdArrowForward size={17} /></button>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="lp2-sec" aria-labelledby="faq-titulo">
+          <div className="lp2-wrap lp2-faq-grid">
+            <div>
+              <p className="lp2-eyebrow">Dúvidas frequentes</p>
+              <h2 id="faq-titulo" className="lp2-h2">Tudo que você precisa saber.</h2>
+              <p className="lp2-lead">Não achou sua dúvida? Chama a gente no WhatsApp: suporte em português, com gente de verdade, sem robô e sem fila eterna.</p>
+              <a className="lp2-btn lp2-btn--ghost lp2-faq-wa" href={WHATSAPP_CONTATO} target="_blank" rel="noopener noreferrer">
+                <FaWhatsapp size={18} /> Falar no WhatsApp
+              </a>
+            </div>
+            <div className="lp2-faq">
+              {FAQS.map((f, i) => {
+                const open = faqAberto === i
+                return (
+                  <div key={i} className={`lp2-faq-item${open ? ' is-open' : ''}`}>
+                    <h3>
+                      <button type="button" id={`faq-q-${i}`} aria-expanded={open} aria-controls={`faq-r-${i}`}
+                        onClick={() => setFaqAberto(open ? null : i)}>
+                        <span>{f.p}</span><MdAdd size={22} aria-hidden="true" />
+                      </button>
+                    </h3>
+                    <div id={`faq-r-${i}`} role="region" aria-labelledby={`faq-q-${i}`} hidden={!open}>
+                      <p>{f.r}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA final com formulário */}
+        <section className="lp2-final" aria-labelledby="final-titulo">
+          <div className="lp2-wrap">
+            <div className="lp2-final-box">
+              <div>
+                <h2 id="final-titulo" className="lp2-h2">Pronto para parar de cobrar na mão?</h2>
+                <p className="lp2-lead">Configure em 5 minutos e comece a receber amanhã. Sem cartão de crédito, cancele quando quiser.</p>
+                <ul className="lp2-final-list">
+                  {['Teste grátis por 3 dias', 'Suporte em português, com gente de verdade', 'Migração facilitada da planilha ou de outro sistema'].map(t => (
+                    <li key={t}><MdCheckCircle size={20} /> {t}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="lp2-final-form">
+                <p className="lp2-final-form-t">Para agilizar, conta pra gente:</p>
+                <label htmlFor="cta-desafio">Seu maior desafio com cobrança hoje</label>
+                <select id="cta-desafio" value={formDesafio} onChange={e => setFormDesafio(e.target.value)}>
+                  <option value="">Selecione…</option>
+                  <option>Inadimplência alta</option>
+                  <option>Perco tempo cobrando na mão</option>
+                  <option>Esqueço de cobrar</option>
+                  <option>Outro</option>
+                </select>
+                <label htmlFor="cta-clientes">Quantos clientes você tem?</label>
+                <input id="cta-clientes" type="number" inputMode="numeric" value={formClientes} onChange={e => setFormClientes(e.target.value)} placeholder="Ex: 80" />
+                <span className="lp2-final-lbl" id="cta-sistema">Usa algum sistema hoje?</span>
+                <div className="lp2-final-opts" role="group" aria-labelledby="cta-sistema">
+                  {['Sim', 'Não'].map(op => (
+                    <button key={op} type="button" aria-pressed={formSistema === op} className={formSistema === op ? 'is-on' : ''} onClick={() => setFormSistema(op)}>{op}</button>
+                  ))}
+                </div>
+                <button type="button" className="lp2-btn lp2-btn--block" onClick={signup}>Continuar <MdArrowForward size={19} /></button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer style={{ backgroundColor: '#0a0c0a', color: 'rgba(255,255,255,0.62)', padding: isSmallScreen ? '48px 24px 28px' : '64px 24px 32px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1.6fr 1fr 1fr 1fr', gap: isSmallScreen ? '36px' : '40px', marginBottom: '40px' }}>
+      <footer className="lp2-footer">
+        <div className="lp2-wrap">
+          <div className="lp2-footer-grid">
             <div>
-              <img src="/Logo-Full.png" alt="Mensalli" style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)', marginBottom: '16px' }} />
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '300px', margin: '0 0 18px' }}>
-                Cobrança automática pelo WhatsApp para quem vive de mensalidade. Menos inadimplência, sem constrangimento.
-              </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {[{ icon: FaWhatsapp, href: 'https://wa.me/5562981618862' }, { icon: FaInstagram, href: 'https://instagram.com/mensalli' }].map((s, i) => (
-                  <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
-                    style={{ width: '38px', height: '38px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.7)', transition: 'all .2s' }}
-                    onMouseOver={e => { e.currentTarget.style.color = GREEN_BRIGHT; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)' }}
-                    onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}>
-                    <s.icon size={18} />
-                  </a>
-                ))}
+              <img src="/Logo-Full.png" alt="Mensalli" className="lp2-footer-logo" />
+              <p className="lp2-footer-desc">Cobrança automática pelo WhatsApp para quem vive de mensalidade. Menos inadimplência, sem constrangimento.</p>
+              <div className="lp2-footer-social">
+                <a href={WHATSAPP_CONTATO} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp do Mensalli"><FaWhatsapp size={18} /></a>
+                <a href="https://instagram.com/mensalli" target="_blank" rel="noopener noreferrer" aria-label="Instagram do Mensalli"><FaInstagram size={18} /></a>
               </div>
             </div>
             {[
               { t: 'Produto', links: [{ l: 'Recursos', id: 'recursos' }, { l: 'Preços', id: 'precos' }, { l: 'Dúvidas', id: 'faq' }] },
-              { t: 'Empresa', links: [{ l: 'Entrar', to: '/login' }, { l: 'Criar conta', to: '/signup' }, { l: 'Contato', href: 'https://wa.me/5562981618862' }] },
+              { t: 'Empresa', links: [{ l: 'Entrar', to: '/login' }, { l: 'Criar conta', to: '/signup' }, { l: 'Contato', href: WHATSAPP_CONTATO }] },
               { t: 'Legal', links: [{ l: 'Termos de Uso', href: '#' }, { l: 'Privacidade', to: '/privacidade' }, { l: 'LGPD', to: '/privacidade' }] }
-            ].map((col, ci) => (
-              <div key={ci}>
-                <p style={{ fontSize: '12px', fontWeight: '700', color: 'white', textTransform: 'uppercase', letterSpacing: '.5px', margin: '0 0 16px' }}>{col.t}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {col.links.map((lk, li) => (
-                    <button key={li} onClick={() => { if (lk.id) scrollToId(lk.id); else if (lk.to) navigate(lk.to); else if (lk.href) window.open(lk.href, lk.href.startsWith('http') ? '_blank' : '_self') }}
-                      style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontSize: '14px', color: 'rgba(255,255,255,0.62)', transition: 'color .2s', width: 'fit-content' }}
-                      onMouseOver={e => e.currentTarget.style.color = GREEN_BRIGHT} onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.62)'}>{lk.l}</button>
+            ].map(col => (
+              <div key={col.t}>
+                <p className="lp2-footer-t">{col.t}</p>
+                <div className="lp2-footer-links">
+                  {col.links.map(lk => (
+                    <button key={lk.l} type="button" onClick={() => { if (lk.id) scrollToId(lk.id); else if (lk.to) navigate(lk.to); else if (lk.href) window.open(lk.href, lk.href.startsWith('http') ? '_blank' : '_self') }}>{lk.l}</button>
                   ))}
                 </div>
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', justifyContent: 'space-between', alignItems: isSmallScreen ? 'flex-start' : 'center', gap: '14px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>© 2026 Mensalli. Todos os direitos reservados.</p>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: '600', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '100px', padding: '6px 12px' }}>
-              <MdLock size={14} color={GREEN_BRIGHT} /> Pagamento seguro · LGPD
-            </span>
+          <div className="lp2-footer-bottom">
+            <p>© 2026 Mensalli. Todos os direitos reservados.</p>
+            <button type="button" onClick={() => navigate('/privacidade')}><MdShield size={14} /> Privacidade · LGPD</button>
           </div>
         </div>
       </footer>
 
       {/* Botão flutuante WhatsApp */}
-      <a href="https://wa.me/5562981618862" target="_blank" rel="noopener noreferrer"
-        style={{ position: 'fixed', bottom: isSmallScreen ? '80px' : '20px', right: '20px', width: '58px', height: '58px', background: GRAD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(22,163,74,0.45)', zIndex: 1000, transition: 'transform .3s' }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)' }} onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}>
-        <FaWhatsapp size={30} color="white" />
+      <a href={WHATSAPP_CONTATO} target="_blank" rel="noopener noreferrer" className="lp2-wa-float" aria-label="Falar com o Mensalli no WhatsApp">
+        <FaWhatsapp size={30} />
       </a>
 
-      {/* Sticky CTA mobile */}
-      {isSmallScreen && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', borderTop: `1px solid ${BORDER}`, padding: '12px 18px', zIndex: 999, display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button onClick={() => navigate('/signup')} style={{ ...btnGrad('14px', '15px'), flex: 1 }}>Teste grátis <MdArrowForward size={18} /></button>
-          <button onClick={() => navigate('/login')} style={btnGhost('14px 20px', 'auto')}>Entrar</button>
-        </div>
-      )}
+      {/* Barra fixa de CTA no mobile */}
+      <div className="lp2-mbar">
+        <button type="button" className="lp2-btn" onClick={signup}>Teste grátis <MdArrowForward size={18} /></button>
+        <button type="button" className="lp2-btn lp2-btn--ghost" onClick={() => navigate('/login')}>Entrar</button>
+      </div>
     </div>
   )
 }
-
-const navLink = { padding: '8px 14px', backgroundColor: 'transparent', color: BODY, border: 'none', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }
-const formLabel = { display: 'block', fontSize: '13px', fontWeight: '600', color: INK, marginBottom: '7px' }
-const formField = { width: '100%', padding: '12px 14px', fontSize: '15px', backgroundColor: BG_SOFT, color: INK, border: `1.5px solid ${BORDER}`, borderRadius: '11px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }

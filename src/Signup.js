@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import { MdAutorenew, MdPayments, MdDashboardCustomize, MdCheckCircle } from 'react-icons/md'
@@ -63,6 +63,10 @@ const DEPOIMENTOS = []
 export default function Signup({ onCadastroIniciado }) {
   const navigate = useNavigate()
   const { isSmallScreen } = useWindowSize()
+
+  // Chega aqui vindo de botoes no meio/fim da landing: o app e de pagina unica e
+  // o navegador mantem a rolagem da pagina anterior, entao volta pro topo.
+  useEffect(() => { window.scrollTo(0, 0) }, [])
 
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [telefone, setTelefone] = useState('')

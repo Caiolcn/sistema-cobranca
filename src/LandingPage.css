@@ -1,0 +1,598 @@
+/* Redesign da landing (/) — fase 1: header, hero, depoimentos, cobranca
+   automatica e "por dentro". Classes com prefixo lp2- pra nao colidir com as
+   landings de nicho, que ainda usam o LANDING_CSS de pages/landing/ui.js. */
+
+.lp2 {
+  --g: #16A34A;
+  --g-dk: #15803D;
+  --g2: #22C55E;
+  --gbg: #EAF5EF;
+  --off: #F6F8F7;
+  --dark: #103C2B;
+  --ink: #0F172A;
+  --mut: #64748B;
+  --line: #E6EAEE;
+  --wa-bg: #EFEAE2;
+  --wa-out: #D9FDD3;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+  /* clip (e nao hidden) pra nao virar scroll container e quebrar o header sticky */
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+.lp2 *, .lp2 *::before, .lp2 *::after { box-sizing: border-box; }
+
+.lp2-wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+.lp2-sec { padding: 112px 0; }
+.lp2-bg-off { background: var(--off); }
+.lp2-bg-green { background: var(--gbg); }
+/* itens de grid encolhem (senao o carrossel/mockups alargam a coluna no mobile) */
+.lp2-hero-grid > *, .lp2-dep-grid > *, .lp2-auto-grid > *, .lp2-show > *, .lp2-head2 > * { min-width: 0; }
+
+.lp2-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 0 0 18px; font-size: 12px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--g-dk);
+}
+.lp2-eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--g2); }
+
+.lp2-h2 {
+  margin: 0 0 18px; font-size: 42px; line-height: 1.12; font-weight: 700;
+  letter-spacing: -0.028em; color: var(--ink); max-width: 18ch;
+}
+.lp2-h1, .lp2-h2, .lp2 h3 { text-wrap: balance; }
+.lp2-h2 em { font-style: normal; color: var(--g); }
+.lp2-lead { margin: 0; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 46ch; }
+
+/* ---------- botoes ---------- */
+.lp2-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 22px; border-radius: 12px; border: 1px solid transparent;
+  font-weight: 600; font-size: 16px; line-height: 1.2; font-family: inherit; cursor: pointer; text-decoration: none;
+  /* mesmo degrade dos botoes do resto do produto (GRAD em pages/landing/ui.js) */
+  background: linear-gradient(135deg, #22C55E 0%, #0EA372 100%); background-origin: border-box; color: #fff;
+  box-shadow: 0 8px 24px rgba(22,163,74,.28);
+  transition: filter .2s, transform .2s, box-shadow .2s, border-color .2s;
+}
+.lp2-btn:hover { filter: brightness(.95); transform: translateY(-2px); box-shadow: 0 12px 28px rgba(22,163,74,.32); }
+.lp2-btn--ghost { background: #fff; color: var(--ink); border-color: var(--line); box-shadow: none; }
+.lp2-btn--ghost:hover { background: #fff; border-color: #CBD5E1; filter: none; box-shadow: none; }
+.lp2-btn--sm { padding: 10px 16px; font-size: 14px; white-space: nowrap; }
+.lp2-link {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none;
+  font-weight: 600; font-size: 15px; line-height: 1.4; font-family: inherit; color: var(--g-dk); cursor: pointer;
+}
+.lp2-link svg { transition: transform .2s; }
+.lp2-link:hover svg { transform: translateX(3px); }
+.lp2 :focus-visible { outline: 2px solid var(--g); outline-offset: 3px; border-radius: 8px; }
+
+/* ---------- header ---------- */
+.lp2-header {
+  position: sticky; top: 0; z-index: 1000; background: #fff;
+  border-bottom: 1px solid transparent; transition: border-color .2s, box-shadow .2s;
+}
+.lp2-header.is-scrolled { border-bottom-color: var(--line); box-shadow: 0 4px 20px rgba(15,23,42,.04); }
+.lp2-header-in { height: 76px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+.lp2-logo img { height: 32px; width: auto; display: block; }
+.lp2-nav { display: flex; gap: 2px; }
+.lp2-nav button, .lp2-entrar {
+  padding: 8px 14px; border: 0; background: none; border-radius: 8px; cursor: pointer;
+  font-weight: 500; font-size: 15px; line-height: 1; font-family: inherit; color: var(--mut); transition: color .2s;
+}
+.lp2-nav button:hover, .lp2-entrar:hover { color: var(--ink); }
+.lp2-entrar { color: var(--ink); font-weight: 600; }
+.lp2-actions { justify-self: end; display: flex; align-items: center; gap: 6px; }
+.lp2-burger {
+  display: none; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; color: var(--ink); align-items: center; justify-content: center; cursor: pointer;
+}
+.lp2-mnav { display: none; }
+
+/* ---------- hero ---------- */
+.lp2-hero { padding: 56px 0 104px; }
+.lp2-hero-grid { display: grid; grid-template-columns: 44fr 56fr; gap: 48px; align-items: center; }
+.lp2-h1 {
+  margin: 0 0 22px; font-size: 58px; line-height: 1.04; font-weight: 700;
+  letter-spacing: -0.035em; max-width: 13ch;
+}
+.lp2-hero-sub { margin: 0 0 32px; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 44ch; }
+.lp2-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+.lp2-trust { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 24px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--mut); }
+.lp2-trust li { display: inline-flex; align-items: center; gap: 6px; }
+.lp2-trust svg { color: var(--g); }
+
+.lp2-hv { position: relative; padding: 40px 0 36px; animation: lp2In .7s ease both; }
+/* celular a direita; a cascata fica a esquerda, encostando nele */
+.lp2-hv-phone { position: relative; z-index: 2; width: 304px; margin-left: auto; margin-right: 0; }
+/* cascata de notificacoes: a mais nova no topo (logo abaixo do print), as
+   anteriores descem ate a linha do fim do celular, menores e mais apagadas */
+/* centralizada na altura do celular: a pilha inteira mede ~236px (card do topo
+   + 4 degraus), entao sobe metade disso a partir do meio */
+/* posicao relativa ao celular (que fica colado a direita): a pilha so encosta
+   na moldura (~12px) — os baloes da conversa comecam ~20px pra dentro, entao
+   nada do texto fica coberto quando as mensagens sobem. Pode avancar ate 24px
+   no vao entre as colunas quando falta espaco.
+   622 = 304 (celular) + 330 (pilha) - 12 */
+.lp2-ncas { position: absolute; z-index: 3; left: max(-24px, calc(100% - 622px)); top: 50%; margin-top: -116px; width: 330px; height: 62px; }
+.lp2-ncard {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 12px;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(15,23,42,.10);
+  transform-origin: 50% 0;
+  transition: transform .7s cubic-bezier(.2,.8,.2,1), opacity .7s ease;
+}
+.lp2-ncard[data-camada="0"] { z-index: 6; }
+/* o card fica opaco (nao deixa vazar o que esta atras); so o conteudo apaga */
+.lp2-ncard[data-camada="1"] { z-index: 5; transform: translateY(48px) scale(.965); }
+.lp2-ncard[data-camada="2"] { z-index: 4; transform: translateY(94px) scale(.93); }
+.lp2-ncard[data-camada="3"] { z-index: 3; transform: translateY(139px) scale(.895); }
+.lp2-ncard[data-camada="4"] { z-index: 2; transform: translateY(183px) scale(.86); }
+.lp2-ncard[data-camada="5"] { z-index: 1; transform: translateY(220px) scale(.83); opacity: 0; }
+.lp2-ncard > * { transition: opacity .7s ease; }
+.lp2-ncard[data-camada="1"] > * { opacity: .85; }
+.lp2-ncard[data-camada="2"] > * { opacity: .65; }
+.lp2-ncard[data-camada="3"] > * { opacity: .45; }
+.lp2-ncard[data-camada="4"] > * { opacity: .3; }
+/* a nova sobe de tras da pilha ate o topo, com um leve quique no fim,
+   como notificacao de celular chegando */
+.lp2-ncard.is-new { animation: lp2NotifIn .8s cubic-bezier(.34,1.5,.64,1) both; }
+@keyframes lp2NotifIn {
+  0% { opacity: 0; transform: translateY(56px) scale(.88); }
+  45% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+/* abertura ao carregar: todas comecam escondidas no topo e se espalham pra
+   baixo uma de cada vez (atraso por camada) */
+.lp2-ncas.is-fechada .lp2-ncard { transform: translateY(-14px) scale(.94); opacity: 0; }
+.lp2-ncas.is-abrindo .lp2-ncard { transition-delay: calc(var(--i) * 120ms); }
+.lp2-ncard-ico { width: 36px; height: 36px; border-radius: 10px; background: #DCFCE7; color: var(--g-dk); display: flex; align-items: center; justify-content: center; flex: none; }
+.lp2-ncard-txt { min-width: 0; }
+.lp2-ncard-txt strong { display: block; font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp2-ncard-txt span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+
+/* celular com conversa de WhatsApp */
+.lp2-phone { border: 9px solid #0F172A; border-radius: 38px; background: #0F172A; box-shadow: 0 30px 60px rgba(15,23,42,.28); }
+.lp2-phone-screen { border-radius: 29px; overflow: hidden; background: var(--wa-bg); }
+.lp2-wa-head { display: flex; align-items: center; gap: 10px; padding: 14px 12px 10px; background: #008069; color: #fff; }
+.lp2-wa-ava { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; }
+.lp2-wa-head div strong { display: block; font-size: 13.5px; font-weight: 600; }
+.lp2-wa-head div span { display: block; font-size: 11px; opacity: .85; }
+.lp2-wa-body { padding: 12px 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+.lp2-bubble {
+  max-width: 88%; padding: 7px 9px 5px; border-radius: 10px; background: #fff;
+  font-size: 12.5px; line-height: 1.42; color: #111B21; white-space: pre-line;
+  box-shadow: 0 1px 1px rgba(0,0,0,.07); align-self: flex-start;
+}
+.lp2-bubble--out { align-self: flex-end; background: var(--wa-out); border-top-right-radius: 3px; }
+.lp2-bubble--in { border-top-left-radius: 3px; }
+.lp2-bubble-meta { display: flex; justify-content: flex-end; align-items: center; gap: 3px; margin-top: 2px; font-size: 10px; color: #667781; }
+.lp2-bubble-meta svg { color: #53BDEB; transition: color .3s; }
+.lp2-bubble-meta.is-pend svg { color: #8696A0; }
+/* conversa animada do hero: altura fixa, mensagens ancoradas embaixo
+   (as antigas sobem e saem pelo topo, como num chat de verdade) */
+.lp2-wa-body--demo { height: 430px; justify-content: flex-end; overflow: hidden; }
+
+/* celular do hero com cara de aparelho: proporcao ~2,2:1, barra de status com
+   ilha da camera, barra de digitar e traco de navegacao */
+.lp2-phone--demo { border-width: 10px; border-radius: 46px; }
+.lp2-phone--demo .lp2-phone-screen { border-radius: 36px; position: relative; }
+.lp2-phone-status { position: relative; display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 22px 0 26px; background: #008069; color: #fff; font-size: 12px; font-weight: 600; }
+.lp2-phone-island { position: absolute; top: 8px; left: 50%; width: 76px; height: 20px; margin-left: -38px; border-radius: 20px; background: #0F172A; }
+.lp2-phone-icons { display: inline-flex; align-items: center; gap: 3px; }
+.lp2-phone--demo .lp2-wa-head { padding-top: 6px; }
+.lp2-wa-input { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px; }
+.lp2-wa-input-box { flex: 1; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 20px; background: #fff; color: #8696A0; font-size: 13px; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+.lp2-wa-mic { width: 36px; height: 36px; border-radius: 50%; background: #00A884; color: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
+.lp2-phone-home { display: block; width: 34%; height: 4px; margin: 2px auto 8px; border-radius: 4px; background: rgba(17,27,33,.35); }
+.lp2-wa-body--demo > * { flex: none; }
+.lp2-bubble--pop { animation: lp2Pop .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lp2Pop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.lp2-caret { display: inline-block; width: 1.5px; height: 1.05em; margin-left: 1px; vertical-align: text-bottom; background: #111B21; animation: lp2Caret .9s steps(1) infinite; }
+@keyframes lp2Caret { 50% { opacity: 0; } }
+.lp2-wa-day { align-self: center; padding: 4px 10px; border-radius: 8px; background: #fff; font-size: 11px; color: #54656F; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+
+/* ---------- depoimentos ---------- */
+/* mesmo verde-escuro da vitrine "Alem da cobranca", com degrade e um brilho
+   verde discreto atras dos videos */
+.lp2-dep {
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 78% 35%, rgba(34,197,94,.20), transparent 55%),
+    linear-gradient(160deg, #15513A 0%, #103C2B 50%, #0A2A1E 100%);
+}
+.lp2-dep .lp2-eyebrow { color: #86EFAC; }
+.lp2-dep .lp2-eyebrow::before { background: #4ADE80; }
+.lp2-dep .lp2-h2 { color: #fff; }
+.lp2-dep .lp2-lead { color: rgba(255,255,255,.7); }
+.lp2-dep .lp2-link { color: #86EFAC; }
+.lp2-dep .lp2-vid { border: 1px solid rgba(255,255,255,.12); background: linear-gradient(165deg, #1E5A42, #0C2C20); box-shadow: 0 24px 50px rgba(0,0,0,.35); }
+.lp2-dep .lp2-vid-play { color: var(--g); }
+.lp2-dep-grid { display: grid; grid-template-columns: 35fr 65fr; gap: 56px; align-items: center; }
+.lp2-dep .lp2-lead { margin-bottom: 28px; }
+.lp2-vids { display: flex; gap: 18px; justify-content: flex-end; align-items: flex-start; }
+.lp2-vid {
+  position: relative; flex: none; aspect-ratio: 9 / 16; padding: 0; border: 0; cursor: pointer;
+  border-radius: 16px; overflow: hidden; text-align: left; color: #fff;
+  background: linear-gradient(165deg, #1E293B, #0F172A);
+  box-shadow: 0 18px 40px rgba(15,23,42,.18);
+}
+.lp2-vid--main { width: 220px; }
+.lp2-vid--sec { width: 180px; }
+.lp2-vids .lp2-vid:nth-child(2) { margin-top: 56px; }
+.lp2-vids .lp2-vid:nth-child(3) { margin-top: 20px; }
+.lp2-vid img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lp2-vid::after { content: ''; position: absolute; inset: 45% 0 0; background: linear-gradient(180deg, rgba(15,23,42,0), rgba(15,23,42,.82)); pointer-events: none; }
+.lp2-vid-tag { position: absolute; z-index: 1; top: 12px; left: 12px; padding: 4px 9px; border-radius: 100px; background: rgba(255,255,255,.14); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.lp2-vid-play {
+  position: absolute; z-index: 1; top: 50%; left: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px;
+  border-radius: 50%; background: rgba(255,255,255,.94); color: var(--g-dk);
+  display: flex; align-items: center; justify-content: center; transition: transform .2s;
+}
+.lp2-vid--sec .lp2-vid-play { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+.lp2-vid:hover .lp2-vid-play { transform: scale(1.07); }
+.lp2-vid-meta { position: absolute; z-index: 1; left: 14px; right: 14px; bottom: 14px; }
+.lp2-vid-meta q { display: block; margin-bottom: 8px; font-size: 13px; line-height: 1.4; quotes: '“' '”'; }
+.lp2-vid-meta strong { display: block; font-size: 15px; font-weight: 600; }
+.lp2-vid-meta span { display: block; margin-top: 2px; font-size: 12.5px; opacity: .78; }
+
+.lp2-modal { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(2,6,23,.84); animation: lp2Fade .2s ease both; }
+.lp2-modal-box { position: relative; height: min(86vh, 760px); aspect-ratio: 9 / 16; max-width: 100%; border-radius: 16px; overflow: hidden; background: #000; }
+/* cover: alguns videos nao sao 9:16 exato (o do George e 480x864) e o contain
+   deixava uma faixa preta fina nas laterais */
+.lp2-modal-box video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.lp2-modal-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; color: rgba(255,255,255,.8); font-size: 15px; }
+.lp2-modal-close {
+  position: fixed; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 50%;
+  border: 0; background: rgba(255,255,255,.14); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.lp2-modal-close:hover { background: rgba(255,255,255,.24); }
+
+/* ---------- cobranca automatica ---------- */
+.lp2-auto-grid { display: grid; grid-template-columns: 45fr 55fr; gap: 72px; align-items: center; }
+.lp2-auto .lp2-lead { margin-bottom: 28px; }
+.lp2-checks { list-style: none; margin: 0 0 32px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.lp2-checks li { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 500; color: var(--ink); }
+.lp2-checks li > span { width: 26px; height: 26px; border-radius: 8px; background: #DCFCE7; color: var(--g-dk); display: flex; align-items: center; justify-content: center; flex: none; }
+
+.lp2-regua { position: relative; padding: 28px 24px 24px; border-radius: 20px; background: var(--wa-bg); border: 1px solid #E4DDD3; }
+.lp2-step { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.lp2-step + .lp2-step { margin-top: 22px; }
+.lp2-step-pill { align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 100px; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,.06); font-size: 12px; font-weight: 600; color: #334155; }
+.lp2-step-pill b { width: 20px; height: 20px; border-radius: 50%; background: var(--g); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+.lp2-step .lp2-bubble { font-size: 13.5px; max-width: 82%; }
+.lp2-step-status { align-self: flex-end; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; }
+.lp2-step-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--g2); }
+.lp2-step--cond .lp2-bubble { opacity: .72; }
+.lp2-step--cond .lp2-step-status i { background: #F59E0B; }
+.lp2-regua-note { margin: 14px 0 0; font-size: 12.5px; color: var(--mut); }
+
+/* ---------- por dentro ---------- */
+.lp2-head2 { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: end; }
+.lp2-head2 .lp2-h2 { margin: 0; }
+.lp2-show { display: grid; grid-template-columns: minmax(0, 9fr) minmax(0, 14fr); gap: 64px; align-items: center; margin-top: 88px; }
+.lp2-show--rev { grid-template-columns: minmax(0, 14fr) minmax(0, 9fr); }
+.lp2-show--rev .lp2-show-text { order: 2; }
+.lp2-show-text .lp2-show-kicker { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--g-dk); }
+.lp2-show-text h3 { margin: 0 0 16px; font-size: 28px; line-height: 1.22; font-weight: 700; letter-spacing: -0.02em; max-width: 20ch; }
+.lp2-show-text p { margin: 0 0 22px; font-size: 17px; line-height: 1.6; color: var(--mut); }
+.lp2-mini { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lp2-mini li { display: flex; gap: 10px; font-size: 15px; color: #334155; line-height: 1.5; }
+.lp2-mini svg { color: var(--g); flex: none; margin-top: 3px; }
+
+/* print inteiro dentro do painel verde, com respiro dos 4 lados e sombra
+   em camadas (uma curta pra definir a borda, uma longa e difusa pra flutuar) */
+.lp2-stage { position: relative; background: var(--gbg); border-radius: 20px; overflow: hidden; padding: 40px; }
+.lp2-shot {
+  margin: 0; background: #fff; border: 1px solid #DCE5DF; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(16,60,43,.06), 0 8px 16px -4px rgba(16,60,43,.08), 0 28px 56px -12px rgba(16,60,43,.28);
+}
+.lp2-shot img { display: block; width: 100%; height: auto; }
+/* portal do aluno: celular inteiro dentro do painel, como os outros prints */
+.lp2-stage--center { padding: 40px; display: flex; justify-content: center; }
+/* mesmo acabamento do celular do hero; maior pra o print (540px) nao
+   encolher demais e o texto continuar legivel */
+.lp2-stage--center .lp2-phone { width: 340px; box-shadow: 0 1px 2px rgba(16,60,43,.06), 0 8px 16px -4px rgba(16,60,43,.10), 0 30px 60px -12px rgba(16,60,43,.34); }
+/* barra de status na cor do topo do portal (gradiente azul-marinho) */
+.lp2-phone--portal .lp2-phone-status { background: linear-gradient(90deg, #0F182C, #1C3659); }
+.lp2-portal-shot { display: block; width: 100%; height: auto; }
+
+.lp2-ph {
+  height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 24px; text-align: center; background: repeating-linear-gradient(45deg, #F8FAFC, #F8FAFC 10px, #F1F5F9 10px, #F1F5F9 20px);
+  color: var(--mut); font-size: 13px; line-height: 1.45;
+}
+.lp2-ph strong { color: #334155; font-size: 14px; }
+
+.lp2-strip { margin-top: 104px; padding-top: 40px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+.lp2-strip div { display: flex; flex-direction: column; gap: 6px; }
+.lp2-strip svg { color: var(--g); margin-bottom: 4px; }
+.lp2-strip strong { font-size: 15px; font-weight: 600; color: var(--ink); }
+.lp2-strip span { font-size: 14px; line-height: 1.5; color: var(--mut); }
+
+/* ---------- como comecar: linha do tempo ---------- */
+.lp2-tl { list-style: none; margin: 72px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+.lp2-tl li { position: relative; padding: 40px 48px 0 0; border-top: 2px solid #D5E8DC; }
+.lp2-tl li:last-child { border-image: linear-gradient(90deg, #D5E8DC, rgba(213,232,220,0)) 1; }
+.lp2-tl li::before {
+  content: ''; position: absolute; top: -9px; left: 0; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--g); box-shadow: 0 0 0 5px #fff, 0 0 0 6px #CFE6D7;
+}
+.lp2-tl-num { display: block; margin-bottom: 14px; font-size: 64px; line-height: 1; font-weight: 700; letter-spacing: -0.05em; color: var(--g); font-variant-numeric: tabular-nums; }
+.lp2-tl h3 { margin: 0 0 10px; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
+.lp2-tl p { margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: var(--mut); max-width: 32ch; }
+.lp2-tl-nota { display: inline-block; padding: 6px 12px; border-radius: 100px; background: var(--gbg); color: var(--g-dk); font-size: 13px; font-weight: 600; }
+.lp2-tl-cta { margin-top: 56px; }
+
+/* ---------- vitrine alem da cobranca (fundo verde-escuro) ---------- */
+.lp2-suite { background: var(--dark); color: #fff; }
+.lp2-suite .lp2-eyebrow { color: #86EFAC; }
+.lp2-suite .lp2-eyebrow::before { background: #4ADE80; }
+.lp2-suite .lp2-h2 { color: #fff; }
+.lp2-suite .lp2-lead { color: rgba(255,255,255,.68); }
+.lp2-suite-cols { list-style: none; margin: 64px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid rgba(255,255,255,.12); }
+.lp2-suite-col { padding: 32px 24px 8px; border-left: 1px solid rgba(255,255,255,.12); }
+.lp2-suite-col:first-child { padding-left: 0; border-left: 0; }
+.lp2-suite-col:last-child { padding-right: 0; }
+.lp2-suite-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lp2-suite-ico { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(134,239,172,.12); color: #86EFAC; }
+.lp2-suite-col h3 { margin: 20px 0 10px; min-height: 2.5em; font-size: 17px; font-weight: 600; color: #fff; }
+.lp2-suite-plano { display: inline-block; padding: 3px 10px; white-space: nowrap; border-radius: 100px; border: 1px solid rgba(134,239,172,.32); color: #86EFAC; font-size: 11.5px; font-weight: 600; }
+.lp2-suite-col p { margin: 0; font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,.68); }
+.lp2-suite-cta { margin-top: 44px; color: #86EFAC; }
+
+/* ---------- beneficios (editorial) ---------- */
+.lp2-h2--wide { max-width: 22ch; }
+.lp2-benef-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 56px; margin-top: 64px; }
+.lp2-benef-n { display: block; margin-bottom: 18px; font-size: 13px; font-weight: 700; color: var(--g); letter-spacing: .04em; }
+.lp2-benef-grid h3 { margin: 0 0 16px; font-size: 32px; line-height: 1.12; font-weight: 700; letter-spacing: -0.03em; max-width: 14ch; }
+.lp2-benef-grid p { margin: 0; font-size: 17px; line-height: 1.6; color: var(--mut); }
+
+/* ---------- calculadora ---------- */
+.lp2-calc-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 72px; align-items: center; }
+.lp2-calc-como { margin-top: 32px; padding-top: 24px; border-top: 1px solid #CFE3D6; max-width: 44ch; }
+.lp2-calc-como strong { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.lp2-calc-como p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.55; color: #475569; }
+.lp2-calc { padding: 36px; background: #fff; border: 1px solid #D9E9DF; border-radius: 20px; box-shadow: 0 24px 56px rgba(16,60,43,.08); }
+.lp2-calc-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+.lp2-field--full { grid-column: 1 / -1; }
+.lp2-field label, .lp2-final-form label, .lp2-final-lbl { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.lp2-field input, .lp2-final-form input, .lp2-final-form select {
+  width: 100%; height: 50px; padding: 0 16px; border: 1.5px solid var(--line); border-radius: 12px;
+  background: #F8FAFB; color: var(--ink); font-weight: 400; font-size: 16px; line-height: 1; font-family: inherit; outline: none; transition: border-color .2s, background .2s;
+}
+.lp2-field input:focus, .lp2-final-form input:focus, .lp2-final-form select:focus { border-color: var(--g); background: #fff; }
+.lp2-calc-res { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.lp2-calc-res > div { padding: 20px; }
+.lp2-calc-res > div + div { border-left: 1px solid var(--line); background: #F4FAF6; }
+.lp2-calc-res span { display: block; margin-bottom: 6px; font-size: 13px; color: var(--mut); }
+.lp2-calc-res em { font-style: normal; color: #94A3B8; }
+.lp2-calc-res strong { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.lp2-calc-perda { color: #DC2626; }
+.lp2-calc-ganho { color: var(--g); }
+.lp2-btn--block { width: 100%; }
+
+/* ---------- planos ---------- */
+.lp2-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 64px; align-items: stretch; }
+.lp2-plan { display: flex; flex-direction: column; padding: 32px; background: #fff; border: 1px solid var(--line); border-radius: 20px; }
+.lp2-plan.is-pick { border: 1.5px solid var(--g); box-shadow: 0 24px 56px rgba(22,163,74,.12); }
+.lp2-plan-name { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.lp2-plans > * { min-width: 0; }
+.lp2-plan-eb { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+.lp2-plan-badge { padding: 4px 10px; border-radius: 100px; background: #DCFCE7; color: var(--g-dk); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.lp2-plan h3 { margin: 10px 0 14px; font-size: 24px; font-weight: 700; }
+.lp2-plan-price { margin: 0; display: flex; align-items: baseline; gap: 4px; }
+.lp2-plan-price strong { font-size: 48px; font-weight: 700; letter-spacing: -0.035em; }
+.lp2-plan-price span { font-size: 16px; color: var(--mut); }
+.lp2-plan-msg { margin: 4px 0 24px; font-size: 13px; color: var(--mut); }
+.lp2-plan ul { list-style: none; margin: 28px 0 0; padding: 24px 0 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.lp2-plan li { display: flex; gap: 10px; font-size: 14.5px; line-height: 1.45; color: #334155; }
+.lp2-plan li svg { color: var(--g); flex: none; margin-top: 1px; }
+
+/* ---------- faixa de confianca ---------- */
+.lp2-trustband { border-bottom: 1px solid var(--line); }
+.lp2-trustband-in { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: center; gap: 18px 32px; padding-top: 30px; padding-bottom: 30px; }
+.lp2-trustband-in > div { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #334155; line-height: 1.4; }
+.lp2-trustband-in svg { color: var(--g); flex: none; }
+.lp2-trustband-in .lp2-link { font-size: 14px; white-space: nowrap; }
+
+/* ---------- FAQ ---------- */
+.lp2-faq-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 72px; align-items: start; }
+.lp2-faq-grid .lp2-lead { margin-bottom: 28px; max-width: 38ch; }
+.lp2-faq-wa svg { color: #25D366; }
+.lp2-faq { border-top: 1px solid var(--line); }
+.lp2-faq-item { border-bottom: 1px solid var(--line); }
+.lp2-faq-item h3 { margin: 0; }
+.lp2-faq-item button {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0;
+  border: 0; background: none; cursor: pointer; text-align: left; font-weight: 600; font-size: 17px; line-height: 1.4; font-family: inherit; color: var(--ink);
+}
+.lp2-faq-item button svg { flex: none; color: var(--mut); transition: transform .25s, color .2s; }
+.lp2-faq-item.is-open button svg { transform: rotate(45deg); color: var(--g); }
+.lp2-faq-item p { margin: 0; padding: 0 48px 24px 0; font-size: 16px; line-height: 1.65; color: var(--mut); }
+
+/* ---------- CTA final ---------- */
+.lp2-final { padding: 0 0 112px; }
+.lp2-final-box {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  padding: 64px; border-radius: 28px; background: #0E1A14; color: #fff;
+  background-image: radial-gradient(circle at 0% 0%, rgba(34,197,94,.14), transparent 45%);
+}
+.lp2-final .lp2-h2 { color: #fff; }
+.lp2-final .lp2-lead { color: rgba(255,255,255,.7); }
+.lp2-final-list { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lp2-final-list li { display: flex; align-items: center; gap: 10px; font-size: 15.5px; color: rgba(255,255,255,.88); }
+.lp2-final-list svg { color: #4ADE80; flex: none; }
+.lp2-final-form { padding: 32px; background: #fff; border-radius: 20px; color: var(--ink); }
+.lp2-final-form-t { margin: 0 0 20px; font-size: 18px; font-weight: 700; }
+.lp2-final-form select, .lp2-final-form input { margin-bottom: 18px; }
+.lp2-final-opts { display: flex; gap: 10px; margin-bottom: 22px; }
+.lp2-final-opts button {
+  flex: 1; height: 46px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; color: #475569;
+  font-weight: 600; font-size: 14px; line-height: 1; font-family: inherit; cursor: pointer; transition: all .2s;
+}
+.lp2-final-opts button.is-on { border-color: var(--g); background: #ECFDF3; color: var(--g-dk); }
+
+/* ---------- footer ---------- */
+.lp2-footer { padding: 72px 0 32px; background: #0A0F0C; color: rgba(255,255,255,.62); }
+.lp2-footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
+.lp2-footer-logo { height: 30px; width: auto; filter: brightness(0) invert(1); margin-bottom: 16px; }
+.lp2-footer-desc { margin: 0 0 18px; max-width: 300px; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.5); }
+.lp2-footer-social { display: flex; gap: 10px; }
+.lp2-footer-social a { width: 38px; height: 38px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.7); transition: color .2s, border-color .2s; }
+.lp2-footer-social a:hover { color: #4ADE80; border-color: rgba(74,222,128,.4); }
+.lp2-footer-t { margin: 0 0 16px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; }
+.lp2-footer-links { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.lp2-footer-links button, .lp2-footer-bottom button { padding: 0; border: 0; background: none; cursor: pointer; font-weight: 400; font-size: 14px; line-height: 1.4; font-family: inherit; color: rgba(255,255,255,.62); transition: color .2s; }
+.lp2-footer-links button:hover, .lp2-footer-bottom button:hover { color: #4ADE80; }
+.lp2-footer-bottom { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.1); }
+.lp2-footer-bottom p { margin: 0; font-size: 13px; color: rgba(255,255,255,.4); }
+.lp2-footer-bottom button { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+
+/* ---------- flutuantes ---------- */
+.lp2-wa-float {
+  position: fixed; right: 20px; bottom: 20px; z-index: 1000; width: 56px; height: 56px; border-radius: 50%;
+  background: #25D366; color: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(15,23,42,.22); transition: transform .2s;
+}
+.lp2-wa-float:hover { transform: scale(1.06); }
+.lp2-mbar { display: none; }
+
+/* ---------- responsivo (segunda metade) ---------- */
+@media (max-width: 1080px) {
+  .lp2-calc-grid, .lp2-faq-grid { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+  .lp2-suite-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; border-top: 0; }
+  .lp2-suite-col, .lp2-suite-col:first-child, .lp2-suite-col:last-child { padding: 28px 0; border-left: 0; border-top: 1px solid rgba(255,255,255,.12); }
+  .lp2-suite-col h3 { min-height: 0; }
+  .lp2-suite-top { justify-content: flex-start; gap: 12px; }
+  .lp2-final-box { grid-template-columns: 1fr; gap: 40px; padding: 48px; }
+  .lp2-plans { grid-template-columns: 1fr; max-width: 560px; }
+  .lp2-footer-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .lp2-footer-grid > div:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 860px) {
+  .lp2-tl { grid-template-columns: 1fr; margin-top: 48px; }
+  .lp2-tl li { padding: 0 0 40px 40px; border-top: 0; border-left: 2px solid #D5E8DC; }
+  .lp2-tl li:last-child { border-image: linear-gradient(180deg, #D5E8DC, rgba(213,232,220,0)) 1; padding-bottom: 8px; }
+  .lp2-tl li::before { top: 4px; left: -9px; }
+  .lp2-tl-num { font-size: 44px; margin-bottom: 10px; }
+  .lp2-benef-grid { grid-template-columns: 1fr; gap: 40px; margin-top: 44px; }
+  .lp2-benef h3 { max-width: none; font-size: 28px; }
+  .lp2-trustband-in { grid-template-columns: 1fr 1fr; }
+  .lp2-trustband-in .lp2-link { justify-self: start; }
+}
+@media (max-width: 768px) {
+  .lp2-suite-cols { grid-template-columns: minmax(0, 1fr); }
+  .lp2-calc { padding: 24px 20px; }
+  .lp2-calc-fields { grid-template-columns: 1fr; }
+  .lp2-calc-res { grid-template-columns: 1fr; }
+  .lp2-calc-res > div + div { border-left: 0; border-top: 1px solid var(--line); }
+  .lp2-faq-item button { font-size: 16px; padding: 20px 0; }
+  .lp2-faq-item p { padding-right: 0; }
+  .lp2-final { padding-bottom: 64px; }
+  .lp2-final-box { padding: 36px 22px; border-radius: 22px; }
+  .lp2-final-form { padding: 24px 20px; }
+  .lp2-plan { padding: 26px 22px; }
+  .lp2-trustband-in { grid-template-columns: 1fr; gap: 16px; }
+  .lp2-footer { padding: 56px 0 96px; }
+  .lp2-footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .lp2-footer-bottom { flex-direction: column; align-items: flex-start; }
+  /* barra fixa de CTA no mobile; o botao do WhatsApp sobe pra nao cobrir */
+  .lp2-mbar {
+    display: flex; gap: 10px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 999; padding: 12px 16px;
+    background: rgba(255,255,255,.96); border-top: 1px solid var(--line); backdrop-filter: blur(10px);
+  }
+  .lp2-mbar .lp2-btn:first-child { flex: 1; }
+  .lp2-wa-float { bottom: 84px; width: 52px; height: 52px; }
+}
+
+@keyframes lp2In { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes lp2Fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .lp2 *, .lp2-modal { animation: none !important; transition: none !important; }
+  /* excecao: a demo do hero (conversa + cascata) e o que explica o produto;
+     sem movimento ela so "pisca" e nao se entende. Mantem so ela animada. */
+  .lp2 .lp2-ncard { transition: transform .7s cubic-bezier(.2,.8,.2,1), opacity .7s ease !important; }
+  .lp2 .lp2-ncard > * { transition: opacity .7s ease !important; }
+  .lp2 .lp2-ncard.is-new { animation: lp2NotifIn .8s cubic-bezier(.34,1.5,.64,1) both !important; }
+  .lp2 .lp2-bubble--pop { animation: lp2Pop .35s cubic-bezier(.2,.8,.2,1) both !important; }
+  .lp2 .lp2-ncas.is-abrindo .lp2-ncard { transition-delay: calc(var(--i) * 120ms) !important; }
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1080px) {
+  .lp2-hero-grid, .lp2-dep-grid, .lp2-auto-grid { grid-template-columns: 1fr; gap: 56px; }
+  .lp2-hv { max-width: 640px; width: 100%; margin: 0 auto; }
+  .lp2-vids { justify-content: flex-start; }
+  .lp2-show, .lp2-show--rev { grid-template-columns: 1fr; gap: 40px; margin-top: 80px; }
+  .lp2-show--rev .lp2-show-text { order: 0; }
+  .lp2-regua { max-width: 600px; }
+}
+@media (max-width: 960px) {
+  .lp2-header-in { height: 64px; grid-template-columns: 1fr auto; }
+  .lp2-nav, .lp2-entrar { display: none; }
+  .lp2-burger { display: flex; }
+  .lp2-mnav { display: flex; flex-direction: column; padding: 8px 20px 20px; border-top: 1px solid var(--line); background: #fff; }
+  .lp2-mnav button { padding: 14px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; font-weight: 500; font-size: 16px; line-height: 1; font-family: inherit; color: var(--ink); cursor: pointer; }
+  .lp2-mnav button:last-child { border-bottom: 0; font-weight: 600; color: var(--g-dk); }
+}
+@media (max-width: 1024px) {
+  .lp2-h1 { font-size: 50px; }
+  .lp2-h2 { font-size: 36px; }
+}
+@media (max-width: 768px) {
+  .lp2-wrap { padding: 0 20px; }
+  .lp2-sec { padding: 64px 0; }
+  .lp2-hero { padding: 36px 0 64px; }
+  .lp2-h1 { font-size: 38px; letter-spacing: -0.03em; }
+  .lp2-h2 { font-size: 30px; }
+  .lp2-hero-sub, .lp2-lead { font-size: 17px; }
+  .lp2-head2 { grid-template-columns: 1fr; gap: 16px; }
+  .lp2-strip { grid-template-columns: 1fr 1fr; gap: 28px 20px; margin-top: 72px; }
+  .lp2-show-text h3 { font-size: 24px; }
+  .lp2-stage { padding: 20px; }
+  .lp2-stage--center { padding: 24px 20px; }
+  .lp2-stage--center .lp2-phone { width: 270px; }
+  .lp2-ph { height: 260px; }
+}
+@media (max-width: 700px) {
+  /* carrossel com scroll-snap: um video inteiro + uma ponta do proximo */
+  .lp2-vids { overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -20px; padding: 4px 20px 16px; gap: 14px; scrollbar-width: none; }
+  .lp2-vids::-webkit-scrollbar { display: none; }
+  .lp2-vid--main, .lp2-vid--sec { width: min(68vw, 260px); scroll-snap-align: start; scroll-margin-left: 20px; }
+  .lp2-vids .lp2-vid:nth-child(n) { margin-top: 0; }
+  /* o carrossel (overflow) corta a sombra e deixa uma faixa reta no fundo escuro */
+  .lp2-dep .lp2-vid { box-shadow: none; }
+  .lp2-vid--sec .lp2-vid-play { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+}
+@media (max-width: 640px) {
+  .lp2-ctas { flex-direction: column; }
+  .lp2-ctas .lp2-btn { width: 100%; }
+  /* no mobile o celular sai: a cascata vem logo depois dos botoes, na largura
+     do texto, pra os depoimentos aparecerem mais cedo */
+  .lp2-hero-grid { gap: 36px; }
+  .lp2-hv { padding: 0; }
+  .lp2-hv-phone { display: none; }
+  .lp2-ncas { position: relative; left: auto; right: auto; top: auto; bottom: auto; margin: 0 auto 96px; width: 100%; max-width: 340px; height: 62px; }
+  .lp2-ncard[data-camada="1"] { transform: translateY(46px) scale(.96); }
+  .lp2-ncard[data-camada="2"] { transform: translateY(90px) scale(.92); }
+  .lp2-ncard[data-camada="3"], .lp2-ncard[data-camada="4"], .lp2-ncard[data-camada="5"] { transform: translateY(120px) scale(.88); opacity: 0; }
+  .lp2-phone .lp2-bubble { font-size: 11.5px; }
+  .lp2-wa-body--demo { height: 360px; }
+  .lp2-phone--demo { border-width: 8px; border-radius: 40px; }
+  .lp2-phone--demo .lp2-phone-screen { border-radius: 32px; }
+  .lp2-phone-island { width: 60px; margin-left: -30px; }
+  .lp2-phone-status { padding: 0 16px 0 20px; }
+  .lp2-regua { padding: 20px 12px 16px; }
+  .lp2-step .lp2-bubble { max-width: 92%; font-size: 13px; }
+  .lp2-strip { grid-template-columns: 1fr; }
+}
+@media (max-width: 360px) {
+  .lp2-h1 { font-size: 33px; }
+  .lp2-btn--sm { padding: 9px 12px; font-size: 13.5px; }
+  .lp2-header-in { gap: 8px; }
+}
