@@ -44,9 +44,56 @@ export const LANDING_CSS = `
 `
 
 // ---- helpers ----
+// Rolagem suave feita no JS (e nao com scrollIntoView smooth): o Chrome no
+// Windows desliga a rolagem suave nativa quando os "efeitos de animacao" do
+// sistema estao desligados, e o botao so "pulava" pra secao.
+// Desconta o header/menu fixo do topo pra secao nao ficar escondida atras dele.
+let rolagemAtiva = null
+
+function alturaTopoFixo() {
+  for (const el of document.querySelectorAll('header, nav')) {
+    const pos = getComputedStyle(el).position
+    if ((pos === 'sticky' || pos === 'fixed') && el.getBoundingClientRect().top <= 1) return el.offsetHeight
+  }
+  return 0
+}
+
 export function scrollToId(id) {
   const el = document.getElementById(id)
-  if (el) el.scrollIntoView({ behavior: 'smooth' })
+  if (!el) return
+  if (rolagemAtiva) rolagemAtiva()
+
+  const inicio = window.scrollY
+  const destino = Math.max(0, el.getBoundingClientRect().top + inicio - alturaTopoFixo())
+  const distancia = destino - inicio
+  if (Math.abs(distancia) < 2) return
+  // 450ms em distancias curtas ate 1100ms nas longas
+  const duracao = Math.min(1100, Math.max(450, Math.abs(distancia) * 0.35))
+  const suave = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+
+  let quadro = null
+  let t0 = null
+  // se a pessoa rolar no meio do caminho, solta o controle pra ela
+  const parar = () => {
+    if (quadro) cancelAnimationFrame(quadro)
+    window.removeEventListener('wheel', parar)
+    window.removeEventListener('touchstart', parar)
+    window.removeEventListener('keydown', parar)
+    rolagemAtiva = null
+  }
+  window.addEventListener('wheel', parar, { passive: true })
+  window.addEventListener('touchstart', parar, { passive: true })
+  window.addEventListener('keydown', parar)
+  rolagemAtiva = parar
+
+  const passo = agora => {
+    if (t0 === null) t0 = agora
+    const t = Math.min(1, (agora - t0) / duracao)
+    window.scrollTo(0, inicio + distancia * suave(t))
+    if (t < 1) quadro = requestAnimationFrame(passo)
+    else parar()
+  }
+  quadro = requestAnimationFrame(passo)
 }
 
 export function dot(c) { return { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: c } }

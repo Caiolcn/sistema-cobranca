@@ -97,3 +97,9 @@ credentials.json
 /docs/roteiro-abordagem-porta.md
 /docs/plano-multiusuario.md
 /docs/plano-onboarding-guiado.md
+
+# Listas de prospeccao geradas por scripts/mapear-prospects.mjs (dados de terceiros)
+/prospeccao/
+
+# Videos brutos dos depoimentos (so as versoes comprimidas em public/depoimentos vao pro repo)
+depoimentos-originais/

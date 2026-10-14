@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 
@@ -19,6 +19,10 @@ export function destinoPosLogin(search) {
 export default function Login({ onLogin }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  // Chega aqui vindo de botoes no meio/fim da landing: o app e de pagina unica e
+  // o navegador mantem a rolagem da pagina anterior, entao volta pro topo.
+  useEffect(() => { window.scrollTo(0, 0) }, [])
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
