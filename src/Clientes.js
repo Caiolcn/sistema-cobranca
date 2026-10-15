@@ -2990,30 +2990,36 @@ Equipe ${nomeEmpresa}`
                     </div>
                   </details>
 
-                      {/* Assinatura inline */}
+                      {/* Assinatura: mesmo switch da coluna da lista no desktop. No celular a
+                          tabela rola de lado e a coluna fica escondida, e o botão "Cancelar" que
+                          ficava aqui parecia cancelar a edição — então a ficha ganha o switch
+                          com rótulo explícito, igual aos de comunicações e cobranças abaixo. */}
                       {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
                         <div style={{
                           display: 'flex',
+                          flexWrap: 'wrap',
                           justifyContent: 'space-between',
                           alignItems: 'center',
+                          gap: '8px',
                           padding: '10px 12px',
-                          backgroundColor: 'white',
+                          backgroundColor: clienteSelecionado.assinatura_ativa ? '#f9fafb' : '#fee2e2',
                           borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
+                          border: `1px solid ${clienteSelecionado.assinatura_ativa ? '#e5e7eb' : '#f87171'}`,
                           marginBottom: '12px'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Icon icon="mdi:card-account-details" width="18" style={{ color: '#2196F3' }} />
-                            <div>
-                              <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
-                                {planos.find(p => p.id === clienteSelecionado.plano_id)?.nome || 'Não identificado'}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 160px' }}>
+                            <Icon icon="mdi:card-account-details" width="16" style={{ color: clienteSelecionado.assinatura_ativa ? '#2196F3' : '#dc2626', flexShrink: 0 }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontSize: '12px', fontWeight: '600', color: clienteSelecionado.assinatura_ativa ? '#555' : '#991b1b' }}>
+                                {clienteSelecionado.assinatura_ativa ? 'Assinatura ativa' : 'Assinatura desativada'}
                               </span>
-                              <span style={{ fontSize: '13px', color: '#2196F3', fontWeight: '600', marginLeft: '8px' }}>
-                                R$ {formatCurrency(parseFloat(planos.find(p => p.id === clienteSelecionado.plano_id)?.valor || 0))}/mês
+                              <span style={{ fontSize: '12px', color: '#666' }}>
+                                {planos.find(p => p.id === clienteSelecionado.plano_id)?.nome || 'Não identificado'}
+                                {' · R$ '}{formatCurrency(parseFloat(planos.find(p => p.id === clienteSelecionado.plano_id)?.valor || 0))}/mês
                               </span>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
                             {clienteSelecionado.assinatura_ativa && (
                               <Button
                                 size="xs"
@@ -3028,16 +3034,13 @@ Equipe ${nomeEmpresa}`
                                   setMostrarModalSelecionarPlano({ show: true, clienteId: clienteSelecionado.id })
                                 }}
                               >
-                                Alterar
+                                Alterar plano
                               </Button>
                             )}
-                            <Button
-                              size="xs"
-                              variant={clienteSelecionado.assinatura_ativa ? 'danger-soft' : 'primary'}
-                              onClick={() => handleAlterarAssinatura(clienteSelecionado.id, !clienteSelecionado.assinatura_ativa)}
-                            >
-                              {clienteSelecionado.assinatura_ativa ? 'Cancelar' : 'Reativar'}
-                            </Button>
+                            <Switch
+                              checked={!!clienteSelecionado.assinatura_ativa}
+                              onChange={(e) => handleAlterarAssinatura(clienteSelecionado.id, e.target.checked)}
+                            />
                           </div>
                         </div>
                       )}
