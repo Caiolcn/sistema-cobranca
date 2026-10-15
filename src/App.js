@@ -54,6 +54,7 @@ const AdminCron = lazy(() => import('./AdminCron'))
 const AdminWhatsAppSaude = lazy(() => import('./AdminWhatsAppSaude'))
 const AdminWhatsAppMaster = lazy(() => import('./AdminWhatsAppMaster'))
 const AdminCobrancaSaas = lazy(() => import('./AdminCobrancaSaas'))
+const AdminAssinaturas = lazy(() => import('./AdminAssinaturas'))
 const AdminLeads = lazy(() => import('./AdminLeads'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
@@ -288,6 +289,7 @@ function App() {
                     <Route path="google-metrics" element={<PaginaGoogleMetrics />} />
                     <Route path="outbound" element={<PaginaOutbound />} />
                     <Route path="leads" element={<AdminLeads />} />
+                    <Route path="assinaturas" element={<AdminAssinaturas />} />
                     <Route path="cobranca-saas" element={<AdminCobrancaSaas />} />
                     <Route path="whatsapp-saude" element={<AdminWhatsAppSaude />} />
                     <Route path="whatsapp-master" element={<AdminWhatsAppMaster />} />

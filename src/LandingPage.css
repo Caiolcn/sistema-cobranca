@@ -395,7 +395,10 @@
 
 /* ---------- faixa de confianca ---------- */
 .lp2-trustband { border-bottom: 1px solid var(--line); }
-.lp2-trustband-in { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: center; gap: 18px 32px; padding-top: 30px; padding-bottom: 30px; }
+.lp2-trustband-in { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: center; gap: 18px 32px; padding-top: 48px; padding-bottom: 48px; }
+/* seletor mais especifico: no mobile o .lp2-wrap { padding: 0 20px } vem depois
+   e zerava o respiro de cima/baixo */
+.lp2-trustband .lp2-trustband-in { padding-top: 48px; padding-bottom: 48px; }
 .lp2-trustband-in > div { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #334155; line-height: 1.4; }
 .lp2-trustband-in svg { color: var(--g); flex: none; }
 .lp2-trustband-in .lp2-link { font-size: 14px; white-space: nowrap; }
@@ -483,7 +486,7 @@
   .lp2-benef-grid { grid-template-columns: 1fr; gap: 40px; margin-top: 44px; }
   .lp2-benef h3 { max-width: none; font-size: 28px; }
   .lp2-trustband-in { grid-template-columns: 1fr 1fr; }
-  .lp2-trustband-in .lp2-link { justify-self: start; }
+  .lp2-trustband-in .lp2-link { justify-self: start; margin-top: 8px; }
 }
 @media (max-width: 768px) {
   .lp2-suite-cols { grid-template-columns: minmax(0, 1fr); }
@@ -498,6 +501,7 @@
   .lp2-final-form { padding: 24px 20px; }
   .lp2-plan { padding: 26px 22px; }
   .lp2-trustband-in { grid-template-columns: 1fr; gap: 16px; }
+  .lp2-trustband .lp2-trustband-in { padding-top: 44px; padding-bottom: 44px; }
   .lp2-footer { padding: 56px 0 96px; }
   .lp2-footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
   .lp2-footer-bottom { flex-direction: column; align-items: flex-start; }

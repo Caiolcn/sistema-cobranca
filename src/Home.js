@@ -50,7 +50,7 @@ const salvarDispensada = (userId, mensalidadeId) => {
 
 function Home() {
   const navigate = useNavigate();
-  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, isAdmin, adminViewingAs, userData, loading: loadingUser, lojaAtiva } = useUser();
+  const { userId, nomeEmpresa: nomeEmpresaContext, nomeCompleto, isAdmin, adminViewingAs, userData, loading: loadingUser, lojaAtiva, refreshUserData } = useUser();
   // "Precisam de você hoje" (fila de ação + cobrança direta) é exclusivo do plano Pro
   const { isProOrAbove, planoPago } = useUserPlan();
   const [loading, setLoading] = useState(true);
@@ -90,7 +90,7 @@ function Home() {
 
   // Onboarding checklist: só os sinais que vêm das queries do dashboard.
   // empresa/PIX entram no useMemo abaixo, direto do contexto.
-  const [sinaisOnboarding, setSinaisOnboarding] = useState({ whatsapp: false, cliente: false, qtdClientes: 0 });
+  const [sinaisOnboarding, setSinaisOnboarding] = useState({ whatsapp: false, cliente: false, qtdClientes: 0, jaEnviou: false });
   // "Explorar o sistema primeiro": sai do modo foco e mostra o dashboard normal,
   // com uma faixa pra retomar. Fica no navegador pra não voltar a cada reload.
   const [explorando, setExplorando] = useState(() => {
@@ -149,7 +149,8 @@ function Home() {
         { data: logsCobranca },
         { data: despesasMesData },
         { data: fixosData },
-        { data: agendadosHojeData }
+        { data: agendadosHojeData },
+        { count: totalEnviadosHistorico }
       ] = await Promise.all([
         // 1. Mensalidades - para KPIs
         supabase
@@ -225,7 +226,15 @@ function Home() {
           .select('aula_id, devedor_id, devedores!inner(lixo)')
           .eq('user_id', userId)
           .eq('data', hojeLocalStr)
-          .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedores' })
+          .or('lixo.is.null,lixo.eq.false', { referencedTable: 'devedores' }),
+
+        // 11. Conta já enviou alguma mensagem na vida? (onboarding) Sem janela de
+        // data: o WhatsApp pode cair hoje e a conta continua sendo uma conta que opera.
+        supabase
+          .from('logs_mensagens')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('status', 'enviado')
       ]);
 
       // ========== PROCESSAMENTO LOCAL ==========
@@ -438,7 +447,8 @@ function Home() {
       setSinaisOnboarding({
         whatsapp: !!whatsappConectado,
         cliente: (todosClientes?.length || 0) > 0,
-        qtdClientes: todosClientes?.length || 0
+        qtdClientes: todosClientes?.length || 0,
+        jaEnviou: (totalEnviadosHistorico || 0) > 0
       });
 
       setDashboardData({
@@ -489,10 +499,12 @@ function Home() {
     cliente: sinaisOnboarding.cliente
   }), [sinaisOnboarding]);
 
-  // Conta que já conectou e tem base de verdade (3+ alunos) não precisa do
-  // teste: fecha sozinha. Quem parou entre o passo 2 e o 3 tem 1 aluno e
-  // continua vendo o passo "Ver chegando".
-  const jaOperando = onboardingSteps.whatsapp && sinaisOnboarding.qtdClientes >= 3;
+  // Conta com base de verdade (3+ alunos) que já conectou OU já enviou mensagem
+  // não precisa do teste: fecha sozinha. Olhar só a conexão atual fazia o passo a
+  // passo voltar pra cima do painel de quem usa há meses no dia em que o WhatsApp
+  // caía — e isso já tem banner próprio. Quem parou entre o passo 2 e o 3 tem
+  // 1 aluno e continua vendo o passo "Ver chegando".
+  const jaOperando = sinaisOnboarding.qtdClientes >= 3 && (onboardingSteps.whatsapp || sinaisOnboarding.jaEnviou);
 
   const mostrarChecklist = useMemo(() => {
     // Enquanto o contexto não chegou, não dá pra afirmar que falta alguma
@@ -510,11 +522,22 @@ function Home() {
 
   // Marca como completo quando a conta já opera (no modo espelho a trava de
   // escrita barra o update, e tudo bem: é a conta do cliente).
+  // O builder do supabase-js só dispara a requisição quando alguém chama then():
+  // sem await/then esta gravação ficou meses sem acontecer, e o passo a passo
+  // reaparecia pra conta antiga sempre que o WhatsApp caía.
   useEffect(() => {
     if (!userId || !userData) return;
     if (jaOperando && !isAdmin && userData.onboarding_completed !== true) {
-      supabase.from('usuarios').update({ onboarding_completed: true, onboarding_step: 4 }).eq('id', userId);
+      supabase
+        .from('usuarios')
+        .update({ onboarding_completed: true, onboarding_step: 4 })
+        .eq('id', userId)
+        .then(({ error }) => {
+          if (error) console.error('Erro ao marcar onboarding como concluído:', error);
+          else refreshUserData?.();
+        });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jaOperando, isAdmin, userData, userId]);
 
   const formatarMoeda = (valor) => {

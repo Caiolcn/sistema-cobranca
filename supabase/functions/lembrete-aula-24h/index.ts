@@ -3,8 +3,13 @@
 // O lembrete que já existia sai 1 hora antes da aula e é servido por uma view
 // que o n8n varre (vw_aulas_lembrete_1hora). Segundo o cliente, 1h é pouco: o
 // aluno já saiu de casa, já marcou outra coisa, esquece. Este aqui é o toque da
-// véspera, e vale SÓ para aula avulsa (tabela `agendamentos`) — aluno de turma
-// fixa receberia "sua aula é amanhã" todo dia, o que é spam e convite a bloqueio.
+// véspera, e vale para aula avulsa (tabela `agendamentos`) e para aluno
+// individual da Agenda Nova (`aulas.devedor_id`, 1 linha por dia da semana).
+// Aluno fixo de TURMA fica de fora: receberia "sua aula é amanhã" todo dia, o
+// que é spam e convite a bloqueio.
+//
+// A view diz de onde veio cada linha em `origem` + `registro_id`, e é nessa
+// tabela que o carimbo `lembrete_24h_enviado_em` vai.
 //
 // Por que não foi para o n8n, onde mora o de 1h:
 //   - o nó Code de lá aborta em 300s e marca o LOTE INTEIRO como falha, inclusive
@@ -56,7 +61,9 @@ Passando pra lembrar: você tem aula *amanhã*! 📅
 Se precisar remarcar, é só responder aqui. Te espero! 💪`
 
 interface Linha {
-  agendamento_id: string
+  agendamento_id: string | null
+  origem: 'agendamentos' | 'aulas' | null
+  registro_id: string | null
   devedor_id: string
   user_id: string
   data_aula: string
@@ -94,6 +101,15 @@ function dataBR(iso: string): string {
 function diaSemana(iso: string): string {
   const [ano, mes, dia] = iso.slice(0, 10).split('-').map(Number)
   return DIAS[new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()]
+}
+
+/** View antiga não tinha `origem`/`registro_id`: tudo era agendamento. */
+function tabelaCarimbo(l: Linha): 'agendamentos' | 'aulas' {
+  return l.origem === 'aulas' ? 'aulas' : 'agendamentos'
+}
+
+function idRegistro(l: Linha): string | null {
+  return l.registro_id ?? l.agendamento_id
 }
 
 function hora(h: string | null): string {
@@ -275,14 +291,14 @@ serve(async (req) => {
       const numero = normalizarTelefone(l.telefone)
       if (numero.length < 12) {
         pulados++
-        problemas.push({ agendamento_id: l.agendamento_id, motivo: 'telefone inválido' })
+        problemas.push({ origem: tabelaCarimbo(l), registro_id: idRegistro(l), motivo: 'telefone inválido' })
         continue
       }
 
       const mensagem = montarMensagem(await templateDaConta(l.user_id), l)
 
       if (dryRun) {
-        previa.push({ agendamento_id: l.agendamento_id, aluno: l.nome_aluno, numero, mensagem })
+        previa.push({ origem: tabelaCarimbo(l), registro_id: idRegistro(l), aluno: l.nome_aluno, numero, mensagem })
         continue
       }
 
@@ -328,9 +344,9 @@ serve(async (req) => {
 
       if (ok || !vaiTentarDeNovo) {
         await supabase
-          .from('agendamentos')
+          .from(tabelaCarimbo(l))
           .update({ lembrete_24h_enviado_em: new Date().toISOString() })
-          .eq('id', l.agendamento_id)
+          .eq('id', idRegistro(l))
       }
 
       if (ok) {
@@ -348,7 +364,7 @@ serve(async (req) => {
         }
       } else {
         falhas++
-        problemas.push({ agendamento_id: l.agendamento_id, status, retentar: vaiTentarDeNovo, corpo: textoCru.slice(0, 200) })
+        problemas.push({ origem: tabelaCarimbo(l), registro_id: idRegistro(l), status, retentar: vaiTentarDeNovo, corpo: textoCru.slice(0, 200) })
       }
 
       await new Promise(r => setTimeout(r, PAUSA_MS))

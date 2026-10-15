@@ -143,14 +143,30 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
       }
     )
 
+    // 404 = id que não existe no MP (o "Simular notificação" do painel manda
+    // id 123456). Responde 200 pra o MP não ficar reenviando.
+    if (mpResponse.status === 404) {
+      return { success: true, message: "Recurso não existe no Mercado Pago (simulação?) — ignorado" }
+    }
     if (!mpResponse.ok) {
       throw new Error(`Erro ao buscar assinatura no MP: ${mpResponse.status}`)
     }
 
     const subscription = await mpResponse.json()
 
-    // Extrair user_id do external_reference
-    const userId = subscription.external_reference
+    // Dono da assinatura: o vínculo do nosso banco manda; o external_reference
+    // do MP só vale para assinatura que ainda não conhecemos. A pessoa pode ter
+    // assinado logada numa conta velha, e o admin corrige o vínculo em
+    // /admin/assinaturas — o webhook não pode desfazer isso.
+    const { data: existingSubscription } = await supabase
+      .from('assinaturas_mercadopago')
+      .select('id, user_id')
+      .eq('subscription_id', subscriptionId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const userId = existingSubscription?.user_id || subscription.external_reference
 
     if (!userId) {
       throw new Error('external_reference (user_id) não encontrado na assinatura')
@@ -169,12 +185,6 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
     }
 
     // Atualizar ou criar registro de assinatura
-    const { data: existingSubscription } = await supabase
-      .from('assinaturas_mercadopago')
-      .select('id')
-      .eq('subscription_id', subscriptionId)
-      .single()
-
     const subscriptionData = {
       user_id: userId,
       subscription_id: subscriptionId,
@@ -192,11 +202,11 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
     }
 
     if (existingSubscription) {
-      // Update existente
+      // Update existente (todas as linhas do mesmo preapproval)
       await supabase
         .from('assinaturas_mercadopago')
         .update(subscriptionData)
-        .eq('id', existingSubscription.id)
+        .eq('subscription_id', subscriptionId)
     } else {
       // Insert novo
       await supabase
@@ -246,6 +256,11 @@ async function handleAuthorizedPaymentWebhook(supabase: any, webhookData: any) {
       `https://api.mercadopago.com/authorized_payments/${authPaymentId}`,
       { headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` } }
     )
+    // 404 = id que não existe no MP (o "Simular notificação" do painel manda
+    // id 123456). Responde 200 pra o MP não ficar reenviando.
+    if (mpResponse.status === 404) {
+      return { success: true, message: "Recurso não existe no Mercado Pago (simulação?) — ignorado" }
+    }
     if (!mpResponse.ok) {
       throw new Error(`Erro ao buscar authorized_payment no MP: ${mpResponse.status}`)
     }
@@ -351,6 +366,11 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
       }
     )
 
+    // 404 = id que não existe no MP (o "Simular notificação" do painel manda
+    // id 123456). Responde 200 pra o MP não ficar reenviando.
+    if (mpResponse.status === 404) {
+      return { success: true, message: "Recurso não existe no Mercado Pago (simulação?) — ignorado" }
+    }
     if (!mpResponse.ok) {
       throw new Error(`Erro ao buscar pagamento no MP: ${mpResponse.status}`)
     }
@@ -373,7 +393,16 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
       userId = payment.external_reference
     }
 
-    const subscriptionId = payment.metadata?.subscription_id || payment.subscription_id
+    // Cobrança de cartão recorrente traz o id da assinatura em
+    // metadata.preapproval_id (ou point_of_interaction). Os dois primeiros
+    // campos nunca vieram preenchidos — por isso a cobrança do cartão caía aqui
+    // sem assinatura e não renovava nada.
+    const subscriptionId =
+      payment.metadata?.preapproval_id ||
+      payment.point_of_interaction?.transaction_data?.subscription_id ||
+      payment.metadata?.subscription_id ||
+      payment.subscription_id ||
+      null
 
     if (!userId) {
       throw new Error('external_reference (user_id) não encontrado no pagamento')
@@ -387,18 +416,26 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
     if (subscriptionId) {
       const { data } = await supabase
         .from('assinaturas_mercadopago')
-        .select('id, plano, status')
+        .select('id, user_id, plano, status')
         .eq('subscription_id', subscriptionId)
-        .single()
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
       assinatura = data
+      // Cobrança de assinatura: o vínculo do banco manda (ver handleSubscriptionWebhook)
+      if (data?.user_id) userId = data.user_id
     }
 
     // Atualizar pagamento existente ou inserir novo
     const { data: existingPayment } = await supabase
       .from('pagamentos_mercadopago')
-      .select('id')
+      .select('id, status')
       .eq('payment_id', paymentId.toString())
       .single()
+
+    // O MP manda payment.created e payment.updated do mesmo pagamento (e às
+    // vezes repete). Só renova na PRIMEIRA vez que ele aparece aprovado.
+    const jaEstavaAprovado = existingPayment?.status === 'approved'
 
     const paymentData = {
       user_id: userId,
@@ -477,16 +514,20 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
 
         console.log(`✅ Pix aprovado - usuário ${userId} ativado com plano ${planoFromRef} por 30 dias`)
       }
-      // Pagamento de assinatura aprovado
-      else if (assinatura) {
-        if (assinatura.status === 'authorized') {
-          await supabase.rpc('ativar_assinatura_usuario', {
-            p_user_id: userId,
-            p_plano: assinatura.plano,
-          })
+      // Cobrança de assinatura aprovada. Não exige assinatura.status ===
+      // 'authorized' no nosso banco: o aviso de assinatura nunca chegou, então
+      // todas estão 'pending' aqui — e cobrança aprovada já prova que está ativa.
+      else if (assinatura && !jaEstavaAprovado) {
+        await supabase.rpc('ativar_assinatura_usuario', {
+          p_user_id: userId,
+          p_plano: assinatura.plano,
+        })
+        await supabase
+          .from('assinaturas_mercadopago')
+          .update({ status: 'authorized', updated_at: new Date().toISOString() })
+          .eq('subscription_id', subscriptionId)
 
-          console.log(`✅ Pagamento aprovado - usuário ${userId} mantido ativo`)
-        }
+        console.log(`✅ Cobrança do cartão aprovada - usuário ${userId} renovado +30 dias`)
       }
     }
 

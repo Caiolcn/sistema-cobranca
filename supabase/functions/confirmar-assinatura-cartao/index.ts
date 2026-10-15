@@ -122,9 +122,19 @@ serve(async (req) => {
       const pre = await mpGet(`/preapproval/${id}`)
       if (!pre) continue
 
-      // Trava de dono: só encosto em preapproval cujo external_reference é
-      // esta pessoa. Sem isto, mandar um id alheio ativaria a conta errada.
-      if (pre.external_reference !== user.id) {
+      const { data: existente } = await admin
+        .from('assinaturas_mercadopago')
+        .select('id, status, user_id')
+        .eq('subscription_id', String(id))
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      // Trava de dono: o vínculo do nosso banco manda (o admin pode ter movido
+      // a assinatura para outra conta em /admin/assinaturas); sem vínculo, vale
+      // o external_reference. Sem isto, mandar um id alheio ativaria a conta errada.
+      const dono = existente?.user_id || pre.external_reference
+      if (dono !== user.id) {
         console.warn('⚠️ preapproval', id, 'não pertence a', user.id, '— ignorado')
         continue
       }
@@ -154,14 +164,8 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       }
 
-      const { data: existente } = await admin
-        .from('assinaturas_mercadopago')
-        .select('id, status')
-        .eq('subscription_id', String(id))
-        .maybeSingle()
-
       if (existente) {
-        await admin.from('assinaturas_mercadopago').update(dados).eq('id', existente.id)
+        await admin.from('assinaturas_mercadopago').update(dados).eq('subscription_id', String(id))
       } else {
         await admin.from('assinaturas_mercadopago').insert(dados)
       }

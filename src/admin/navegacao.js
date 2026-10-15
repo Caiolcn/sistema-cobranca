@@ -14,6 +14,7 @@ export const GRUPOS_ADMIN = [
       { slug: 'visao-geral', label: 'Visão Geral', descricao: 'Como está o Mensalli hoje', icon: 'mdi:view-dashboard-outline' },
       { slug: 'contas', label: 'Contas', descricao: 'Todas as contas e o ciclo de vida de cada uma', icon: 'mdi:account-group-outline' },
       { slug: 'financeiro', label: 'Financeiro', descricao: 'MRR real × estimado e receita por plano', icon: 'mdi:hand-coin-outline' },
+      { slug: 'assinaturas', label: 'Assinaturas', descricao: 'Quem pagou no Mercado Pago', icon: 'mdi:credit-card-check-outline' },
       { slug: 'retencao', label: 'Retenção', descricao: 'Quem lembrar, quem recuperar', icon: 'mdi:account-heart-outline' },
       { slug: 'cobranca-saas', label: 'Cobrança SaaS', icon: 'mdi:cash-clock' },
     ],
