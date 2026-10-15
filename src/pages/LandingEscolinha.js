@@ -9,7 +9,7 @@
 // em first-touch. E' assim que a gente separa depois, em meta_atribuicao, quem
 // veio por esta pagina de quem veio pela raiz — sem coluna nova em lugar nenhum.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MdCheck, MdCheckCircle, MdArrowForward, MdAdd, MdRemove,
@@ -51,6 +51,9 @@ const TITULO_SEO = 'Sistema para escolinhas esportivas — mensalidades no Whats
 const DESC_SEO = 'Sistema para escolinhas de futebol, atletismo, basquete e handebol. Organize atletas, turmas, presença e cobranças pelo WhatsApp da escolinha.'
 
 export default function LandingEscolinha() {
+  // abre no topo: quem chega pelos cards da landing principal vem com a
+  // rolagem la de baixo (app de pagina unica)
+  useLayoutEffect(() => { window.scrollTo(0, 0) }, [])
   const navigate = useNavigate()
   const { isSmallScreen } = useWindowSize()
   const [faqAberto, setFaqAberto] = useState(null)
