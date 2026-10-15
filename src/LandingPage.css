@@ -252,6 +252,22 @@
 }
 .lp2-modal-close:hover { background: rgba(255,255,255,.24); }
 
+/* ---------- atalhos pros nichos ---------- */
+.lp2-nichos-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-top: 56px; }
+.lp2-nicho {
+  position: relative; display: block; aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden;
+  text-decoration: none; color: #fff; background: var(--dark);
+  box-shadow: 0 1px 2px rgba(16,60,43,.06), 0 18px 40px -14px rgba(16,60,43,.35);
+}
+.lp2-nicho img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+/* degrade do verde-escuro da marca de baixo pra cima, pro texto ler bem */
+.lp2-nicho::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(10,42,30,.92) 0%, rgba(16,60,43,.55) 38%, rgba(16,60,43,0) 70%); }
+.lp2-nicho:hover img { transform: scale(1.06); }
+.lp2-nicho-ico { position: absolute; z-index: 1; left: 20px; top: 20px; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.16); backdrop-filter: blur(6px); color: #fff; }
+.lp2-nicho-t { position: absolute; z-index: 1; left: 20px; right: 20px; bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.lp2-nicho-t svg { flex: none; transition: transform .25s; }
+.lp2-nicho:hover .lp2-nicho-t svg { transform: translateX(4px); }
+
 /* ---------- cobranca automatica ---------- */
 .lp2-auto-grid { display: grid; grid-template-columns: 45fr 55fr; gap: 72px; align-items: center; }
 .lp2-auto .lp2-lead { margin-bottom: 28px; }
@@ -572,6 +588,14 @@
   /* o carrossel (overflow) corta a sombra e deixa uma faixa reta no fundo escuro */
   .lp2-dep .lp2-vid { box-shadow: none; }
   .lp2-vid--sec .lp2-vid-play { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+}
+@media (max-width: 900px) {
+  .lp2-nichos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 40px; }
+}
+@media (max-width: 640px) {
+  .lp2-nicho { border-radius: 16px; }
+  .lp2-nicho-ico { left: 14px; top: 14px; width: 34px; height: 34px; border-radius: 10px; }
+  .lp2-nicho-t { left: 14px; right: 14px; bottom: 14px; font-size: 16px; }
 }
 @media (max-width: 640px) {
   .lp2-ctas { flex-direction: column; }

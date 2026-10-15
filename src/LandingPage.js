@@ -4,7 +4,8 @@ import {
   MdMessage, MdReceiptLong, MdTrendingUp, MdPeople, MdDoneAll,
   MdShield, MdVerifiedUser, MdVisibility, MdFactCheck, MdAutorenew,
   MdLanguage, MdGroups, MdSmartToy, MdEventAvailable, MdCampaign,
-  MdSignalCellularAlt, MdWifi, MdBatteryFull, MdSentimentSatisfiedAlt, MdMic
+  MdSignalCellularAlt, MdWifi, MdBatteryFull, MdSentimentSatisfiedAlt, MdMic,
+  MdSportsSoccer, MdSelfImprovement, MdSportsMma, MdPool
 } from 'react-icons/md'
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
 import { useState, useMemo, useEffect, useRef } from 'react'
@@ -208,6 +209,16 @@ function NotifCascata({ itens, fase }) {
   )
 }
 
+// Atalhos pras landings de nicho (rotas em App.js). Fotos em public/nichos,
+// versoes leves (~60KB) das capas de cada landing. `carregar` baixa a pagina
+// (lazy no App.js) ja no hover, pra troca ser instantanea no clique.
+const NICHOS = [
+  { to: '/sistema-para-escolinhas', titulo: 'Escolinhas esportivas', icon: MdSportsSoccer, img: '/nichos/escolinhas.jpg', pos: '74% 50%', carregar: () => import('./pages/LandingEscolinha') },
+  { to: '/sistema-para-estudio-pilates', titulo: 'Studio de pilates', icon: MdSelfImprovement, img: '/nichos/pilates.jpg', pos: '86% 50%', carregar: () => import('./pages/LandingPilates') },
+  { to: '/sistema-para-academia-de-luta', titulo: 'Academia de luta', icon: MdSportsMma, img: '/nichos/luta.jpg', pos: '80% 50%', carregar: () => import('./pages/LandingLuta') },
+  { to: '/sistema-para-escola-natacao', titulo: 'Escola de natação', icon: MdPool, img: '/nichos/natacao.jpg', pos: '82% 50%', carregar: () => import('./pages/LandingNatacao') }
+]
+
 const SECUNDARIOS = [
   { icon: MdMessage, t: 'Templates personalizados', d: 'Mensagens com a sua cara, que não parecem robô.' },
   { icon: MdReceiptLong, t: 'Relatórios de atrasos', d: 'Há quanto tempo cada cliente está devendo.' },
@@ -401,6 +412,30 @@ export default function LandingPage() {
         </section>
 
         <Depoimentos onCta={signup} />
+
+        {/* Atalhos pros nichos */}
+        <section className="lp2-sec lp2-bg-off lp2-nichos" aria-labelledby="nichos-titulo">
+          <div className="lp2-wrap">
+            <div className="lp2-head2">
+              <div>
+                <p className="lp2-eyebrow">Para o seu negócio</p>
+                <h2 id="nichos-titulo" className="lp2-h2">Feito para quem vive de mensalidade.</h2>
+              </div>
+              <p className="lp2-lead">Escolha o seu tipo de negócio e veja como o Mensalli funciona no seu dia a dia.</p>
+            </div>
+            <div className="lp2-nichos-grid">
+              {NICHOS.map(n => (
+                <a key={n.to} href={n.to} className="lp2-nicho"
+                  onPointerEnter={n.carregar} onFocus={n.carregar}
+                  onClick={e => { e.preventDefault(); n.carregar().then(() => navigate(n.to)) }}>
+                  <img src={n.img} alt="" loading="lazy" decoding="async" width="840" height="473" style={{ objectPosition: n.pos }} />
+                  <span className="lp2-nicho-ico"><n.icon size={20} /></span>
+                  <span className="lp2-nicho-t">{n.titulo} <MdArrowForward size={20} /></span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Cobrança automática em destaque */}
         <section id="cobranca" className="lp2-sec lp2-auto" aria-labelledby="auto-titulo">

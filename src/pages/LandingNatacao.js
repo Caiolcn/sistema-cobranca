@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
 import { MdArrowForward, MdBolt, MdCalendarMonth, MdCheck, MdCheckCircle, MdDashboard, MdDoneAll, MdExpandMore, MdGroups, MdHistory, MdLink, MdPayments, MdPool, MdQrCode2, MdSecurity, MdVisibility } from 'react-icons/md'
@@ -42,6 +42,9 @@ const faqs = [
 function setMeta(name,content,attr='name'){let el=document.querySelector(`meta[${attr}="${name}"]`);if(!el){el=document.createElement('meta');el.setAttribute(attr,name);document.head.appendChild(el)}el.setAttribute('content',content)}
 
 export default function LandingNatacao(){
+  // abre no topo: quem chega pelos cards da landing principal vem com a
+  // rolagem la de baixo (app de pagina unica)
+  useLayoutEffect(() => { window.scrollTo(0, 0) }, [])
   const navigate=useNavigate(),[faq,setFaq]=useState(null)
   useEffect(()=>{capturarAtribuicao();trackViewContent('landing-escola-natacao');const old=document.title;const title='Sistema para escola de natação — mensalidades no WhatsApp | Mensalli';const desc='Organize alunos, responsáveis, turmas, presença e mensalidades da sua escola de natação com o Mensalli.';document.title=title;setMeta('description',desc);setMeta('og:title',title,'property');setMeta('og:description',desc,'property');return()=>{document.title=old}},[])
   const signup=()=>navigate('/signup')

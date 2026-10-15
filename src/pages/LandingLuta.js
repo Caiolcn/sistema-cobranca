@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaWhatsapp, FaInstagram } from 'react-icons/fa'
 import { MdArrowForward, MdBolt, MdCalendarMonth, MdCheck, MdCheckCircle, MdCreditCard, MdDashboard, MdDoneAll, MdExpandMore, MdGroups, MdHistory, MdLink, MdPayments, MdQrCode2, MdSecurity, MdTrendingDown, MdVisibility } from 'react-icons/md'
@@ -40,6 +40,9 @@ const faqs = [
 function setMeta(name, content, attr = 'name') { let el = document.querySelector(`meta[${attr}="${name}"]`); if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el) }; el.setAttribute('content', content) }
 
 export default function LandingLuta() {
+  // abre no topo: quem chega pelos cards da landing principal vem com a
+  // rolagem la de baixo (app de pagina unica)
+  useLayoutEffect(() => { window.scrollTo(0, 0) }, [])
   const navigate = useNavigate(), [faq, setFaq] = useState(null)
   const [alunos, setAlunos] = useState(80), [mensalidade, setMensalidade] = useState(160), [inad, setInad] = useState(12)
   const perda = useMemo(() => alunos * mensalidade * inad / 100, [alunos, mensalidade, inad])
