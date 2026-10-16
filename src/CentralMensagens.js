@@ -10,6 +10,7 @@ import Select from './design-system/components/Select'
 import SearchInput from './design-system/components/SearchInput'
 import Modal from './design-system/components/Modal'
 import EmptyState from './design-system/components/EmptyState'
+import { formatarTelefone } from './utils/validators'
 
 /* ============================================================
    Central de Mensagens — Fase 1 (somente leitura)
@@ -193,16 +194,24 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
       const userIds = [...new Set(arr.map(l => l.user_id).filter(Boolean))]
       const devIds = [...new Set(arr.map(l => l.devedor_id).filter(Boolean))]
 
-      const [{ data: contas }, { data: alunos }] = await Promise.all([
+      // O número do WhatsApp conectado vem junto porque muita conta nunca sai do
+      // "Minha Empresa" padrão do cadastro — em 16/10/2026 um pagante ficou 6
+      // dias sem enviar nada e ninguém sabia quem era só pelo nome. O número é
+      // a única identidade que o gestor reconhece de cara.
+      const [{ data: contas }, { data: alunos }, { data: zaps }] = await Promise.all([
         userIds.length
-          ? supabase.from('usuarios').select('id, nome_empresa, nome_completo').in('id', userIds)
+          ? supabase.from('usuarios').select('id, nome_empresa, nome_completo, telefone').in('id', userIds)
           : Promise.resolve({ data: [] }),
         devIds.length
           ? supabase.from('devedores').select('id, nome, responsavel_nome').in('id', devIds)
+          : Promise.resolve({ data: [] }),
+        userIds.length
+          ? supabase.from('mensallizap').select('user_id, whatsapp_numero').in('user_id', userIds)
           : Promise.resolve({ data: [] })
       ])
 
       const cm = {}; (contas || []).forEach(c => { cm[c.id] = c })
+      ;(zaps || []).forEach(z => { if (cm[z.user_id]) cm[z.user_id].whatsapp_numero = z.whatsapp_numero })
       const am = {}; (alunos || []).forEach(a => { am[a.id] = a })
       setContasMap(cm)
       setAlunosMap(am)
@@ -241,6 +250,27 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
     (uid) => contasMap[uid]?.nome_empresa || contasMap[uid]?.nome_completo || '—',
     [contasMap]
   )
+  // Número do WhatsApp conectado (mensallizap), senão o telefone do cadastro.
+  // O whatsapp_numero vem com o 55 na frente; tira pra formatar como os outros.
+  const contatoConta = useCallback(
+    (uid) => {
+      const c = contasMap[uid]
+      const bruto = String(c?.whatsapp_numero || c?.telefone || '').replace(/\D/g, '')
+      if (!bruto) return ''
+      const nacional = bruto.length >= 12 && bruto.startsWith('55') ? bruto.slice(2) : bruto
+      return formatarTelefone(nacional) || nacional
+    },
+    [contasMap]
+  )
+  // Nome padrão do cadastro não identifica ninguém; aí o rótulo leva o número.
+  const rotuloConta = useCallback(
+    (uid) => {
+      const nome = nomeConta(uid)
+      const contato = contatoConta(uid)
+      return /^minha empresa$/i.test(nome.trim()) && contato ? `${nome} · ${contato}` : nome
+    },
+    [nomeConta, contatoConta]
+  )
   // O ALUNO é o nome do aluno, sempre — é por ele que se busca em /app/clientes.
   // Mostrar o responsável aqui fazia a tela inventar um aluno que não existe:
   // "JOSÉ ROBERTO VITAL" é o responsável do "ENZO PINTER VITAL", e procurar
@@ -262,10 +292,10 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
 
   const opcoesConta = useMemo(() => {
     const vistos = new Map()
-    linhas.forEach(l => { if (l.user_id && !vistos.has(l.user_id)) vistos.set(l.user_id, nomeConta(l.user_id)) })
+    linhas.forEach(l => { if (l.user_id && !vistos.has(l.user_id)) vistos.set(l.user_id, rotuloConta(l.user_id)) })
     return [{ value: 'todas', label: 'Todas as contas' },
       ...[...vistos.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([v, label]) => ({ value: v, label }))]
-  }, [linhas, nomeConta])
+  }, [linhas, rotuloConta])
 
   const opcoesTipo = useMemo(() => {
     const vistos = [...new Set(linhas.map(l => l.tipo).filter(Boolean))]
@@ -275,6 +305,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
+    const qDigitos = q.replace(/\D/g, '')
     return linhas.filter(l => {
       if (fSituacao !== 'todas' && l.situacao !== fSituacao) return false
       if (fTipo !== 'todos' && l.tipo !== fTipo) return false
@@ -286,8 +317,10 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
         || (nomeResponsavel(l.devedor_id) || '').toLowerCase().includes(q)
         || (l.telefone || '').toLowerCase().includes(q)
         || nomeConta(l.user_id).toLowerCase().includes(q)
+        // Número da conta: busca só por dígitos, pra "(66) 99245" achar igual a "6699245".
+        || (!!qDigitos && contatoConta(l.user_id).replace(/\D/g, '').includes(qDigitos))
     })
-  }, [linhas, fSituacao, fTipo, fConta, busca, nomeAluno, nomeResponsavel, nomeConta])
+  }, [linhas, fSituacao, fTipo, fConta, busca, nomeAluno, nomeResponsavel, nomeConta, contatoConta])
 
   const resumo = useMemo(() => {
     const r = { enviado: 0, falhou: 0, agendada: 0, barrada: 0, nao_enviada: 0 }
@@ -317,9 +350,15 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
     {
       key: 'conta',
       label: 'Conta',
-      render: (r) => (
-        <span style={{ fontSize: 13, color: '#344848' }}>{nomeConta(r.user_id)}</span>
-      )
+      render: (r) => {
+        const contato = contatoConta(r.user_id)
+        return (
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, color: '#344848' }}>{nomeConta(r.user_id)}</div>
+            {contato && <div style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>{contato}</div>}
+          </div>
+        )
+      }
     },
     {
       key: 'aluno',
@@ -534,7 +573,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
         isOpen={!!detalhe}
         onClose={() => setDetalhe(null)}
         title="Detalhe da mensagem"
-        subtitle={detalhe ? `${nomeAluno(detalhe.devedor_id)} · ${nomeConta(detalhe.user_id)}` : ''}
+        subtitle={detalhe ? `${nomeAluno(detalhe.devedor_id)} · ${rotuloConta(detalhe.user_id)}` : ''}
         position="aside"
         size="md"
       >
