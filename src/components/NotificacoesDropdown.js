@@ -45,13 +45,23 @@ const fmtDataBr = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-export async function carregarNotificacoes(userId) {
+const VAZIO = Promise.resolve({ data: [] })
+
+// `apenasNovasDesde` (contador do sino): pula as buscas cujos itens têm carimbo
+// fixo do dia e por isso não podem estar depois do último "lido". Evasão carimba
+// hojeIni, atrasada carimba o vencimento (< hoje) e "vence hoje" carimba 08:00 —
+// depois que a pessoa abriu o sino uma vez no dia, nenhum deles acende o contador,
+// mas o Radar (a busca mais pesada) rodava a cada 2 min em toda aba aberta.
+export async function carregarNotificacoes(userId, { apenasNovasDesde } = {}) {
   if (!userId) return []
   const agora = new Date()
   const hojeStr = agora.toISOString().split('T')[0]
   const hojeIni = `${hojeStr}T00:00:00`
 
   const desdeNovidade = new Date(agora.getTime() - DIAS_NOVIDADE_NO_SINO * 86400000).toISOString()
+
+  const pularFixosDoDia = !!apenasNovasDesde && apenasNovasDesde >= hojeIni
+  const pularVencendo = !!apenasNovasDesde && apenasNovasDesde >= `${hojeStr}T08:00:00`
 
   const [pgRes, leadRes, agRes, vencRes, atrRes, radarRes, novRes, cadRes, vendaRes] = await Promise.all([
     supabase
@@ -76,14 +86,14 @@ export async function carregarNotificacoes(userId) {
       .gte('created_at', hojeIni)
       .order('created_at', { ascending: false })
       .limit(10),
-    supabase
+    pularVencendo ? VAZIO : supabase
       .from('mensalidades')
       .select('id, valor, data_vencimento, devedores(nome)')
       .eq('user_id', userId)
       .in('status', ['pendente', 'atrasado'])
       .eq('data_vencimento', hojeStr)
       .limit(10),
-    supabase
+    pularFixosDoDia ? VAZIO : supabase
       .from('mensalidades')
       .select('id, valor, data_vencimento, devedores(nome)')
       .eq('user_id', userId)
@@ -91,7 +101,7 @@ export async function carregarNotificacoes(userId) {
       .lt('data_vencimento', hojeStr)
       .order('data_vencimento', { ascending: false })
       .limit(10),
-    supabase
+    pularFixosDoDia ? VAZIO : supabase
       .from('vw_radar_evasao')
       .select('devedor_id, nome, score_total, dias_sem_aparecer, dias_atraso')
       .eq('user_id', userId)
@@ -235,8 +245,8 @@ export async function carregarNotificacoes(userId) {
 }
 
 export async function contarNaoLidas(userId) {
-  const itens = await carregarNotificacoes(userId)
   const lastRead = getLastRead(userId)
+  const itens = await carregarNotificacoes(userId, { apenasNovasDesde: lastRead })
   return itens.filter((i) => String(i.timestamp) > lastRead).length
 }
 
