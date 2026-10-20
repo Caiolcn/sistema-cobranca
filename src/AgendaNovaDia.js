@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -47,9 +47,14 @@ export default function AgendaNovaDia({
   const [confirmCancelAg, setConfirmCancelAg] = useState(null)
   const [confirmRemAluno, setConfirmRemAluno] = useState(null) // aula (individual) a remover
 
+  // Skeleton só na primeira carga e quando muda o dia. Recarga do mesmo
+  // período (evento do Realtime em agendamentos, cancelamento, presença)
+  // atualiza em silêncio — senão a agenda sumia e voltava a cada evento.
+  const diaCarregadoRef = useRef(null)
+
   const carregarDia = useCallback(async () => {
     if (!userId) return
-    setLoadingDia(true)
+    if (diaCarregadoRef.current !== dataSel) setLoadingDia(true)
     const [agRes, ausRes, presRes, filaRes] = await Promise.all([
       // !inner + filtro de lixo: agendamento de aluno em lixeira não renderiza
       supabase.from('agendamentos')
@@ -70,6 +75,7 @@ export default function AgendaNovaDia({
     ;(presRes.data || []).forEach(p => { if (p.aula_id && p.devedor_id) m[presKey(p.aula_id, p.devedor_id)] = p })
     setPresencas(m)
     setListaEspera(filaRes.data || [])
+    diaCarregadoRef.current = dataSel
     setLoadingDia(false)
   }, [userId, dataSel])
 
