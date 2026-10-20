@@ -98,22 +98,32 @@ export default function Dashboard() {
     prefetchNovidades(realUserId, { planoPago: !!trialStatus?.planoPago })
   }, [realUserId, trialStatus?.planoPago])
 
-  // Contador de notificações não-lidas (roda a cada 2 min)
+  // Contador de notificações não-lidas (a cada 5 min, só com a aba visível).
+  // Aba em segundo plano não consulta; ao voltar, atualiza se já passou o intervalo.
   useEffect(() => {
     const uid = adminViewingAs || userId
     if (!uid) return
+    const INTERVALO_MS = 5 * 60 * 1000
     let cancelado = false
+    let ultimaAtualizacao = 0
     const atualizar = async () => {
+      if (document.visibilityState === 'hidden') return
+      ultimaAtualizacao = Date.now()
       try {
         const n = await contarNaoLidas(uid)
         if (!cancelado) setNotifCount(n)
       } catch (_) {}
     }
+    const aoMudarVisibilidade = () => {
+      if (document.visibilityState === 'visible' && Date.now() - ultimaAtualizacao >= INTERVALO_MS) atualizar()
+    }
     atualizar()
-    const timer = setInterval(atualizar, 120000)
+    const timer = setInterval(atualizar, INTERVALO_MS)
+    document.addEventListener('visibilitychange', aoMudarVisibilidade)
     return () => {
       cancelado = true
       clearInterval(timer)
+      document.removeEventListener('visibilitychange', aoMudarVisibilidade)
     }
   }, [userId, adminViewingAs])
 

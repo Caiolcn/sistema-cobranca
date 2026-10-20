@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -79,9 +79,14 @@ export default function AgendaNovaSemana({
       .filter(a => !filtroAlunoId || a.devedor_id === filtroAlunoId)
   , [aulas, filtroAlunoId])
 
+  // Skeleton só na primeira carga e quando muda a semana. Recarga do mesmo
+  // período (evento do Realtime em agendamentos, cancelamento, presença)
+  // atualiza em silêncio — senão a agenda sumia e voltava a cada evento.
+  const semanaCarregadoRef = useRef(null)
+
   const carregarSemana = useCallback(async () => {
     if (!userId) return
-    setLoadingSemana(true)
+    if (semanaCarregadoRef.current !== iniSem) setLoadingSemana(true)
     const [agRes, ausRes, presRes, filaRes] = await Promise.all([
       supabase.from('agendamentos')
         .select('*, devedores(nome, telefone, foto_url, origem, assinatura_ativa, plano_id)')
@@ -100,6 +105,7 @@ export default function AgendaNovaSemana({
     ;(presRes.data || []).forEach(p => { if (p.aula_id && p.devedor_id) m[presKey3(p.data, p.aula_id, p.devedor_id)] = p })
     setPresencas(m)
     setListaEspera(filaRes.data || [])
+    semanaCarregadoRef.current = iniSem
     setLoadingSemana(false)
   }, [userId, iniSem, fimSem])
 

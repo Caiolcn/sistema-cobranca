@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
 import { SkeletonList } from './components/Skeleton'
@@ -39,9 +39,14 @@ export default function AgendaDia({
   const [confirmCancelAg, setConfirmCancelAg] = useState(null)
 
   // --- carregar dia ---
+  // Skeleton só na primeira carga e quando muda o dia. Recarga do mesmo
+  // período (evento do Realtime em agendamentos, cancelamento, presença)
+  // atualiza em silêncio — senão a agenda sumia e voltava a cada evento.
+  const diaCarregadoRef = useRef(null)
+
   const carregarDia = useCallback(async () => {
     if (!userId) return
-    setLoadingDia(true)
+    if (diaCarregadoRef.current !== dataSel) setLoadingDia(true)
     const [agRes, ausRes, presRes, filaRes] = await Promise.all([
       supabase.from('agendamentos')
         .select('*, devedores(nome, telefone, foto_url, origem, assinatura_ativa, plano_id)')
@@ -60,6 +65,7 @@ export default function AgendaDia({
     ;(presRes.data || []).forEach(p => { if (p.aula_id && p.devedor_id) m[presKey(p.aula_id, p.devedor_id)] = p })
     setPresencas(m)
     setListaEspera(filaRes.data || [])
+    diaCarregadoRef.current = dataSel
     setLoadingDia(false)
   }, [userId, dataSel])
 
