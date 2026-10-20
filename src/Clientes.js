@@ -129,6 +129,7 @@ export default function Clientes() {
   const [temResponsavel, setTemResponsavel] = useState(false)
   const [stepCadastro, setStepCadastro] = useState(1)
   const [criarAssinatura, setCriarAssinatura] = useState(false)
+  const [novoClienteBolsista, setNovoClienteBolsista] = useState(false)
   const [dataInicioAssinatura, setDataInicioAssinatura] = useState('')
   const [dataVencimentoAssinatura, setDataVencimentoAssinatura] = useState('')
   const [planoSelecionado, setPlanoSelecionado] = useState('')
@@ -158,6 +159,7 @@ export default function Clientes() {
 
   // Estados para modais de confirmação
   const [confirmAssinatura, setConfirmAssinatura] = useState({ show: false, clienteId: null, novoStatus: false })
+  const [confirmBolsista, setConfirmBolsista] = useState({ show: false, clienteId: null, novoStatus: false })
   const [mostrarModalSelecionarPlano, setMostrarModalSelecionarPlano] = useState({ show: false, clienteId: null })
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
   const [dataInicioAssinaturaModal, setDataInicioAssinaturaModal] = useState('')
@@ -228,7 +230,7 @@ export default function Clientes() {
       const { data } = await supabase
         .from('devedores')
         .select(`
-          id, nome, telefone, cpf, assinatura_ativa, plano_id, created_at,
+          id, nome, telefone, cpf, assinatura_ativa, bolsista, plano_id, created_at,
           email, responsavel_nome, responsavel_telefone, bloquear_mensagens, comunicacoes_ativas,
           data_nascimento, portal_token, aulas_restantes, aulas_total,
           foto_url, tags, cep, endereco, numero, complemento, bairro,
@@ -285,11 +287,13 @@ export default function Clientes() {
       filtrados = filtrados.filter(cliente => {
         if (filtroStatus === 'ativo') {
           // Cliente ativo = assinatura ativa OU status Em dia/Sem mensalidade (não atrasado)
-          return cliente.assinatura_ativa || cliente.status === 'Em dia' || cliente.status === 'Sem mensalidade'
+          return cliente.assinatura_ativa || cliente.bolsista || cliente.status === 'Em dia' || cliente.status === 'Sem mensalidade'
         } else if (filtroStatus === 'inadimplente') {
           return cliente.status === 'Atrasado'
         } else if (filtroStatus === 'cancelado') {
-          return !cliente.assinatura_ativa
+          return !cliente.assinatura_ativa && !cliente.bolsista
+        } else if (filtroStatus === 'bolsista') {
+          return !!cliente.bolsista
         }
         return true
       })
@@ -309,7 +313,7 @@ export default function Clientes() {
     if (filtroAssinatura === 'ativada') {
       filtrados = filtrados.filter(cliente => cliente.assinatura_ativa === true)
     } else if (filtroAssinatura === 'desativada') {
-      filtrados = filtrados.filter(cliente => cliente.assinatura_ativa === false)
+      filtrados = filtrados.filter(cliente => cliente.assinatura_ativa === false && !cliente.bolsista)
     }
 
     // Filtro de Inadimplente (query parameter da Home)
@@ -477,6 +481,7 @@ export default function Clientes() {
             telefone,
             cpf,
             assinatura_ativa,
+            bolsista,
             plano_id,
             created_at,
             email,
@@ -533,7 +538,10 @@ export default function Clientes() {
 
         // Calcular status baseado na próxima mensalidade
         let status = 'Sem mensalidade'
-        if (proximaMensalidade) {
+        if (cliente.bolsista) {
+          // Bolsa integral: não paga, então nunca fica atrasado
+          status = 'Bolsista'
+        } else if (proximaMensalidade) {
           const dataVenc = new Date(proximaMensalidade.data_vencimento)
           dataVenc.setHours(0, 0, 0, 0)
 
@@ -1023,8 +1031,10 @@ export default function Clientes() {
       }
 
       // Atualizar o cliente com o plano e ativar a assinatura
+      // Ativar plano pago encerra a bolsa
       const updateData = {
         assinatura_ativa: true,
+        bolsista: false,
         plano_id: planoParaAtivar
       }
 
@@ -1094,6 +1104,7 @@ export default function Clientes() {
         setClienteSelecionado(prev => ({
           ...prev,
           assinatura_ativa: true,
+          bolsista: false,
           plano_id: planoParaAtivar,
           plano_nome: plano?.nome,
           aulas_restantes: plano.tipo === 'pacote' ? plano.numero_aulas : prev.aulas_restantes,
@@ -1157,6 +1168,67 @@ export default function Clientes() {
       showToast('Erro ao alterar assinatura: ' + error.message, 'error')
     } finally {
       setConfirmAssinatura({ show: false, clienteId: null, novoStatus: false })
+    }
+  }
+
+  // Bolsa integral: o aluno fica sem plano e com assinatura desligada — é isso
+  // que o cron de geração e as views da fila de mensagens olham, então nada é
+  // gerado nem cobrado. Ao virar bolsista, as pendentes vão pra lixeira (senão
+  // ficam "atrasadas" e contam como inadimplência). As pagas ficam no histórico.
+  const confirmarAlteracaoBolsista = async () => {
+    const { clienteId, novoStatus } = confirmBolsista
+    if (!clienteId || !userId) return
+
+    try {
+      const updateData = novoStatus
+        ? { bolsista: true, assinatura_ativa: false, plano_id: null, aulas_restantes: null, aulas_total: null }
+        : { bolsista: false }
+
+      const { error } = await supabase
+        .from('devedores')
+        .update(updateData)
+        .eq('id', clienteId)
+
+      if (error) throw error
+
+      if (novoStatus) {
+        const { error: pendentesError } = await supabase
+          .from('mensalidades')
+          .update({ lixo: true, deletado_em: new Date().toISOString() })
+          .eq('devedor_id', clienteId)
+          .eq('status', 'pendente')
+          .or('lixo.is.null,lixo.eq.false')
+        if (pendentesError) console.error('Erro ao remover pendentes do bolsista:', pendentesError)
+      }
+
+      await supabase.from('log_auditoria').insert({
+        user_id: userId,
+        devedor_id: clienteId,
+        acao: novoStatus ? 'bolsa_ativada' : 'bolsa_removida',
+        campo: 'bolsista',
+        valor_anterior: String(!novoStatus),
+        valor_novo: String(novoStatus),
+        detalhes: novoStatus ? 'Marcado como bolsista (bolsa integral)' : 'Bolsa removida'
+      }).then(() => {}).catch(e => console.error('Erro log auditoria:', e))
+
+      showToast(
+        novoStatus ? 'Aluno marcado como bolsista — não será cobrado' : 'Bolsa removida. Ative um plano para voltar a cobrar.',
+        'success'
+      )
+
+      if (clienteSelecionado?.id === clienteId) {
+        setClienteSelecionado(prev => ({ ...prev, ...updateData, ...(novoStatus ? { plano_nome: null } : {}) }))
+      }
+
+      await carregarClientes()
+      if (clienteSelecionado?.id === clienteId) {
+        await carregarMensalidadesCliente(clienteId)
+      }
+    } catch (error) {
+      console.error('Erro ao alterar bolsa:', error)
+      showToast('Erro ao alterar bolsa: ' + error.message, 'error')
+    } finally {
+      setConfirmBolsista({ show: false, clienteId: null, novoStatus: false })
     }
   }
 
@@ -1325,7 +1397,7 @@ export default function Clientes() {
     // Abre nos Dados: o professor revisa o que o aluno preencheu e completa
     // o que faltar (tags, endereço) antes de escolher o plano
     setTemResponsavel(temResp); setStepCadastro(1)
-    setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
+    setCriarAssinatura(true); setNovoClienteBolsista(false); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
     setPlanoSelecionado(''); setEnviarBoasVindas(true)
     setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
     setMostrarModalNovoCliente(true)
@@ -1367,8 +1439,8 @@ export default function Clientes() {
       return
     }
 
-    // Verificar limite de clientes do plano (apenas clientes com assinatura ativa contam)
-    const clientesAtivos = clientes.filter(c => c.assinatura_ativa && !c.deleted_at).length
+    // Verificar limite de clientes do plano (assinatura ativa e bolsistas contam)
+    const clientesAtivos = clientes.filter(c => (c.assinatura_ativa || c.bolsista) && !c.deleted_at).length
     if (planoConhecido && clientesAtivos >= limiteClientes) {
       setErroModalNovoCliente(`Limite de ${limiteClientes} alunos ativos atingido no plano ${plano?.toUpperCase() || 'atual'}. Faça upgrade para adicionar mais alunos.`)
       return
@@ -1412,6 +1484,7 @@ export default function Clientes() {
         cidade: novoClienteCidade.trim() || null,
         estado: novoClienteEstado.trim() || null,
         assinatura_ativa: criarAssinatura,
+        bolsista: novoClienteBolsista,
         plano_id: criarAssinatura ? planoSelecionado : null,
         aulas_restantes: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
         aulas_total: criarAssinatura && planos.find(p => p.id === planoSelecionado)?.tipo === 'pacote' ? planos.find(p => p.id === planoSelecionado)?.numero_aulas : null,
@@ -1599,6 +1672,7 @@ Equipe ${nomeEmpresa}`
       setTemResponsavel(false)
       setStepCadastro(1)
       setCriarAssinatura(true)
+      setNovoClienteBolsista(false)
       setDataInicioAssinatura('')
       setDataVencimentoAssinatura('')
       setPlanoSelecionado('')
@@ -1918,7 +1992,7 @@ Equipe ${nomeEmpresa}`
                 setNovoClienteCep(''); setNovoClienteEndereco(''); setNovoClienteNumero('')
                 setNovoClienteComplemento(''); setNovoClienteBairro(''); setNovoClienteCidade(''); setNovoClienteEstado('')
                 setTemResponsavel(false); setStepCadastro(1)
-                setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
+                setCriarAssinatura(true); setNovoClienteBolsista(false); setDataInicioAssinatura(''); setDataVencimentoAssinatura('')
                 setPlanoSelecionado(''); setEnviarBoasVindas(true)
                 setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
                 setMostrarModalNovoCliente(true)
@@ -2006,6 +2080,7 @@ Equipe ${nomeEmpresa}`
                         { value: 'ativo', label: 'Ativo' },
                         { value: 'inadimplente', label: 'Inadimplente' },
                         { value: 'cancelado', label: 'Cancelado' },
+                        { value: 'bolsista', label: 'Bolsista' },
                       ]}
                     />
                   </div>
@@ -2205,14 +2280,14 @@ Equipe ${nomeEmpresa}`
                     </div>
                   </div>
                   <span style={{
-                    backgroundColor: cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
-                    color: cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
+                    backgroundColor: cliente.bolsista ? '#ede9fe' : cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
+                    color: cliente.bolsista ? '#6d28d9' : cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
                     padding: '4px 10px',
                     borderRadius: '12px',
                     fontSize: '11px',
                     fontWeight: '600'
                   }}>
-                    {cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
+                    {cliente.bolsista ? 'Bolsista' : cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
                   </span>
                 </div>
 
@@ -2353,19 +2428,21 @@ Equipe ${nomeEmpresa}`
                     </td>
                     <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                       <span style={{
-                        backgroundColor: cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
-                        color: cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
+                        backgroundColor: cliente.bolsista ? '#ede9fe' : cliente.assinatura_ativa ? '#e8f5e9' : '#ffebee',
+                        color: cliente.bolsista ? '#6d28d9' : cliente.assinatura_ativa ? '#2e7d32' : '#c62828',
                         padding: '4px 12px',
                         borderRadius: '12px',
                         fontSize: '12px',
                         fontWeight: '600',
                         display: 'inline-block'
                       }}>
-                        {cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
+                        {cliente.bolsista ? 'Bolsista' : cliente.assinatura_ativa ? 'Ativa' : 'Inativa'}
                       </span>
                     </td>
                     <td style={{ padding: '16px 24px', fontSize: '14px', color: '#333', textAlign: 'center' }}>
-                      {cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
+                      {cliente.bolsista
+                        ? <span style={{ color: '#6d28d9' }}>Bolsa integral</span>
+                        : cliente.plano_nome || <span style={{ color: '#999', fontStyle: 'italic' }}>Sem plano</span>}
                     </td>
                     <td
                       style={{ padding: '16px 24px', fontSize: '14px', color: '#666', textAlign: 'center' }}
@@ -2891,6 +2968,11 @@ Equipe ${nomeEmpresa}`
                     <span style={{ fontSize: '14px', fontWeight: '600', color: '#344848' }}>Informações do Aluno</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {clienteSelecionado.bolsista && (
+                      <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600', backgroundColor: '#ede9fe', color: '#6d28d9' }}>
+                        Bolsista
+                      </span>
+                    )}
                     {(clienteSelecionado.assinatura_ativa || clienteSelecionado.plano_id) && (
                       <span style={{
                         padding: '2px 8px',
@@ -3044,6 +3126,43 @@ Equipe ${nomeEmpresa}`
                           </div>
                         </div>
                       )}
+
+                      {/* Bolsa integral: sem plano, sem mensalidade, sem cobrança */}
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        backgroundColor: clienteSelecionado.bolsista ? '#f5f3ff' : '#f9fafb',
+                        borderRadius: '8px',
+                        border: `1px solid ${clienteSelecionado.bolsista ? '#ddd6fe' : '#e5e7eb'}`,
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: '1 1 160px' }}>
+                          <Icon icon="mdi:school-outline" width="16" style={{ color: clienteSelecionado.bolsista ? '#7c3aed' : '#888', flexShrink: 0 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: clienteSelecionado.bolsista ? '#5b21b6' : '#555' }}>
+                              {clienteSelecionado.bolsista ? 'Bolsista (bolsa integral)' : 'Aluno bolsista'}
+                            </span>
+                            <span style={{ fontSize: '10px', color: '#999' }}>
+                              Ligado: não gera mensalidade nem envia cobrança
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
+                          {clienteSelecionado.bolsista && (
+                            <Button size="xs" variant="outline" onClick={() => handleAlterarAssinatura(clienteSelecionado.id, true)}>
+                              Ativar plano
+                            </Button>
+                          )}
+                          <Switch
+                            checked={!!clienteSelecionado.bolsista}
+                            onChange={(e) => setConfirmBolsista({ show: true, clienteId: clienteSelecionado.id, novoStatus: e.target.checked })}
+                          />
+                        </div>
+                      </div>
 
                       {/* Toggle MASTER: Comunicações ativas — desligado silencia TUDO */}
                       <div style={{
@@ -3839,6 +3958,22 @@ Equipe ${nomeEmpresa}`
         type={confirmAssinatura.novoStatus ? 'success' : 'warning'}
       />
 
+      {/* Modal de confirmação de bolsa */}
+      <ConfirmModal
+        isOpen={confirmBolsista.show}
+        onClose={() => setConfirmBolsista({ show: false, clienteId: null, novoStatus: false })}
+        onConfirm={confirmarAlteracaoBolsista}
+        title={confirmBolsista.novoStatus ? 'Marcar como bolsista' : 'Remover bolsa'}
+        message={
+          confirmBolsista.novoStatus
+            ? 'O aluno fica sem plano e para de gerar mensalidades. As mensalidades pendentes vão para a lixeira; as pagas ficam no histórico. Continuar?'
+            : 'O aluno deixa de ser bolsista e fica sem plano. Para voltar a cobrar, ative um plano depois. Continuar?'
+        }
+        confirmText={confirmBolsista.novoStatus ? 'Marcar bolsista' : 'Remover bolsa'}
+        cancelText="Cancelar"
+        type={confirmBolsista.novoStatus ? 'success' : 'warning'}
+      />
+
       {/* Modal para selecionar plano ao ativar assinatura */}
       {mostrarModalSelecionarPlano.show && (
         <div
@@ -4206,7 +4341,30 @@ Equipe ${nomeEmpresa}`
               }
               return (
               <div>
+                {/* Bolsa integral: sem plano e sem mensalidade */}
+                <div style={{ marginBottom: '10px' }}>
+                  <Checkbox
+                    label="Aluno bolsista (bolsa integral, não paga mensalidade)"
+                    checked={novoClienteBolsista}
+                    onChange={(e) => {
+                      const bolsista = e.target.checked
+                      setNovoClienteBolsista(bolsista)
+                      setCriarAssinatura(!bolsista)
+                      if (bolsista) {
+                        setDataInicioAssinatura(''); setDataVencimentoAssinatura(''); setPlanoSelecionado('')
+                      } else {
+                        const hoje = new Date()
+                        setDataInicioAssinatura(hoje.toISOString().split('T')[0])
+                        const venc = new Date(hoje)
+                        venc.setDate(venc.getDate() + 30)
+                        setDataVencimentoAssinatura(venc.toISOString().split('T')[0])
+                      }
+                    }}
+                  />
+                </div>
+
                 {/* Toggle configurar depois */}
+                {!novoClienteBolsista && (
                 <div style={{ marginBottom: '16px' }}>
                   <Checkbox
                     label="Configurar mensalidade depois"
@@ -4226,8 +4384,17 @@ Equipe ${nomeEmpresa}`
                     }}
                   />
                 </div>
+                )}
 
-                {criarAssinatura ? (
+                {novoClienteBolsista ? (
+                  <div style={{ padding: '14px', backgroundColor: '#f5f3ff', borderRadius: '8px', border: '1px solid #ddd6fe', fontSize: '13px', color: '#5b21b6', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <Icon icon="mdi:school-outline" width="20" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <span>
+                      O aluno fica cadastrado como <strong>Bolsista</strong>: sem plano, sem mensalidade e sem mensagens de cobrança.
+                      Ele continua contando no limite de alunos do seu plano.
+                    </span>
+                  </div>
+                ) : criarAssinatura ? (
                   <div style={{ padding: '14px', backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #bbdefb' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                       <DateField
@@ -4317,7 +4484,9 @@ Equipe ${nomeEmpresa}`
                         <div style={{ height: '1px', background: '#e5e7eb', margin: '4px 0' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                           <span style={{ color: '#666' }}>Mensalidade</span>
-                          <span style={{ fontWeight: '500', color: '#999' }}>Não criada</span>
+                          {novoClienteBolsista
+                            ? <span style={{ fontWeight: '600', color: '#7c3aed' }}>Bolsista (isento)</span>
+                            : <span style={{ fontWeight: '500', color: '#999' }}>Não criada</span>}
                         </div>
                       </>
                     )}
@@ -4382,7 +4551,7 @@ Equipe ${nomeEmpresa}`
                     setNovoClienteEmail(''); setNovoClienteResponsavelNome(''); setNovoClienteResponsavelTelefone('')
                     setNovoClienteCep(''); setNovoClienteEndereco(''); setNovoClienteNumero('')
                     setNovoClienteComplemento(''); setNovoClienteBairro(''); setNovoClienteCidade(''); setNovoClienteEstado('')
-                    setTemResponsavel(false); setCriarAssinatura(true); setDataInicioAssinatura(''); setDataVencimentoAssinatura(''); setPlanoSelecionado('')
+                    setTemResponsavel(false); setCriarAssinatura(true); setNovoClienteBolsista(false); setDataInicioAssinatura(''); setDataVencimentoAssinatura(''); setPlanoSelecionado('')
                     setEnviarBoasVindas(true); setMostrarEdicaoBoasVindas(false); setMensagemBoasVindasCustom('')
                   } else {
                     setStepCadastro(stepCadastro - 1)
@@ -4871,7 +5040,7 @@ Equipe ${nomeEmpresa}`
         existingClients={clientes}
         planos={planos}
         limiteClientes={planoConhecido ? limiteClientes : null}
-        clientesAtivos={clientes.filter(c => c.assinatura_ativa && !c.deleted_at && !c.lixo).length}
+        clientesAtivos={clientes.filter(c => (c.assinatura_ativa || c.bolsista) && !c.deleted_at && !c.lixo).length}
       />
 
       <TagFormModal
