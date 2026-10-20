@@ -132,7 +132,7 @@ function Relatorios() {
 
         supabase
           .from('devedores')
-          .select('id, assinatura_ativa, lixo, plano:planos(valor)')
+          .select('id, assinatura_ativa, bolsista, lixo, plano:planos(valor)')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false'),
 
@@ -308,7 +308,7 @@ function Relatorios() {
 
       // Taxa de cancelamento
       const totalClientesGeral = todosClientes?.length || 0;
-      const clientesCancelados = todosClientes?.filter(c => c.assinatura_ativa === false).length || 0;
+      const clientesCancelados = todosClientes?.filter(c => c.assinatura_ativa === false && !c.bolsista).length || 0;
       const taxaCancel = totalClientesGeral > 0 ? (clientesCancelados / totalClientesGeral) * 100 : 0;
 
       // MRR
