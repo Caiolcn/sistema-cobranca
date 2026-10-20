@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { Icon } from '@iconify/react'
@@ -572,6 +572,36 @@ export default function Clientes() {
     }
   }, [userId])
 
+  // Calcular status e ordenar: atrasado > aberto > pago
+  const ordenarMensalidadesCliente = (data) => {
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+
+    const mensalidadesComStatus = (data || []).map(mensalidade => {
+      let status = mensalidade.status
+
+      if (status === 'pendente') {
+        const vencimento = new Date(mensalidade.data_vencimento)
+        vencimento.setHours(0, 0, 0, 0)
+        status = vencimento < hoje ? 'atrasado' : 'aberto'
+      }
+
+      return { ...mensalidade, statusCalculado: status }
+    })
+
+    // Ordenar por prioridade: atrasado (1), aberto (2), pago (3)
+    mensalidadesComStatus.sort((a, b) => {
+      const prioridade = { atrasado: 1, aberto: 2, pago: 3 }
+      if (prioridade[a.statusCalculado] !== prioridade[b.statusCalculado]) {
+        return prioridade[a.statusCalculado] - prioridade[b.statusCalculado]
+      }
+      // Se mesmo status, ordenar por data de vencimento (mais próximo primeiro)
+      return new Date(a.data_vencimento) - new Date(b.data_vencimento)
+    })
+
+    return mensalidadesComStatus
+  }
+
   const carregarMensalidadesCliente = async (clienteId) => {
     try {
       const { data, error } = await queryMensalidadesAtivas('*')
@@ -580,102 +610,138 @@ export default function Clientes() {
 
       if (error) throw error
 
-      // Calcular status e ordenar: atrasado > aberto > pago
-      const mensalidadesComStatus = (data || []).map(mensalidade => {
-        let status = mensalidade.status
-
-        if (status === 'pendente') {
-          const hoje = new Date()
-          hoje.setHours(0, 0, 0, 0)
-          const vencimento = new Date(mensalidade.data_vencimento)
-          vencimento.setHours(0, 0, 0, 0)
-
-          if (vencimento < hoje) {
-            status = 'atrasado'
-          } else {
-            status = 'aberto'
-          }
-        }
-
-        return { ...mensalidade, statusCalculado: status }
-      })
-
-      // Ordenar por prioridade: atrasado (1), aberto (2), pago (3)
-      mensalidadesComStatus.sort((a, b) => {
-        const prioridade = { atrasado: 1, aberto: 2, pago: 3 }
-        if (prioridade[a.statusCalculado] !== prioridade[b.statusCalculado]) {
-          return prioridade[a.statusCalculado] - prioridade[b.statusCalculado]
-        }
-        // Se mesmo status, ordenar por data de vencimento (mais próximo primeiro)
-        return new Date(a.data_vencimento) - new Date(b.data_vencimento)
-      })
-
-      setMensalidadesCliente(mensalidadesComStatus)
+      setMensalidadesCliente(ordenarMensalidadesCliente(data))
     } catch (error) {
       console.error('Erro ao carregar mensalidades:', error)
     }
   }
 
+  // Id da ficha aberta por último: se o usuário clica em outro aluno antes da
+  // carga terminar, a resposta antiga é descartada em vez de sobrescrever a nova.
+  const fichaAbertaRef = useRef(null)
+
+  // A ficha abre na hora com o que a lista já tem (aba Dados não depende de
+  // mais nada) e as estatísticas chegam em seguida. Antes eram 5 requisições
+  // em fila — mensalidades, avulsas, logs, presenças e mensalidades de novo —
+  // e o modal só aparecia no fim, então o clique parecia não responder.
   const handleClienteClick = async (cliente) => {
+    if (!cliente || !cliente.id) {
+      console.error('Cliente inválido:', cliente)
+      showToast('Erro ao abrir ficha do aluno', 'error')
+      return
+    }
+
+    fichaAbertaRef.current = cliente.id
+
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+
+    // Calcular tempo de casa (data de cadastro do aluno)
+    let tempoDeCasa = null
+    let tempoDeCasaDias = null
+    if (cliente.created_at) {
+      const dataCadastro = new Date(cliente.created_at)
+      dataCadastro.setHours(0, 0, 0, 0)
+      const diffMs = hoje - dataCadastro
+      const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+      tempoDeCasaDias = diffDays
+      tempoDeCasa = Math.floor(diffDays / 30)
+    }
+
+    setClienteSelecionado({ ...cliente, tempoDeCasa, tempoDeCasaDias })
+    setMensalidadesCliente([])
+    setCobrancasAvulsasCliente([])
+    setPresencasAluno([])
+    setMostrarFrequencia(false)
+    setNomeEdit(cliente.nome || '')
+    setTelefoneEdit(cliente.telefone || '')
+    setCpfEdit(cliente.cpf || '')
+    setDataNascimentoEdit(cliente.data_nascimento || '')
+    setEmailEdit(cliente.email || '')
+    setResponsavelNomeEdit(cliente.responsavel_nome || '')
+    setResponsavelTelefoneEdit(cliente.responsavel_telefone || '')
+    // Quem já tem responsável preenchido vem com o toggle ligado
+    setMenorEdit(!!((cliente.responsavel_nome || '').trim() || (cliente.responsavel_telefone || '').trim()))
+    setTagsEdit(Array.isArray(cliente.tags) ? cliente.tags : [])
+    setCepEdit(cliente.cep || '')
+    setEnderecoEdit(cliente.endereco || '')
+    setNumeroEnderecoEdit(cliente.numero || '')
+    setComplementoEdit(cliente.complemento || '')
+    setBairroEdit(cliente.bairro || '')
+    setCidadeEdit(cliente.cidade || '')
+    setEstadoEdit(cliente.estado || '')
+    setDiaVencimentoEdit('')
+    setAbaPerfil('dados')
+    setMostrarModal(true)
+
     try {
-      if (!cliente || !cliente.id) {
-        console.error('Cliente inválido:', cliente)
-        showToast('Erro ao abrir ficha do aluno', 'error')
-        return
-      }
+      const [mensalidadesRes, avulsasRes, logsRes, presencasRes] = await Promise.all([
+        queryMensalidadesAtivas('*')
+          .eq('devedor_id', cliente.id)
+          .order('data_vencimento', { ascending: true }),
 
-      // Carregar mensalidades primeiro para calcular estatísticas
-      const { data: mensalidadesData, error } = await queryMensalidadesAtivas('*')
-        .eq('devedor_id', cliente.id)
-        .order('data_vencimento', { ascending: true })
+        // Vendas avulsas vinculadas a este aluno (seção separada na ficha)
+        supabase
+          .from('cobrancas_avulsas')
+          .select('*')
+          .eq('devedor_id', cliente.id)
+          .or('lixo.is.null,lixo.eq.false')
+          .order('created_at', { ascending: false }),
 
-      if (error) throw error
+        // Logs de mensagens enviadas para este cliente — só a contagem e a
+        // última, sem baixar o histórico inteiro.
+        // Sem filtro de status isso contava falha como contato: com 26% de falha
+        // na base, "último contato" apontava para uma mensagem que o aluno nunca
+        // recebeu. `falha_classe = 'nao_falha'` entra porque É entrega — JID
+        // canônico BR sem o 9, que o guard do n8n acusa errado
+        // (ver docs/fix-guard-jid-n8n.md).
+        supabase
+          .from('logs_mensagens')
+          .select('enviado_em', { count: 'exact' })
+          .eq('devedor_id', cliente.id)
+          .or('status.eq.enviado,falha_classe.eq.nao_falha')
+          .order('enviado_em', { ascending: false })
+          .limit(1),
+
+        // Presenças do aluno
+        supabase
+          .from('presencas')
+          .select('*, grade_horarios(horario, descricao, dia_semana), aulas(horario, descricao, dia_semana)')
+          .eq('devedor_id', cliente.id)
+          .order('data', { ascending: false })
+          .limit(50)
+      ])
+
+      if (fichaAbertaRef.current !== cliente.id) return
+      if (mensalidadesRes.error) throw mensalidadesRes.error
 
       // Calcular estatísticas
-      const mensalidades = mensalidadesData || []
+      const mensalidades = mensalidadesRes.data || []
       const totalMensalidades = mensalidades.length
       const mensalidadesPagas = mensalidades.filter(m => m.status === 'pago').length
       const valorDevido = mensalidades
         .filter(m => m.status === 'pendente' || m.status === 'atrasado')
         .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
 
-      // Novos cálculos para indicadores melhorados
       const valorPago = mensalidades
         .filter(m => m.status === 'pago')
         .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
 
-      const hoje = new Date()
-      hoje.setHours(0, 0, 0, 0)
-
-      const mensalidadesAtrasadas = mensalidades.filter(m => {
+      const estaAtrasada = (m) => {
         if (m.status === 'pago') return false
         const vencimento = new Date(m.data_vencimento)
         vencimento.setHours(0, 0, 0, 0)
         return vencimento < hoje
-      }).length
-
+      }
+      const mensalidadesAtrasadas = mensalidades.filter(estaAtrasada).length
       const valorAtrasado = mensalidades
-        .filter(m => {
-          if (m.status === 'pago') return false
-          const vencimento = new Date(m.data_vencimento)
-          vencimento.setHours(0, 0, 0, 0)
-          return vencimento < hoje
-        })
+        .filter(estaAtrasada)
         .reduce((total, m) => total + parseFloat(m.valor || 0), 0)
 
       const parcelasPendentes = totalMensalidades - mensalidadesPagas
 
-      // Carregar vendas avulsas vinculadas a este aluno (seção separada na ficha)
-      const { data: avulsasData } = await supabase
-        .from('cobrancas_avulsas')
-        .select('*')
-        .eq('devedor_id', cliente.id)
-        .or('lixo.is.null,lixo.eq.false')
-        .order('created_at', { ascending: false })
-      const avulsas = avulsasData || []
-      setCobrancasAvulsasCliente(avulsas)
-
       // Vendas avulsas entram nos totais financeiros do aluno (separadas das parcelas)
+      const avulsas = avulsasRes.data || []
       const avulsaEmAberto = (a) => a.status !== 'pago' && a.status !== 'cancelado'
       const avulsaAtrasada = (a) => {
         if (!avulsaEmAberto(a) || !a.data_vencimento) return false
@@ -687,37 +753,27 @@ export default function Clientes() {
       const avulsasValorDevido = avulsas.filter(avulsaEmAberto).reduce((t, a) => t + parseFloat(a.valor || 0), 0)
       const avulsasValorAtrasado = avulsas.filter(avulsaAtrasada).reduce((t, a) => t + parseFloat(a.valor || 0), 0)
 
-      // Buscar logs de mensagens enviadas para este cliente.
-      // Sem filtro de status isso contava falha como contato: com 26% de falha
-      // na base, "último contato" apontava para uma mensagem que o aluno nunca
-      // recebeu. `falha_classe = 'nao_falha'` entra porque É entrega — JID
-      // canônico BR sem o 9, que o guard do n8n acusa errado
-      // (ver docs/fix-guard-jid-n8n.md).
-      const { data: logsData } = await supabase
-        .from('logs_mensagens')
-        .select('id, enviado_em')
-        .eq('devedor_id', cliente.id)
-        .or('status.eq.enviado,falha_classe.eq.nao_falha')
-        .order('enviado_em', { ascending: false })
+      const totalMensagensEnviadas = logsRes.count || 0
+      const ultimoContato = logsRes.data?.[0]?.enviado_em || null
 
-      const totalMensagensEnviadas = logsData?.length || 0
-      const ultimoContato = logsData?.[0]?.enviado_em || null
-
-      // Calcular tempo de casa (data de cadastro do aluno)
-      let tempoDeCasa = null
-      let tempoDeCasaDias = null
-      if (cliente.created_at) {
-        const dataCadastro = new Date(cliente.created_at)
-        dataCadastro.setHours(0, 0, 0, 0)
-        const diffMs = hoje - dataCadastro
-        const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
-        tempoDeCasaDias = diffDays
-        tempoDeCasa = Math.floor(diffDays / 30)
+      // Presenças: se o join com grade/aulas falhar, cai pra consulta simples
+      let presencas = presencasRes.data || []
+      if (presencasRes.error) {
+        const { data: presencasFallback } = await supabase
+          .from('presencas')
+          .select('*')
+          .eq('devedor_id', cliente.id)
+          .order('data', { ascending: false })
+          .limit(50)
+        if (fichaAbertaRef.current !== cliente.id) return
+        presencas = presencasFallback || []
       }
 
-      // Atualizar cliente com as estatísticas
-      const clienteComEstatisticas = {
-        ...cliente,
+      setCobrancasAvulsasCliente(avulsas)
+      setPresencasAluno(presencas)
+      setMensalidadesCliente(ordenarMensalidadesCliente(mensalidades))
+      setClienteSelecionado(prev => (prev?.id === cliente.id ? {
+        ...prev,
         totalMensalidades,
         mensalidadesPagas,
         valorDevido: valorDevido + avulsasValorDevido,
@@ -726,60 +782,15 @@ export default function Clientes() {
         valorAtrasado: valorAtrasado + avulsasValorAtrasado,
         parcelasPendentes,
         totalMensagensEnviadas,
-        ultimoContato,
-        tempoDeCasa,
-        tempoDeCasaDias
-      }
+        ultimoContato
+      } : prev))
 
-      // Carregar presenças do aluno
-      const { data: presencasData, error: presencasError } = await supabase
-        .from('presencas')
-        .select('*, grade_horarios(horario, descricao, dia_semana), aulas(horario, descricao, dia_semana)')
-        .eq('devedor_id', cliente.id)
-        .order('data', { ascending: false })
-        .limit(50)
-
-      if (presencasError) {
-        const { data: presencasFallback } = await supabase
-          .from('presencas')
-          .select('*')
-          .eq('devedor_id', cliente.id)
-          .order('data', { ascending: false })
-          .limit(50)
-        setPresencasAluno(presencasFallback || [])
-      } else {
-        setPresencasAluno(presencasData || [])
-      }
-      setMostrarFrequencia(false)
-
-      setClienteSelecionado(clienteComEstatisticas)
-      setNomeEdit(cliente.nome || '')
-      setTelefoneEdit(cliente.telefone || '')
-      setCpfEdit(cliente.cpf || '')
-      setDataNascimentoEdit(cliente.data_nascimento || '')
-      setEmailEdit(cliente.email || '')
-      setResponsavelNomeEdit(cliente.responsavel_nome || '')
-      setResponsavelTelefoneEdit(cliente.responsavel_telefone || '')
-      // Quem já tem responsável preenchido vem com o toggle ligado
-      setMenorEdit(!!((cliente.responsavel_nome || '').trim() || (cliente.responsavel_telefone || '').trim()))
-      setTagsEdit(Array.isArray(cliente.tags) ? cliente.tags : [])
-      setCepEdit(cliente.cep || '')
-      setEnderecoEdit(cliente.endereco || '')
-      setNumeroEnderecoEdit(cliente.numero || '')
-      setComplementoEdit(cliente.complemento || '')
-      setBairroEdit(cliente.bairro || '')
-      setCidadeEdit(cliente.cidade || '')
-      setEstadoEdit(cliente.estado || '')
       const pendente = mensalidades.find(m => m.status === 'pendente')
       const refMens = pendente || mensalidades[mensalidades.length - 1]
       setDiaVencimentoEdit(refMens ? String(new Date(refMens.data_vencimento + 'T00:00:00').getDate()) : '')
-      setAbaPerfil('dados')
-      setMostrarModal(true)
-      await carregarMensalidadesCliente(cliente.id)
     } catch (error) {
       console.error('Erro ao abrir ficha do cliente:', error)
       showToast('Erro ao carregar dados do aluno', 'error')
-      setMostrarModal(false)
     }
   }
 
@@ -3579,7 +3590,7 @@ Equipe ${nomeEmpresa}`
                   <div style={{ flex: 1, textAlign: 'right' }}>
                     <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>Em Aberto</p>
                     <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: '600', color: clienteSelecionado.mensalidadesAtrasadas > 0 ? '#ef4444' : '#f59e0b' }}>
-                      R$ {formatCurrency(clienteSelecionado.valorDevido)}
+                      R$ {formatCurrency(clienteSelecionado.valorDevido || 0)}
                     </p>
                   </div>
                 </div>
