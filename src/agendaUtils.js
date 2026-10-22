@@ -56,8 +56,12 @@ export const iniciaisDe = (nome) => {
 
 // Monta o elenco de uma aula numa data concreta:
 // alunos fixos (com flag de ausência avisada) + agendados daquela data, sem duplicar.
+// Fixo só aparece a partir do dia em que entrou na turma (created_at) —
+// voltar pra semanas anteriores não mostra aluno que ainda não era da turma.
 export function montarRoster(aulaId, data, fixos, agendamentos, ausencias) {
-  const fixosAula = fixos.filter(f => f.aula_id === aulaId)
+  const fixosAula = fixos.filter(f =>
+    f.aula_id === aulaId && (!f.created_at || isoDate(new Date(f.created_at)) <= data)
+  )
   const agAula = agendamentos.filter(ag => ag.aula_id === aulaId && ag.data === data)
   const ausAula = ausencias.filter(au => au.aula_id === aulaId && au.data === data)
   return [

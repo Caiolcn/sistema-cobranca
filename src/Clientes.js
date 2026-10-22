@@ -164,6 +164,9 @@ export default function Clientes() {
   const [planoParaAtivar, setPlanoParaAtivar] = useState('')
   const [dataInicioAssinaturaModal, setDataInicioAssinaturaModal] = useState('')
   const [dataVencimentoAssinaturaModal, setDataVencimentoAssinaturaModal] = useState('')
+  // Troca de plano: mensalidade pendente ainda não vencida que pode receber o valor novo
+  const [mensalidadeAbertaTroca, setMensalidadeAbertaTroca] = useState(null)
+  const [aplicarValorNaAberta, setAplicarValorNaAberta] = useState(true)
   const [erroModalNovoCliente, setErroModalNovoCliente] = useState('')
   const [salvandoCliente, setSalvandoCliente] = useState(false)
 
@@ -1024,8 +1027,31 @@ export default function Clientes() {
     setConfirmAssinatura({ show: true, clienteId, novoStatus })
   }
 
+  // Só a próxima parcela ainda não vencida: vencida é período já usado no plano
+  // antigo, e trocar o valor dela cobraria o plano novo retroativamente.
+  const carregarMensalidadeAbertaTroca = async (clienteId) => {
+    setMensalidadeAbertaTroca(null)
+    setAplicarValorNaAberta(true)
+    const { data } = await queryMensalidadesAtivas('id, valor, data_vencimento')
+      .eq('devedor_id', clienteId)
+      .eq('status', 'pendente')
+      .eq('is_mensalidade', true)
+      .gte('data_vencimento', hojeISO())
+      .order('data_vencimento', { ascending: true })
+      .limit(1)
+    setMensalidadeAbertaTroca(data?.[0] || null)
+  }
+
+  const fecharModalSelecionarPlano = () => {
+    setMostrarModalSelecionarPlano({ show: false, clienteId: null })
+    setPlanoParaAtivar('')
+    setDataInicioAssinaturaModal('')
+    setDataVencimentoAssinaturaModal('')
+    setMensalidadeAbertaTroca(null)
+  }
+
   const confirmarAtivarAssinaturaComPlano = async () => {
-    const { clienteId } = mostrarModalSelecionarPlano
+    const { clienteId, alterar } = mostrarModalSelecionarPlano
     if (!clienteId || !planoParaAtivar || !dataInicioAssinaturaModal || !dataVencimentoAssinaturaModal) {
       showToast('Selecione um plano, data de início e data de vencimento', 'warning')
       return
@@ -1065,6 +1091,39 @@ export default function Clientes() {
 
       if (error) throw error
 
+      // Troca de plano: leva o valor novo pra parcela em aberto, se a escola marcou.
+      // A cobrança Asaas antiga (se houver) é substituída pelo portal-pagar quando
+      // o valor dela não bate mais com o da mensalidade.
+      const novoValor = parseFloat(plano.valor)
+      if (alterar && aplicarValorNaAberta && mensalidadeAbertaTroca && plano.tipo !== 'pacote' &&
+          Math.abs(parseFloat(mensalidadeAbertaTroca.valor) - novoValor) >= 0.01) {
+        const { error: erroValor } = await supabase
+          .from('mensalidades')
+          .update({ valor: novoValor })
+          .eq('id', mensalidadeAbertaTroca.id)
+          .eq('status', 'pendente')
+
+        if (erroValor) {
+          console.error('Erro ao atualizar mensalidade em aberto:', erroValor)
+          showToast('Plano alterado, mas houve erro ao atualizar a mensalidade em aberto', 'warning')
+        } else {
+          await supabase.from('log_auditoria').insert({
+            user_id: userId,
+            devedor_id: clienteId,
+            acao: 'mensalidade_valor_troca_plano',
+            campo: 'valor',
+            valor_anterior: String(mensalidadeAbertaTroca.valor),
+            valor_novo: String(novoValor),
+            detalhes: `Troca para o plano ${plano.nome} aplicada na mensalidade de ${mensalidadeAbertaTroca.data_vencimento}`
+          }).then(() => {}).catch(e => console.error('Erro log auditoria:', e))
+          showToast(`Plano alterado e mensalidade em aberto atualizada para R$ ${formatCurrency(novoValor)}`, 'success')
+        }
+      } else if (alterar && plano.tipo !== 'pacote') {
+        showToast(aplicarValorNaAberta && mensalidadeAbertaTroca
+          ? 'Plano alterado!'
+          : 'Plano alterado! O novo valor vale a partir da próxima mensalidade gerada.', 'success')
+      }
+
       // Verificar se já existe mensalidade pendente para não duplicar
       if (plano.tipo !== 'pacote') {
         const { data: existentes } = await queryMensalidadesAtivas('id')
@@ -1092,7 +1151,7 @@ export default function Clientes() {
           } else {
             showToast('Assinatura ativada e primeira mensalidade criada!', 'success')
           }
-        } else {
+        } else if (!alterar) {
           showToast('Assinatura ativada! Ja existe mensalidade pendente.', 'success')
         }
       } else {
@@ -1132,10 +1191,7 @@ export default function Clientes() {
       console.error('Erro ao ativar assinatura:', error)
       showToast('Erro ao ativar assinatura: ' + error.message, 'error')
     } finally {
-      setMostrarModalSelecionarPlano({ show: false, clienteId: null })
-      setPlanoParaAtivar('')
-      setDataInicioAssinaturaModal('')
-      setDataVencimentoAssinaturaModal('')
+      fecharModalSelecionarPlano()
     }
   }
 
@@ -3124,7 +3180,8 @@ Equipe ${nomeEmpresa}`
                                   const venc = new Date(hoje)
                                   venc.setDate(venc.getDate() + 30)
                                   setDataVencimentoAssinaturaModal(venc.toISOString().split('T')[0])
-                                  setMostrarModalSelecionarPlano({ show: true, clienteId: clienteSelecionado.id })
+                                  setMostrarModalSelecionarPlano({ show: true, clienteId: clienteSelecionado.id, alterar: true })
+                                  carregarMensalidadeAbertaTroca(clienteSelecionado.id)
                                 }}
                               >
                                 Alterar plano
@@ -3988,12 +4045,7 @@ Equipe ${nomeEmpresa}`
       {/* Modal para selecionar plano ao ativar assinatura */}
       {mostrarModalSelecionarPlano.show && (
         <div
-          onClick={() => {
-            setMostrarModalSelecionarPlano({ show: false, clienteId: null })
-            setPlanoParaAtivar('')
-            setDataInicioAssinaturaModal('')
-            setDataVencimentoAssinaturaModal('')
-          }}
+          onClick={fecharModalSelecionarPlano}
           style={{
             position: 'fixed',
             top: 0,
@@ -4038,10 +4090,10 @@ Equipe ${nomeEmpresa}`
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
-                  Ativar Assinatura
+                  {mostrarModalSelecionarPlano.alterar ? 'Alterar Plano' : 'Ativar Assinatura'}
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#666' }}>
-                  Defina o plano e as datas da assinatura
+                  {mostrarModalSelecionarPlano.alterar ? 'Escolha o novo plano do aluno' : 'Defina o plano e as datas da assinatura'}
                 </p>
               </div>
             </div>
@@ -4078,6 +4130,26 @@ Equipe ${nomeEmpresa}`
                       }))}
                     />
                   </div>
+
+                  {(() => {
+                    if (!mostrarModalSelecionarPlano.alterar || !mensalidadeAbertaTroca) return null
+                    const planoNovo = planos.find(p => p.id === planoParaAtivar)
+                    if (!planoNovo || planoNovo.tipo === 'pacote') return null
+                    const valorAtual = parseFloat(mensalidadeAbertaTroca.valor)
+                    const valorNovo = parseFloat(planoNovo.valor)
+                    if (Math.abs(valorAtual - valorNovo) < 0.01) return null
+                    const [a, m, d] = mensalidadeAbertaTroca.data_vencimento.split('-')
+                    return (
+                      <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                        <Checkbox
+                          checked={aplicarValorNaAberta}
+                          onChange={e => setAplicarValorNaAberta(e.target.checked)}
+                          label="Aplicar o novo valor na mensalidade em aberto"
+                          description={`Vencimento ${d}/${m}/${a}: R$ ${formatCurrency(valorAtual)} → R$ ${formatCurrency(valorNovo)}. Desmarcado, o novo valor só vale a partir da próxima.`}
+                        />
+                      </div>
+                    )
+                  })()}
 
                   <div style={{ marginBottom: '16px' }}>
                     <DateField
@@ -4130,12 +4202,7 @@ Equipe ${nomeEmpresa}`
             }}>
               <Button
                 variant="outline"
-                onClick={() => {
-                  setMostrarModalSelecionarPlano({ show: false, clienteId: null })
-                  setPlanoParaAtivar('')
-                  setDataInicioAssinaturaModal('')
-                  setDataVencimentoAssinaturaModal('')
-                }}
+                onClick={fecharModalSelecionarPlano}
               >
                 Cancelar
               </Button>
@@ -4144,7 +4211,7 @@ Equipe ${nomeEmpresa}`
                 onClick={confirmarAtivarAssinaturaComPlano}
                 disabled={!planoParaAtivar || !dataInicioAssinaturaModal || !dataVencimentoAssinaturaModal}
               >
-                Ativar Assinatura
+                {mostrarModalSelecionarPlano.alterar ? 'Salvar plano' : 'Ativar Assinatura'}
               </Button>
             </div>
           </div>
