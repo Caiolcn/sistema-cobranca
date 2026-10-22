@@ -747,9 +747,9 @@ export default function WhatsAppConexao() {
   const [tituloTemplate, setTituloTemplate] = useState('Lembrete - Vencimento Hoje')
   const [mensagemTemplate, setMensagemTemplate] = useState(paraExibir(TEMPLATES_PADRAO.due_day))
 
-  // Starter só pode editar template "No Dia" (due_day)
+  // Starter só pode editar os templates das automações que ele tem: "No Dia" (due_day) e "Confirmação Pagamento" (payment_confirmed)
   // Pro/Premium podem editar todos os templates
-  const templateEditLocked = isStarter && tipoTemplateSelecionado !== 'due_day'
+  const templateEditLocked = isStarter && !['due_day', 'payment_confirmed'].includes(tipoTemplateSelecionado)
 
   // Estados para automação (novo fluxo: 3 dias antes, no dia, 3 dias depois)
   const [automacao3DiasAtiva, setAutomacao3DiasAtiva] = useState(false)
