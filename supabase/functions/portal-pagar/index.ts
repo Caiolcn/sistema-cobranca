@@ -211,7 +211,30 @@ serve(async (req) => {
     // Garante o webhook antes de qualquer cobrança (nova ou reaproveitada), pra a baixa cair sozinha
     await ensureWebhook()
 
-    if (boletoExistente?.asaas_id) {
+    // Cobrança antiga com valor desatualizado (ex.: troca de plano aplicada na parcela
+    // em aberto): cancela no Asaas e gera outra, senão o aluno pagaria o valor velho.
+    // Só antes do vencimento — depois disso o valor inclui multa/juros e muda todo dia.
+    let reaproveitavel = !!boletoExistente?.asaas_id && boletoExistente.status !== 'CANCELED'
+    const hojeBrt = new Date(Date.now() - 3 * 3600000).toISOString().split('T')[0]
+    if (reaproveitavel && boletoExistente!.status === 'PENDING' && mensalidade.data_vencimento >= hojeBrt &&
+        Math.abs(parseFloat(String(boletoExistente!.valor)) - parseFloat(String(mensalidade.valor))) >= 0.01) {
+      console.log('♻️ Valor da mensalidade mudou, cancelando cobrança antiga:', boletoExistente!.asaas_id)
+      try {
+        const del = await fetch(`${baseUrl}/payments/${boletoExistente!.asaas_id}`, {
+          method: 'DELETE',
+          headers: { 'access_token': asaasApiKey }
+        })
+        if (!del.ok) console.error('⚠️ Asaas recusou cancelar cobrança antiga:', await del.text())
+      } catch (e) {
+        console.error('⚠️ Erro ao cancelar cobrança antiga:', e)
+      }
+      await supabase.from('boletos')
+        .update({ status: 'CANCELED', updated_at: new Date().toISOString() })
+        .eq('asaas_id', boletoExistente!.asaas_id)
+      reaproveitavel = false
+    }
+
+    if (reaproveitavel) {
       console.log('🔗 Reusando cobrança existente:', boletoExistente.asaas_id, metodoEscolhido)
       // PIX devolve QR inline; cartão/boleto vão pro checkout/boleto (invoice_url)
       const pixQr = metodoEscolhido === 'pix' ? await fetchPixQrCode(boletoExistente.asaas_id) : null
