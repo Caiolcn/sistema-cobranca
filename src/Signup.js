@@ -5,6 +5,7 @@ import { MdAutorenew, MdPayments, MdDashboardCustomize, MdCheckCircle } from 're
 import { trackLead, trackCompleteRegistration, trackStartTrial, enviarEventoCapi } from './utils/metaPixel'
 import { obterAtribuicao, gerarEventId } from './utils/metaAttribution'
 import useWindowSize from './hooks/useWindowSize'
+import { validarTelefoneBR, emailDescartavel } from './utils/validacaoCadastro'
 
 // Paleta do site público (mesma da LandingPage) — quem chega aqui vem de lá.
 const INK = '#0f1115'
@@ -119,8 +120,9 @@ export default function Signup({ onCadastroIniciado }) {
       }
 
       const telefoneLimpo = telefone.replace(/\D/g, '')
-      if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
-        setErro('WhatsApp inválido. Use DDD + número.')
+      const erroTelefone = validarTelefoneBR(telefoneLimpo)
+      if (erroTelefone) {
+        setErro(erroTelefone)
         setLoading(false)
         return
       }
@@ -132,8 +134,32 @@ export default function Signup({ onCadastroIniciado }) {
         return
       }
 
+      if (emailDescartavel(email)) {
+        setErro('Use um email seu de verdade — emails temporários não são aceitos.')
+        setLoading(false)
+        return
+      }
+
       if (senha.length < 6) {
         setErro('Senha deve ter pelo menos 6 caracteres')
+        setLoading(false)
+        return
+      }
+
+      // Formato certo não quer dizer que o número existe. Só barra quando o
+      // WhatsApp responde "não existe"; se a checagem falhar, deixa seguir —
+      // master fora do ar não pode travar cadastro de cliente real.
+      const { data: checagem, error: erroChecagem } = await supabase.functions.invoke(
+        'signup-verificar-whatsapp',
+        { body: { telefone: telefoneLimpo } }
+      )
+      if (erroChecagem?.context?.status === 429) {
+        setErro('Muitas tentativas. Tente de novo daqui a pouco.')
+        setLoading(false)
+        return
+      }
+      if (checagem?.existe === false) {
+        setErro('Não encontramos WhatsApp nesse número. Confira o DDD e o número.')
         setLoading(false)
         return
       }
