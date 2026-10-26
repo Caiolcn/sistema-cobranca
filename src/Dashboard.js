@@ -41,6 +41,10 @@ export default function Dashboard() {
   const { bloqueado, motivo, diasRestantes, planoPago, loading } = useTrialStatus()
   const { userData, userId, isAdmin, adminViewingAs, setAdminClient, realUserId, trialStatus } = useUser()
 
+  // Logo da empresa no avatar do topo; se a imagem falhar, volta pra inicial
+  const [logoTopoErro, setLogoTopoErro] = useState(false)
+  useEffect(() => { setLogoTopoErro(false) }, [userData?.logo_url])
+
   // Admin: lista de clientes para o dropdown
   const [adminClientes, setAdminClientes] = useState([])
   const [adminBarVisivel, setAdminBarVisivel] = useState(true)
@@ -1417,15 +1421,26 @@ export default function Dashboard() {
                   width: '30px',
                   height: '30px',
                   borderRadius: '50%',
-                  backgroundColor: '#344848',
+                  backgroundColor: userData?.logo_url && !logoTopoErro ? 'white' : '#344848',
                   color: 'white',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '13px',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  overflow: 'hidden',
+                  flexShrink: 0
                 }}>
-                  {((userData?.nome_completo || userData?.email || 'U')).charAt(0).toUpperCase()}
+                  {userData?.logo_url && !logoTopoErro ? (
+                    <img
+                      src={userData.logo_url}
+                      alt=""
+                      onError={() => setLogoTopoErro(true)}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    ((userData?.nome_completo || userData?.email || 'U')).charAt(0).toUpperCase()
+                  )}
                 </div>
                 <span style={{ fontSize: '13px', color: '#333', fontWeight: '500', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {userData?.nome_empresa || userData?.nome_completo || 'Minha conta'}

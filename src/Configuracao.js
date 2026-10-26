@@ -512,6 +512,7 @@ function Configuracao({ secao = 'config' }) {
       // Salvar URL no banco
       await supabase.from('usuarios').update({ logo_url: logoUrl }).eq('id', contextUserId)
       setDadosEmpresa(prev => ({ ...prev, logoUrl }))
+      if (!adminViewingAs && refreshUserData) await refreshUserData()
       showToast('Logo atualizada!', 'success')
     } catch (error) {
       console.error('Erro no upload:', error)
@@ -525,6 +526,7 @@ function Configuracao({ secao = 'config' }) {
     try {
       await supabase.from('usuarios').update({ logo_url: null }).eq('id', contextUserId)
       setDadosEmpresa(prev => ({ ...prev, logoUrl: '' }))
+      if (!adminViewingAs && refreshUserData) await refreshUserData()
       showToast('Logo removida', 'success')
     } catch (error) {
       showToast('Erro ao remover logo', 'error')
