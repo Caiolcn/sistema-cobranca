@@ -160,7 +160,9 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
   const [contasMap, setContasMap] = useState({})
   const [alunosMap, setAlunosMap] = useState({})
 
-  const [periodo, setPeriodo] = useState('7')
+  // Abre no dia corrente (desde 00:00): o que importa é o que saiu hoje.
+  const [periodo, setPeriodo] = useState('1')
+  const [pagina, setPagina] = useState(1)
   const [fSituacao, setFSituacao] = useState('todas')
   const [fTipo, setFTipo] = useState('todos')
   const [fConta, setFConta] = useState('todas')
@@ -198,16 +200,21 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
       // "Minha Empresa" padrão do cadastro — em 16/10/2026 um pagante ficou 6
       // dias sem enviar nada e ninguém sabia quem era só pelo nome. O número é
       // a única identidade que o gestor reconhece de cara.
-      const [{ data: contas }, { data: alunos }, { data: zaps }] = await Promise.all([
-        userIds.length
-          ? supabase.from('usuarios').select('id, nome_empresa, nome_completo, telefone').in('id', userIds)
-          : Promise.resolve({ data: [] }),
-        devIds.length
-          ? supabase.from('devedores').select('id, nome, responsavel_nome').in('id', devIds)
-          : Promise.resolve({ data: [] }),
-        userIds.length
-          ? supabase.from('mensallizap').select('user_id, whatsapp_numero').in('user_id', userIds)
-          : Promise.resolve({ data: [] })
+      // Em lotes: o .in() vai na URL, e 735 UUIDs (7 dias em 29/10/2026) passam
+      // do limite do gateway — a requisição falhava calada e todo aluno virava "—".
+      const buscarEmLotes = async (tabela, campos, coluna, ids) => {
+        const lotes = []
+        for (let i = 0; i < ids.length; i += 150) lotes.push(ids.slice(i, i + 150))
+        const res = await Promise.all(lotes.map(l => supabase.from(tabela).select(campos).in(coluna, l)))
+        const falha = res.find(r => r.error)
+        if (falha) console.error(`Central de Mensagens: falha ao buscar ${tabela}`, falha.error)
+        return res.flatMap(r => r.data || [])
+      }
+
+      const [contas, alunos, zaps] = await Promise.all([
+        buscarEmLotes('usuarios', 'id, nome_empresa, nome_completo, telefone', 'id', userIds),
+        buscarEmLotes('devedores', 'id, nome, responsavel_nome', 'id', devIds),
+        buscarEmLotes('mensallizap', 'user_id, whatsapp_numero', 'user_id', userIds)
       ])
 
       const cm = {}; (contas || []).forEach(c => { cm[c.id] = c })
@@ -327,6 +334,16 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
     filtradas.forEach(l => { if (r[l.situacao] !== undefined) r[l.situacao] += 1 })
     return r
   }, [filtradas])
+
+  // Paginação só na tela: o resumo e a busca seguem valendo pro período inteiro.
+  const POR_PAGINA = 50
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / POR_PAGINA))
+  useEffect(() => { setPagina(1) }, [periodo, fSituacao, fTipo, fConta, busca])
+  const paginaSegura = Math.min(pagina, totalPaginas)
+  const visiveis = useMemo(
+    () => filtradas.slice((paginaSegura - 1) * POR_PAGINA, paginaSegura * POR_PAGINA),
+    [filtradas, paginaSegura]
+  )
 
   if (!isAdmin) {
     return (
@@ -556,7 +573,7 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
       ) : (
         <Table
           columns={colunas}
-          data={filtradas}
+          data={visiveis}
           rowKey="id"
           loading={carregando}
           onRowClick={(r) => setDetalhe(r)}
@@ -566,6 +583,37 @@ export default function CentralMensagens({ isAdmin, irParaConexao, recarregarTok
           emptyMessage="Ajuste o período ou os filtros para ver mais."
           emptyIcon="mdi:message-off-outline"
         />
+      )}
+
+      {!erroCarga && !carregando && totalPaginas > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 12, fontSize: 13, color: '#666' }}>
+          <span>
+            {(paginaSegura - 1) * POR_PAGINA + 1}–{Math.min(paginaSegura * POR_PAGINA, filtradas.length)} de {filtradas.length}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => setPagina(paginaSegura - 1)}
+              disabled={paginaSegura === 1}
+              style={{
+                padding: '6px 12px', backgroundColor: 'white', color: paginaSegura === 1 ? '#ccc' : '#333',
+                border: '1px solid #ddd', borderRadius: 6, cursor: paginaSegura === 1 ? 'default' : 'pointer', fontSize: 13
+              }}
+            >
+              Anterior
+            </button>
+            <span>Página {paginaSegura} de {totalPaginas}</span>
+            <button
+              onClick={() => setPagina(paginaSegura + 1)}
+              disabled={paginaSegura === totalPaginas}
+              style={{
+                padding: '6px 12px', backgroundColor: 'white', color: paginaSegura === totalPaginas ? '#ccc' : '#333',
+                border: '1px solid #ddd', borderRadius: 6, cursor: paginaSegura === totalPaginas ? 'default' : 'pointer', fontSize: 13
+              }}
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Detalhe */}
