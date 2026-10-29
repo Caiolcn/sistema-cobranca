@@ -42,8 +42,9 @@ const BENEFICIOS = [
 //   alunos  -> select count(*) from devedores where coalesce(lixo,false)=false
 //   msgs    -> select count(*) from logs_mensagens
 //   volume  -> select sum(valor) from mensalidades where status='pago' and coalesce(lixo,false)=false
+// Alunos atualizado em 29/10/2026 (passou de 5 mil).
 const NUMEROS = [
-  { valor: '+2.700', label: 'alunos cobrados pelo Mensalli' },
+  { valor: '+5.000', label: 'alunos cobrados pelo Mensalli' },
   { valor: '+8.500', label: 'mensagens de cobrança enviadas' },
   { valor: 'R$ 490 mil', label: 'em mensalidades administradas' }
 ]
@@ -559,7 +560,7 @@ export default function Signup({ onCadastroIniciado }) {
           color: GREEN,
           textAlign: 'center'
         }}>
-          Cobrança automática pelo WhatsApp
+          Cobrança automática pelo WhatsApp · {NUMEROS[0].valor} alunos já cobrados
         </p>
       )}
 
@@ -750,6 +751,17 @@ export default function Signup({ onCadastroIniciado }) {
             >
               {loading ? 'Criando conta...' : 'Criar conta'}
             </button>
+
+            {/* Acompanha o trial_fim de 3 dias gravado no handleCadastro */}
+            <p style={{
+              textAlign: 'center',
+              margin: '12px 0 0',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: GREEN
+            }}>
+              ✓ Teste 3 dias grátis · Sem cartão
+            </p>
           </form>
 
           <p style={{
