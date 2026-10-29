@@ -82,7 +82,6 @@ export default function Signup({ onCadastroIniciado }) {
   const [erro, setErro] = useState('')
   const [focusField, setFocusField] = useState(null)
   const [mostrarSenha, setMostrarSenha] = useState(false)
-  const [suporteFechado, setSuporteFechado] = useState(false)
   // Popup de fim de cadastro. `exemploFalhou` existe pra não mentir: se o envio
   // pelo master não completar, o texto troca em vez de afirmar que enviamos.
   const [mostrarConcluido, setMostrarConcluido] = useState(false)
@@ -805,88 +804,33 @@ export default function Signup({ onCadastroIniciado }) {
       </div>
 
       {/* Suporte no WhatsApp. zIndex abaixo do aviso de conta criada (1000)
-          pra não ficar por cima dele. O X existe porque em celular pequeno o
-          botão fixo pode cobrir o "Criar conta". */}
-      {!suporteFechado && (
-        <div style={{
+          pra não ficar por cima dele. Sem tag de texto: no celular ela caía
+          em cima do "Criar conta". */}
+      <a
+        href={WHATSAPP_SUPORTE}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Precisa de ajuda? Fale com a gente no WhatsApp"
+        style={{
           position: 'fixed',
           bottom: '20px',
           right: '20px',
-          zIndex: 999
-        }}>
-          <button
-            type="button"
-            onClick={() => setSuporteFechado(true)}
-            aria-label="Fechar ajuda"
-            style={{
-              position: 'absolute',
-              top: '-10px',
-              left: '-10px',
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              border: `1px solid ${BORDER}`,
-              backgroundColor: 'white',
-              color: BODY,
-              fontSize: '15px',
-              lineHeight: 1,
-              padding: 0,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-              zIndex: 1
-            }}
-            // App.css pinta todo button de azul no hover; neutraliza aqui
-            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
-          >
-            ×
-          </button>
-          <a
-            href={WHATSAPP_SUPORTE}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Precisa de ajuda? Fale com a gente no WhatsApp"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              textDecoration: 'none'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.lastChild.style.transform = 'scale(1.08)' }}
-            onMouseLeave={(e) => { e.currentTarget.lastChild.style.transform = 'scale(1)' }}
-          >
-            <span style={{
-              backgroundColor: 'white',
-              color: INK,
-              fontSize: '13px',
-              fontWeight: '600',
-              padding: '8px 12px',
-              borderRadius: '999px',
-              border: `1px solid ${BORDER}`,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
-              whiteSpace: 'nowrap'
-            }}>
-              Precisa de ajuda?
-            </span>
-            <span style={{
-              width: isSmallScreen ? '52px' : '58px',
-              height: isSmallScreen ? '52px' : '58px',
-              background: GRAD,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 6px 20px rgba(22,163,74,0.45)',
-              transition: 'transform .3s',
-              flexShrink: 0
-            }}>
-              <FaWhatsapp size={isSmallScreen ? 27 : 30} color="white" />
-            </span>
-          </a>
-        </div>
-      )}
+          zIndex: 999,
+          width: isSmallScreen ? '52px' : '58px',
+          height: isSmallScreen ? '52px' : '58px',
+          background: GRAD,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 6px 20px rgba(22,163,74,0.45)',
+          transition: 'transform .3s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+      >
+        <FaWhatsapp size={isSmallScreen ? 27 : 30} color="white" />
+      </a>
     </div>
   )
 }
