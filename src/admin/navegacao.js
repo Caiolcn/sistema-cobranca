@@ -26,6 +26,7 @@ export const GRUPOS_ADMIN = [
       { slug: 'google-metrics', label: 'Google Ads Performance', descricao: 'Conversões por landing page', icon: 'mdi:google' },
       { slug: 'outbound', label: 'Outbound Prospecting', descricao: 'Gestão de leads e acompanhamento', icon: 'mdi:phone-outgoing' },
       { slug: 'leads', label: 'Leads', icon: 'mdi:account-multiple-plus-outline' },
+      { slug: 'organico', label: 'Orgânico', descricao: 'Calendário e métricas do Instagram', icon: 'mdi:instagram' },
       { slug: 'prospeccao', label: 'Prospecção', icon: 'mdi:map-search-outline' },
     ],
   },
