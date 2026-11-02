@@ -17,6 +17,8 @@ import useWindowSize from '../hooks/useWindowSize'
    Métricas: edge function organico-coletar (cron de hora em hora + diário).
    Publicação: edge function organico-publicar (cron a cada 5 min), só com o
    interruptor da marca ligado e o post aprovado.
+   Referências: perfis de outros (organico_ref_*), lidos pela edge function
+   organico-referencias (business_discovery) — imagens em referencias/ no bucket.
    ============================================================ */
 
 const VERDE = '#4CAF50'
@@ -667,6 +669,244 @@ function Historico({ marca, fase2, onIrSemana }) {
   )
 }
 
+// ---------- referências ----------
+const interacoesRef = (p) => (p.curtidas || 0) + (p.comentarios || 0)
+const tipoRef = (p) => (p.media_product_type === 'REELS' || p.media_type === 'VIDEO' ? 'Reel' : p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : 'Foto')
+
+function DetalheReferencia({ post, perfil, urls, onFechar, isMobile }) {
+  const imgs = post.imagens || []
+  const [i, setI] = useState(0)
+  const atual = imgs[Math.min(i, imgs.length - 1)]
+  return (
+    <div onClick={onFechar} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'stretch' : 'flex-start', padding: isMobile ? 0 : '32px 16px', overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...cartao, width: '100%', maxWidth: 900, padding: isMobile ? 16 : 24, borderRadius: isMobile ? 0 : 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: VERDE, marginBottom: 4 }}>{tipoRef(post)} · @{perfil?.username} · {dataHora(post.publicado_em)}</div>
+            <div style={{ fontSize: 13, color: '#4b5563' }}>
+              {num(post.curtidas)} curtidas · {num(post.comentarios)} comentários{post.engajamento !== null && post.engajamento !== undefined ? ` · ${Number(post.engajamento).toLocaleString('pt-BR')}% de engajamento` : ''}
+            </div>
+          </div>
+          <button type="button" onClick={onFechar} aria-label="Fechar" style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
+            <Icon icon="mdi:close" width={24} color="#6b7280" />
+          </button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 380px) minmax(0, 1fr)', gap: 20 }}>
+          <div>
+            <div style={{ background: '#111827', borderRadius: 10, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 260, maxHeight: 520 }}>
+              {atual && urls[atual.caminho]
+                ? <img src={urls[atual.caminho]} alt="" style={{ maxWidth: '100%', maxHeight: 520, objectFit: 'contain' }} />
+                : <span style={{ color: '#9ca3af', fontSize: 13 }}>Sem imagem guardada</span>}
+            </div>
+            {imgs.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 8 }}>
+                <Botao pequeno icone="mdi:chevron-left" disabled={i === 0} onClick={() => setI(i - 1)} />
+                <span style={{ fontSize: 13, color: '#6b7280' }}>{i + 1} de {imgs.length}</span>
+                <Botao pequeno icone="mdi:chevron-right" disabled={i >= imgs.length - 1} onClick={() => setI(i + 1)} />
+              </div>
+            )}
+            {tipoRef(post) === 'Reel' && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>Reel: guardamos só a capa. O vídeo fica no link do Instagram.</div>}
+            {post.permalink && (
+              <div style={{ marginTop: 10 }}>
+                <a href={post.permalink} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>Abrir no Instagram</a>
+              </div>
+            )}
+          </div>
+          <div>
+            <BlocoCopiar rotulo="Legenda" texto={post.legenda || '(sem legenda)'} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Referencias({ marca, isMobile }) {
+  const [perfis, setPerfis] = useState(null)
+  const [posts, setPosts] = useState([])
+  const [urls, setUrls] = useState({})
+  const [erro, setErro] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [novo, setNovo] = useState('')
+  const [ocupado, setOcupado] = useState(null) // 'adicionar' | perfil_id
+  const [filtro, setFiltro] = useState('todos')
+  const [ordem, setOrdem] = useState('interacoes')
+  const [soDestaques, setSoDestaques] = useState(true)
+  const [aberto, setAberto] = useState(null)
+
+  const carregar = useCallback(async () => {
+    if (!marca) return
+    setErro('')
+    const { data: ps, error } = await supabase.from('organico_ref_perfis').select('*').eq('marca_id', marca.id).order('username')
+    if (error) { setErro(`Não consegui ler as referências (${error.message}). O sql-organico-fase4-referencias.sql já foi rodado?`); setPerfis([]); return }
+    const ids = (ps || []).map((p) => p.id)
+    let lista = []
+    if (ids.length) {
+      const { data } = await supabase.from('organico_ref_posts').select('*').in('perfil_id', ids)
+      lista = data || []
+    }
+    const caminhos = [...new Set(lista.flatMap((p) => (p.imagens || []).map((i) => i.caminho)))]
+    let mapa = {}
+    for (let k = 0; k < caminhos.length; k += 100) {
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrls(caminhos.slice(k, k + 100), 3600)
+      for (const u of data || []) if (u.signedUrl) mapa[u.path] = u.signedUrl
+    }
+    setPerfis(ps || [])
+    setPosts(lista)
+    setUrls(mapa)
+  }, [marca])
+
+  useEffect(() => { carregar() }, [carregar])
+
+  const chamar = async (body, chave) => {
+    setOcupado(chave)
+    setAviso('')
+    const { data, error } = await supabase.functions.invoke('organico-referencias', { body: { marca: marca?.slug, ...body } })
+    setOcupado(null)
+    let msg = data?.erro
+    if (error && !msg) {
+      try { msg = (await error.context?.json())?.erro } catch { /* sem corpo */ }
+      msg = msg || error.message
+    }
+    return { data, msg }
+  }
+
+  const adicionar = async () => {
+    if (!novo.trim()) return
+    const { data, msg } = await chamar({ acao: 'adicionar', username: novo }, 'adicionar')
+    if (msg) setAviso(`Erro: ${msg}`)
+    else if (data?.ok === false) setAviso(`Erro em @${data.username}: ${data.erro}`)
+    else { setAviso(`@${data.username}: ${data.posts_lidos} posts lidos, ${data.imagens_copiadas} imagens guardadas.`); setNovo('') }
+    carregar()
+  }
+
+  const atualizar = async (p) => {
+    const { data, msg } = await chamar({ acao: 'coletar', perfil_id: p.id }, p.id)
+    if (msg || data?.ok === false) setAviso(`Erro em @${p.username}: ${msg || data.erro}`)
+    else setAviso(`@${p.username} atualizado: ${data.posts_lidos} posts lidos, ${data.imagens_copiadas} imagens novas.`)
+    carregar()
+  }
+
+  const remover = async (p) => {
+    if (!window.confirm(`Remover @${p.username} das referências? Apaga os posts e as imagens guardadas.`)) return
+    const { msg } = await chamar({ acao: 'remover', perfil_id: p.id }, p.id)
+    if (msg) setAviso(`Erro: ${msg}`)
+    if (filtro === p.id) setFiltro('todos')
+    carregar()
+  }
+
+  if (!perfis) return <div style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>Carregando referências...</div>
+
+  const perfisPorId = Object.fromEntries(perfis.map((p) => [p.id, p]))
+  const lista = posts
+    .filter((p) => filtro === 'todos' || p.perfil_id === filtro)
+    .filter((p) => !soDestaques || p.destaque)
+    .sort((a, b) => (ordem === 'recentes'
+      ? String(b.publicado_em).localeCompare(String(a.publicado_em))
+      : ordem === 'engajamento'
+        ? (Number(b.engajamento) || 0) - (Number(a.engajamento) || 0)
+        : interacoesRef(b) - interacoesRef(a)))
+  const postAberto = aberto && posts.find((p) => p.ig_media_id === aberto)
+
+  return (
+    <div>
+      {erro && <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{erro}</div>}
+      {aviso && <div style={{ background: aviso.startsWith('Erro') ? '#fee2e2' : '#f0fdf4', color: aviso.startsWith('Erro') ? '#991b1b' : '#166534', padding: 10, borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{aviso}</div>}
+
+      <div style={{ ...cartao, padding: 16, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Adicionar perfil de referência</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input value={novo} onChange={(e) => setNovo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') adicionar() }}
+            placeholder="@perfil ou link do Instagram"
+            style={{ flex: 1, minWidth: 220, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13 }} />
+          <Botao tipo="primario" icone="mdi:plus" disabled={!!ocupado || !novo.trim()} onClick={adicionar}>
+            {ocupado === 'adicionar' ? 'Lendo o perfil...' : 'Adicionar'}
+          </Botao>
+        </div>
+        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
+          Só perfil comercial ou de criador. Lemos os 50 posts mais recentes e guardamos as imagens dos 10 com mais curtidas e comentários. Para ler de novo, clique em "Atualizar" no perfil.
+        </div>
+      </div>
+
+      {perfis.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10, marginBottom: 14 }}>
+          {perfis.map((p) => (
+            <div key={p.id} style={{ ...cartao, padding: 12, borderColor: filtro === p.id ? VERDE : '#e5e7eb', borderWidth: filtro === p.id ? 2 : 1 }}>
+              <button type="button" onClick={() => setFiltro(filtro === p.id ? 'todos' : p.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+                {p.foto_url
+                  ? <img src={p.foto_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+                  : <Icon icon="mdi:account-circle" width={40} color="#d1d5db" />}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{p.username}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>{p.seguidores !== null && p.seguidores !== undefined ? `${num(p.seguidores)} seguidores` : (p.nome || '')}</div>
+                </div>
+              </button>
+              <div style={{ fontSize: 11, color: p.coleta_erro ? '#b91c1c' : '#9ca3af', margin: '8px 0' }}>
+                {p.coleta_erro ? p.coleta_erro : p.coletado_em ? `Atualizado ${dataHora(p.coletado_em)}` : 'Ainda não coletado'}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Botao pequeno icone="mdi:refresh" disabled={!!ocupado} onClick={() => atualizar(p)}>{ocupado === p.id ? 'Lendo...' : 'Atualizar'}</Botao>
+                <Botao pequeno tipo="perigo" icone="mdi:delete-outline" disabled={!!ocupado} onClick={() => remover(p)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ ...cartao, padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <strong style={{ fontSize: 15 }}>{filtro === 'todos' ? 'Melhores posts de todos os perfis' : `Posts de @${perfisPorId[filtro]?.username || ''}`}</strong>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 13 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="checkbox" checked={soDestaques} onChange={(e) => setSoDestaques(e.target.checked)} /> só os 10 melhores de cada perfil
+            </label>
+            <select value={ordem} onChange={(e) => setOrdem(e.target.value)} style={{ padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 8 }}>
+              <option value="interacoes">Mais curtidas + comentários</option>
+              <option value="engajamento">Maior engajamento (% dos seguidores)</option>
+              <option value="recentes">Mais recentes</option>
+            </select>
+          </div>
+        </div>
+        {!lista.length ? (
+          <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>
+            {perfis.length ? 'Nenhum post para mostrar com esse filtro.' : 'Adicione o primeiro perfil acima.'}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 140 : 180}px, 1fr))`, gap: 12 }}>
+            {lista.map((p) => {
+              const capa = (p.imagens || [])[0]
+              const url = capa && urls[capa.caminho]
+              return (
+                <button key={p.ig_media_id} type="button" onClick={() => setAberto(p.ig_media_id)}
+                  style={{ display: 'block', textAlign: 'left', background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: 8, cursor: 'pointer' }}>
+                  <div style={{ position: 'relative', aspectRatio: '4 / 5', borderRadius: 8, background: url ? `#f3f4f6 center/cover no-repeat url("${url}")` : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 12 }}>
+                    {!url && 'sem imagem'}
+                    <span style={{ position: 'absolute', top: 6, left: 6, fontSize: 10, fontWeight: 700, color: 'white', background: 'rgba(17,24,39,0.7)', padding: '2px 6px', borderRadius: 999 }}>
+                      {tipoRef(p)}{(p.imagens || []).length > 1 ? ` · ${p.imagens.length}` : ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#111827', marginTop: 6 }}>
+                    <Icon icon="mdi:heart-outline" width={13} style={{ verticalAlign: -2 }} /> {num(p.curtidas)} <Icon icon="mdi:comment-outline" width={13} style={{ verticalAlign: -2, marginLeft: 6 }} /> {num(p.comentarios)}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#6b7280' }}>
+                    @{perfisPorId[p.perfil_id]?.username} · {dataHora(p.publicado_em).slice(0, 5)}{p.engajamento !== null && p.engajamento !== undefined ? ` · ${Number(p.engajamento).toLocaleString('pt-BR')}%` : ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#374151', marginTop: 4, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.legenda || ''}</div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {postAberto && (
+        <DetalheReferencia post={postAberto} perfil={perfisPorId[postAberto.perfil_id]} urls={urls} isMobile={isMobile} onFechar={() => setAberto(null)} />
+      )}
+    </div>
+  )
+}
+
 // ---------- página ----------
 export default function SecaoOrganico() {
   const { width } = useWindowSize()
@@ -841,6 +1081,7 @@ export default function SecaoOrganico() {
           {abaBtn('calendario', 'Calendário', 'mdi:calendar-week')}
           {abaBtn('metricas', 'Métricas', 'mdi:chart-line')}
           {abaBtn('historico', 'Histórico', 'mdi:history')}
+          {abaBtn('referencias', 'Referências', 'mdi:image-search-outline')}
         </div>
         <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {ultColeta && (
@@ -890,6 +1131,8 @@ export default function SecaoOrganico() {
       {aba === 'historico' && (
         <Historico marca={marca} fase2={fase2} onIrSemana={(s) => { setSemana(s); setAba('calendario') }} />
       )}
+
+      {aba === 'referencias' && <Referencias marca={marca} isMobile={isMobile} />}
 
       {postAberto && (
         <Detalhe post={postAberto} arquivos={arquivosPorPost[postAberto.id] || []} urls={urls} midia={midiaPorPost[postAberto.id]}
