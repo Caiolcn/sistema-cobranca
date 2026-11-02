@@ -556,6 +556,32 @@ _Para falar comigo de novo, digite *menu*._`
 //     gente ja falou, em vez de quem procurou a gente.
 //  2. Em conversa que JA e lead, o que enviamos e gravado (direcao 'out'). E o
 //     que permite a coluna "Novo" significar, ao pe da letra, "ainda nao respondi".
+// Texto pronto da campanha de WhatsApp. Fallback para quando o WhatsApp nao
+// manda o externalAdReply (acontece em alguns aparelhos/versoes).
+const TEXTO_PRONTO_ANUNCIO = /^oi! vi o v[ií]deo e quero saber mais sobre o mensalli/i
+
+// Clique-para-WhatsApp: a 1a mensagem traz contextInfo.externalAdReply com o
+// anuncio de origem. A Evolution pode por o contextInfo em data ou dentro da
+// mensagem, conforme o tipo.
+function extrairAnuncio(data: any, msg: any): { id: string | null; titulo: string | null; ctwaClid: string | null } | null {
+  const candidatos = [
+    data?.contextInfo,
+    ...Object.values(msg || {}).map((v: any) => v?.contextInfo),
+    msg?.messageContextInfo,
+  ]
+  for (const ctx of candidatos) {
+    const ad = ctx?.externalAdReply
+    if (ad && (ad.sourceId || ad.sourceType === 'ad' || ad.ctwaClid || ad.sourceUrl)) {
+      return {
+        id: ad.sourceId ? String(ad.sourceId) : null,
+        titulo: ad.title || ad.body || null,
+        ctwaClid: ad.ctwaClid || null,
+      }
+    }
+  }
+  return null
+}
+
 async function capturarLeadMensalli(
   supabase: any,
   args: {
@@ -566,9 +592,11 @@ async function capturarLeadMensalli(
     tipo: string
     waMessageId: string
     enviadoEm: string
+    anuncio: { id: string | null; titulo: string | null; ctwaClid: string | null } | null
   }
 ) {
-  const { remoteJid, pushName, fromMe, texto, tipo, waMessageId, enviadoEm } = args
+  const { remoteJid, pushName, fromMe, texto, tipo, waMessageId, enviadoEm, anuncio } = args
+  const veioDeAnuncio = !fromMe && (!!anuncio || TEXTO_PRONTO_ANUNCIO.test(texto))
   const direcao = fromMe ? 'out' : 'in'
 
   // Contas migradas pro enderecamento LID nao expoem telefone no JID (@lid).
@@ -579,7 +607,7 @@ async function capturarLeadMensalli(
 
   const { data: lead } = await supabase
     .from('mensalli_leads')
-    .select('id, status, nome, ultima_interacao, ignorado, nao_lidas')
+    .select('id, status, nome, ultima_interacao, ignorado, nao_lidas, veio_de_anuncio')
     .eq('remote_jid', remoteJid)
     .maybeSingle()
 
@@ -616,6 +644,10 @@ async function capturarLeadMensalli(
         // Lead nasce de mensagem recebida (o guard acima barra outbound), entao
         // ja nasce com uma nao lida — e o badge da caixa aparece na hora.
         nao_lidas: 1,
+        veio_de_anuncio: veioDeAnuncio,
+        anuncio_id: anuncio?.id || null,
+        anuncio_titulo: anuncio?.titulo || null,
+        ctwa_clid: anuncio?.ctwaClid || null,
       })
       .select('id')
       .single()
@@ -645,6 +677,14 @@ async function capturarLeadMensalli(
     // Badge da caixa de entrada. Quem zera e o inbox ao abrir a conversa (e o
     // proprio envio, na edge function mensalli-lead-send).
     if (!fromMe) patch.nao_lidas = (lead.nao_lidas || 0) + 1
+
+    // Lead antigo que voltou clicando num anuncio: passa a contar como do anuncio
+    if (veioDeAnuncio && !lead.veio_de_anuncio) {
+      patch.veio_de_anuncio = true
+      if (anuncio?.id) patch.anuncio_id = anuncio.id
+      if (anuncio?.titulo) patch.anuncio_titulo = anuncio.titulo
+      if (anuncio?.ctwaClid) patch.ctwa_clid = anuncio.ctwaClid
+    }
 
     await supabase.from('mensalli_leads').update(patch).eq('id', leadId)
   }
@@ -797,6 +837,307 @@ async function baixarMidiaLead(
 }
 
 // ============================================================
+// Boas-vindas "responde QUERO" (sql-boas-vindas-quero.sql, 02/11/2026)
+// ------------------------------------------------------------
+// O cadastro (signup-boas-vindas) manda UMA mensagem pedindo "responde QUERO".
+// Aqui, quando o dono de uma conta nova responde pro master:
+//   - carimba usuarios.boas_vindas_respondeu_em (libera os avisos do trial,
+//     que pra quem nunca respondeu ficam travados -- regra dos 2) e liga o
+//     lead do CRM a conta;
+//   - QUERO/qro/sim/manda/👍 com a conta aguardando -> cobranca de exemplo e,
+//     5s depois, os proximos passos (em segundo plano: a Evolution recebe o
+//     200 na hora);
+//   - qualquer outra coisa -> nada automatico; avisa o dono no
+//     RELATORIO_WHATSAPP_TO, so na 1a vez de cada conta.
+// Toda trava e um UPDATE condicional (... is null) -- reentrega de webhook ou
+// dois "quero" seguidos nao duplicam envio.
+//
+// Destino: o proprio chat que escreveu, e so depois de casar o telefone dele
+// com usuarios.telefone (tel_chave, cobre com e sem o 9). Em @lid sem telefone
+// no payload nao casa nada e a conversa segue so no CRM (manual).
+// ============================================================
+const RELATORIO_WHATSAPP_TO = Deno.env.get('RELATORIO_WHATSAPP_TO') || ''
+// Contas olhadas pra carimbar "respondeu" (cobre o trial de 3 dias com folga).
+const BV_JANELA_CONTA_DIAS = 15
+// Ate quando o QUERO vale depois da mensagem do cadastro.
+const BV_JANELA_QUERO_DIAS = 7
+const BV_ATRASO_PROXIMOS_MS = 5000
+const BV_PALAVRAS = new Set(['quero', 'qro', 'sim', 'manda'])
+const DIA_MS = 24 * 60 * 60 * 1000
+
+// Fallback se o template sumir de templates_admin -- quem pediu o exemplo tem
+// que receber o exemplo. Mesmo texto do sql-boas-vindas-quero.sql.
+const BV_EXEMPLO_FALLBACK = `Olá, {{nome}}.
+
+Este é um lembrete referente à sua mensalidade:
+
+📌 Plano Mensal
+💰 R$ 150,00
+📅 Vencimento: dia 10
+
+🔑 Chave PIX: chave-de-exemplo@mensalli.com.br (fictícia)
+
+Estamos à disposição para qualquer esclarecimento.
+━━━━━━━━━━━━━━━
+{{nome}}, essa é uma cobrança de exemplo — é assim que seus alunos vão receber, direto do seu WhatsApp. E dá pra editar o texto do jeito que quiser ✏️`
+
+const BV_PROXIMOS_FALLBACK =
+  'Pra começar a cobrar assim, faltam 2 passos: cadastrar os alunos e conectar seu WhatsApp. Ou, se preferir, me manda sua lista de alunos (planilha, print ou foto) que eu cadastro tudo pra você. Qual você prefere?'
+
+const POLEGAR = /\u{1F44D}[\u{1F3FB}-\u{1F3FF}]?/gu
+
+// "Quero!", "sim, quero", "MANDA", "qro", 👍 (qualquer tom de pele) -> true.
+// "quero ver como funciona" -> false (vai pro dono responder).
+function ehRespostaQuero(texto: string): boolean {
+  const bruto = String(texto || '').trim()
+  if (!bruto) return false
+  const temPolegar = bruto.match(POLEGAR) !== null
+  const palavras = bruto
+    .replace(POLEGAR, ' ')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (palavras.length === 0) return temPolegar
+  if (palavras.length > 4) return false
+  return palavras.every((p) => BV_PALAVRAS.has(p))
+}
+
+// Porte do tel_chave() do banco: DDD + 8 ultimos digitos. Casa com e sem o 9.
+function telChave(tel: string | null | undefined): string | null {
+  let d = String(tel || '').replace(/\D/g, '')
+  if (d.startsWith('55') && (d.length === 12 || d.length === 13)) d = d.slice(2)
+  if (d.length < 10) return null
+  return d.slice(0, 2) + d.slice(-8)
+}
+
+// Telefone de quem escreveu. Em @lid o JID nao tem telefone; algumas versoes da
+// Evolution mandam o numero real em senderPn/remoteJidAlt.
+function telefoneDoRemetente(remoteJid: string, key: any, data: any): string | null {
+  if (!remoteJid.includes('@lid')) return remoteJid.split('@')[0].split(':')[0] || null
+  const candidatos = [key?.senderPn, key?.remoteJidAlt, key?.participantPn, data?.senderPn]
+  for (const c of candidatos) {
+    const s = String(c || '')
+    if (s && !s.includes('@lid') && /\d{10,}/.test(s.replace(/\D/g, ''))) return s.split('@')[0].split(':')[0]
+  }
+  return null
+}
+
+function emSegundoPlano(tarefa: Promise<unknown>) {
+  const segura = tarefa.catch((e) => console.error('❌ boas-vindas (segundo plano):', e))
+  // @ts-ignore EdgeRuntime existe no runtime do Supabase, nao nos tipos do Deno
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(segura)
+  }
+}
+
+async function configMaster(supabase: any) {
+  const { data: rows } = await supabase
+    .from('config')
+    .select('chave, valor')
+    .in('chave', ['evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
+  const cfg: Record<string, string> = {}
+  for (const r of rows || []) cfg[r.chave] = r.valor
+  return {
+    apiUrl: String(cfg.evolution_api_url || '').replace(/\/+$/, ''),
+    apiKey: cfg.evolution_api_key || '',
+    instancia: cfg.evolution_master_instance || INSTANCIA_MENSALLI,
+  }
+}
+
+// Envio com timeout e resultado (o enviarMensagem acima so loga).
+async function enviarPeloMaster(apiUrl: string, apiKey: string, instancia: string, numero: string, texto: string) {
+  try {
+    const r = await fetch(`${apiUrl}/message/sendText/${instancia}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({ number: numero, text: texto }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!r.ok) return { ok: false, http: r.status, erro: (await r.text()).slice(0, 300) }
+    return { ok: true, http: r.status, erro: '' }
+  } catch (e) {
+    return { ok: false, http: 0, erro: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function logBoasVindas(supabase: any, usuarioId: string, tipo: string, mensagem: string, r: { ok: boolean; http: number; erro: string }) {
+  const { error } = await supabase.from('retencao_saas_envios').insert({
+    usuario_id: usuarioId,
+    tipo,
+    mensagem,
+    canal: 'boas_vindas',
+    status: r.ok ? 'enviado' : 'falha',
+    erro: r.ok ? null : `${r.http} ${r.erro}`,
+  })
+  if (error) console.error('❌ boas-vindas: log falhou:', error.message)
+}
+
+interface ContaBoasVindas {
+  id: string
+  nome_completo: string | null
+  nome_empresa: string | null
+  telefone: string | null
+  created_at: string
+  role: string | null
+  boas_vindas_aguarda_quero_desde: string | null
+  boas_vindas_respondeu_em: string | null
+  boas_vindas_exemplo_enviado_em: string | null
+  boas_vindas_alerta_enviado_em: string | null
+  retencao_d_enviado_em: string | null
+}
+
+async function enviarExemploBoasVindas(supabase: any, conta: ContaBoasVindas, destino: string) {
+  const { apiUrl, apiKey, instancia } = await configMaster(supabase)
+  const falhaCfg = { ok: false, http: 0, erro: 'Evolution nao configurada' }
+
+  const { data: tmpls } = await supabase
+    .from('templates_admin').select('tipo, mensagem').in('tipo', ['bv_exemplo', 'bv_proximos_passos'])
+  const t: Record<string, string> = {}
+  for (const x of tmpls || []) t[x.tipo] = x.mensagem
+
+  const nome = String(conta.nome_completo || '').trim().split(/\s+/)[0] || 'tudo bem'
+  const exemplo = (t.bv_exemplo || BV_EXEMPLO_FALLBACK).replaceAll('{{nome}}', nome)
+  const proximos = (t.bv_proximos_passos || BV_PROXIMOS_FALLBACK).replaceAll('{{nome}}', nome)
+
+  const r1 = apiUrl && apiKey ? await enviarPeloMaster(apiUrl, apiKey, instancia, destino, exemplo) : falhaCfg
+  await logBoasVindas(supabase, conta.id, 'bv_exemplo', exemplo, r1)
+
+  if (!r1.ok) {
+    // Devolve a trava: o proximo "quero" tenta de novo.
+    await supabase.from('usuarios').update({ boas_vindas_exemplo_enviado_em: null }).eq('id', conta.id)
+    console.error('❌ boas-vindas: exemplo falhou', { usuario_id: conta.id, r1 })
+    return
+  }
+
+  await new Promise((res) => setTimeout(res, BV_ATRASO_PROXIMOS_MS))
+
+  const r2 = await enviarPeloMaster(apiUrl, apiKey, instancia, destino, proximos)
+  await logBoasVindas(supabase, conta.id, 'bv_proximos_passos', proximos, r2)
+  if (!r2.ok) console.error('❌ boas-vindas: proximos passos falhou', { usuario_id: conta.id, r2 })
+  else console.log('✅ boas-vindas: exemplo + proximos passos enviados', conta.id)
+}
+
+async function avisarDonoBoasVindas(supabase: any, conta: ContaBoasVindas, texto: string) {
+  const { apiUrl, apiKey, instancia } = await configMaster(supabase)
+  const nome = String(conta.nome_completo || '').trim() || '(sem nome)'
+  const empresa = String(conta.nome_empresa || '').trim()
+  const aviso =
+    `🔔 *Boas-vindas: responder na mão*\n\n` +
+    `${nome}${empresa ? ` (${empresa})` : ''} respondeu:\n` +
+    `"${String(texto || '').slice(0, 300)}"\n\n` +
+    `Responde pelo inbox: ${APP_URL}/app/admin/leads`
+
+  let r = { ok: false, http: 0, erro: 'Evolution nao configurada' }
+  if (apiUrl && apiKey) {
+    // Mesmo destino do resumo diario (relatorio-mensagens): o segredo, ou o
+    // proprio numero conectado no master.
+    let destino = RELATORIO_WHATSAPP_TO
+    if (!destino) {
+      try {
+        const f = await fetch(`${apiUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instancia)}`, {
+          headers: { apikey: apiKey },
+          signal: AbortSignal.timeout(10000),
+        })
+        if (f.ok) {
+          const d = await f.json()
+          const i = (Array.isArray(d) ? d : [d])[0]
+          destino = i?.ownerJid || i?.instance?.owner || ''
+        }
+      } catch { /* cai no erro abaixo */ }
+    }
+    if (destino) {
+      const numero = destino.includes('@') ? destino : `${destino.replace(/\D/g, '')}@s.whatsapp.net`
+      r = await enviarPeloMaster(apiUrl, apiKey, instancia, numero, aviso)
+    } else {
+      r = { ok: false, http: 0, erro: 'sem RELATORIO_WHATSAPP_TO e sem ownerJid do master' }
+    }
+  }
+
+  await logBoasVindas(supabase, conta.id, 'bv_alerta_dono', aviso, r)
+  if (!r.ok) {
+    // Devolve a trava: a proxima mensagem dessa conta tenta avisar de novo.
+    await supabase.from('usuarios').update({ boas_vindas_alerta_enviado_em: null }).eq('id', conta.id)
+    console.error('❌ boas-vindas: aviso ao dono falhou', { usuario_id: conta.id, r })
+  }
+}
+
+async function tratarRespostaBoasVindas(
+  supabase: any,
+  args: { remoteJid: string; telefoneRemetente: string | null; texto: string; ehReacao: boolean }
+) {
+  const { remoteJid, telefoneRemetente, texto, ehReacao } = args
+  const chave = telChave(telefoneRemetente)
+  if (!chave) return
+
+  // Poucas contas (cadastros dos ultimos 15 dias): compara tel_chave aqui.
+  const { data: contas, error } = await supabase
+    .from('usuarios')
+    .select('id, nome_completo, nome_empresa, telefone, created_at, role, boas_vindas_aguarda_quero_desde, boas_vindas_respondeu_em, boas_vindas_exemplo_enviado_em, boas_vindas_alerta_enviado_em, retencao_d_enviado_em')
+    .gte('created_at', new Date(Date.now() - BV_JANELA_CONTA_DIAS * DIA_MS).toISOString())
+    .not('telefone', 'is', null)
+  if (error) {
+    console.error('❌ boas-vindas: busca de conta falhou:', error.message)
+    return
+  }
+  const conta = ((contas || []) as ContaBoasVindas[])
+    .filter((c) => c.role !== 'admin' && telChave(c.telefone) === chave)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+  if (!conta) return
+
+  const agoraIso = new Date().toISOString()
+
+  if (!conta.boas_vindas_respondeu_em) {
+    await supabase.from('usuarios')
+      .update({ boas_vindas_respondeu_em: agoraIso })
+      .eq('id', conta.id)
+      .is('boas_vindas_respondeu_em', null)
+    // O trigger de vinculo so roda no cadastro; o lead nasceu agora.
+    await supabase.from('mensalli_leads')
+      .update({ usuario_id: conta.id, conta_detectada_em: agoraIso, updated_at: agoraIso })
+      .eq('remote_jid', remoteJid)
+      .is('usuario_id', null)
+      .or('vinculo_manual.is.null,vinculo_manual.eq.false')
+  }
+
+  // Conta do fluxo antigo (ja recebeu saudacao + exemplo): so o carimbo acima.
+  if (!conta.boas_vindas_aguarda_quero_desde) return
+  if (Date.now() - Date.parse(conta.boas_vindas_aguarda_quero_desde) > BV_JANELA_QUERO_DIAS * DIA_MS) return
+
+  // Depois da mensagem de 24h (retencao_d) o "sim" pode ser resposta a outra
+  // pergunta -- dali em diante e tudo manual.
+  const aguardando = !conta.boas_vindas_exemplo_enviado_em && !conta.retencao_d_enviado_em
+  if (aguardando && ehRespostaQuero(texto)) {
+    const { data: reservada } = await supabase.from('usuarios')
+      .update({ boas_vindas_exemplo_enviado_em: agoraIso })
+      .eq('id', conta.id)
+      .is('boas_vindas_exemplo_enviado_em', null)
+      .is('retencao_d_enviado_em', null)
+      .select('id')
+    if (reservada && reservada.length > 0) {
+      emSegundoPlano(enviarExemploBoasVindas(supabase, conta, remoteJid))
+    }
+    return
+  }
+
+  // Reacao que nao e 👍 (ou remocao de reacao) nao pede resposta.
+  if (ehReacao) return
+  if (conta.boas_vindas_alerta_enviado_em) return
+
+  const { data: reservaAlerta } = await supabase.from('usuarios')
+    .update({ boas_vindas_alerta_enviado_em: agoraIso })
+    .eq('id', conta.id)
+    .is('boas_vindas_alerta_enviado_em', null)
+    .select('id')
+  if (reservaAlerta && reservaAlerta.length > 0) {
+    emSegundoPlano(avisarDonoBoasVindas(supabase, conta, texto))
+  }
+}
+
+// ============================================================
 // Handler principal
 // ============================================================
 
@@ -880,6 +1221,27 @@ serve(async (req) => {
 
     console.log('📝 Texto extraído:', JSON.stringify(texto), '| Keys da msg:', Object.keys(msg), '| ehAudio:', ehAudio)
 
+    // Reacao (👍) a mensagem do master: so interessa pra boas-vindas "responde
+    // QUERO". Nao vira mensagem no CRM, igual antes.
+    if (ehInstanciaMensalli && !fromMe && msg.reactionMessage) {
+      const reacao = String(msg.reactionMessage.text || '')
+      if (reacao) {
+        try {
+          await tratarRespostaBoasVindas(supabase, {
+            remoteJid,
+            telefoneRemetente: telefoneDoRemetente(remoteJid, key, data),
+            texto: reacao,
+            ehReacao: true,
+          })
+        } catch (e) {
+          console.error('❌ boas-vindas (reacao):', e)
+        }
+      }
+      return new Response(JSON.stringify({ ok: true, ignored: 'reaction' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     if (!texto && !ehMidiaSemTexto) {
       console.log('⏭️ Ignorado: no_text | msg completa:', JSON.stringify(msg).slice(0, 500))
       return new Response(JSON.stringify({ ok: true, ignored: 'no_text' }), {
@@ -916,6 +1278,16 @@ serve(async (req) => {
       const ts = Number(data.messageTimestamp) || 0
       const enviadoEm = ts > 0 ? new Date(ts * 1000).toISOString() : new Date().toISOString()
 
+      // Texto do anuncio sem externalAdReply: registra o que veio, pra saber se a
+      // Evolution entrega o anuncio neste formato (o log geral corta em 500).
+      const anuncio = extrairAnuncio(data, msg)
+      if (!fromMe && !anuncio && TEXTO_PRONTO_ANUNCIO.test(texto || '')) {
+        console.log('📣 Anuncio sem externalAdReply:', JSON.stringify({
+          contextInfo: data.contextInfo,
+          tipos: Object.keys(msg || {}),
+        }).slice(0, 1500))
+      }
+
       await capturarLeadMensalli(supabase, {
         remoteJid,
         pushName,
@@ -924,7 +1296,23 @@ serve(async (req) => {
         tipo: tipoMsg,
         waMessageId: key.id || '',
         enviadoEm,
+        anuncio,
       })
+
+      // Dono de conta nova respondendo a boas-vindas. Erro aqui nunca derruba a
+      // captura do lead, que ja foi gravada acima.
+      if (!fromMe) {
+        try {
+          await tratarRespostaBoasVindas(supabase, {
+            remoteJid,
+            telefoneRemetente: telefoneDoRemetente(remoteJid, key, data),
+            texto: texto || rotuloMidia[tipoMsg] || '(sem texto)',
+            ehReacao: false,
+          })
+        } catch (e) {
+          console.error('❌ boas-vindas:', e)
+        }
+      }
 
       return new Response(JSON.stringify({ ok: true, handled: 'mensalli_lead' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

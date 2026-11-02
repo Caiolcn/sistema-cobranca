@@ -15,6 +15,19 @@
 //  2. FIM DO TESTE -- quando faltam <= 30h pro trial_fim (trial e de 3 dias).
 //       trial_d1_sem_whatsapp / trial_d1_sem_alunos / trial_d1_ativo
 //
+//  3. BOAS-VINDAS 24h SEM RESPOSTA (02/11/2026, sql-boas-vindas-quero.sql) --
+//     conta do fluxo "responde QUERO" que ficou calada 24h a 48h depois da
+//     mensagem do cadastro. UMA mensagem, conforme o estado:
+//       bv24_sem_nada / bv24_conectado_sem_alunos / bv24_alunos_sem_conexao
+//     (conectou E tem alunos -> nao manda nada). Liga/desliga em
+//     config.boas_vindas_followup_ativo. Carimba retencao_d_enviado_em (a mesma
+//     flag do toque manual "Sem conectar" do CRM), entao manual e automatico
+//     nao se repetem.
+//
+// REGRA DOS 2: quem nunca respondeu ao master (usuarios.boas_vindas_respondeu_em
+// NULL) recebe no maximo 2 automaticas: a do cadastro e a do marco 3. Por isso
+// os marcos 1 e 2 so saem pra quem ja respondeu.
+//
 // Textos em templates_admin (editaveis no /admin > Retencao > Editar mensagens).
 // Template ausente = nao envia (melhor nada do que mensagem vazia).
 //
@@ -47,6 +60,11 @@ const FIM_JANELA_MAX_H = 30
 const FIM_JANELA_MIN_H = 2
 // Nao manda o aviso de fim colado no de ativacao.
 const ESPACO_ENTRE_MARCOS_H = 6
+// Marco 3 -- horas desde o "responde QUERO" sem resposta. Depois de 48h a
+// mensagem perde o sentido; o cron so roda 9h-20h, entao 24h de janela cobre
+// quem se cadastrou de madrugada.
+const BV24_MIN_H = 24
+const BV24_MAX_H = 48
 // Falhou isso tudo nas ultimas 24h? Para de tentar essa conta (numero invalido etc.).
 const MAX_FALHAS_24H = 3
 
@@ -165,6 +183,8 @@ interface Conta {
   virou_pagante_em: string | null
   retencao_a_enviado_em: string | null
   retencao_d_enviado_em: string | null
+  boas_vindas_aguarda_quero_desde: string | null
+  boas_vindas_respondeu_em: string | null
 }
 
 serve(async (req) => {
@@ -193,7 +213,7 @@ serve(async (req) => {
   // ---- Config: flag on/off + Evolution ----
   const { data: cfgRows } = await supabase
     .from('config').select('chave, valor')
-    .in('chave', ['trial_avisos_ativo', 'trial_ativacao_24h_ativo', 'evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
+    .in('chave', ['trial_avisos_ativo', 'trial_ativacao_24h_ativo', 'boas_vindas_followup_ativo', 'evolution_api_url', 'evolution_api_key', 'evolution_master_instance'])
   const cfg: Record<string, string> = {}
   for (const r of cfgRows || []) cfg[r.chave] = r.valor
 
@@ -206,13 +226,14 @@ serve(async (req) => {
   const instancia = cfg.evolution_master_instance || INSTANCIA_MASTER_FALLBACK
   // O aviso das 24h (marco 1) e manual no CRM; so sai daqui com a chave propria ligada.
   const ativacao24hLigada = cfg.trial_ativacao_24h_ativo === 'true'
+  const bv24Ligado = cfg.boas_vindas_followup_ativo === 'true'
   if (!dryRun && (!apiUrl || !apiKey)) return json({ error: 'Evolution nao configurada' }, 500)
 
   // ---- Candidatas: contas em trial, nunca pagaram, com telefone ----
   const agora = Date.now()
   const { data: contasRaw, error: errContas } = await supabase
     .from('usuarios')
-    .select('id, nome_completo, telefone, created_at, trial_fim, role, plano_pago, virou_pagante_em, retencao_a_enviado_em, retencao_d_enviado_em')
+    .select('id, nome_completo, telefone, created_at, trial_fim, role, plano_pago, virou_pagante_em, retencao_a_enviado_em, retencao_d_enviado_em, boas_vindas_aguarda_quero_desde, boas_vindas_respondeu_em')
     .gte('created_at', new Date(agora - 10 * 24 * HORA).toISOString())
     .not('telefone', 'is', null)
   if (errContas) return json({ error: errContas.message }, 500)
@@ -231,7 +252,7 @@ serve(async (req) => {
     supabase.from('retencao_saas_envios').select('usuario_id')
       .in('usuario_id', ids).eq('canal', 'trial_auto').eq('status', 'falha')
       .gte('created_at', new Date(agora - 24 * HORA).toISOString()),
-    supabase.from('templates_admin').select('tipo, mensagem').like('tipo', 'trial_%'),
+    supabase.from('templates_admin').select('tipo, mensagem').or('tipo.like.trial_%,tipo.like.bv24_%'),
   ])
 
   const conectou = new Set<string>()
@@ -261,7 +282,9 @@ serve(async (req) => {
   for (const t of tmpls || []) templates[t.tipo] = t.mensagem
 
   // ---- Decide o marco de cada conta (no maximo 1 por rodada) ----
-  type Alvo = { conta: Conta; tipo: string; flag: 'retencao_d_enviado_em' | 'retencao_a_enviado_em' }
+  // trava: o marco 3 reserva a flag ANTES de enviar (ver envio), porque o
+  // whatsapp-bot olha a mesma flag pra decidir se o QUERO ainda vale.
+  type Alvo = { conta: Conta; tipo: string; flag: 'retencao_d_enviado_em' | 'retencao_a_enviado_em'; reservar?: boolean }
   const alvos: Alvo[] = []
 
   for (const c of contas) {
@@ -271,6 +294,24 @@ serve(async (req) => {
     const fimEmH = c.trial_fim ? (new Date(c.trial_fim).getTime() - agora) / HORA : null
     const nAlunos = alunos[c.id] || 0
     const conectado = conectou.has(c.id)
+
+    // Regra dos 2: quem nunca respondeu ao master so pode receber o marco 3
+    // (a 1a automatica foi a do cadastro). Vale tambem pras contas do fluxo
+    // antigo, que ja receberam 2 no cadastro -- essas nao recebem mais nada.
+    if (!c.boas_vindas_respondeu_em) {
+      const desdeQueroH = c.boas_vindas_aguarda_quero_desde
+        ? (agora - new Date(c.boas_vindas_aguarda_quero_desde).getTime()) / HORA
+        : null
+      const naJanelaBv24 = desdeQueroH !== null && desdeQueroH >= BV24_MIN_H && desdeQueroH <= BV24_MAX_H
+      if (bv24Ligado && naJanelaBv24 && !c.retencao_d_enviado_em) {
+        const tipo = !conectado
+          ? (nAlunos === 0 ? 'bv24_sem_nada' : 'bv24_alunos_sem_conexao')
+          : (nAlunos === 0 ? 'bv24_conectado_sem_alunos' : null)
+        // Conectou e ja tem alunos: esta andando sozinho, nao precisa do toque.
+        if (tipo) alvos.push({ conta: c, tipo, flag: 'retencao_d_enviado_em', reservar: true })
+      }
+      continue
+    }
 
     // Marco 2 -- fim do teste. Checado primeiro: se as duas janelas coincidirem,
     // o aviso de fim e o que importa.
@@ -300,7 +341,7 @@ serve(async (req) => {
   const simulacao: unknown[] = []
   const detalhes: unknown[] = []
 
-  for (const { conta, tipo, flag } of alvos) {
+  for (const { conta, tipo, flag, reservar } of alvos) {
     const template = templates[tipo]
     if (!template) { semTemplate++; detalhes.push({ usuario_id: conta.id, motivo: `template ${tipo} ausente` }); continue }
 
@@ -316,10 +357,33 @@ serve(async (req) => {
       continue
     }
 
+    // Marco 3: reserva a flag antes de enviar, so se a conta continua calada.
+    // Fecha a corrida com o whatsapp-bot (QUERO chegando neste minuto) e com
+    // uma rodada do cron sobreposta: quem nao conseguir reservar nao envia.
+    if (reservar) {
+      const { data: reservada } = await supabase.from('usuarios')
+        .update({ [flag]: new Date().toISOString() })
+        .eq('id', conta.id)
+        .is(flag, null)
+        .is('boas_vindas_respondeu_em', null)
+        .is('boas_vindas_exemplo_enviado_em', null)
+        .select('id')
+      if (!reservada || reservada.length === 0) {
+        detalhes.push({ usuario_id: conta.id, tipo, motivo: 'respondeu ou ja enviado (reserva perdida)' })
+        continue
+      }
+    }
+
     const jid = await resolverJid(apiUrl, apiKey!, instancia, conta.telefone!)
     const r = jid
       ? await enviar(apiUrl, apiKey!, instancia, jid, mensagem)
       : { ok: false, erro: 'telefone invalido', http: 0 }
+
+    // Falhou depois de reservar: devolve a flag pra proxima rodada tentar
+    // (MAX_FALHAS_24H segura o loop de numero invalido).
+    if (reservar && !r.ok) {
+      await supabase.from('usuarios').update({ [flag]: null }).eq('id', conta.id)
+    }
 
     await supabase.from('retencao_saas_envios').insert({
       usuario_id: conta.id,
@@ -331,7 +395,7 @@ serve(async (req) => {
     })
 
     if (r.ok) {
-      await supabase.from('usuarios').update({ [flag]: new Date().toISOString() }).eq('id', conta.id)
+      if (!reservar) await supabase.from('usuarios').update({ [flag]: new Date().toISOString() }).eq('id', conta.id)
       sent++
     } else {
       errors++
