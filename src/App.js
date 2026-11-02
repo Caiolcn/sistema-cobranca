@@ -56,6 +56,7 @@ const AdminWhatsAppMaster = lazy(() => import('./AdminWhatsAppMaster'))
 const AdminCobrancaSaas = lazy(() => import('./AdminCobrancaSaas'))
 const AdminAssinaturas = lazy(() => import('./AdminAssinaturas'))
 const AdminLeads = lazy(() => import('./AdminLeads'))
+const SecaoOrganico = lazy(() => import('./admin/SecaoOrganico'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const Autocadastro = lazy(() => import('./pages/Autocadastro'))
@@ -292,6 +293,7 @@ function App() {
                     <Route path="google-metrics" element={<PaginaGoogleMetrics />} />
                     <Route path="outbound" element={<PaginaOutbound />} />
                     <Route path="leads" element={<AdminLeads />} />
+                    <Route path="organico" element={<SecaoOrganico />} />
                     <Route path="assinaturas" element={<AdminAssinaturas />} />
                     <Route path="cobranca-saas" element={<AdminCobrancaSaas />} />
                     <Route path="whatsapp-saude" element={<AdminWhatsAppSaude />} />
