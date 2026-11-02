@@ -197,9 +197,11 @@ export default function Autocadastro() {
           onSubmit={e => { e.preventDefault(); enviar() }}
           style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
         >
-          {/* Isca anti-robô: fora da tela, pessoas não veem nem tabulam até ela */}
+          {/* Isca anti-robô: fora da tela, pessoas não veem nem tabulam até ela.
+              Nome sem sentido de propósito: com name="website" o Chrome do Android
+              preenchia sozinho e o cadastro de gente de verdade era descartado. */}
           <input
-            type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+            type="text" name="mz_hp" tabIndex={-1} autoComplete="off" aria-hidden="true"
             value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
             style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
           />

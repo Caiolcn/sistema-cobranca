@@ -25,6 +25,14 @@
 //
 // Admin tem um caminho a parte (user_id + forcar) pro reenvio manual, que e o
 // que resgata quem nasceu durante a janela quebrada.
+//
+// FLUXO "RESPONDE QUERO" (02/11/2026, sql-boas-vindas-quero.sql)
+// Desde entao sai UMA mensagem so, pedindo "responde QUERO". A cobranca de
+// exemplo virou resposta: quem manda e o whatsapp-bot, quando a pessoa
+// responde. Motivo: no maximo 2 mensagens automaticas do master pra quem nunca
+// respondeu (a 2a e a de 24h, no trial-avisos). Esta funcao carimba
+// boas_vindas_aguarda_quero_desde, que e o que habilita o QUERO no bot, e
+// grava o envio em retencao_saas_envios (canal 'boas_vindas').
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -55,35 +63,12 @@ const json = (body: unknown, status = 200) =>
   })
 
 // ---------------------------------------------------------------------------
-// Textos. Moraram em src/Signup.js ate agora; vieram junto com o envio pra que
-// exista um lugar so pra mexer neles -- e pra que fechar a aba logo depois do
-// cadastro nao corte a segunda mensagem no meio, como acontecia no navegador.
+// Texto. A cobranca de exemplo e os proximos passos moram em templates_admin
+// (bv_exemplo / bv_proximos_passos) e saem do whatsapp-bot quando a pessoa
+// responde QUERO. Texto do dono, literal.
 // ---------------------------------------------------------------------------
 const saudacao = (primeiroNome: string) =>
-  `Oi ${primeiroNome}! 👋
-
-Aqui é o Caio, da equipe do Mensalli. Vi que você acabou de criar sua conta — seja muito bem-vindo(a)! 🎉
-
-Sua conta já está com tudo desbloqueado. Pra ver a mágica acontecer, é só cadastrar seus alunos e ativar a cobrança automática no WhatsApp.
-
-Ficou com qualquer dúvida na hora de configurar? Pode responder aqui mesmo que eu te ajudo. 😊`
-
-const cobrancaExemplo = (primeiroNome: string) =>
-  `Olá, Maria.
-
-Este é um lembrete referente à sua mensalidade:
-
-📌 Plano Mensal
-💰 R$ 150,00
-📅 Vencimento: dia 10
-
-🔑 Chave PIX: academia@exemplo.com.br
-
-Estamos à disposição para qualquer esclarecimento.
-━━━━━━━━━━━━━━━
-${primeiroNome}, esta é uma cobrança de exemplo.
-
-Vai ser assim que seus alunos vão receber, direto do seu WhatsApp. E todo esse texto você pode editar do jeito que você preferir dentro do Mensalli. ✏️`
+  `Oi${primeiroNome ? ` ${primeiroNome}` : ''}! 👋 Aqui é o Caio, do Mensalli. Vi que você acabou de criar sua conta, seja bem-vindo! 🎉 Quer ver como seus alunos vão receber a cobrança, direto do seu WhatsApp? Responde QUERO que eu te mando um exemplo agora 👇`
 
 // ---------------------------------------------------------------------------
 // Numero. Porte fiel do gerarVariantesNumero/verificarNumeroWhatsApp do
@@ -213,33 +198,45 @@ serve(async (req) => {
     const jid = await resolverJid(apiUrl, apiKey, instancia, conta.telefone)
     if (!jid) return json({ error: 'Telefone invalido', enviado: false }, 400)
 
-    // Em sequencia, nao em paralelo: as duas precisam chegar nessa ordem.
-    const r1 = await enviar(apiUrl, apiKey, instancia, jid, saudacao(primeiroNome))
-    const r2 = r1.ok
-      ? await enviar(apiUrl, apiKey, instancia, jid, cobrancaExemplo(primeiroNome))
-      : { ok: false, erro: 'saudacao falhou antes', http: 0 }
+    const texto = saudacao(primeiroNome)
+    const r1 = await enviar(apiUrl, apiKey, instancia, jid, texto)
 
-    // Carimba se a saudacao saiu. O exemplo falhar sozinho nao deve liberar um
-    // segundo "seja bem-vindo" na proxima chamada.
+    // Carimba se saiu. boas_vindas_aguarda_quero_desde e o que faz o
+    // whatsapp-bot aceitar o QUERO dessa conta e o trial-avisos mandar a
+    // mensagem de 24h -- conta sem ele e do fluxo antigo.
     if (r1.ok) {
+      const agoraIso = new Date().toISOString()
       await supabase.from('usuarios')
-        .update({ boas_vindas_enviado_em: new Date().toISOString() })
+        .update({ boas_vindas_enviado_em: agoraIso, boas_vindas_aguarda_quero_desde: agoraIso })
         .eq('id', alvoId)
     }
 
+    // Log de auditoria de tudo que sai do master pra conta.
+    const { error: errLog } = await supabase.from('retencao_saas_envios').insert({
+      usuario_id: alvoId,
+      tipo: 'bv_saudacao',
+      mensagem: texto,
+      canal: 'boas_vindas',
+      status: r1.ok ? 'enviado' : 'falha',
+      erro: r1.ok ? null : `${r1.http} ${r1.erro}`,
+      enviado_por: forcar ? user.id : null,
+    })
+    if (errLog) console.error('[signup-boas-vindas] log falhou:', errLog.message)
+
     // O que quebrou agora aparece nos logs da funcao, em vez de morrer num
     // console.error dentro do navegador de quem acabou de se cadastrar.
-    if (!r1.ok || !r2.ok) {
-      console.error('[signup-boas-vindas] falha', { alvoId, instancia, jid, r1, r2 })
+    if (!r1.ok) {
+      console.error('[signup-boas-vindas] falha', { alvoId, instancia, jid, r1 })
     }
 
     return json({
       ok: true,
       enviado: r1.ok,
       saudacao: r1.ok,
-      exemplo: r2.ok,
+      // O exemplo agora so sai quando a pessoa responde QUERO (whatsapp-bot).
+      aguardando_quero: r1.ok,
       instancia,
-      detalhe: r1.ok && r2.ok ? null : { saudacao: r1, exemplo: r2 },
+      detalhe: r1.ok ? null : { saudacao: r1 },
     })
   } catch (e) {
     console.error('[signup-boas-vindas] erro:', e)

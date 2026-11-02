@@ -62,8 +62,12 @@ serve(async (req) => {
     const body = await req.json()
     const { slug, website } = body
 
-    // Isca preenchida: finge sucesso e nao grava nada
-    if (website) return json({ sucesso: true }, 201)
+    // Isca preenchida: recusa sem gravar. Nao finge sucesso — o autopreenchimento do
+    // Chrome ja preencheu a isca de aluno de verdade, que via "enviado" e nada chegava.
+    if (website) {
+      console.warn('🪤 Isca autocadastro preenchida:', slug)
+      return json({ error: 'Nao foi possivel enviar. Recarregue a pagina e tente de novo.' }, 400)
+    }
 
     const nome = texto(body.nome, 120)
     const dataNascimento = String(body.data_nascimento || '')

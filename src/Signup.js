@@ -281,7 +281,9 @@ export default function Signup({ onCadastroIniciado }) {
       // navegador perde (adblock, ITP do Safari, aba fechada cedo demais).
       enviarEventoCapi('CompleteRegistration', { eventId: eventIdCadastro })
 
-      // Boas-vindas + prévia da cobrança, pelo número da plataforma (master).
+      // Boas-vindas pelo número da plataforma (master). Desde 02/11/2026 sai uma
+      // mensagem só ("responde QUERO"); a cobrança de exemplo vai quando a
+      // pessoa responde (whatsapp-bot) — ver sql-boas-vindas-quero.sql.
       // Quem envia é a edge function: daqui do navegador o proxy da Evolution
       // barra (403 — cliente comum não opera a master), e foi assim que esses
       // dois envios morreram em silêncio entre 22 e 23/09/26.
@@ -296,7 +298,7 @@ export default function Signup({ onCadastroIniciado }) {
           // A função responde 200 com `enviado: false` quando a Evolution recusa
           // — se não checar os dois, o popup afirma que enviou e não enviou.
           if (error) throw error
-          if (!data?.enviado || !data?.exemplo) {
+          if (!data?.enviado) {
             throw new Error(JSON.stringify(data?.detalhe || data || 'envio recusado'))
           }
         } catch (erroEnvio) {
@@ -505,11 +507,11 @@ export default function Signup({ onCadastroIniciado }) {
 
             <p style={{ margin: '0 0 10px', fontSize: '15px', lineHeight: 1.6, color: BODY }}>
               {exemploFalhou ? (
-                <>Daqui a pouco chega no seu WhatsApp <strong style={{ color: INK }}>{telefone}</strong> uma
-                cobrança de exemplo, igualzinha à que seus alunos vão receber — só que saindo do <strong style={{ color: INK }}>seu</strong> número.</>
+                <>Daqui a pouco chega uma mensagem no seu WhatsApp <strong style={{ color: INK }}>{telefone}</strong>.
+                Responde <strong style={{ color: INK }}>QUERO</strong> que a gente te manda uma cobrança de exemplo, igualzinha à que seus alunos vão receber — só que saindo do <strong style={{ color: INK }}>seu</strong> número.</>
               ) : (
-                <>Enviamos uma cobrança de exemplo no seu WhatsApp <strong style={{ color: INK }}>{telefone}</strong>.
-                Dá uma olhada no celular: é exatamente assim que seus alunos vão receber — só que saindo do <strong style={{ color: INK }}>seu</strong> número.</>
+                <>Te mandamos uma mensagem no WhatsApp <strong style={{ color: INK }}>{telefone}</strong>.
+                Responde <strong style={{ color: INK }}>QUERO</strong> lá que chega uma cobrança de exemplo, igualzinha à que seus alunos vão receber — só que saindo do <strong style={{ color: INK }}>seu</strong> número.</>
               )}
             </p>
 

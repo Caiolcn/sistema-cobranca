@@ -73,8 +73,10 @@ export default function LojaPedido() {
   useEffect(() => { if (empresa) document.title = `Pedido · ${empresa.nome_empresa}` }, [empresa])
 
   if (loading && !dados) return <TelaCarregando />
-  if (erro && !dados) return <TelaIndisponivel titulo="Pedido não encontrado" mensagem={erro.message} />
-  if (!dados?.pedido || !empresa) return <TelaIndisponivel titulo="Pedido não encontrado" />
+  // Sem pedido: a compra não chegou a ser concluída. Leva de volta à loja pra tentar de novo.
+  const semPedido = <TelaIndisponivel titulo="Não encontramos esse pedido" mensagem="A compra não foi concluída. Volte para a loja e faça o pedido de novo." voltarPara={`/loja/${slug}`} />
+  if (erro && !dados) return semPedido
+  if (!dados?.pedido || !empresa) return semPedido
 
   const pedido = dados.pedido
   const { tema, fonte } = aparencia

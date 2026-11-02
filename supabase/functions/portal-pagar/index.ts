@@ -337,8 +337,9 @@ serve(async (req) => {
 
     // 7. Criar cobrança no Asaas no método escolhido pelo aluno
     // Asaas rejeita cobranca com dueDate no passado. Se a mensalidade ja venceu,
-    // usa a data de hoje (UTC nunca fica no passado em relacao ao BRT).
-    const hojeISO = new Date().toISOString().split('T')[0]
+    // usa a data de hoje. Sempre em BRT: em UTC, depois das 21h ja seria amanha e a
+    // parcela que vence hoje ganharia multa/juros.
+    const hojeISO = hojeBrt
     const dueDateAsaas = mensalidade.data_vencimento < hojeISO ? hojeISO : mensalidade.data_vencimento
 
     // Multa/juros por atraso calculados POR NÓS: como mandamos dueDate = hoje (exigência
