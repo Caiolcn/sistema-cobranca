@@ -38,8 +38,12 @@ serve(async (req) => {
     const { slug, produto_id, website } = body
     const ficha = body.ficha || {}
 
-    // Isca preenchida: finge sucesso
-    if (website) return json({ sucesso: true, token: novoToken() }, 201)
+    // Isca preenchida: recusa sem gravar. Não finge sucesso — o autopreenchimento do
+    // Chrome já preencheu a isca de aluno de verdade, que caía em "Pedido não encontrado".
+    if (website) {
+      console.warn('🪤 Isca loja-comprar preenchida:', slug)
+      return erro('isca', 'Não foi possível concluir a compra. Recarregue a página e tente de novo.', 400)
+    }
     if (!slug || !produto_id) return erro('dados', 'Link inválido', 400)
 
     // 1. Empresa + gate (compra exige Asaas)

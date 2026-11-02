@@ -322,7 +322,7 @@ export default function LojaItem() {
         ))}
 
         {/* isca anti-robô */}
-        <input type="text" name="website" value={form.website} onChange={set('website')} tabIndex={-1} autoComplete="off" style={{ position: 'absolute', left: '-9999px', opacity: 0 }} aria-hidden="true" />
+        <input type="text" name="mz_hp" value={form.website} onChange={set('website')} tabIndex={-1} autoComplete="off" style={{ position: 'absolute', left: '-9999px', opacity: 0 }} aria-hidden="true" />
       </div>
 
       <div style={{ ...card, marginTop: '14px' }}>

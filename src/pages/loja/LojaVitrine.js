@@ -820,7 +820,7 @@ export function TelaCarregando() {
   )
 }
 
-export function TelaIndisponivel({ titulo = 'Loja indisponível', mensagem, telefone }) {
+export function TelaIndisponivel({ titulo = 'Loja indisponível', mensagem, telefone, voltarPara }) {
   const wa = telefoneWa(telefone)
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f4f4f5', padding: '24px', textAlign: 'center' }}>
@@ -828,6 +828,12 @@ export function TelaIndisponivel({ titulo = 'Loja indisponível', mensagem, tele
         <Icon icon="mdi:storefront-remove-outline" width="56" style={{ color: '#a1a1aa' }} />
         <h1 style={{ fontSize: '20px', color: '#27272a', marginTop: '14px' }}>{titulo}</h1>
         <p style={{ fontSize: '14px', color: '#71717a', marginTop: '6px' }}>{mensagem || 'Esta página não existe ou está fora do ar.'}</p>
+        {voltarPara && (
+          <a href={voltarPara}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '18px', padding: '11px 16px', borderRadius: '12px', backgroundColor: '#27272a', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
+            <Icon icon="mdi:storefront-outline" width="20" /> Voltar para a loja
+          </a>
+        )}
         {wa && (
           <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '18px', padding: '11px 16px', borderRadius: '12px', backgroundColor: WA_VERDE, color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
