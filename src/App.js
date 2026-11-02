@@ -67,6 +67,7 @@ const LandingEscolinha = lazy(() => import('./pages/LandingEscolinha'))
 const LandingPilates = lazy(() => import('./pages/LandingPilates'))
 const LandingLuta = lazy(() => import('./pages/LandingLuta'))
 const LandingNatacao = lazy(() => import('./pages/LandingNatacao'))
+const VslComece = lazy(() => import('./pages/VslComece'))
 const LinkInBio = lazy(() => import('./pages/LinkInBio'))
 const BioAcademia = lazy(() => import('./pages/BioAcademia'))
 const PreviewRecibo = lazy(() => import('./pages/PreviewRecibo'))
@@ -204,6 +205,8 @@ function App() {
               <Route path="/sistema-para-estudio-pilates" element={session ? <Navigate to="/app/home" replace /> : <LandingPilates />} />
               <Route path="/sistema-para-academia-de-luta" element={session ? <Navigate to="/app/home" replace /> : <LandingLuta />} />
               <Route path="/sistema-para-escola-natacao" element={session ? <Navigate to="/app/home" replace /> : <LandingNatacao />} />
+              {/* VSL antes do cadastro (trafego pago). ?modo=delay testa a versao que abre aos 80% */}
+              <Route path="/comece" element={session ? <Navigate to="/app/home" replace /> : <VslComece />} />
               <Route path="/links" element={<LinkInBio />} />
               <Route path="/privacidade" element={<Privacidade />} />
 
