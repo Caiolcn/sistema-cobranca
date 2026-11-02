@@ -68,7 +68,11 @@ const json = (body: unknown, status = 200) =>
 // responde QUERO. Texto do dono, literal.
 // ---------------------------------------------------------------------------
 const saudacao = (primeiroNome: string) =>
-  `Oi${primeiroNome ? ` ${primeiroNome}` : ''}! 👋 Aqui é o Caio, do Mensalli. Vi que você acabou de criar sua conta, seja bem-vindo! 🎉 Quer ver como seus alunos vão receber a cobrança, direto do seu WhatsApp? Responde QUERO que eu te mando um exemplo agora 👇`
+  `Oi${primeiroNome ? `, ${primeiroNome}` : ''}! 👋\n\n` +
+  `Aqui é o Caio, do Mensalli.\n\n` +
+  `Vi que você acabou de criar sua conta, seja bem-vindo! 🎉\n\n` +
+  `Quer ver como seus alunos vão receber a cobrança, direto do seu WhatsApp?\n\n` +
+  `Responde QUERO que eu te mando um exemplo agora 👇`
 
 // ---------------------------------------------------------------------------
 // Numero. Porte fiel do gerarVariantesNumero/verificarNumeroWhatsApp do
