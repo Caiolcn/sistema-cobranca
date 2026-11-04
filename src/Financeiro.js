@@ -155,7 +155,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [linkPagamentoData, setLinkPagamentoData] = useState(null)
   const [gerandoLink, setGerandoLink] = useState(false)
   const [pixCopied, setPixCopied] = useState(false)
-  const [linkCopied, setLinkCopied] = useState(false)
 
   // Modal de Boleto Asaas
   const [mostrarModalBoleto, setMostrarModalBoleto] = useState(false)
@@ -165,6 +164,9 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
   const [pixBoletoCopied, setPixBoletoCopied] = useState(false)
   const [asaasConfigurado, setAsaasConfigurado] = useState(false)
   const [modoIntegracao, setModoIntegracao] = useState('manual') // 'asaas' ou 'manual'
+  // Mesma chave que as mensagens automáticas usam (whatsappService): 'asaas_link' manda o
+  // aluno pro portal, onde a fatura do Asaas é gerada; 'pix_manual' usa a chave Pix da escola.
+  const [metodoPagamento, setMetodoPagamento] = useState('pix_manual')
 
   // Modal para solicitar CPF do cliente
   const [mostrarModalCpf, setMostrarModalCpf] = useState(false)
@@ -210,6 +212,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             setMultaJurosConfig(data.asaas_multa_juros)
           }
         })
+      supabase
+        .from('config')
+        .select('valor')
+        .eq('chave', `${userId}_metodo_pagamento_whatsapp`)
+        .maybeSingle()
+        .then(({ data }) => setMetodoPagamento(data?.valor || 'pix_manual'))
     }
   }, [userId])
 
@@ -253,6 +261,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               nome,
               telefone,
               cpf,
+              portal_token,
               assinatura_ativa,
               plano:planos(nome, tipo, valor, ciclo_cobranca)
             ),
@@ -1180,42 +1189,65 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
   }
 
-  // Função para gerar link de pagamento PIX
-  const handleGerarLinkPagamento = async (mensalidade) => {
-    if (!chavePix) {
-      showToast('Configure sua chave PIX em Configurações antes de gerar links de pagamento.', 'error')
+  // Escola no Asaas: manda o link do portal do aluno. É no portal que a fatura do
+  // Asaas é gerada (portal-pagar), com baixa automática e multa/juros certos. Antes
+  // este botão montava um Pix estático com a chave da escola, por fora do Asaas.
+  const enviarLinkPortal = async (mensalidade) => {
+    const portalToken = mensalidade.devedor?.portal_token
+    if (!portalToken) {
+      showToast('Este aluno ainda não tem link do portal. Abra o cadastro dele e salve para gerar.', 'error')
+      return
+    }
+    const url = `${window.location.origin}/portal/${portalToken}`
+    const telefone = mensalidade.devedor?.telefone
+    if (!telefone) {
+      try { await navigator.clipboard.writeText(url) } catch { /* segue */ }
+      showToast('Aluno sem telefone. Link do portal copiado.', 'info')
       return
     }
 
+    setGerandoLink(true)
+    try {
+      const status = await whatsappService.verificarStatus()
+      if (!status.conectado) {
+        try { await navigator.clipboard.writeText(url) } catch { /* segue */ }
+        showToast('WhatsApp não conectado. Link do portal copiado para você enviar.', 'error')
+        return
+      }
+      const nome = mensalidade.devedor?.nome?.split(' ')[0] || 'Aluno'
+      const msg = `Olá, ${nome}! 👋\n\nAcesse seu portal de pagamentos pelo link abaixo:\n\n${url}\n\nPor lá você pode consultar suas mensalidades e realizar pagamentos.`
+      const resultado = await whatsappService.enviarMensagem(telefone, msg)
+      if (resultado.sucesso) showToast('Link do portal enviado por WhatsApp!', 'success')
+      else showToast('Erro ao enviar: ' + resultado.erro, 'error')
+    } catch (error) {
+      console.error('Erro ao enviar link do portal:', error)
+      showToast('Erro ao enviar: ' + error.message, 'error')
+    } finally {
+      setGerandoLink(false)
+    }
+  }
+
+  // Pix manual: abre a janela com QR Code e Pix copia e cola da chave da escola.
+  // Não gera mais o link /pagar (quase ninguém abria e ele saía do fluxo).
+  const handleGerarLinkPagamento = async (mensalidade) => {
     if (mensalidade.status === 'pago') {
       showToast('Esta mensalidade já foi paga.', 'info')
+      return
+    }
+
+    if (metodoPagamento === 'asaas_link') {
+      await enviarLinkPortal(mensalidade)
+      return
+    }
+
+    if (!chavePix) {
+      showToast('Configure sua chave PIX em Configurações antes de gerar o Pix.', 'error')
       return
     }
 
     setGerandoLink(true)
 
     try {
-      // Gerar token único
-      const token = crypto.randomUUID().replace(/-/g, '').substring(0, 32)
-
-      // Salvar link no banco com todos os dados necessários
-      const { data: linkData, error: linkError } = await supabase
-        .from('links_pagamento')
-        .insert({
-          user_id: userId,
-          mensalidade_id: mensalidade.id,
-          token: token,
-          valor: mensalidade.valor,
-          cliente_nome: mensalidade.devedor?.nome || 'Aluno',
-          data_vencimento: mensalidade.data_vencimento,
-          nome_empresa: nomeEmpresa || 'Empresa',
-          chave_pix: chavePix
-        })
-        .select()
-        .single()
-
-      if (linkError) throw linkError
-
       // Gerar código PIX
       const codigoPix = gerarPixCopiaCola({
         chavePix: chavePix,
@@ -1227,10 +1259,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       })
 
       // Montar dados para o modal
-      const baseUrl = window.location.origin
       setLinkPagamentoData({
-        token: token,
-        url: `${baseUrl}/pagar/${token}`,
         pixCode: codigoPix,
         valor: mensalidade.valor,
         cliente: mensalidade.devedor?.nome || 'Aluno',
@@ -1239,8 +1268,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
       setMostrarModalLinkPagamento(true)
     } catch (error) {
-      console.error('Erro ao gerar link:', error)
-      showToast('Erro ao gerar link de pagamento: ' + error.message, 'error')
+      console.error('Erro ao gerar Pix:', error)
+      showToast('Erro ao gerar o Pix: ' + error.message, 'error')
     } finally {
       setGerandoLink(false)
     }
@@ -1253,18 +1282,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setPixCopied(true)
       setTimeout(() => setPixCopied(false), 3000)
       showToast('Código PIX copiado!', 'success')
-    } catch (error) {
-      showToast('Erro ao copiar', 'error')
-    }
-  }
-
-  const copiarLink = async () => {
-    if (!linkPagamentoData?.url) return
-    try {
-      await navigator.clipboard.writeText(linkPagamentoData.url)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 3000)
-      showToast('Link copiado!', 'success')
     } catch (error) {
       showToast('Erro ao copiar', 'error')
     }
@@ -1294,22 +1311,22 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       const vencimentoFormatado = new Date(linkPagamentoData.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
 
       let mensagem = `Olá, ${nomeCliente}! Tudo bem?\n\n`
-      mensagem += `Segue o link para pagamento da sua fatura:\n\n`
+      mensagem += `Segue o Pix para pagamento da sua mensalidade:\n\n`
       mensagem += `*Valor:* ${valorFormatado}\n`
       mensagem += `*Vencimento:* ${vencimentoFormatado}\n\n`
-      mensagem += `Pague via PIX pelo link abaixo:\n\n`
-      mensagem += `${linkPagamentoData.url}\n\n`
+      mensagem += `Copie o código abaixo e cole no app do seu banco, em Pix Copia e Cola:\n\n`
+      mensagem += `${linkPagamentoData.pixCode}\n\n`
       mensagem += `Qualquer dúvida, estou à disposição!`
 
       const resultado = await whatsappService.enviarMensagem(telefone, mensagem)
 
       if (resultado.sucesso) {
-        showToast('Link de pagamento enviado via WhatsApp!', 'success')
+        showToast('Pix enviado via WhatsApp!', 'success')
       } else {
         showToast('Erro ao enviar: ' + resultado.erro, 'error')
       }
     } catch (error) {
-      console.error('Erro ao enviar link via WhatsApp:', error)
+      console.error('Erro ao enviar Pix via WhatsApp:', error)
       showToast('Erro ao enviar: ' + error.message, 'error')
     } finally {
       setEnviandoLinkWhatsApp(false)
@@ -2556,7 +2573,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     onClick={() => handleGerarLinkPagamento(mensalidadeDetalhes)}
                     style={{ flex: 1 }}
                   >
-                    Link de Pagamento
+                    {metodoPagamento === 'asaas_link' ? 'Enviar link do portal' : 'Pix da mensalidade'}
                   </Button>
 
                   {modoIntegracao === 'asaas' && asaasConfigurado && (
@@ -3022,7 +3039,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             }}>
               <Icon icon="mdi:qrcode" width="36" height="36" />
               <h2 style={{ margin: '8px 0 0', fontSize: '18px', fontWeight: '600' }}>
-                Link de Pagamento
+                Pix da mensalidade
               </h2>
             </div>
 
@@ -3069,30 +3086,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
             {/* Ações */}
             <div style={{ padding: '0 20px 20px' }}>
-              {/* Copiar Link */}
-              <button
-                onClick={copiarLink}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: linkCopied ? '#4CAF50' : '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '10px'
-                }}
-              >
-                <Icon icon={linkCopied ? 'mdi:check' : 'mdi:link'} width="20" />
-                {linkCopied ? 'Link Copiado!' : 'Copiar Link de Pagamento'}
-              </button>
-
               {/* Copiar PIX */}
               <button
                 onClick={copiarPix}
@@ -3143,21 +3136,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </button>
             </div>
 
-            {/* Link URL */}
-            <div style={{ padding: '0 20px 16px' }}>
-              <div style={{
-                padding: '10px 12px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '6px',
-                fontSize: '11px',
-                color: '#666',
-                wordBreak: 'break-all',
-                fontFamily: 'monospace'
-              }}>
-                {linkPagamentoData.url}
-              </div>
-            </div>
-
             {/* Fechar */}
             <div style={{ padding: '0 20px 20px', textAlign: 'center' }}>
               <button
@@ -3165,7 +3143,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   setMostrarModalLinkPagamento(false)
                   setLinkPagamentoData(null)
                   setPixCopied(false)
-                  setLinkCopied(false)
                 }}
                 style={{
                   padding: '10px 24px',
