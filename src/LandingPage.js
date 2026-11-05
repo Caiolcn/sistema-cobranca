@@ -389,8 +389,11 @@ export default function LandingPage() {
         <section className="lp2-hero">
           <div className="lp2-wrap lp2-hero-grid">
             <div>
-              <p className="lp2-eyebrow">Cobrança automática pelo WhatsApp</p>
-              <h1 className="lp2-h1">Nunca mais cobre aluno por aluno no WhatsApp.</h1>
+              {/* O selo faz parte do <h1> para o Google ler a palavra-chave; o visual é o mesmo de antes */}
+              <h1 className="lp2-h1-seo">
+                <span className="lp2-eyebrow">Sistema de cobrança de mensalidades pelo WhatsApp</span>{' '}
+                <span className="lp2-h1">Nunca mais cobre aluno por aluno no WhatsApp.</span>
+              </h1>
               <p className="lp2-hero-sub">
                 Enquanto você trabalha, o Mensalli cobra seus alunos automaticamente pelo WhatsApp. Feito para estúdios, academias e escolas que vivem de mensalidade.
               </p>
