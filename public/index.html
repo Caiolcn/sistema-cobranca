@@ -74,23 +74,30 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Mensalli",
-      "url": "https://www.mensalli.com.br",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "description": "Sistema de cobrança automática de mensalidades via WhatsApp com PIX e links de pagamento.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "BRL",
-        "description": "Teste grátis por 3 dias"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "47"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.mensalli.com.br/#org",
+          "name": "Mensalli",
+          "url": "https://www.mensalli.com.br",
+          "logo": "https://www.mensalli.com.br/logo512.png"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Mensalli",
+          "url": "https://www.mensalli.com.br",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "pt-BR",
+          "publisher": { "@id": "https://www.mensalli.com.br/#org" },
+          "description": "Sistema que cobra a mensalidade dos alunos pelo WhatsApp do próprio dono, com PIX e link de pagamento. Feito para escolinhas de esporte, estúdios de pilates, academias de luta, escolas de natação, academias pequenas e personal trainers.",
+          "offers": [
+            { "@type": "Offer", "name": "Starter", "price": "49.90", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Pro", "price": "99.90", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Premium", "price": "149.90", "priceCurrency": "BRL" }
+          ]
+        }
+      ]
     }
     </script>
 

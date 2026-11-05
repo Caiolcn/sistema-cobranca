@@ -23,6 +23,7 @@ import useWindowSize from '../hooks/useWindowSize'
 import { capturarAtribuicao } from '../utils/metaAttribution'
 import { trackViewContent } from '../utils/metaPixel'
 import escolinhasHero from '../assets/escolinhas-multiesporte-hero.png'
+import { aplicarCanonical } from '../utils/seo'
 import {
   INK, BODY, MUTED, BORDER, BG, BG_SOFT,
   GREEN, GREEN_DK, GREEN_BRIGHT, GREEN_SOFT, DARK, GRAD,
@@ -78,8 +79,8 @@ export default function LandingEscolinha() {
     setMeta('description', DESC_SEO)
     setMeta('og:title', TITULO_SEO, 'property')
     setMeta('og:description', DESC_SEO, 'property')
-    setMeta('og:url', 'https://www.mensalli.com.br/escolinha', 'property')
-    return () => { document.title = tituloAnterior }
+    const restaurarCanonical = aplicarCanonical('/sistema-para-escolinhas')
+    return () => { document.title = tituloAnterior; restaurarCanonical() }
   }, [])
 
   const irParaSignup = () => {

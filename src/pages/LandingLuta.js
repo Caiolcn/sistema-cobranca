@@ -6,6 +6,7 @@ import { capturarAtribuicao } from '../utils/metaAttribution'
 import { trackViewContent } from '../utils/metaPixel'
 import './LandingLuta.css'
 import './LandingLutaRefinements.css'
+import { aplicarCanonical } from '../utils/seo'
 
 const WA = 'https://wa.me/5562981618862?text=' + encodeURIComponent('Oi! Tenho um CT de luta e quero conhecer o Mensalli.')
 const dores = [
@@ -46,7 +47,7 @@ export default function LandingLuta() {
   const navigate = useNavigate(), [faq, setFaq] = useState(null)
   const [alunos, setAlunos] = useState(80), [mensalidade, setMensalidade] = useState(160), [inad, setInad] = useState(12)
   const perda = useMemo(() => alunos * mensalidade * inad / 100, [alunos, mensalidade, inad])
-  useEffect(() => { capturarAtribuicao(); trackViewContent('landing-academia-de-luta'); const old = document.title; const title = 'Sistema para CT de luta — cobrança no WhatsApp | Mensalli'; const desc = 'Organize alunos, turmas e mensalidades. A Mensalli cobra pelo WhatsApp do seu CT.'; document.title = title; setMeta('description', desc); setMeta('og:title', title, 'property'); setMeta('og:description', desc, 'property'); return () => { document.title = old } }, [])
+  useEffect(() => { capturarAtribuicao(); trackViewContent('landing-academia-de-luta'); const old = document.title; const title = 'Sistema para CT de luta — cobrança no WhatsApp | Mensalli'; const desc = 'Organize alunos, turmas e mensalidades. A Mensalli cobra pelo WhatsApp do seu CT.'; document.title = title; setMeta('description', desc); setMeta('og:title', title, 'property'); setMeta('og:description', desc, 'property');const restaurarCanonical=aplicarCanonical('/sistema-para-academia-de-luta'); return()=>{document.title=old;restaurarCanonical()} }, [])
   const signup = () => navigate('/signup')
   return <main className="fight-page">
     <nav className="fight-nav"><a href="/"><img src="/Logo-Full.png" alt="Mensalli" /></a><div className="nav-links"><a href="#como">Como funciona</a><a href="#recursos">Recursos</a><a href="#planos">Planos</a></div><div><button className="nav-login" onClick={() => navigate('/login')}>Entrar</button><button className="green-btn small" onClick={signup}>Testar grátis</button></div></nav>
