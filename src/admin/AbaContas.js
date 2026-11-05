@@ -14,6 +14,7 @@ import {
   formatarData, formatarDataHora, textoVencimento, textoAtividade, formatarBRL,
   nomeDaConta, telefoneDaConta,
 } from './ciclo'
+import { AREAS_ATUACAO, COMO_CONHECEU, rotuloArea, rotuloComoConheceu } from '../data/perfilNegocio'
 
 /* ============================================================
    Aba Contas
@@ -55,6 +56,9 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
 
   const [filtroPlano, setFiltroPlano] = useState('todos')
   const [filtroWhatsapp, setFiltroWhatsapp] = useState('todos')
+  // Perfil do negócio (pop-up do primeiro acesso): área e como conheceu
+  const [filtroArea, setFiltroArea] = useState('todos')
+  const [filtroComoConheceu, setFiltroComoConheceu] = useState('todos')
   const [busca, setBusca] = useState('')
   const [ordenacao, setOrdenacao] = useState('nome')
   const [detalhe, setDetalhe] = useState(null)
@@ -76,6 +80,10 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
     if (filtroPlano !== 'todos') r = r.filter(c => c.plano === filtroPlano)
     if (filtroWhatsapp === 'conectado') r = r.filter(c => c.whatsapp_conectado === true)
     if (filtroWhatsapp === 'desconectado') r = r.filter(c => c.whatsapp_conectado !== true)
+    if (filtroArea === 'sem_resposta') r = r.filter(c => !c.area_atuacao)
+    else if (filtroArea !== 'todos') r = r.filter(c => c.area_atuacao === filtroArea)
+    if (filtroComoConheceu === 'sem_resposta') r = r.filter(c => !c.como_conheceu)
+    else if (filtroComoConheceu !== 'todos') r = r.filter(c => c.como_conheceu === filtroComoConheceu)
     const termo = busca.trim().toLowerCase()
     if (termo) {
       r = r.filter(c =>
@@ -86,7 +94,7 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
       )
     }
     return r
-  }, [contas, foco, filtroOrigem, filtroPlano, filtroWhatsapp, busca])
+  }, [contas, foco, filtroOrigem, filtroPlano, filtroWhatsapp, filtroArea, filtroComoConheceu, busca])
 
   const abasCiclo = useMemo(() => {
     const porCicloVisivel = {}
@@ -215,6 +223,39 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.email}</div>
         </div>
       ),
+    },
+    {
+      key: 'perfil',
+      label: 'Área / origem',
+      width: 170,
+      render: (c) => {
+        const area = c.area_atuacao === 'outro' && c.area_atuacao_outro
+          ? `Outro: ${c.area_atuacao_outro}`
+          : rotuloArea(c.area_atuacao)
+        const declarada = rotuloComoConheceu(c.como_conheceu)
+        return (
+          <div
+            style={{ minWidth: 0 }}
+            title={[
+              `Origem declarada: ${declarada || '—'}`,
+              `Origem automática (UTM): ${c.origem_automatica || '—'}`,
+            ].join('\n')}
+          >
+            <div style={{
+              fontSize: 13, color: area ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {area || '—'}
+            </div>
+            <div style={{
+              fontSize: 11, color: 'var(--color-text-muted)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {declarada || c.origem_automatica || 'origem não informada'}
+            </div>
+          </div>
+        )
+      },
     },
     {
       key: 'ciclo',
@@ -397,9 +438,11 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
 
   const temFiltroAtivo = !!foco || filtroCiclo !== 'todos' || filtroPlano !== 'todos'
     || filtroOrigem !== 'todos' || filtroWhatsapp !== 'todos' || busca.trim() !== ''
+    || filtroArea !== 'todos' || filtroComoConheceu !== 'todos'
 
   const limparTudo = () => {
     setFiltroPlano('todos'); setFiltroWhatsapp('todos'); setBusca('')
+    setFiltroArea('todos'); setFiltroComoConheceu('todos')
     onFiltrosChange?.({ ciclo: 'todos', origem: 'todos', foco: null })
   }
 
@@ -448,6 +491,35 @@ export default function AbaContas({ dados, filtrosURL, onFiltrosChange, onEditar
           value={busca}
           onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por empresa, nome, e-mail ou telefone…"
+        />
+      </div>
+
+      {/* Perfil do negócio: o que a conta respondeu no pop-up do primeiro acesso */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isSmallScreen ? 'minmax(0, 1fr)' : 'repeat(2, minmax(200px, 280px))',
+        gap: 10,
+        marginBottom: 14,
+      }}>
+        <Select
+          value={filtroArea}
+          onChange={setFiltroArea}
+          icon="mdi:tag-outline"
+          options={[
+            { value: 'todos', label: 'Toda área de atuação' },
+            ...AREAS_ATUACAO,
+            { value: 'sem_resposta', label: 'Não respondeu' },
+          ]}
+        />
+        <Select
+          value={filtroComoConheceu}
+          onChange={setFiltroComoConheceu}
+          icon="mdi:account-search-outline"
+          options={[
+            { value: 'todos', label: 'Todo "como conheceu"' },
+            ...COMO_CONHECEU,
+            { value: 'sem_resposta', label: 'Não respondeu' },
+          ]}
         />
       </div>
 
@@ -591,6 +663,22 @@ function DetalheConta({ conta, onClose, onEditar, copiar, nomeDoPlano, precoDoPl
               {telefone}
             </button>
           ) : <span style={{ color: 'var(--color-text-muted)' }}>não cadastrado</span>}
+        </Campo>
+
+        <Campo rotulo="Área de atuação" dica="Respondido pelo dono no pop-up do primeiro acesso">
+          {conta.area_atuacao
+            ? (conta.area_atuacao === 'outro' && conta.area_atuacao_outro
+              ? `Outro: ${conta.area_atuacao_outro}`
+              : rotuloArea(conta.area_atuacao))
+            : <span style={{ color: 'var(--color-text-muted)' }}>não respondeu</span>}
+        </Campo>
+
+        <Campo
+          rotulo="Como conheceu"
+          dica="Declarada = o que o dono respondeu. Automática = UTM do clique (meta_atribuicao)."
+        >
+          <div>Declarada: {rotuloComoConheceu(conta.como_conheceu) || '—'}</div>
+          <div>Automática: {conta.origem_automatica || '—'}</div>
         </Campo>
 
         <div style={{ height: 1, backgroundColor: 'var(--color-border-subtle)', margin: '18px 0' }} />

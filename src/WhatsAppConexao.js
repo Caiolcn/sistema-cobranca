@@ -698,7 +698,7 @@ export default function WhatsAppConexao() {
   const navigate = useNavigate()
   const { isMobile, isTablet, isSmallScreen } = useWindowSize()
   const { isLocked } = useUserPlan()
-  const { userId: contextUserId, isAdmin, adminViewingAs, refreshUserData, loading: loadingUser } = useUser()
+  const { userId: contextUserId, isAdmin, adminViewingAs, refreshUserData, loading: loadingUser, nomeEmpresa: nomeEmpresaConta } = useUser()
   const isStarter = isLocked('pro') // true se plano é starter
   const automacaoLocked = isLocked('pro') // Automações de 3 e 5 dias são Pro+
   const [searchParams] = useSearchParams()
@@ -2287,7 +2287,9 @@ export default function WhatsAppConexao() {
       .replace(/\{\{valorMensalidade\}\}/g, 'R$ 150,00')
       .replace(/\{\{dataVencimento\}\}/g, '06/01/2026')
       .replace(/\{\{diasAtraso\}\}/g, '5')
-      .replace(/\{\{nomeEmpresa\}\}/g, 'Minha Empresa')
+      // Nome real da conta: a prévia mostrava "Minha Empresa" fixo e o dono
+      // achava que a mensagem sairia assim mesmo depois de renomear.
+      .replace(/\{\{nomeEmpresa\}\}/g, (nomeEmpresaConta || '').trim() || 'Minha Empresa')
       .replace(/\{\{chavePix\}\}/g, 'minha@chave.pix')
       .replace(/\{\{linkPagamento\}\}/g, 'https://app.mensallizap.com.br/pagar/abc123')
   }

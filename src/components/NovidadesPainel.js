@@ -100,7 +100,10 @@ function TagNovidade({ tag, icone }) {
   )
 }
 
-export default function NovidadesPainel() {
+// `segurarAnuncio`: a Home liga enquanto o pop-up de perfil do negócio
+// (PerfilNegocioModal) está decidindo/aberto, pra não abrir dois pop-ups
+// empilhados. A barra continua aparecendo; só a abertura automática espera.
+export default function NovidadesPainel({ segurarAnuncio = false } = {}) {
   const navigate = useNavigate()
   const { realUserId, trialStatus } = useUser()
   const planoPago = !!trialStatus?.planoPago
@@ -136,6 +139,7 @@ export default function NovidadesPainel() {
       // montagem da Home. Fica desligado até a migração rodar; a barra e o selo
       // seguem funcionando.
       if (!dispensaDisponivel) return
+      if (segurarAnuncio) return
 
       /* O gatilho é a DATA, não uma flag: tudo publicado depois do último
          fechamento é novidade pra esta pessoa. Conta nova tem a marca nula,
@@ -161,7 +165,7 @@ export default function NovidadesPainel() {
     })
 
     return () => { cancelado = true }
-  }, [realUserId, planoPago])
+  }, [realUserId, planoPago, segurarAnuncio])
 
   // Sem contador numérico ao lado de "Atualizações": ele repetia um sinal que a
   // barra já dá em dois lugares — o selo "novo pra você" no item e as bolinhas

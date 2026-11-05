@@ -7,6 +7,7 @@ import { useUser } from './contexts/UserContext';
 import { SkeletonDashboard } from './components/Skeleton';
 import OnboardingGuiado from './OnboardingGuiado';
 import NovidadesPainel from './components/NovidadesPainel';
+import PerfilNegocioModal from './components/PerfilNegocioModal';
 import LojaResumoCard from './components/LojaResumoCard';
 import whatsappService from './services/whatsappService';
 import { showToast } from './Toast';
@@ -54,6 +55,11 @@ function Home() {
   // "Precisam de você hoje" (fila de ação + cobrança direta) é exclusivo do plano Pro
   const { isProOrAbove, planoPago } = useUserPlan();
   const [loading, setLoading] = useState(true);
+  // Pop-up de perfil do negócio (primeiro acesso). Enquanto ele decide se abre
+  // ou está aberto, o anúncio automático de novidades espera — nada de dois
+  // pop-ups empilhados na conta nova.
+  const [perfilResolvido, setPerfilResolvido] = useState(false);
+  const perfilNegocioModal = <PerfilNegocioModal onResolvido={() => setPerfilResolvido(true)} />;
 
   // Estado unificado para todos os dados do dashboard
   const [dashboardData, setDashboardData] = useState({
@@ -691,6 +697,7 @@ function Home() {
           onExplorar={() => alternarExplorando(true)}
           onConcluir={aoConcluirOnboarding}
         />
+        {perfilNegocioModal}
       </div>
     );
   }
@@ -744,7 +751,8 @@ function Home() {
       {/* Novidades do produto. Vem DEPOIS do onboarding de propósito: conta nova
           precisa conectar o WhatsApp, não descobrir feature. Quando os primeiros
           passos fecham, o painel some e a barra assume o topo. */}
-      <NovidadesPainel />
+      <NovidadesPainel segurarAnuncio={!perfilResolvido} />
+      {perfilNegocioModal}
 
       {/* Card-herói: prova de valor do Mensalli (dinheiro recuperado pela cobrança automática).
           Um herói de cada vez: enquanto o painel de primeiros passos está na tela, este só
