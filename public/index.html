@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#344848" />
     <meta
       name="description"
-      content="Cobre mensalidades pelo WhatsApp no automático. Ideal para academias, studios, escolas de música e personal trainers. Cobranças com PIX, links de pagamento e controle de inadimplência."
+      content="Sistema que cobra as mensalidades dos seus alunos pelo WhatsApp, no automático, com PIX e link de pagamento. Para escolinhas, studios de pilates, academias de luta, escolas de natação e personal trainers."
     />
     <meta name="keywords" content="cobrar mensalidade whatsapp, sistema cobrança academia, cobrança automática whatsapp, controle mensalidades, cobrança pix automática, sistema para personal trainer, gestão de alunos" />
     <link rel="canonical" href="https://www.mensalli.com.br" />
@@ -59,14 +59,14 @@
 
     <!-- Open Graph / SEO -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Mensalli - Cobre Mensalidades pelo WhatsApp no Automático" />
+    <meta property="og:title" content="Mensalli - Sistema de cobrança de mensalidades pelo WhatsApp" />
     <meta property="og:description" content="Automatize cobranças de mensalidades via WhatsApp. PIX, links de pagamento e controle de inadimplência para academias, studios e escolas." />
     <meta property="og:image" content="https://www.mensalli.com.br/logo512.png" />
     <meta property="og:url" content="https://www.mensalli.com.br" />
     <meta property="og:site_name" content="Mensalli" />
     <meta property="og:locale" content="pt_BR" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Mensalli - Cobre Mensalidades pelo WhatsApp no Automático" />
+    <meta name="twitter:title" content="Mensalli - Sistema de cobrança de mensalidades pelo WhatsApp" />
     <meta name="twitter:description" content="Automatize cobranças de mensalidades via WhatsApp. PIX, links de pagamento e controle de inadimplência." />
     <meta name="twitter:image" content="https://www.mensalli.com.br/logo512.png" />
 
@@ -74,23 +74,30 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Mensalli",
-      "url": "https://www.mensalli.com.br",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "description": "Sistema de cobrança automática de mensalidades via WhatsApp com PIX e links de pagamento.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "BRL",
-        "description": "Teste grátis por 3 dias"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "47"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.mensalli.com.br/#org",
+          "name": "Mensalli",
+          "url": "https://www.mensalli.com.br",
+          "logo": "https://www.mensalli.com.br/logo512.png"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Mensalli",
+          "url": "https://www.mensalli.com.br",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "pt-BR",
+          "publisher": { "@id": "https://www.mensalli.com.br/#org" },
+          "description": "Sistema que cobra a mensalidade dos alunos pelo WhatsApp do próprio dono, com PIX e link de pagamento. Feito para escolinhas de esporte, estúdios de pilates, academias de luta, escolas de natação, academias pequenas e personal trainers.",
+          "offers": [
+            { "@type": "Offer", "name": "Starter", "price": "49.90", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Pro", "price": "99.90", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Premium", "price": "149.90", "priceCurrency": "BRL" }
+          ]
+        }
+      ]
     }
     </script>
 
@@ -109,7 +116,7 @@
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
     </noscript>
 
-    <title>Mensalli - Cobre Mensalidades pelo WhatsApp no Automático</title>
+    <title>Mensalli - Sistema de cobrança de mensalidades pelo WhatsApp</title>
 
     <!-- Meta Pixel Code -->
     <script>

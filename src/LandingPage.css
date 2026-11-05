@@ -97,6 +97,9 @@
   margin: 0 0 22px; font-size: 58px; line-height: 1.04; font-weight: 700;
   letter-spacing: -0.035em; max-width: 13ch;
 }
+.lp2-h1-seo { margin: 0; font-size: inherit; font-weight: inherit; line-height: inherit; }
+.lp2-h1-seo .lp2-eyebrow { display: flex; width: fit-content; line-height: 1.3; }
+.lp2-h1-seo .lp2-h1 { display: block; }
 .lp2-hero-sub { margin: 0 0 32px; font-size: 18px; line-height: 1.6; color: var(--mut); max-width: 44ch; }
 .lp2-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
 .lp2-trust { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 24px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--mut); }

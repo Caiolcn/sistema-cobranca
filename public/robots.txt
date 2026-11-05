@@ -1,8 +1,14 @@
 User-agent: *
 Allow: /
 Disallow: /app/
+Disallow: /admin/
 Disallow: /login
 Disallow: /signup
 Disallow: /reset-password
+Disallow: /pagar/
+Disallow: /portal/
+Disallow: /contrato/
+Disallow: /ver-como/
+Disallow: /preview-recibo
 
 Sitemap: https://www.mensalli.com.br/sitemap.xml

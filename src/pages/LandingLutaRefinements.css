@@ -187,3 +187,14 @@
     transform: none;
   }
 }
+
+/* H1 de SEO: o selo verde ("Sistema para ...") faz parte do <h1> para o
+   Google ler a palavra-chave, mas continua com a mesma cara de antes. */
+.fight-hero h1.h1-seo { margin-top: 0; }
+.fight-hero h1.h1-seo .eyebrow {
+  display: flex;
+  width: fit-content;
+  line-height: 1.2;
+  margin-bottom: 41px;
+}
+.fight-hero h1.h1-seo .h1-frase { display: block; }

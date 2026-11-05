@@ -23,6 +23,7 @@ import useWindowSize from '../hooks/useWindowSize'
 import { capturarAtribuicao } from '../utils/metaAttribution'
 import { trackViewContent } from '../utils/metaPixel'
 import escolinhasHero from '../assets/escolinhas-multiesporte-hero.png'
+import { aplicarCanonical } from '../utils/seo'
 import {
   INK, BODY, MUTED, BORDER, BG, BG_SOFT,
   GREEN, GREEN_DK, GREEN_BRIGHT, GREEN_SOFT, DARK, GRAD,
@@ -47,8 +48,8 @@ function setMeta(nome, conteudo, attr = 'name') {
   el.setAttribute('content', conteudo)
 }
 
-const TITULO_SEO = 'Sistema para escolinhas esportivas — mensalidades no WhatsApp | Mensalli'
-const DESC_SEO = 'Sistema para escolinhas de futebol, atletismo, basquete e handebol. Organize atletas, turmas, presença e cobranças pelo WhatsApp da escolinha.'
+const TITULO_SEO = 'Sistema para escolinha de futebol e esportes — cobrança no WhatsApp | Mensalli'
+const DESC_SEO = 'Sistema para escolinha de futebol, vôlei, basquete e outros esportes que cobra os responsáveis pelo WhatsApp. Organize atletas, turmas, presença e mensalidades.'
 
 export default function LandingEscolinha() {
   // abre no topo: quem chega pelos cards da landing principal vem com a
@@ -78,8 +79,8 @@ export default function LandingEscolinha() {
     setMeta('description', DESC_SEO)
     setMeta('og:title', TITULO_SEO, 'property')
     setMeta('og:description', DESC_SEO, 'property')
-    setMeta('og:url', 'https://www.mensalli.com.br/escolinha', 'property')
-    return () => { document.title = tituloAnterior }
+    const restaurarCanonical = aplicarCanonical('/sistema-para-escolinhas')
+    return () => { document.title = tituloAnterior; restaurarCanonical() }
   }, [])
 
   const irParaSignup = () => {
@@ -200,9 +201,12 @@ export default function LandingEscolinha() {
         <Blob style={{ top: '-120px', right: '-80px', width: '520px', height: '520px', opacity: 0.55 }} />
         <div style={{ maxWidth: '1120px', margin: '0 auto', position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : '1.05fr .95fr', gap: isSmallScreen ? '44px' : '56px', alignItems: 'center' }}>
           <div style={{ textAlign: isSmallScreen ? 'center' : 'left' }}>
-            <div style={eyebrow}><MdSportsSoccer size={15} /> Gestão para escolinhas esportivas</div>
-            <h1 style={{ fontSize: isSmallScreen ? '36px' : '58px', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2px', margin: '0 0 20px' }}>
-              Seus atletas treinam. <span style={gradText}>O Mensalli cuida das mensalidades.</span>
+            {/* O selo faz parte do <h1> para o Google ler a palavra-chave; o visual é o mesmo de antes */}
+            <h1 style={{ margin: 0, fontSize: 'inherit', fontWeight: 'inherit' }}>
+              <span style={{ ...eyebrow, display: 'flex', width: 'fit-content', margin: isSmallScreen ? '0 auto 18px' : '0 0 18px', lineHeight: 1.3 }}><MdSportsSoccer size={15} /> Sistema para escolinha de futebol e esportes</span>{' '}
+              <span style={{ display: 'block', fontSize: isSmallScreen ? '36px' : '58px', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-2px', margin: '0 0 20px' }}>
+                Seus atletas treinam. <span style={gradText}>O Mensalli cuida das mensalidades.</span>
+              </span>
             </h1>
             <p style={{ fontSize: isSmallScreen ? '17px' : '19px', color: BODY, lineHeight: 1.6, margin: '0 0 30px', maxWidth: '520px', marginLeft: isSmallScreen ? 'auto' : 0, marginRight: isSmallScreen ? 'auto' : 0 }}>
               O Mensalli organiza atletas, cobra os responsáveis pelo WhatsApp e acompanha os pagamentos. Você volta para o treino.
