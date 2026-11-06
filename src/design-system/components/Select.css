@@ -266,6 +266,20 @@
   padding: 4px;
   overflow-y: auto;
   flex: 1;
+  /* Barra de rolagem fina: a padrão do navegador (grossa, com setas)
+     destoava do resto do DS quando a lista passa de ~9 opções. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-300) transparent;
+}
+.ds-select-list::-webkit-scrollbar {
+  width: 6px;
+}
+.ds-select-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ds-select-list::-webkit-scrollbar-thumb {
+  background-color: var(--neutral-300);
+  border-radius: 999px;
 }
 
 .ds-select-option {

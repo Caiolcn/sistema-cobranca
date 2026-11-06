@@ -55,8 +55,13 @@ export default function PerfilNegocioModal({ onResolvido }) {
     onResolvido?.()
   }
 
+  // Prévia do admin (/app/home?previa-perfil): abre o pop-up na conta admin
+  // só para ver o visual. Salvar e pular não gravam nada.
+  const previa = isAdmin && !adminViewingAs && new URLSearchParams(window.location.search).has('previa-perfil')
+
   useEffect(() => {
     if (loading) return
+    if (previa) { setAberto(true); return }
     if (!realUserId || isAdmin || adminViewingAs || modoEspelhoAtivo()) {
       resolver()
       return
@@ -101,6 +106,7 @@ export default function PerfilNegocioModal({ onResolvido }) {
   const pular = async () => {
     if (salvando) return
     fechar()
+    if (previa) return
     const { error } = await supabase
       .from('usuarios')
       .update({ perfil_dispensado_em: new Date().toISOString() })
@@ -110,6 +116,11 @@ export default function PerfilNegocioModal({ onResolvido }) {
 
   const salvar = async () => {
     if (salvando) return
+    if (previa) {
+      showToast('Prévia: nada foi salvo.', 'info')
+      fechar()
+      return
+    }
     setSalvando(true)
     try {
       const patch = {
@@ -166,6 +177,8 @@ export default function PerfilNegocioModal({ onResolvido }) {
             options={AREAS_ATUACAO}
             value={area}
             onChange={setArea}
+            searchable
+            searchPlaceholder="Buscar área..."
             portal
           />
           {area === 'outro' && (
