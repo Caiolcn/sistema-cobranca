@@ -13,7 +13,7 @@
 // Admin logado também pode chamar (botão "Atualizar agora" da tela).
 //
 // Só LEITURA na Meta. O token nunca é logado nem devolvido.
-// Publicar SEM --no-verify-jwt (a checagem de service_role depende do gateway).
+// Publicar COM --no-verify-jwt (cron via x-cron-secret, admin via rpc is_admin).
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import {

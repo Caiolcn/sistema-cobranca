@@ -8,6 +8,7 @@
 // são usados dentro da função e nunca são logados ou devolvidos.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { ehCron } from './cron-auth.ts'
 
 export const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 export const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -18,7 +19,7 @@ export const GRAPH = `https://graph.facebook.com/${Deno.env.get('META_GRAPH_VERS
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-organico-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-organico-token, x-cron-secret',
 }
 
 export const json = (body: unknown, status = 200) =>
@@ -29,25 +30,13 @@ export const json = (body: unknown, status = 200) =>
 
 export const adminClient = () => createClient(SUPABASE_URL, SERVICE_KEY)
 
-function decodeRole(token: string): string | null {
-  try {
-    const part = token.split('.')[1]
-    if (!part) return null
-    const normalized = part.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4)
-    return JSON.parse(atob(padded))?.role ?? null
-  } catch {
-    return null
-  }
-}
-
-// Cron (service_role do Vault) ou admin logado. Igual ao meta-ads-sync:
-// decodificar sem checar assinatura só é seguro porque o gateway valida o JWT,
-// então as funções que usam isto são publicadas SEM --no-verify-jwt.
+// Cron (x-cron-secret, ver _shared/cron-auth.ts) ou admin logado. O admin é
+// validado pelo banco (rpc is_admin confere a assinatura do JWT), então as
+// funções que usam isto são publicadas COM --no-verify-jwt.
 export async function autorizadoAdminOuCron(req: Request): Promise<{ ok: boolean; userId?: string }> {
+  if (ehCron(req)) return { ok: true }
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
   if (!bearer) return { ok: false }
-  if (decodeRole(bearer) === 'service_role') return { ok: true }
   const cli = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${bearer}` } },
   })

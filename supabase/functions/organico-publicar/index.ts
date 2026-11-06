@@ -25,7 +25,7 @@
 // Atrasou mais de 3h (cron parado, interruptor ligado tarde)? Não publica:
 // marca erro "passou do horário" para o dono decidir.
 //
-// Publicar SEM --no-verify-jwt.
+// Publicar COM --no-verify-jwt (cron via x-cron-secret, admin via rpc is_admin).
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { adminClient, autorizadoAdminOuCron, corsHeaders, graph, json, registrarExecucao, tokenDaMarca } from '../_shared/organico.ts'

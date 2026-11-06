@@ -37,6 +37,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cronOuAdmin, CABECALHOS_CORS_CRON } from '../_shared/cron-auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -44,7 +45,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': CABECALHOS_CORS_CRON,
 }
 
 // A edge function é encerrada pelo runtime em ~2 min (medido em 17/08: shutdown
@@ -515,6 +516,13 @@ async function executar(): Promise<Record<string, unknown>> {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  // Cron (x-cron-secret) ou admin logado. Ver _shared/cron-auth.ts.
+  // Publicar com --no-verify-jwt.
+  if (!(await cronOuAdmin(req))) {
+    return new Response(JSON.stringify({ error: 'Unauthorized — admin ou cron' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
   // @ts-ignore — EdgeRuntime é injetado pelo runtime do Supabase
   EdgeRuntime.waitUntil(
     executar().catch((e) => console.error('❌ Erro na varredura de zumbi:', e instanceof Error ? e.message : String(e))),

@@ -1,6 +1,9 @@
 // Edge Function: Cobrança SaaS Automática
 // Lembretes de vencimento do PLANO para os clientes pagantes do Mensalli.
 // 3 marcos: venc_d3 (3 dias antes) / venc_hoje (no dia) / venc_vencido (3 dias depois).
+// Quem tem cartão recorrente ativo não recebe venc_d3/venc_hoje (o MP debita
+// sozinho): recebe cartao_d3 (aviso do débito) e, se não renovar, cartao_falhou.
+// Quem escolhe o marco é a view (sql-cobranca-saas-cartao-recorrente.sql).
 //
 // Chamada:
 //  - pelo pg_cron todo dia às 9h BRT (12h UTC), SEM body -> só dispara se a flag estiver ativa.
@@ -12,6 +15,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cronOuAdmin, CABECALHOS_CORS_CRON } from '../_shared/cron-auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -26,8 +30,10 @@ const INSTANCIA_MASTER_FALLBACK = 'mensalli_master'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': CABECALHOS_CORS_CRON,
 }
+
+const TIPOS = ['venc_d3', 'venc_hoje', 'venc_vencido', 'cartao_d3', 'cartao_falhou']
 
 const NOMES_PLANO: Record<string, string> = {
   starter: 'Starter', pro: 'Pro', premium: 'Premium'
@@ -44,6 +50,8 @@ interface AlvoRow {
   dias_para_vencer: number
   dias: number
   dias_atraso: number
+  cartao?: boolean
+  data_cobranca?: string | null  // YYYY-MM-DD, só para cartão
 }
 
 function formatarValor(valor: number | string): string {
@@ -66,6 +74,7 @@ function interpolar(template: string, alvo: AlvoRow): string {
     .replaceAll('{{plano}}', NOMES_PLANO[String(alvo.plano).toLowerCase()] || alvo.plano || '')
     .replaceAll('{{valor}}', formatarValor(alvo.valor))
     .replaceAll('{{vencimento}}', formatarData(alvo.data_vencimento))
+    .replaceAll('{{data_cobranca}}', formatarData(alvo.data_cobranca || alvo.data_vencimento))
     .replaceAll('{{dias}}', String(alvo.dias))
     .replaceAll('{{dias_atraso}}', String(alvo.dias_atraso))
 }
@@ -75,18 +84,6 @@ function normalizarTelefone(telefone: string): string {
   return apenas.startsWith('55') ? apenas : `55${apenas}`
 }
 
-function decodeRole(token: string): string | null {
-  try {
-    const part = token.split('.')[1]
-    if (!part) return null
-    const normalized = part.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4)
-    return JSON.parse(atob(padded))?.role ?? null
-  } catch {
-    return null
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -94,24 +91,9 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-  // ---- Auth: aceita service_role (cron) OU um admin logado (painel) ----
-  const authHeader = req.headers.get('Authorization') || ''
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim()
-
-  let autorizado = false
-  if (decodeRole(token) === 'service_role') {
-    autorizado = true
-  } else if (token) {
-    const { data: userData } = await supabase.auth.getUser(token)
-    const uid = userData?.user?.id
-    if (uid) {
-      const { data: perfil } = await supabase
-        .from('usuarios').select('role').eq('id', uid).maybeSingle()
-      autorizado = perfil?.role === 'admin'
-    }
-  }
-
-  if (!autorizado) {
+  // ---- Auth: cron (x-cron-secret) OU admin logado (painel). Ver _shared/cron-auth.ts.
+  // Publicar com --no-verify-jwt.
+  if (!(await cronOuAdmin(req))) {
     return new Response(JSON.stringify({ error: 'Unauthorized — admin ou service role' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
@@ -132,7 +114,7 @@ serve(async (req) => {
   const apiUrlEvo = evoMap.evolution_api_url || 'https://service-evolution-api.tnvro1.easypanel.host'
   const instanciaMaster = evoMap.evolution_master_instance || INSTANCIA_MASTER_FALLBACK
 
-  // ---- Modo TESTE: envia os 3 modelos pra um número avulso, sem tocar em clientes nem logar ----
+  // ---- Modo TESTE: envia todos os modelos pra um número avulso, sem tocar em clientes nem logar ----
   if (body.testTo) {
     if (!apiKeyEvo) {
       return new Response(JSON.stringify({ error: 'Evolution API key não configurada em config' }), {
@@ -140,7 +122,7 @@ serve(async (req) => {
       })
     }
     const { data: tmplsTeste } = await supabase
-      .from('templates_admin').select('tipo, mensagem').in('tipo', ['venc_d3', 'venc_hoje', 'venc_vencido'])
+      .from('templates_admin').select('tipo, mensagem').in('tipo', TIPOS)
     const tmap: Record<string, string> = {}
     ;(tmplsTeste || []).forEach((t: { tipo: string; mensagem: string }) => { tmap[t.tipo] = t.mensagem })
 
@@ -148,12 +130,13 @@ serve(async (req) => {
       bucket: '', usuario_id: '', nome_cliente: body.testNome || 'Fulano (teste)',
       telefone: body.testTo, plano: 'pro', valor: 99.90,
       data_vencimento: new Date().toISOString().slice(0, 10),
-      dias_para_vencer: 3, dias: 3, dias_atraso: 3
+      dias_para_vencer: 3, dias: 3, dias_atraso: 3,
+      data_cobranca: new Date().toISOString().slice(0, 10)
     }
     const numeroTeste = normalizarTelefone(body.testTo)
     let enviados = 0
     const falhas: unknown[] = []
-    for (const tipo of ['venc_d3', 'venc_hoje', 'venc_vencido']) {
+    for (const tipo of TIPOS) {
       const tmpl = tmap[tipo]
       if (!tmpl) { falhas.push({ tipo, motivo: 'template ausente' }); continue }
       const msg = `🧪 [TESTE — ${tipo}]\n\n` + interpolar(tmpl, exemplo)
@@ -202,7 +185,7 @@ serve(async (req) => {
 
   // ---- Templates ----
   const { data: tmpls } = await supabase
-    .from('templates_admin').select('tipo, mensagem').in('tipo', ['venc_d3', 'venc_hoje', 'venc_vencido'])
+    .from('templates_admin').select('tipo, mensagem').in('tipo', TIPOS)
   const templateMap: Record<string, string> = {}
   ;(tmpls || []).forEach((t: { tipo: string; mensagem: string }) => { templateMap[t.tipo] = t.mensagem })
 

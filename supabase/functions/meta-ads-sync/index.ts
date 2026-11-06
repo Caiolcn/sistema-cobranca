@@ -8,17 +8,17 @@
 // O token nunca sai daqui -- o navegador le so a tabela, protegida por RLS.
 //
 // Chamada:
-//   - pg_cron (Bearer service_role), sem body -> ultimos 7 dias
+//   - pg_cron (header x-cron-secret), sem body -> ultimos 7 dias
 //   - admin logado (botao "Atualizar")        -> ultimos 7 dias
 //   - { "dias": 90 }                          -> janela maior (carga inicial)
 //   - { "dryRun": true }                      -> devolve o que gravaria
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cronOuAdmin, CABECALHOS_CORS_CRON } from '../_shared/cron-auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const META_TOKEN = Deno.env.get('META_ADS_TOKEN')
 const AD_ACCOUNT = Deno.env.get('META_AD_ACCOUNT_ID') || 'act_1625789468703809'
 const GRAPH = 'https://graph.facebook.com/v21.0'
@@ -26,7 +26,7 @@ const GRAPH = 'https://graph.facebook.com/v21.0'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': CABECALHOS_CORS_CRON,
 }
 
 const json = (body: unknown, status = 200) =>
@@ -51,20 +51,11 @@ const somaAcoes = (acoes: any[] | undefined, tipos: string[]) => {
   return 0
 }
 
-async function autorizado(req: Request): Promise<boolean> {
-  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
-  if (!bearer) return false
-  if (bearer === SERVICE_KEY) return true
-  const cli = createClient(SUPABASE_URL, ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${bearer}` } },
-  })
-  const { data, error } = await cli.rpc('is_admin')
-  return !error && data === true
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (!(await autorizado(req))) return json({ erro: 'nao autorizado' }, 401)
+  // Cron (x-cron-secret) ou admin logado. Ver _shared/cron-auth.ts.
+  // Publicar com --no-verify-jwt.
+  if (!(await cronOuAdmin(req))) return json({ erro: 'nao autorizado' }, 401)
   if (!META_TOKEN) return json({ erro: 'segredo META_ADS_TOKEN ausente' }, 500)
 
   let body: any = {}
