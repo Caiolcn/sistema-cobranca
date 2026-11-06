@@ -28,6 +28,7 @@ import Table from './design-system/components/Table'
 import Card from './design-system/components/Card'
 import Checkbox from './design-system/components/Checkbox'
 import DateField from './components/DateField'
+import buscarTodas from './utils/buscarTodas'
 
 // Gravadas como texto em mensalidades.forma_pagamento — não renomear sem migrar os dados
 const FORMAS_PAGAMENTO_BAIXA = ['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência Bancária', 'Boleto', 'Cheque', 'Outro']
@@ -248,12 +249,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setLoading(true)
     try {
       // Executar todas as queries em paralelo
+      // Em páginas: o Supabase corta em 1000 linhas (ver utils/buscarTodas.js).
       const [
         { data: mensalidadesData, error: mensalidadesError },
         { data: vendasData, error: vendasError }
       ] = await Promise.all([
         // 1. Mensalidades com dados do devedor e boleto (se existir)
-        supabase
+        buscarTodas(() => supabase
           .from('mensalidades')
           .select(`
             *,
@@ -280,14 +282,17 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           `)
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false')
-          .order('data_vencimento', { ascending: true }),
+          // id desempata: sem ordem total, páginas podem repetir/pular linhas
+          .order('data_vencimento', { ascending: true })
+          .order('id', { ascending: true })),
 
         // 2. Vendas (cobranças avulsas) para incluir nos totais
-        supabase
+        buscarTodas(() => supabase
           .from('cobrancas_avulsas')
           .select('id, valor, data_vencimento, status, data_pagamento')
           .eq('user_id', userId)
           .or('lixo.is.null,lixo.eq.false')
+          .order('id', { ascending: true }))
       ])
 
       if (mensalidadesError) throw mensalidadesError

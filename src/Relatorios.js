@@ -13,6 +13,7 @@ import { SkeletonDashboard } from './components/Skeleton';
 import { showToast } from './Toast';
 import './Home.css';
 import './Relatorios.css';
+import buscarTodas from './utils/buscarTodas';
 
 // YYYY-MM-DD no fuso local: toISOString() usa UTC e depois das 21h ja aponta pro dia seguinte
 const paraISOLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -124,11 +125,13 @@ function Relatorios() {
         { data: todasVendas },
         { data: dadosUsuario }
       ] = await Promise.all([
-        supabase
+        // Em páginas: o Supabase corta em 1000 (ver utils/buscarTodas.js).
+        buscarTodas(() => supabase
           .from('mensalidades')
           .select('id, valor, valor_pago, data_vencimento, status, devedor_id, is_mensalidade, updated_at, data_pagamento')
           .eq('user_id', userId)
-          .or('lixo.is.null,lixo.eq.false'),
+          .or('lixo.is.null,lixo.eq.false')
+          .order('id', { ascending: true })),
 
         supabase
           .from('devedores')

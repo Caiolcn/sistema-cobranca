@@ -43,6 +43,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cronOuAdmin, CABECALHOS_CORS_CRON } from '../_shared/cron-auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -71,7 +72,7 @@ const MAX_FALHAS_24H = 3
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': CABECALHOS_CORS_CRON,
 }
 
 const json = (body: unknown, status = 200) =>
@@ -81,18 +82,6 @@ const json = (body: unknown, status = 200) =>
   })
 
 const HORA = 3600000
-
-function decodeRole(token: string): string | null {
-  try {
-    const part = token.split('.')[1]
-    if (!part) return null
-    const normalized = part.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4)
-    return JSON.parse(atob(padded))?.role ?? null
-  } catch {
-    return null
-  }
-}
 
 // "amanha" / "hoje as 22h", no fuso de Brasilia. O cron so roda em horario
 // comercial, entao um trial_fim de madrugada pode cair no "amanha" ou no "hoje".
@@ -117,7 +106,9 @@ function interpolar(template: string, vars: Record<string, string>): string {
 function variantes(telefone: string): string[] {
   let n = (telefone || '').replace(/\D/g, '')
   if (!n) return []
-  if (!n.startsWith('55')) n = '55' + n
+  // 10/11 dígitos = DDD + número sem DDI. Não dá pra decidir só por startsWith('55'):
+  // o DDD 55 (RS) também começa com 55 e o DDI nunca entrava.
+  if (n.length === 10 || n.length === 11 || !n.startsWith('55')) n = '55' + n
 
   const lista = [n]
   if (n.length >= 12) {
@@ -192,18 +183,9 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-  // ---- Auth: service_role (cron) ou admin logado ----
-  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
-  let autorizado = decodeRole(token) === 'service_role'
-  if (!autorizado && token) {
-    const { data: userData } = await supabase.auth.getUser(token)
-    const uid = userData?.user?.id
-    if (uid) {
-      const { data: perfil } = await supabase.from('usuarios').select('role').eq('id', uid).maybeSingle()
-      autorizado = perfil?.role === 'admin'
-    }
-  }
-  if (!autorizado) return json({ error: 'Unauthorized — admin ou service role' }, 401)
+  // ---- Auth: cron (x-cron-secret) ou admin logado. Ver _shared/cron-auth.ts.
+  // Publicar com --no-verify-jwt.
+  if (!(await cronOuAdmin(req))) return json({ error: 'Unauthorized — admin ou cron' }, 401)
 
   let body: { dryRun?: boolean; force?: boolean } = {}
   try { body = await req.json() } catch { /* cron manda {} */ }
