@@ -16,6 +16,7 @@ import FeatureLocked from './FeatureLocked';
 import ModalCobranca from './components/ModalCobranca';
 import { agruparEnviosPorMensalidade, ehLogDeCobranca } from './utils/logsCobranca';
 import './Home.css';
+import buscarTodas from './utils/buscarTodas';
 
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -158,12 +159,13 @@ function Home() {
         { data: agendadosHojeData },
         { count: totalEnviadosHistorico }
       ] = await Promise.all([
-        // 1. Mensalidades - para KPIs
-        supabase
+        // 1. Mensalidades - para KPIs (em páginas: o Supabase corta em 1000)
+        buscarTodas(() => supabase
           .from('mensalidades')
           .select('id, valor, valor_pago, data_vencimento, data_pagamento, status, devedor_id, updated_at')
           .eq('user_id', userId)
-          .or('lixo.is.null,lixo.eq.false'),
+          .or('lixo.is.null,lixo.eq.false')
+          .order('id', { ascending: true })),
 
         // 2. Clientes com assinaturas, planos, telefone e nascimento (aniversariantes)
         supabase
