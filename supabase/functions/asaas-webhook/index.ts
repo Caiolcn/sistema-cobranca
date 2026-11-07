@@ -254,15 +254,27 @@ serve(async (req) => {
           })
           .eq('id', boleto.id)
 
-        // Se tinha mensalidade, voltar para pendente
-        if (boleto.mensalidade_id) {
-          await supabase
-            .from('mensalidades')
-            .update({
-              status: 'pendente',
-              data_pagamento: null
-            })
-            .eq('id', boleto.mensalidade_id)
+        // Só desfaz a baixa quando ESTE boleto foi o que pagou a mensalidade e o
+        // dinheiro voltou (estorno). PAYMENT_DELETED nunca desfaz: o Asaas apaga
+        // de madrugada o Pix gerado no portal que venceu sem pagamento, e se o
+        // aluno pagou por fora (baixa manual) a mensalidade continua paga.
+        // Incidente 06/11/2026: 4 baixas manuais desfeitas assim (GR Esperança e
+        // Paineiras) — ficavam "em atraso" com forma_pagamento preenchida.
+        {
+          const boletoPagou = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(String(boleto.status || '').toUpperCase())
+          if (event === 'PAYMENT_REFUNDED' && boletoPagou && boleto.mensalidade_id) {
+            // Zera o registro de dinheiro junto, igual ao "Desfazer" do Financeiro.
+            await supabase
+              .from('mensalidades')
+              .update({
+                status: 'pendente',
+                data_pagamento: null,
+                forma_pagamento: null,
+              })
+              .eq('id', boleto.mensalidade_id)
+          } else if (boleto.mensalidade_id) {
+            console.log(`⏩ ${event}: mensalidade mantida (boleto não era o pagamento dela; status anterior ${boleto.status})`)
+          }
         }
         break
 
