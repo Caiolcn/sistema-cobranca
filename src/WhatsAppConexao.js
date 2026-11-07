@@ -92,7 +92,7 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
       .select('id, nome, telefone, responsavel_nome, responsavel_telefone, assinatura_ativa, plano_id, bloquear_mensagens, comunicacoes_ativas')
       .eq('user_id', contextUserId)
       .or('lixo.is.null,lixo.eq.false')
-      .or('bloquear_mensagens.is.null,bloquear_mensagens.eq.false')
+      // Campanha é comunicação: só "Comunicações ativas" barra.
       .or('comunicacoes_ativas.is.null,comunicacoes_ativas.eq.true')
       .not('telefone', 'is', null)
 

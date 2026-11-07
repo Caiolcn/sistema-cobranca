@@ -57,7 +57,8 @@ serve(async (req) => {
         supabase.from('devedores').select('id, nome, telefone, responsavel_nome, responsavel_telefone, comunicacoes_ativas, bloquear_mensagens').eq('id', pedido.devedor_id).maybeSingle(),
         supabase.from('usuarios').select('nome_empresa').eq('id', pedido.user_id).maybeSingle(),
       ])
-      if (devedor && devedor.comunicacoes_ativas !== false && devedor.bloquear_mensagens !== true) {
+      // Comunicação: só "Comunicações ativas" barra (bloquear_mensagens é só cobrança).
+      if (devedor && devedor.comunicacoes_ativas !== false) {
         const linhas = (aulas || []).map((a: any) => `• ${DIAS[a.dia_semana]} às ${String(a.horario || '').slice(0, 5)}${a.modalidades?.nome ? ` — ${a.modalidades.nome}` : (a.descricao ? ` — ${a.descricao}` : '')}`)
         const primeiro = ((devedor.responsavel_nome || devedor.nome || '').trim().split(' ')[0]) || 'Cliente'
         const mensagem = `Olá, ${primeiro}! 🗓️\n\nSeu horário na *${empresa?.nome_empresa || ''}* está confirmado:\n\n${linhas.join('\n')}\n\nAté a aula! 💪`

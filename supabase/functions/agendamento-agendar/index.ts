@@ -371,8 +371,9 @@ serve(async (req) => {
             .eq('user_id', empresa.id)
             .maybeSingle()
 
-          const alunoAceitaMensagem =
-            devedor.comunicacoes_ativas !== false && devedor.bloquear_mensagens !== true
+          // Confirmação de agendamento é comunicação: só "Comunicações ativas" barra.
+          // "Cobranças pausadas" (bloquear_mensagens) vale só para a régua de cobrança.
+          const alunoAceitaMensagem = devedor.comunicacoes_ativas !== false
 
           if (cfg?.enviar_confirmacao_agendamento === true && alunoAceitaMensagem) {
             const telAluno = normalizarTelefone(devedor.telefone)

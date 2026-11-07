@@ -239,7 +239,8 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
   try {
     if (devedor) {
       if (devedor.portal_token) detalhes.unshift(`🔗 Seu portal: ${appUrl()}/portal/${devedor.portal_token}`)
-      const bloqueado = devedor.comunicacoes_ativas === false || devedor.bloquear_mensagens === true
+      // Confirmação de pedido é comunicação: só "Comunicações ativas" barra.
+      const bloqueado = devedor.comunicacoes_ativas === false
       const { data: cfg } = await supabase.from('configuracoes_cobranca').select('enviar_confirmacao_pagamento').eq('user_id', pedido.user_id).maybeSingle()
       if (!bloqueado && cfg?.enviar_confirmacao_pagamento !== false) {
         const telefone = devedor.responsavel_telefone || devedor.telefone || pedido.telefone
