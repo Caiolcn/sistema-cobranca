@@ -1454,11 +1454,11 @@ Se você já realizou o pagamento e foi um atraso na nossa baixa manual, basta m
    * Verifica status da conexão com WhatsApp
    */
   /**
-   * Master switch por aluno: retorna true se o aluno tem as comunicações
-   * desativadas (devedores.comunicacoes_ativas = false). Quando true,
-   * NENHUMA mensagem deve ser enviada — vence qualquer outro toggle.
-   * Use antes de envios disparados por código (boas-vindas, confirmação,
-   * presença); as views de cobrança/aula/aniversário já filtram no SQL.
+   * Retorna true se o aluno tem as comunicações desativadas
+   * (devedores.comunicacoes_ativas = false). Barra tudo que NÃO é cobrança:
+   * boas-vindas, confirmação, presença, aula, aniversário. A régua de cobrança
+   * não olha este campo — ela é pausada por bloquear_mensagens ("Cobranças
+   * pausadas"). Ver sql-separar-comunicacoes-cobrancas.sql.
    */
   async alunoSilenciado(devedorId) {
     if (!devedorId) return false

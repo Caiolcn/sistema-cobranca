@@ -3232,7 +3232,8 @@ Equipe ${nomeEmpresa}`
                         </div>
                       </div>
 
-                      {/* Toggle MASTER: Comunicações ativas — desligado silencia TUDO */}
+                      {/* Comunicações ativas — desligado cala tudo que NÃO é cobrança (a régua de
+                          cobrança é pausada pelo toggle de baixo). Ver sql-separar-comunicacoes-cobrancas.sql */}
                       <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -3250,7 +3251,7 @@ Equipe ${nomeEmpresa}`
                               {clienteSelecionado.comunicacoes_ativas === false ? 'Comunicações desativadas' : 'Comunicações ativas'}
                             </span>
                             <span style={{ fontSize: '10px', color: '#999' }}>
-                              Desligado: não recebe nenhuma mensagem (cobrança, aula, aniversário, boas-vindas)
+                              Desligado: não recebe aula, aniversário, boas-vindas nem confirmação de pagamento. As cobranças continuam.
                             </span>
                           </div>
                         </div>
@@ -3262,7 +3263,7 @@ Equipe ${nomeEmpresa}`
                               await supabase.from('devedores').update({ comunicacoes_ativas: novoValor }).eq('id', clienteSelecionado.id)
                               setClienteSelecionado({ ...clienteSelecionado, comunicacoes_ativas: novoValor })
                               setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? { ...c, comunicacoes_ativas: novoValor } : c))
-                              showToast(novoValor ? 'Comunicações reativadas' : 'Comunicações desativadas — aluno não receberá nenhuma mensagem', 'success')
+                              showToast(novoValor ? 'Comunicações reativadas' : 'Comunicações desativadas — as cobranças continuam', 'success')
                             } catch { showToast('Erro ao atualizar', 'error') }
                           }}
                         />
@@ -3281,9 +3282,14 @@ Equipe ${nomeEmpresa}`
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Icon icon={clienteSelecionado.bloquear_mensagens ? 'mdi:bell-off' : 'mdi:bell-ring'} width="16" style={{ color: clienteSelecionado.bloquear_mensagens ? '#d97706' : '#888' }} />
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: clienteSelecionado.bloquear_mensagens ? '#92400e' : '#555' }}>
-                            {clienteSelecionado.bloquear_mensagens ? 'Cobranças pausadas' : 'Cobranças ativas'}
-                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: clienteSelecionado.bloquear_mensagens ? '#92400e' : '#555' }}>
+                              {clienteSelecionado.bloquear_mensagens ? 'Cobranças pausadas' : 'Cobranças ativas'}
+                            </span>
+                            <span style={{ fontSize: '10px', color: '#999' }}>
+                              Desligado: para só os lembretes de vencimento e atraso. As outras mensagens continuam.
+                            </span>
+                          </div>
                         </div>
                         <Switch
                           checked={!clienteSelecionado.bloquear_mensagens}
