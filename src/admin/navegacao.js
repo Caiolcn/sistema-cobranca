@@ -45,6 +45,12 @@ export const GRUPOS_ADMIN = [
       { slug: 'atualizacoes', label: 'Atualizações', icon: 'mdi:bullhorn-outline' },
     ],
   },
+  {
+    grupo: 'Pessoal',
+    itens: [
+      { slug: 'financas', label: 'Finanças pessoais', descricao: 'Gastos mandados pro bot do Telegram', icon: 'mdi:wallet-outline' },
+    ],
+  },
 ]
 
 export const ITENS_ADMIN = GRUPOS_ADMIN.flatMap(g => g.itens)

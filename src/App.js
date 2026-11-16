@@ -57,6 +57,7 @@ const AdminCobrancaSaas = lazy(() => import('./AdminCobrancaSaas'))
 const AdminAssinaturas = lazy(() => import('./AdminAssinaturas'))
 const AdminLeads = lazy(() => import('./AdminLeads'))
 const SecaoOrganico = lazy(() => import('./admin/SecaoOrganico'))
+const AdminFinancas = lazy(() => import('./admin/AdminFinancas'))
 const Avisos = lazy(() => import('./Avisos'))
 const Agendamento = lazy(() => import('./pages/Agendamento'))
 const Autocadastro = lazy(() => import('./pages/Autocadastro'))
@@ -301,6 +302,7 @@ function App() {
                     {/* "Erros de envio" saiu: a Central de mensagens já mostra as falhas. */}
                     <Route path="erros-mensagens" element={<Navigate to="/admin/mensagens" replace />} />
                     <Route path="cron" element={<AdminCron />} />
+                    <Route path="financas" element={<AdminFinancas />} />
                     <Route path="*" element={<Navigate to="/admin/visao-geral" replace />} />
                   </Route>
                 </>
