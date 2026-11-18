@@ -46,6 +46,39 @@ const STATUS_ASSINATURA = {
   cancelled: { label: 'Cancelada', variant: 'danger' },
 }
 
+// status_detail do MP em português (o painel deles mostra só "Recusado").
+const MOTIVO_RECUSA = {
+  cc_rejected_insufficient_amount: 'Saldo ou limite insuficiente',
+  cc_rejected_call_for_authorize: 'Banco pediu autorização do titular',
+  cc_rejected_card_disabled: 'Cartão bloqueado ou desativado',
+  cc_rejected_bad_filled_card_number: 'Número do cartão incorreto',
+  cc_rejected_bad_filled_date: 'Validade incorreta',
+  cc_rejected_bad_filled_security_code: 'Código de segurança incorreto',
+  cc_rejected_bad_filled_other: 'Dados do cartão incorretos',
+  cc_rejected_high_risk: 'Recusado por segurança (risco)',
+  cc_rejected_blacklist: 'Cartão em lista de bloqueio',
+  cc_rejected_duplicated_payment: 'Pagamento duplicado',
+  cc_rejected_max_attempts: 'Limite de tentativas atingido',
+  cc_rejected_card_error: 'Erro no processamento do cartão',
+  cc_rejected_other_reason: 'Recusado pelo banco (sem motivo informado)',
+  cc_amount_rate_limit_exceeded: 'Limite de valor do cartão excedido',
+  rejected_by_issuer: 'Recusado pelo banco emissor',
+  rejected_high_risk: 'Recusado por segurança (risco)',
+  expired: 'Expirou sem pagamento',
+  by_collector: 'Cancelado pelo Mensalli',
+  by_payer: 'Cancelado pelo pagador',
+  accredited: 'Aprovado',
+  pending_contingency: 'Em processamento',
+  pending_review_manual: 'Em análise',
+  pending_waiting_payment: 'Aguardando pagamento',
+}
+const motivo = (p) => MOTIVO_RECUSA[p.status_detalhe] || p.status_detalhe || ''
+
+const BANDEIRA = { visa: 'Visa', master: 'Mastercard', elo: 'Elo', amex: 'Amex', hipercard: 'Hipercard', pix: 'Pix' }
+
+// Linha de identificação: quem é a pessoa e qual a instância do WhatsApp.
+const quemE = (c) => [c?.pessoa, c?.instancia].filter(Boolean).join(' · ')
+
 const COMO_IDENTIFICOU = {
   vinculo: 'pela assinatura vinculada',
   referencia: 'pelo checkout',
@@ -56,11 +89,12 @@ const COMO_IDENTIFICOU = {
 
 const FILTROS = [
   { value: 'aprovados', label: 'Aprovados' },
+  { value: 'recusados', label: 'Recusados' },
   { value: 'nao_lancados', label: 'Pagos e não lançados' },
   { value: 'cartao', label: 'Só cartão' },
   { value: 'pix', label: 'Só Pix' },
   { value: 'sem_conta', label: 'Sem conta identificada' },
-  { value: 'todos', label: 'Todos (inclui cancelados)' },
+  { value: 'todos', label: 'Todos (inclui recusados e cancelados)' },
 ]
 
 const PERIODOS = [
@@ -111,6 +145,7 @@ export default function AdminAssinaturas() {
   const [busca, setBusca] = useState('')
   const [lancando, setLancando] = useState(null) // pagamento aberto no modal
   const [vinculando, setVinculando] = useState(null) // assinatura aberta no modal
+  const [detalhe, setDetalhe] = useState(null) // pagamento aberto no detalhe
 
   const carregar = useCallback(async () => {
     setCarregando(true)
@@ -136,6 +171,7 @@ export default function AdminAssinaturas() {
       taxas: aprovados.reduce((s, p) => s + p.taxa, 0),
       liquido: aprovados.reduce((s, p) => s + p.liquido, 0),
       naoLancados: pagamentos.filter(precisaLancar).length,
+      recusados: pagamentos.filter(p => p.status === 'rejected').length,
       cartaoAtivas: assinaturas.filter(a => a.status === 'authorized').length,
     }
   }, [pagamentos, assinaturas])
@@ -145,29 +181,44 @@ export default function AdminAssinaturas() {
 
   const pagamentosVisiveis = useMemo(() => pagamentos.filter(p => {
     if (filtro === 'aprovados' && p.status !== 'approved') return false
+    if (filtro === 'recusados' && p.status !== 'rejected') return false
     if (filtro === 'nao_lancados' && !precisaLancar(p)) return false
     if (filtro === 'cartao' && !(p.tipo === 'credit_card' || p.tipo === 'debit_card')) return false
     if (filtro === 'pix' && p.metodo !== 'pix') return false
     if (filtro === 'sem_conta' && p.conta) return false
-    return casaBusca(p.conta?.nome, p.conta?.email, p.pagador_nome, p.pagador_email, p.titular_cartao,
-      p.id, p.cartao_final, brl(p.valor), brl(p.liquido))
+    return casaBusca(p.conta?.nome, p.conta?.pessoa, p.conta?.instancia, p.conta?.email, p.pagador_nome,
+      p.pagador_email, p.titular_cartao, p.id, p.cartao_final, brl(p.valor), brl(p.liquido))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [pagamentos, filtro, termo])
 
   const assinaturasVisiveis = useMemo(() => assinaturas
     .filter(a => a.status !== 'pending' || filtro === 'todos')
-    .filter(a => casaBusca(a.conta?.nome, a.conta?.email, a.pagador_email, a.id))
+    .filter(a => casaBusca(a.conta?.nome, a.conta?.pessoa, a.conta?.instancia, a.conta?.email, a.pagador_email, a.id))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   , [assinaturas, filtro, termo])
 
+  // Última tentativa de cobrança de cada assinatura (aprovada ou recusada).
+  const ultimaTentativa = useMemo(() => {
+    const m = new Map()
+    for (const p of pagamentos) {
+      if (!p.preapproval_id) continue
+      const atual = m.get(p.preapproval_id)
+      if (!atual || new Date(p.data) > new Date(atual.data)) m.set(p.preapproval_id, p)
+    }
+    return m
+  }, [pagamentos])
+
   const colunasPagamentos = [
-    { key: 'data', label: 'Pago em', width: 110, render: p => dataHora(p.data_aprovacao || p.data) },
+    { key: 'data', label: 'Data', width: 110, render: p => dataHora(p.data_aprovacao || p.data) },
     {
       key: 'cliente', label: 'Cliente', render: p => (
         <div style={{ minWidth: 0 }}>
           {p.conta ? (
             <>
               <div style={{ fontWeight: 600 }}>{p.conta.nome}</div>
+              {quemE(p.conta) && (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary, #6b7280)' }}>{quemE(p.conta)}</div>
+              )}
               <div style={{ fontSize: 12, color: 'var(--text-secondary, #6b7280)' }}>
                 {p.conta.email} · {COMO_IDENTIFICOU[p.identificado_por] || ''}
               </div>
@@ -212,7 +263,14 @@ export default function AdminAssinaturas() {
       key: 'sistema', label: 'No Mensalli', render: p => {
         if (p.status !== 'approved') {
           const s = STATUS_PAGAMENTO[p.status] || { label: p.status, variant: 'default' }
-          return <Badge variant={s.variant}>{s.label}</Badge>
+          return (
+            <div>
+              <Badge variant={s.variant}>{s.label}</Badge>
+              {motivo(p) && (
+                <div style={{ fontSize: 12, marginTop: 2, color: 'var(--text-secondary, #6b7280)' }}>{motivo(p)}</div>
+              )}
+            </div>
+          )
         }
         if (p.lancado) {
           return (
@@ -243,6 +301,9 @@ export default function AdminAssinaturas() {
       key: 'cliente', label: 'Cliente', render: a => a.conta ? (
         <div>
           <div style={{ fontWeight: 600 }}>{a.conta.nome}</div>
+          {quemE(a.conta) && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary, #6b7280)' }}>{quemE(a.conta)}</div>
+          )}
           <div style={{ fontSize: 12, color: 'var(--text-secondary, #6b7280)' }}>{a.conta.email}</div>
         </div>
       ) : (
@@ -263,6 +324,23 @@ export default function AdminAssinaturas() {
       key: 'cobrancas', label: 'Última cobrança', render: a => a.ultima_cobranca
         ? <div><div>{data(a.ultima_cobranca)}</div><div style={{ fontSize: 12, color: 'var(--text-secondary, #6b7280)' }}>{a.cobrancas_ok || 0} cobrança(s)</div></div>
         : '—',
+    },
+    {
+      key: 'tentativa', label: 'Última tentativa', render: a => {
+        const t = ultimaTentativa.get(a.id)
+        if (!t) return <span style={{ color: 'var(--text-secondary, #6b7280)' }}>—</span>
+        const s = STATUS_PAGAMENTO[t.status] || { label: t.status, variant: 'default' }
+        return (
+          <button type="button" onClick={() => setDetalhe(t)}
+            style={{ all: 'unset', cursor: 'pointer', display: 'block' }} title="Ver detalhe">
+            <Badge variant={s.variant} size="sm">{s.label}</Badge>
+            <div style={{ fontSize: 12, marginTop: 2 }}>{dataHora(t.data)}</div>
+            {t.status !== 'approved' && motivo(t) && (
+              <div style={{ fontSize: 12, color: 'var(--text-secondary, #6b7280)' }}>{motivo(t)}</div>
+            )}
+          </button>
+        )
+      },
     },
     { key: 'proxima', label: 'Próxima', render: a => a.status === 'authorized' ? data(a.proxima_cobranca) : '—' },
     {
@@ -328,6 +406,15 @@ export default function AdminAssinaturas() {
               hint="O MP recebeu, o sistema não renovou"
             />
             <StatCard
+              label="Cobranças recusadas"
+              value={kpis.recusados}
+              icon="mdi:credit-card-remove-outline"
+              accent={kpis.recusados ? 'danger' : 'neutral'}
+              loading={carregando}
+              onClick={() => { setAba('recebimentos'); setFiltro('recusados') }}
+              hint="O banco do cliente recusou"
+            />
+            <StatCard
               label="Cartão recorrente ativo"
               value={kpis.cartaoAtivas}
               icon="mdi:credit-card-sync-outline"
@@ -351,7 +438,7 @@ export default function AdminAssinaturas() {
               <SearchInput
                 value={busca}
                 onChange={e => setBusca(e.target.value)}
-                placeholder="Nome, email, valor, final do cartão, nº da operação"
+                placeholder="Nome, instância, email, valor, final do cartão, nº da operação"
               />
             </div>
             {aba === 'recebimentos' && (
@@ -366,6 +453,7 @@ export default function AdminAssinaturas() {
               columns={colunasPagamentos}
               data={pagamentosVisiveis}
               rowKey="id"
+              onRowClick={(p) => setDetalhe(p)}
               loading={carregando}
               emptyTitle="Nenhum pagamento nesse filtro"
               emptyMessage="Troque o filtro ou aumente o período."
@@ -384,6 +472,12 @@ export default function AdminAssinaturas() {
           )}
         </>
       )}
+
+      <ModalDetalhe
+        pagamento={detalhe}
+        onClose={() => setDetalhe(null)}
+        onLancar={(p) => { setDetalhe(null); setLancando(p) }}
+      />
 
       <ModalLancar
         pagamento={lancando}
@@ -571,4 +665,73 @@ function FormaInline({ p }) {
   if (p.metodo === 'pix') return 'Pix'
   if (p.tipo === 'credit_card') return `Cartão${p.cartao_final ? ` •••• ${p.cartao_final}` : ''}`
   return p.metodo || p.tipo || ''
+}
+
+/* ---------- Detalhe da transação (igual ao painel do Mercado Pago) ---------- */
+function ModalDetalhe({ pagamento: p, onClose, onLancar }) {
+  if (!p) return null
+  const s = STATUS_PAGAMENTO[p.status] || { label: p.status, variant: 'default' }
+  const cartao = p.cartao_final
+    ? `${BANDEIRA[p.bandeira] || p.bandeira || 'Cartão'} ${p.tipo === 'debit_card' ? 'débito' : 'crédito'} •••• ${p.cartao_final}`
+    : (BANDEIRA[p.metodo] || p.metodo || p.tipo || '—')
+  const linhas = [
+    ['Cliente no Mensalli', p.conta
+      ? [p.conta.nome, quemE(p.conta), p.conta.email, p.conta.telefone].filter(Boolean).join(' · ')
+      : 'Conta não identificada'],
+    ['Identificado', p.conta ? (COMO_IDENTIFICOU[p.identificado_por] || '—') : '—'],
+    ['Data', dataHora(p.data)],
+    p.data_aprovacao && ['Aprovado em', dataHora(p.data_aprovacao)],
+    ['Meio de pagamento', cartao],
+    p.titular_cartao && ['Titular do cartão', p.titular_cartao],
+    (p.pagador_nome || p.pagador_email) && ['Pagador', [p.pagador_nome, p.pagador_email].filter(Boolean).join(' · ')],
+    p.pagador_doc && ['Documento do pagador', p.pagador_doc],
+    ['Motivo', p.descricao || '—'],
+    ['Tipo', p.recorrente ? 'Cobrança da assinatura (cartão recorrente)' : 'Pagamento avulso'],
+    p.preapproval_id && ['Assinatura no MP', p.preapproval_id],
+    ['Nº da transação', p.id],
+    p.referencia_externa && ['Referência externa', p.referencia_externa],
+    p.status === 'approved' && ['Taxa / líquido', `${brl(p.taxa)} · recebe ${brl(p.liquido)}`],
+    p.status === 'approved' && ['Liberação', `${data(p.liberacao)} · ${p.liberacao_status === 'released' ? 'liberado' : 'a liberar'}`],
+    p.status === 'approved' && ['No Mensalli', p.lancado ? 'Lançado' : 'Ainda não lançado'],
+  ].filter(Boolean)
+
+  return (
+    <Modal isOpen onClose={onClose} title="Detalhe da transação" subtitle={`${brl(p.valor)} · ${dataHora(p.data)}`} size="md">
+      <Modal.Body>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <Badge variant={s.variant}>{s.label}</Badge>
+            {p.status !== 'approved' && motivo(p) && (
+              <div style={{
+                marginTop: 8, padding: '10px 12px', borderRadius: 8, fontSize: 14,
+                background: 'var(--danger-50, #fef2f2)', color: 'var(--danger-700, #b91c1c)',
+              }}>
+                <strong>{motivo(p)}</strong>
+                {p.status === 'rejected' && (
+                  <div style={{ marginTop: 4, fontSize: 13 }}>
+                    Peça ao cliente para falar com o banco ou trocar o cartão. No cartão recorrente o
+                    Mercado Pago tenta de novo sozinho nos dias seguintes.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, auto) 1fr', gap: '8px 16px', fontSize: 14 }}>
+            {linhas.map(([rotulo, valor]) => (
+              <div key={rotulo} style={{ display: 'contents' }}>
+                <div style={{ color: 'var(--text-secondary, #6b7280)' }}>{rotulo}</div>
+                <div style={{ wordBreak: 'break-word' }}>{valor}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="outline" onClick={onClose}>Fechar</Button>
+        {precisaLancar(p) && (
+          <Button variant="primary" icon="mdi:check-circle-outline" onClick={() => onLancar(p)}>Lançar</Button>
+        )}
+      </Modal.Footer>
+    </Modal>
+  )
 }

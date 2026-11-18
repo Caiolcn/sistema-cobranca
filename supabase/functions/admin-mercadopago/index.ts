@@ -170,6 +170,12 @@ async function listar(supabase: any, dias: number) {
   const { data: contas } = await supabase
     .from('usuarios')
     .select('id, nome_empresa, nome_completo, email, telefone, plano, plano_pago, plano_vencimento')
+  // Nome da instância do WhatsApp: é por ela que o suporte reconhece o cliente
+  // ("Minha Empresa" não diz quem é).
+  const { data: zaps } = await supabase.from('mensallizap').select('user_id, instance_name')
+  const instanciaPorUser = new Map<string, string>()
+  for (const z of (zaps || [])) if (z.user_id && z.instance_name) instanciaPorUser.set(z.user_id, z.instance_name)
+
   const contaPorId = new Map<string, any>()
   const contaPorEmail = new Map<string, any>()
   for (const c of (contas || [])) {
@@ -191,6 +197,8 @@ async function listar(supabase: any, dias: number) {
   const resumoConta = (c: any) => c ? {
     id: c.id,
     nome: c.nome_empresa || c.nome_completo || c.email,
+    pessoa: c.nome_completo || null,
+    instancia: instanciaPorUser.get(c.id) || null,
     email: c.email,
     telefone: c.telefone,
     plano: c.plano,
@@ -244,6 +252,9 @@ async function listar(supabase: any, dias: number) {
       metodo: p.payment_method_id,
       parcelas: p.installments,
       cartao_final: p.card?.last_four_digits || null,
+      bandeira: p.payment_method_id || null,
+      referencia_externa: p.external_reference || null,
+      tipo_operacao: p.operation_type || null,
       titular_cartao: p.card?.cardholder?.name || null,
       pagador_nome: nomePagador,
       pagador_email: p.payer?.email || null,
