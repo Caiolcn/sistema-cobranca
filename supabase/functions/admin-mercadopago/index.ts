@@ -135,13 +135,25 @@ async function listar(supabase: any, dias: number) {
   const fim = new Date()
   const inicio = new Date(fim.getTime() - Math.min(dias, 365) * 24 * 60 * 60 * 1000)
 
-  const [pagamentosMP, preapprovals] = await Promise.all([
+  const [todosPagamentosMP, preapprovals, eu] = await Promise.all([
     buscarTodos(
       `/v1/payments/search?sort=date_created&criteria=desc&range=date_created` +
       `&begin_date=${encodeURIComponent(inicio.toISOString())}&end_date=${encodeURIComponent(fim.toISOString())}`
     ),
     buscarTodos('/preapproval/search'),
+    mpGet('/users/me').catch(() => null),
   ])
+
+  // Só o que ENTRA na conta. O search também devolve o que a conta pagou
+  // (Pix enviado, transferência): aí o recebedor (collector) é outra pessoa.
+  // Sem conseguir ler a própria conta, cai no filtro mais fraco.
+  const meuId = eu?.id ? String(eu.id) : null
+  const recebedor = (p: any) => String(p.collector_id ?? p.collector?.id ?? '')
+  // Se a busca não trouxer o recebedor em nenhum item, não arrisca esvaziar a tela.
+  const temRecebedor = todosPagamentosMP.some((p) => recebedor(p))
+  const pagamentosMP = todosPagamentosMP.filter((p) => meuId && temRecebedor
+    ? recebedor(p) === meuId
+    : p.operation_type !== 'money_transfer')
 
   // Vínculo assinatura → conta do NOSSO banco. Manda mais que o
   // external_reference do MP: a pessoa pode ter assinado logada numa conta

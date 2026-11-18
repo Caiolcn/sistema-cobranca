@@ -87,15 +87,27 @@ const COMO_IDENTIFICOU = {
   email: 'pelo email',
 }
 
+// "Todos" é o padrão: aprovados, recusados e cancelados juntos, como na
+// Atividade do Mercado Pago. Os outros são recortes dessa lista.
 const FILTROS = [
+  { value: 'todos', label: 'Todos' },
   { value: 'aprovados', label: 'Aprovados' },
   { value: 'recusados', label: 'Recusados' },
   { value: 'nao_lancados', label: 'Pagos e não lançados' },
-  { value: 'cartao', label: 'Só cartão' },
-  { value: 'pix', label: 'Só Pix' },
-  { value: 'sem_conta', label: 'Sem conta identificada' },
-  { value: 'todos', label: 'Todos (inclui recusados e cancelados)' },
+  { value: 'cartao', label: 'Cartão' },
+  { value: 'pix', label: 'Pix' },
+  { value: 'sem_conta', label: 'Sem conta' },
 ]
+
+const passaNoFiltro = (p, filtro) => {
+  if (filtro === 'aprovados') return p.status === 'approved'
+  if (filtro === 'recusados') return p.status === 'rejected'
+  if (filtro === 'nao_lancados') return precisaLancar(p)
+  if (filtro === 'cartao') return p.tipo === 'credit_card' || p.tipo === 'debit_card'
+  if (filtro === 'pix') return p.metodo === 'pix'
+  if (filtro === 'sem_conta') return !p.conta
+  return true
+}
 
 const PERIODOS = [
   { value: '30', label: 'Últimos 30 dias' },
@@ -141,7 +153,9 @@ export default function AdminAssinaturas() {
   const [erro, setErro] = useState(null)
   const [dados, setDados] = useState(null)
   const [aba, setAba] = useState('recebimentos')
-  const [filtro, setFiltro] = useState('aprovados')
+  const [filtro, setFiltro] = useState('todos')
+  // Clicar de novo no card ativo volta para "Todos".
+  const alternarFiltro = (f) => { setAba('recebimentos'); setFiltro(atual => (atual === f ? 'todos' : f)) }
   const [busca, setBusca] = useState('')
   const [lancando, setLancando] = useState(null) // pagamento aberto no modal
   const [vinculando, setVinculando] = useState(null) // assinatura aberta no modal
@@ -180,19 +194,23 @@ export default function AdminAssinaturas() {
   const casaBusca = (...campos) => !termo || campos.some(c => String(c ?? '').toLowerCase().includes(termo))
 
   const pagamentosVisiveis = useMemo(() => pagamentos.filter(p => {
-    if (filtro === 'aprovados' && p.status !== 'approved') return false
-    if (filtro === 'recusados' && p.status !== 'rejected') return false
-    if (filtro === 'nao_lancados' && !precisaLancar(p)) return false
-    if (filtro === 'cartao' && !(p.tipo === 'credit_card' || p.tipo === 'debit_card')) return false
-    if (filtro === 'pix' && p.metodo !== 'pix') return false
-    if (filtro === 'sem_conta' && p.conta) return false
+    if (!passaNoFiltro(p, filtro)) return false
     return casaBusca(p.conta?.nome, p.conta?.pessoa, p.conta?.instancia, p.conta?.email, p.pagador_nome,
       p.pagador_email, p.titular_cartao, p.id, p.cartao_final, brl(p.valor), brl(p.liquido))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [pagamentos, filtro, termo])
 
+  // Contagem de cada filtro (respeita a busca), para os botões.
+  const contagemFiltro = useMemo(() => {
+    const base = pagamentos.filter(p => casaBusca(p.conta?.nome, p.conta?.pessoa, p.conta?.instancia, p.conta?.email,
+      p.pagador_nome, p.pagador_email, p.titular_cartao, p.id, p.cartao_final, brl(p.valor), brl(p.liquido)))
+    return Object.fromEntries(FILTROS.map(f => [f.value, base.filter(p => passaNoFiltro(p, f.value)).length]))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagamentos, termo])
+
+  // "Não concluída" = a pessoa abriu o checkout do cartão e desistiu: fica fora.
   const assinaturasVisiveis = useMemo(() => assinaturas
-    .filter(a => a.status !== 'pending' || filtro === 'todos')
+    .filter(a => a.status !== 'pending')
     .filter(a => casaBusca(a.conta?.nome, a.conta?.pessoa, a.conta?.instancia, a.conta?.email, a.pagador_email, a.id))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   , [assinaturas, filtro, termo])
@@ -402,7 +420,7 @@ export default function AdminAssinaturas() {
               icon="mdi:alert-circle-outline"
               accent={kpis.naoLancados ? 'warning' : 'neutral'}
               loading={carregando}
-              onClick={() => { setAba('recebimentos'); setFiltro('nao_lancados') }}
+              onClick={() => alternarFiltro('nao_lancados')}
               hint="O MP recebeu, o sistema não renovou"
             />
             <StatCard
@@ -411,7 +429,7 @@ export default function AdminAssinaturas() {
               icon="mdi:credit-card-remove-outline"
               accent={kpis.recusados ? 'danger' : 'neutral'}
               loading={carregando}
-              onClick={() => { setAba('recebimentos'); setFiltro('recusados') }}
+              onClick={() => alternarFiltro('recusados')}
               hint="O banco do cliente recusou"
             />
             <StatCard
@@ -441,12 +459,18 @@ export default function AdminAssinaturas() {
                 placeholder="Nome, instância, email, valor, final do cartão, nº da operação"
               />
             </div>
-            {aba === 'recebimentos' && (
-              <div style={{ minWidth: 220 }}>
-                <Select options={FILTROS} value={filtro} onChange={setFiltro} />
-              </div>
-            )}
           </div>
+
+          {aba === 'recebimentos' && (
+            <div style={{ marginBottom: 12, overflowX: 'auto' }}>
+              <Tabs
+                items={FILTROS.map(f => ({ value: f.value, label: f.label, count: contagemFiltro[f.value] }))}
+                value={filtro}
+                onChange={setFiltro}
+                variant="pills"
+              />
+            </div>
+          )}
 
           {aba === 'recebimentos' ? (
             <Table
@@ -466,7 +490,7 @@ export default function AdminAssinaturas() {
               rowKey="id"
               loading={carregando}
               emptyTitle="Nenhuma assinatura de cartão"
-              emptyMessage="Tentativas que a pessoa não concluiu ficam escondidas. Use o filtro “Todos” na aba Recebimentos para ver."
+              emptyMessage="Tentativas que a pessoa abriu e não concluiu ficam escondidas."
               emptyIcon="mdi:credit-card-off-outline"
             />
           )}
