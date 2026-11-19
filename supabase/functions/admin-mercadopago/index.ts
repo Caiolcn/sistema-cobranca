@@ -135,13 +135,25 @@ async function listar(supabase: any, dias: number) {
   const fim = new Date()
   const inicio = new Date(fim.getTime() - Math.min(dias, 365) * 24 * 60 * 60 * 1000)
 
-  const [pagamentosMP, preapprovals] = await Promise.all([
+  const [todosPagamentosMP, preapprovals, eu] = await Promise.all([
     buscarTodos(
       `/v1/payments/search?sort=date_created&criteria=desc&range=date_created` +
       `&begin_date=${encodeURIComponent(inicio.toISOString())}&end_date=${encodeURIComponent(fim.toISOString())}`
     ),
     buscarTodos('/preapproval/search'),
+    mpGet('/users/me').catch(() => null),
   ])
+
+  // Só o que ENTRA na conta. O search também devolve o que a conta pagou
+  // (Pix enviado, transferência): aí o recebedor (collector) é outra pessoa.
+  // Sem conseguir ler a própria conta, cai no filtro mais fraco.
+  const meuId = eu?.id ? String(eu.id) : null
+  const recebedor = (p: any) => String(p.collector_id ?? p.collector?.id ?? '')
+  // Se a busca não trouxer o recebedor em nenhum item, não arrisca esvaziar a tela.
+  const temRecebedor = todosPagamentosMP.some((p) => recebedor(p))
+  const pagamentosMP = todosPagamentosMP.filter((p) => meuId && temRecebedor
+    ? recebedor(p) === meuId
+    : p.operation_type !== 'money_transfer')
 
   // Vínculo assinatura → conta do NOSSO banco. Manda mais que o
   // external_reference do MP: a pessoa pode ter assinado logada numa conta
@@ -170,6 +182,12 @@ async function listar(supabase: any, dias: number) {
   const { data: contas } = await supabase
     .from('usuarios')
     .select('id, nome_empresa, nome_completo, email, telefone, plano, plano_pago, plano_vencimento')
+  // Nome da instância do WhatsApp: é por ela que o suporte reconhece o cliente
+  // ("Minha Empresa" não diz quem é).
+  const { data: zaps } = await supabase.from('mensallizap').select('user_id, instance_name')
+  const instanciaPorUser = new Map<string, string>()
+  for (const z of (zaps || [])) if (z.user_id && z.instance_name) instanciaPorUser.set(z.user_id, z.instance_name)
+
   const contaPorId = new Map<string, any>()
   const contaPorEmail = new Map<string, any>()
   for (const c of (contas || [])) {
@@ -191,6 +209,8 @@ async function listar(supabase: any, dias: number) {
   const resumoConta = (c: any) => c ? {
     id: c.id,
     nome: c.nome_empresa || c.nome_completo || c.email,
+    pessoa: c.nome_completo || null,
+    instancia: instanciaPorUser.get(c.id) || null,
     email: c.email,
     telefone: c.telefone,
     plano: c.plano,
@@ -244,6 +264,9 @@ async function listar(supabase: any, dias: number) {
       metodo: p.payment_method_id,
       parcelas: p.installments,
       cartao_final: p.card?.last_four_digits || null,
+      bandeira: p.payment_method_id || null,
+      referencia_externa: p.external_reference || null,
+      tipo_operacao: p.operation_type || null,
       titular_cartao: p.card?.cardholder?.name || null,
       pagador_nome: nomePagador,
       pagador_email: p.payer?.email || null,
