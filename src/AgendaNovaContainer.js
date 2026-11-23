@@ -83,7 +83,10 @@ export default function AgendaNovaContainer() {
       // pra turmas o campo vem null e os alunos seguem via `aulas_fixos`.
       supabase.from('aulas')
         .select('*, colaboradores(id, nome), devedores(id, nome, telefone, foto_url, lixo), modalidades(id, nome, cor)')
-        .eq('user_id', userId).eq('ativo', true).order('horario'),
+        // Traz as turmas pausadas também: elas ficam na grade apagadas
+        // (opacity) e o dono clica nelas para retomar. Sem isso a turma
+        // pausada sumia depois de recarregar e parecia excluída.
+        .eq('user_id', userId).order('horario'),
       // !inner + filtro de lixo: aluno fixo em lixeira não entra no roster
       supabase.from('aulas_fixos')
         .select('*, devedores!inner(nome, telefone, foto_url, lixo)')
@@ -245,6 +248,13 @@ export default function AgendaNovaContainer() {
     return lista
   }, [creditos])
 
+  // Turma pausada continua visível; aula INDIVIDUAL pausada é resto de aluno
+  // excluído ou horário trocado, então essa não aparece.
+  const aulasVisiveis = useMemo(() =>
+    aulas.filter(a => a.ativo !== false || !a.devedor_id)
+  , [aulas])
+  const aulasAtivas = useMemo(() => aulas.filter(a => a.ativo !== false), [aulas])
+
   const totalOcupado = useCallback((aulaId) => fixos.filter(f => f.aula_id === aulaId).length, [fixos])
 
   // Opções pro Select de filtro (memo precisa vir ANTES de qualquer early return)
@@ -258,7 +268,7 @@ export default function AgendaNovaContainer() {
 
   const subProps = {
     enviarNotifPresenca, dataSel, setDataSel,
-    aulas, fixos, creditos, onCredito: aplicarCredito,
+    aulas: aulasVisiveis, fixos, creditos, onCredito: aplicarCredito,
     versao,
     filtroAlunoId,
     onEditarAula: abrirEditarAula,
@@ -608,7 +618,7 @@ export default function AgendaNovaContainer() {
           clientes={clientes}
           fixosDaAula={fixos.filter(f => f.aula_id === fixoModal.aula.id)}
           vagasOcupadas={totalOcupado(fixoModal.aula.id)}
-          aulas={aulas}
+          aulas={aulasAtivas}
           fixos={fixos}
           onSaved={onAlunoAdicionado}
           onClose={() => setFixoModal(null)}
