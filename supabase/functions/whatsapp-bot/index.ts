@@ -690,7 +690,13 @@ async function capturarLeadMensalli(
   }
 
   // wa_message_id e UNIQUE: reentrega do mesmo evento nao duplica a conversa
-  const temMidia = tipo !== 'texto'
+  // Vídeo e documento que NÓS enviamos não são guardados: são sempre os mesmos
+  // materiais (depoimento, apresentação) e cada envio virava uma cópia nova no
+  // bucket lead-midia — 1,6 GB de repetidos estouraram a cota do plano em
+  // 22/11/2026 e derrubaram o sistema. Áudio/imagem e tudo que o lead manda
+  // continuam sendo baixados.
+  const midiaPropriaPesada = fromMe && (tipo === 'video' || tipo === 'documento')
+  const temMidia = tipo !== 'texto' && !midiaPropriaPesada
   const { data: gravada, error: msgErr } = await supabase
     .from('mensalli_lead_mensagens')
     .upsert(

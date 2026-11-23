@@ -339,8 +339,10 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios,
         </div>
       </div>
 
-      <div style={{ ...fieldBlock, display: 'flex', gap: '10px' }}>
-        <div style={{ flex: 1 }}>
+      {/* Lado a lado quando cabe; no celular quebra: Início em cima, Fim embaixo.
+          minWidth 0 deixa o campo encolher — sem ele o Fim vazava para a direita. */}
+      <div style={{ ...fieldBlock, display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
           <TimeInput
             label="Início"
             value={turma.horario}
@@ -348,7 +350,7 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios,
             portal
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
           <TimeInput
             label="Fim"
             value={turma.horarioFim}
