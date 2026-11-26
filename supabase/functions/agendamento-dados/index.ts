@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const { data: empresa, error: empresaError } = await supabase
       .from('usuarios')
-      .select('id, nome_empresa, logo_url, telefone, agendamento_ativo, agendamento_antecedencia_horas')
+      .select('id, nome_empresa, logo_url, telefone, agendamento_ativo, agendamento_antecedencia_horas, agendamento_dias_frente')
       .eq('agendamento_slug', slug)
       .single()
 
@@ -113,6 +113,8 @@ serve(async (req) => {
           logo_url: empresa.logo_url,
           telefone: empresa.telefone,
           antecedencia_horas: empresa.agendamento_antecedencia_horas || 2,
+          // Quantos dias à frente o aluno pode marcar (0 = só hoje). Padrão 14.
+          dias_frente: empresa.agendamento_dias_frente ?? 14,
         },
         aulas: aulas || [],
         agendamentos_contagem: contagemPorAulaData,

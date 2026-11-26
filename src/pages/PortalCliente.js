@@ -46,6 +46,7 @@ export default function PortalCliente() {
 
   // Agendamento (dentro do portal)
   const [agendamentoAulas, setAgendamentoAulas] = useState([])
+  const [agendamentoDiasFrente, setAgendamentoDiasFrente] = useState(14)
   const [agendamentoContagem, setAgendamentoContagem] = useState({})
   const [agendamentoFixos, setAgendamentoFixos] = useState({})
   const [agendamentoFila, setAgendamentoFila] = useState({})
@@ -367,6 +368,7 @@ export default function PortalCliente() {
       const idJson = await idRes.json()
 
       setAgendamentoAulas(dadosJson.aulas || [])
+      setAgendamentoDiasFrente(dadosJson.empresa?.dias_frente ?? 14)
       setAgendamentoContagem(dadosJson.agendamentos_contagem || {})
       setAgendamentoFixos(dadosJson.fixos_contagem || {})
       setAgendamentoFila(dadosJson.fila_contagem || {})
@@ -463,7 +465,8 @@ export default function PortalCliente() {
   const gerarProximasDatasAg = () => {
     const datas = []
     const hoje = new Date()
-    for (let i = 0; i < 14; i++) {
+    // Limite de dias à frente da empresa (Configurações > Agendamento online)
+    for (let i = 0; i <= agendamentoDiasFrente; i++) {
       const d = new Date(hoje)
       d.setDate(d.getDate() + i)
       if (agendamentoAulas.some(a => a.dia_semana === d.getDay())) datas.push(d)
