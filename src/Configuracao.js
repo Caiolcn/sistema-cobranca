@@ -255,7 +255,8 @@ function Configuracao({ secao = 'config' }) {
   const [agendamentoConfig, setAgendamentoConfig] = useState({
     slug: '',
     ativo: false,
-    antecedenciaHoras: 2
+    antecedenciaHoras: 2,
+    diasFrente: 14
   })
   const [salvandoAgendamento, setSalvandoAgendamento] = useState(false)
   const [gerandoSlug, setGerandoSlug] = useState(false)
@@ -426,7 +427,8 @@ function Configuracao({ secao = 'config' }) {
       setAgendamentoConfig({
         slug: data.agendamento_slug || '',
         ativo: data.agendamento_ativo || false,
-        antecedenciaHoras: data.agendamento_antecedencia_horas || 2
+        antecedenciaHoras: data.agendamento_antecedencia_horas || 2,
+        diasFrente: data.agendamento_dias_frente ?? 14
       })
 
       // Carregar config da landing page
@@ -3054,7 +3056,8 @@ function Configuracao({ secao = 'config' }) {
         .update({
           agendamento_slug: agendamentoConfig.slug || null,
           agendamento_ativo: agendamentoConfig.ativo,
-          agendamento_antecedencia_horas: agendamentoConfig.antecedenciaHoras
+          agendamento_antecedencia_horas: agendamentoConfig.antecedenciaHoras,
+          agendamento_dias_frente: Math.min(60, Math.max(0, agendamentoConfig.diasFrente))
         })
         .eq('id', contextUserId)
 
@@ -5023,6 +5026,32 @@ function Configuracao({ secao = 'config' }) {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Até quantos dias à frente o aluno pode marcar */}
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
+          Até quando o aluno pode agendar
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="number"
+            min="0"
+            max="60"
+            value={agendamentoConfig.diasFrente}
+            onChange={e => setAgendamentoConfig(prev => ({ ...prev, diasFrente: parseInt(e.target.value) || 0 }))}
+            style={{
+              width: '80px', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+              fontSize: '16px', textAlign: 'center', boxSizing: 'border-box'
+            }}
+          />
+          <span style={{ fontSize: '14px', color: '#555' }}>dias à frente</span>
+        </div>
+        <p style={{ fontSize: '12px', color: '#888', margin: '6px 0 0' }}>
+          {agendamentoConfig.diasFrente === 0
+            ? 'O aluno só consegue marcar aula para o mesmo dia'
+            : `Ex.: com ${agendamentoConfig.diasFrente}, numa segunda o aluno marca até ${['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'][agendamentoConfig.diasFrente % 7]}${agendamentoConfig.diasFrente >= 7 ? ` (${agendamentoConfig.diasFrente} dias depois)` : ''}. Menos dias = menos falta.`}
+        </p>
       </div>
 
       {/* Antecedência */}

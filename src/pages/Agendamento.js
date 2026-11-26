@@ -14,11 +14,13 @@ function formatarHorario(h) {
   return h.substring(0, 5)
 }
 
-function gerarProximasDatas(aulas, dias = 14) {
+// diasFrente = quantos dias depois de hoje o aluno pode marcar (config da
+// empresa; 0 = só hoje). Com 2, numa quarta mostra quarta, quinta e sexta.
+function gerarProximasDatas(aulas, diasFrente = 14) {
   const datas = []
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
-  for (let i = 0; i < dias; i++) {
+  for (let i = 0; i <= diasFrente; i++) {
     const d = new Date(hoje)
     d.setDate(d.getDate() + i)
     datas.push(d)
@@ -117,24 +119,13 @@ export default function Agendamento() {
   // Selecionar primeiro dia com aulas
   useEffect(() => {
     if (aulas.length > 0 && !diaSelecionado) {
-      const hoje = new Date()
-      hoje.setHours(0, 0, 0, 0)
       const diasComAula = [...new Set(aulas.map(a => a.dia_semana))]
-      // Encontrar proximo dia com aula a partir de hoje
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(hoje)
-        d.setDate(d.getDate() + i)
-        if (diasComAula.includes(d.getDay())) {
-          setDiaSelecionado(dataParaString(d))
-          return
-        }
-      }
-      // Fallback: primeira data disponivel
-      const datas = gerarProximasDatas(aulas)
+      // Próximo dia com aula dentro do limite de dias à frente da empresa
+      const datas = gerarProximasDatas(aulas, empresa?.dias_frente ?? 14)
       const primeira = datas.find(d => diasComAula.includes(d.getDay()))
       if (primeira) setDiaSelecionado(dataParaString(primeira))
     }
-  }, [aulas, diaSelecionado])
+  }, [aulas, diaSelecionado, empresa])
 
   // Mascara telefone
   const mascaraTelefone = (v) => {
@@ -421,7 +412,14 @@ export default function Agendamento() {
   }
 
   // Calcular datas disponiveis
-  const datasDisponiveis = gerarProximasDatas(aulas).filter(d => {
+  const diasFrente = empresa?.dias_frente ?? 14
+  const limiteAgendamento = (() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + diasFrente)
+    return d
+  })()
+  const datasDisponiveis = gerarProximasDatas(aulas, diasFrente).filter(d => {
     return aulas.some(a => a.dia_semana === d.getDay())
   })
 
@@ -982,6 +980,19 @@ export default function Agendamento() {
         {/* ===== TAB AGENDAR ===== */}
         {tab === 'agendar' && (
           <div style={{ animation: 'fadeIn 0.3s ease both' }}>
+            {/* Limite de dias à frente (só aparece quando a empresa encurtou) */}
+            {diasFrente < 14 && (
+              <div style={{
+                fontSize: 13, color: '#475569', background: '#f1f5f9', borderRadius: 10,
+                padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6
+              }}>
+                <Icon icon="mdi:calendar-clock" width="16" style={{ color: '#64748b', flexShrink: 0 }} />
+                {diasFrente === 0
+                  ? 'Agendamentos abertos só para hoje'
+                  : `Agendamentos abertos até ${limiteAgendamento.toLocaleDateString('pt-BR', { weekday: 'long' })}, ${formatarDataCurta(limiteAgendamento)}`}
+              </div>
+            )}
+
             {/* Seletor de dias */}
             <div style={{
               display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8,
