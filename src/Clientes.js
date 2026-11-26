@@ -33,6 +33,7 @@ import DateField from './components/DateField'
 import RadarEvasao from './components/RadarEvasao'
 import AprovacaoCadastros from './components/AprovacaoCadastros'
 import { hojeISO } from './utils/dataLocal'
+import { reduzirImagem } from './utils/upload'
 
 // Soft-delete: mensalidades na lixeira têm lixo = true.
 // SEMPRE busque mensalidades para exibição/contagem/edição por aqui, para o filtro
@@ -2773,18 +2774,22 @@ Equipe ${nomeEmpresa}`
                   accept="image/*"
                   style={{ display: 'none' }}
                   onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    if (file.size > 2 * 1024 * 1024) {
-                      showToast('Imagem muito grande. Máximo 2MB.', 'warning')
-                      return
-                    }
+                    const original = e.target.files?.[0]
+                    e.target.value = '' // deixa escolher a mesma foto de novo
+                    if (!original) return
                     try {
-                      const ext = file.name.split('.').pop()
+                      // Diminui no navegador (até 800px, JPEG): foto de celular
+                      // de 4 MB vira ~200 KB e passa no limite de 2 MB do bucket.
+                      const file = await reduzirImagem(original)
+                      if (file.size > 2 * 1024 * 1024) {
+                        showToast('Não consegui reduzir essa imagem. Tente uma foto em JPG ou PNG.', 'warning')
+                        return
+                      }
+                      const ext = file.type === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'jpg').toLowerCase()
                       const fileName = `${userId}/${clienteSelecionado.id}.${ext}`
                       const { error: uploadError } = await supabase.storage
                         .from('avatars')
-                        .upload(fileName, file, { upsert: true })
+                        .upload(fileName, file, { upsert: true, contentType: file.type })
                       if (uploadError) throw uploadError
 
                       const { data: urlData } = supabase.storage
