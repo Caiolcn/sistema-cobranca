@@ -40,3 +40,65 @@ export async function uploadPublico(userId, file, opts = {}) {
   const { data } = supabase.storage.from(bucket).getPublicUrl(caminho)
   return data.publicUrl
 }
+
+/**
+ * Diminui a foto no próprio navegador antes de enviar: lado maior até `max` px,
+ * JPEG com `qualidade`. Foto de celular (3–5 MB) vira ~100–250 KB, então o
+ * limite de tamanho deixa de ser problema e a lista carrega mais rápido.
+ * Se o navegador não conseguir abrir a imagem (ex.: HEIC no Chrome do
+ * Windows), devolve o arquivo original — quem chama decide o que fazer.
+ *
+ * @param {File} file
+ * @param {{ max?: number, qualidade?: number }} opts
+ * @returns {Promise<File>}
+ */
+export async function reduzirImagem(file, { max = 800, qualidade = 0.82 } = {}) {
+  if (!file?.type?.startsWith('image/') || file.type === 'image/gif') return file
+  let bitmap
+  try {
+    bitmap = await carregarImagem(file)
+  } catch {
+    return file
+  }
+  const escala = Math.min(1, max / Math.max(bitmap.width, bitmap.height))
+  const largura = Math.max(1, Math.round(bitmap.width * escala))
+  const altura = Math.max(1, Math.round(bitmap.height * escala))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = largura
+  canvas.height = altura
+  const ctx = canvas.getContext('2d')
+  // Fundo branco: PNG com transparência viraria preto no JPEG.
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, largura, altura)
+  ctx.drawImage(bitmap, 0, 0, largura, altura)
+  bitmap.close?.()
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', qualidade))
+  if (!blob) return file
+  // Imagem já pequena que ficaria maior recomprimida: mantém a original.
+  if (blob.size >= file.size && escala === 1) return file
+  const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg'
+  return new File([blob], nome, { type: 'image/jpeg' })
+}
+
+// createImageBitmap respeita a rotação EXIF da foto do celular; o <img> é o
+// plano B para navegadores sem essa opção.
+async function carregarImagem(file) {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' })
+    } catch { /* cai no <img> */ }
+  }
+  const url = URL.createObjectURL(file)
+  try {
+    return await new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = url
+    })
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+}
