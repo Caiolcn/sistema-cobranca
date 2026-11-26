@@ -2080,8 +2080,8 @@ Equipe ${nomeEmpresa}`
                   left: isSmallScreen ? 0 : 'auto',
                   bottom: isSmallScreen ? 0 : 'auto',
                   width: isSmallScreen ? '100%' : '340px',
-                  height: isSmallScreen ? '100vh' : 'auto',
-                  maxHeight: isSmallScreen ? '100vh' : 'calc(100vh - 70px)',
+                  height: isSmallScreen ? '100dvh' : 'auto',
+                  maxHeight: isSmallScreen ? '100dvh' : 'calc(100vh - 70px)',
                   backgroundColor: 'white',
                   borderRadius: isSmallScreen ? 0 : '8px',
                   boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
@@ -2234,11 +2234,25 @@ Equipe ${nomeEmpresa}`
                     />
                   </div>
 
-                  {/* Botão Limpar Filtros */}
+                </div>
+
+                {/* Rodapé fixo: Aplicar + Limpar. Os filtros já valem na hora,
+                    mas no celular o painel cobre a tela toda e o dono ficava
+                    sem saída — o "Ver alunos" fecha o painel e mostra a lista. */}
+                <div style={{
+                  position: 'sticky',
+                  bottom: 0,
+                  marginTop: 'auto',
+                  padding: isSmallScreen ? '12px 16px calc(12px + env(safe-area-inset-bottom))' : '12px 16px',
+                  borderTop: '1px solid #e5e7eb',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  gap: '8px'
+                }}>
                   <Button
                     variant="gray"
                     icon="mdi:filter-off-outline"
-                    fullWidth
+                    style={{ flex: 1 }}
                     onClick={() => {
                       setFiltroStatus('todos')
                       setFiltroPlano('todos')
@@ -2250,10 +2264,17 @@ Equipe ${nomeEmpresa}`
                       setFiltroAniversariante(false)
                       setBusca('')
                       setSearchParams({})
-                      setMostrarFiltros(false)
                     }}
                   >
-                    Limpar Filtros
+                    Limpar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    icon="mdi:check"
+                    style={{ flex: 2 }}
+                    onClick={() => setMostrarFiltros(false)}
+                  >
+                    {`Ver ${clientesFiltrados.length} ${clientesFiltrados.length === 1 ? 'aluno' : 'alunos'}`}
                   </Button>
                 </div>
               </div>

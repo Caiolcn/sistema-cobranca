@@ -69,7 +69,9 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
   const salvar = async () => {
     if (!horario) { showToast('Informe o horário', 'warning'); return }
     if (dias.length === 0) { showToast('Selecione pelo menos um dia', 'warning'); return }
-    if (capacidade < 1) { showToast('Capacidade mínima é 1', 'warning'); return }
+    const cap = parseInt(capacidade, 10)
+    if (!cap || cap < 1) { showToast('Informe quantas vagas a turma tem', 'warning'); return }
+    if (cap > 100) { showToast('Capacidade máxima é 100 vagas', 'warning'); return }
 
     setSalvando(true)
 
@@ -79,7 +81,7 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
       const { data, error } = await supabase.from('aulas')
         .update({
           dia_semana: dias[0], horario, descricao: descricao.trim(),
-          capacidade, professor_id: profPayload, modalidade_id: modalidadeId || null,
+          capacidade: cap, professor_id: profPayload, modalidade_id: modalidadeId || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', editandoAula.id).select()
@@ -99,7 +101,7 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
       for (const d of dias) for (const h of horarios) {
         registros.push({
           user_id: userId, dia_semana: d, horario: h,
-          descricao: descricao.trim(), capacidade, professor_id: profPayload,
+          descricao: descricao.trim(), capacidade: cap, professor_id: profPayload,
           modalidade_id: modalidadeId || null
         })
       }
@@ -245,7 +247,7 @@ export default function AgendaAulaModal({ userId, editandoAula, colaboradores = 
             Capacidade (vagas)
           </label>
           <input type="number" min="1" max="100" value={capacidade}
-            onChange={e => setCapacidade(parseInt(e.target.value) || 1)}
+            onChange={e => setCapacidade(e.target.value.replace(/\D/g, '').slice(0, 3))}
             style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }} />
         </div>
 

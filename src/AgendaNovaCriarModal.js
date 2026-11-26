@@ -137,7 +137,9 @@ export default function AgendaNovaCriarModal({
   const salvarTurma = async () => {
     if (!turma.horario) { showToast('Informe o horário de início', 'warning'); return }
     if (turma.dias.length === 0) { showToast('Selecione pelo menos um dia', 'warning'); return }
-    if (turma.capacidade < 1) { showToast('Capacidade mínima é 1', 'warning'); return }
+    const capacidade = parseInt(turma.capacidade, 10)
+    if (!capacidade || capacidade < 1) { showToast('Informe quantas vagas a turma tem', 'warning'); return }
+    if (capacidade > 100) { showToast('Capacidade máxima é 100 vagas', 'warning'); return }
 
     const horarios = gerarHorarios(turma.horario, turma.horarioFim, turma.intervalo)
     if (horarios.length === 0) {
@@ -153,7 +155,7 @@ export default function AgendaNovaCriarModal({
         dia_semana: d,
         horario: h,
         descricao: turma.descricao.trim(),
-        capacidade: turma.capacidade,
+        capacidade,
         professor_id: turma.professorId || null,
         modalidade_id: turma.modalidadeId || null
       })
@@ -426,7 +428,9 @@ function FormTurma({ turma, setField, toggleDia, colaboradores, previewHorarios,
           min="1"
           max="100"
           value={turma.capacidade}
-          onChange={e => setField('capacidade', parseInt(e.target.value) || 1)}
+          // Guarda o texto cru: o dono precisa poder apagar tudo para digitar
+          // outro número (antes voltava para 1 e travava). Valida no salvar.
+          onChange={e => setField('capacidade', e.target.value.replace(/\D/g, '').slice(0, 3))}
         />
       </div>
 
