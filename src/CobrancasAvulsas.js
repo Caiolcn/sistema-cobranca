@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabaseClient'
-import { Icon } from '@iconify/react'
 import { showToast } from './Toast'
 import ConfirmModal from './ConfirmModal'
 import { SkeletonList, SkeletonTable, SkeletonCard } from './components/Skeleton'
@@ -13,6 +12,13 @@ import Button from './design-system/components/Button'
 import SearchInput from './design-system/components/SearchInput'
 import Input from './design-system/components/Input'
 import Select from './design-system/components/Select'
+import Badge from './design-system/components/Badge'
+import StatCard from './design-system/components/StatCard'
+import EmptyState from './design-system/components/EmptyState'
+import Card from './design-system/components/Card'
+import Table from './design-system/components/Table'
+import Modal from './design-system/components/Modal'
+import Textarea from './design-system/components/Textarea'
 import DateField from './components/DateField'
 import { hojeISO } from './utils/dataLocal'
 
@@ -253,6 +259,35 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
     setQuantidadeTotal(lista.length)
   }
 
+  // Filtros em rascunho: o que a pessoa muda na janela de Filtros só vale ao
+  // tocar em "Ver resultados". Fechar no X, no Esc ou tocando fora descarta.
+  const FILTRO_VAZIO = { busca: '', filtroCategoria: 'todos', filtroStatus: 'todos', filtroDataInicio: '', filtroDataFim: '' }
+  const [rascunho, setRascunho] = useState(FILTRO_VAZIO)
+  const abrirFiltros = () => {
+    setRascunho({ busca, filtroCategoria, filtroStatus, filtroDataInicio, filtroDataFim })
+    setMostrarFiltros(true)
+  }
+  const mudarRascunho = (campo, valor) => setRascunho(r => ({ ...r, [campo]: valor }))
+  // Limpar zera o que está aplicado e já fecha a janela (pedido do dono).
+  const limparRascunho = () => {
+    setRascunho(FILTRO_VAZIO)
+    setBusca(FILTRO_VAZIO.busca)
+    setFiltroCategoria(FILTRO_VAZIO.filtroCategoria)
+    setFiltroStatus(FILTRO_VAZIO.filtroStatus)
+    setFiltroDataInicio(FILTRO_VAZIO.filtroDataInicio)
+    setFiltroDataFim(FILTRO_VAZIO.filtroDataFim)
+    setMostrarFiltros(false)
+  }
+  const verResultadosFiltro = () => {
+    setBusca(rascunho.busca)
+    setFiltroCategoria(rascunho.filtroCategoria)
+    setFiltroStatus(rascunho.filtroStatus)
+    setFiltroDataInicio(rascunho.filtroDataInicio)
+    setFiltroDataFim(rascunho.filtroDataFim)
+    setMostrarFiltros(false)
+  }
+  const rascunhoTemFiltro = rascunho.busca.trim() !== '' || rascunho.filtroCategoria !== 'todos' || rascunho.filtroStatus !== 'todos' || rascunho.filtroDataInicio !== '' || rascunho.filtroDataFim !== ''
+
   const temFiltrosAtivos = filtroCategoria !== 'todos' || filtroStatus !== 'todos' || filtroDataInicio !== '' || filtroDataFim !== '' || busca.trim() !== ''
 
   const limparFiltros = () => {
@@ -261,19 +296,8 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
     setFiltroStatus('todos')
     setFiltroDataInicio('')
     setFiltroDataFim('')
-    setMostrarFiltros(false)
   }
 
-  // Fechar popover ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (mostrarFiltros && !event.target.closest('.popover-filtros-avulsas') && !event.target.closest('.btn-filtrar-avulsas')) {
-        setMostrarFiltros(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [mostrarFiltros])
 
   // ==================== PAGINAÇÃO ====================
 
@@ -450,21 +474,13 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
   const getStatusBadge = (cobranca) => {
     const status = getStatusCobranca(cobranca)
     const configs = {
-      pago: { bg: '#4CAF50', text: 'Pago' },
-      pendente: { bg: '#2196F3', text: 'Pendente' },
-      atrasado: { bg: '#f44336', text: 'Atrasado' },
-      cancelado: { bg: '#9e9e9e', text: 'Cancelado' }
+      pago: { variant: 'success', text: 'Pago' },
+      pendente: { variant: 'info', text: 'Pendente' },
+      atrasado: { variant: 'danger', text: 'Atrasado' },
+      cancelado: { variant: 'default', text: 'Cancelado' }
     }
     const config = configs[status] || configs.pendente
-    return (
-      <span style={{
-        backgroundColor: config.bg, color: 'white',
-        padding: '3px 10px', borderRadius: '12px',
-        fontSize: '11px', fontWeight: 'bold'
-      }}>
-        {config.text}
-      </span>
-    )
+    return <Badge variant={config.variant} solid>{config.text}</Badge>
   }
 
   // ==================== EXPORTAR ====================
@@ -510,29 +526,31 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
   // ==================== RENDER ====================
 
   const buttonsBlock = (
-    <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center', flexWrap: 'wrap', width: isSmallScreen ? '100%' : 'auto' }}>
       <Button
         variant="outline"
-        icon="ph:export-light"
-        iconOnly
-        aria-label="Exportar"
+        icon={isSmallScreen ? undefined : 'ph:export-light'}
+        aria-label="Exportar CSV"
         title="Exportar CSV"
         onClick={handleExportarCSV}
-        style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
-      />
+        style={{ flex: isSmallScreen ? 1 : 'none' }}
+      >
+        Exportar
+      </Button>
 
       <Button
         className="btn-filtrar-avulsas"
         variant={temFiltrosAtivos ? 'secondary' : 'outline'}
-        icon="mdi:filter-outline"
-        onClick={() => setMostrarFiltros(!mostrarFiltros)}
-        style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
+        icon={isSmallScreen ? undefined : 'mdi:filter-outline'}
+        aria-expanded={mostrarFiltros}
+        onClick={abrirFiltros}
+        style={{ flex: isSmallScreen ? 1 : 'none' }}
       >
-        {!isSmallScreen && 'Filtrar'}
+        Filtrar
         {temFiltrosAtivos && (
           <span style={{
             position: 'absolute', top: '-6px', right: '-6px',
-            backgroundColor: '#f44336', color: 'white', borderRadius: '50%',
+            backgroundColor: 'var(--danger-700)', color: 'white', borderRadius: '50%',
             width: '20px', height: '20px', fontSize: '11px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: '700', border: '2px solid white'
@@ -541,51 +559,29 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
       </Button>
 
       <Button
-        variant="secondary"
-        icon="mdi:plus"
+        variant="primary"
+        icon={isSmallScreen ? undefined : 'mdi:plus'}
         onClick={abrirModalNova}
-        style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
+        style={{ flex: isSmallScreen ? 1 : 'none' }}
       >
-        {!isSmallScreen && 'Nova Cobrança'}
+        {isSmallScreen ? 'Adicionar' : 'Nova cobrança'}
       </Button>
 
-      {mostrarFiltros && (
-        <div
-          className="popover-filtros-avulsas"
-          style={{
-            position: isSmallScreen ? 'fixed' : 'absolute',
-            top: isSmallScreen ? 0 : '50px',
-            right: isSmallScreen ? 0 : '0',
-            left: isSmallScreen ? 0 : 'auto',
-            bottom: isSmallScreen ? 0 : 'auto',
-            width: isSmallScreen ? '100%' : '340px',
-            height: isSmallScreen ? '100vh' : 'auto',
-            backgroundColor: 'white',
-            borderRadius: isSmallScreen ? 0 : '8px',
-            boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-            border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
-            zIndex: 1001, overflow: isSmallScreen ? 'auto' : 'hidden',
-            display: 'flex', flexDirection: 'column'
-          }}
-        >
-          {isSmallScreen && (
-            <div style={{
-              padding: '16px 20px', borderBottom: '1px solid #e5e7eb',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1
-            }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Filtros</h3>
-              <Button variant="ghost" icon="mdi:close" iconOnly aria-label="Fechar" onClick={() => setMostrarFiltros(false)} />
-            </div>
-          )}
-
-          <div style={{ padding: '16px 20px' }}>
+      {/* Filtros — Modal do DS, igual ao de Nova cobrança */}
+      <Modal
+        isOpen={mostrarFiltros}
+        onClose={() => setMostrarFiltros(false)}
+        title="Filtros"
+        size="sm"
+      >
+        <Modal.Body>
+          <div>
             <div style={{ marginBottom: '16px' }}>
               <SearchInput
                 label="Buscar"
                 placeholder="Descrição ou nome do aluno..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
+                value={rascunho.busca}
+                onChange={(e) => mudarRascunho('busca', e.target.value)}
               />
             </div>
 
@@ -594,8 +590,8 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                 label="Categoria"
                 portal
                 options={[{ value: 'todos', label: 'Todas' }, ...todasCategorias.map(cat => ({ value: cat.value, label: cat.label, icon: cat.icon }))]}
-                value={filtroCategoria}
-                onChange={(v) => setFiltroCategoria(v)}
+                value={rascunho.filtroCategoria}
+                onChange={(v) => mudarRascunho('filtroCategoria', v)}
               />
             </div>
 
@@ -610,28 +606,31 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   { value: 'atrasado', label: 'Atrasado' },
                   { value: 'cancelado', label: 'Cancelado' }
                 ]}
-                value={filtroStatus}
-                onChange={(v) => setFiltroStatus(v)}
+                value={rascunho.filtroStatus}
+                onChange={(v) => mudarRascunho('filtroStatus', v)}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Período</label>
+              <span className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>Período</span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <DateField value={filtroDataInicio} onChange={setFiltroDataInicio} />
-                <span style={{ color: '#999', fontSize: '12px', fontWeight: '500' }}>até</span>
-                <DateField value={filtroDataFim} onChange={setFiltroDataFim} />
+                <DateField value={rascunho.filtroDataInicio} onChange={(v) => mudarRascunho('filtroDataInicio', v)} />
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)', fontWeight: 500 }}>até</span>
+                <DateField value={rascunho.filtroDataFim} onChange={(v) => mudarRascunho('filtroDataFim', v)} />
               </div>
             </div>
 
-            {temFiltrosAtivos && (
-              <Button variant="secondary" fullWidth onClick={limparFiltros}>
-                Limpar filtros
-              </Button>
-            )}
           </div>
-        </div>
-      )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" disabled={!rascunhoTemFiltro && !temFiltrosAtivos} onClick={limparRascunho} style={{ flex: 1 }}>
+            Limpar
+          </Button>
+          <Button variant="primary" onClick={verResultadosFiltro} style={{ flex: 2 }}>
+            Ver resultados
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   )
 
@@ -640,7 +639,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
       {/* ========== TÍTULO (apenas quando não está embedded) ========== */}
       {!embedded && (
       <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
-        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+        <h2 className="ds-text-h4" style={{ margin: 0, color: 'var(--color-brand-dark)' }}>
           Cobranças Avulsas
         </h2>
         <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
@@ -658,345 +657,291 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
 
       {/* ========== CARDS DE INDICADORES ========== */}
       <div style={{
-        backgroundColor: 'white', borderRadius: '0',
-        border: 'none', boxShadow: 'none',
-        padding: isSmallScreen ? '0 0 16px 0' : '0 0 20px 0',
-        marginBottom: 0
+        display: 'grid',
+        gridTemplateColumns: isSmallScreen ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+        gap: isSmallScreen ? '10px' : '16px',
+        marginBottom: isSmallScreen ? '16px' : '20px'
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isSmallScreen ? '12px' : '16px'
-        }}>
-          {/* Card 1: Total Cobranças */}
-          <div style={{
-            padding: '14px 18px', borderLeft: '3px solid #2196F3',
-            backgroundColor: '#f0f7ff', borderRadius: '8px'
-          }}>
-            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Total</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:receipt-text-outline" width="18" height="18" style={{ color: '#2196F3' }} />
-              <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                {quantidadeTotal}
-              </span>
-            </div>
-            <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-              cobrança{quantidadeTotal !== 1 ? 's' : ''}
-            </p>
-          </div>
-
-          {/* Card 2: Valor Recebido */}
-          <div style={{
-            padding: '14px 18px', borderLeft: '3px solid #4CAF50',
-            backgroundColor: '#f1f8f4', borderRadius: '8px'
-          }}>
-            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Recebido</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:check-circle-outline" width="18" height="18" style={{ color: '#4CAF50' }} />
-              <span style={{ fontSize: isSmallScreen ? '16px' : '20px', fontWeight: '700', color: '#344848' }}>
-                {formatarMoeda(totalRecebido)}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: Valor Pendente */}
-          <div style={{
-            padding: '14px 18px', borderLeft: '3px solid #f44336',
-            backgroundColor: '#fff5f5', borderRadius: '8px'
-          }}>
-            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Pendente</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="solar:danger-triangle-linear" width="18" height="18" style={{ color: '#f44336' }} />
-              <span style={{ fontSize: isSmallScreen ? '16px' : '20px', fontWeight: '700', color: '#344848' }}>
-                {formatarMoeda(totalPendente)}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4: Valor Total */}
-          <div style={{
-            padding: '14px 18px', borderLeft: '3px solid #ff9800',
-            backgroundColor: '#fff8f0', borderRadius: '8px'
-          }}>
-            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Valor Total</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon icon="mdi:chart-line" width="18" height="18" style={{ color: '#ff9800' }} />
-              <span style={{ fontSize: isSmallScreen ? '16px' : '20px', fontWeight: '700', color: '#344848' }}>
-                {formatarMoeda(totalGeral)}
-              </span>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          label="Vendas"
+          icon="mdi:receipt-text-outline"
+          accent="info"
+          tinted
+          size={isMobile ? 'sm' : 'md'}
+          value={String(quantidadeTotal)}
+          hint={`cobrança${quantidadeTotal !== 1 ? 's' : ''} no total`}
+        />
+        <StatCard
+          label="Recebido"
+          icon="mdi:check-circle-outline"
+          accent="success"
+          tinted
+          size={isMobile ? 'sm' : 'md'}
+          value={formatarMoeda(totalRecebido)}
+          hint="já pago"
+          onClick={() => setFiltroStatus(filtroStatus === 'pago' ? 'todos' : 'pago')}
+          aria-pressed={filtroStatus === 'pago'}
+          title="Filtrar a lista pelas vendas pagas"
+        />
+        <StatCard
+          label="Pendente"
+          icon="solar:danger-triangle-linear"
+          accent="danger"
+          tinted
+          size={isMobile ? 'sm' : 'md'}
+          value={formatarMoeda(totalPendente)}
+          hint="a receber"
+          onClick={() => setFiltroStatus(filtroStatus === 'pendente' ? 'todos' : 'pendente')}
+          aria-pressed={filtroStatus === 'pendente'}
+          title="Filtrar a lista pelas vendas pendentes"
+        />
+        <StatCard
+          label="Valor total"
+          icon="mdi:chart-line"
+          accent="warning"
+          tinted
+          size={isMobile ? 'sm' : 'md'}
+          value={formatarMoeda(totalGeral)}
+          hint="recebido + pendente"
+        />
       </div>
 
       {/* ========== LISTA ========== */}
       {cobrancasFiltradas.length === 0 ? (
-        <div style={{
-          backgroundColor: 'white', borderRadius: '8px', padding: '60px 20px',
-          textAlign: 'center', border: '1px solid #e5e7eb', boxShadow: 'none'
-        }}>
-          <Icon icon="mdi:receipt-text-plus-outline" width="48" height="48" style={{ color: '#ccc', marginBottom: '12px' }} />
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#666' }}>
-            {cobrancas.length === 0 ? 'Nenhuma cobrança avulsa cadastrada' : 'Nenhuma cobrança encontrada'}
-          </h3>
-          <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>
-            {cobrancas.length === 0
-              ? 'Clique em "Nova Cobrança" para registrar uma venda avulsa.'
-              : 'Tente ajustar os filtros de busca.'
-            }
-          </p>
-        </div>
+        cobrancas.length === 0 ? (
+          <EmptyState
+            variant="first-use"
+            icon="mdi:receipt-text-plus-outline"
+            title="Nenhuma venda registrada"
+            description="Registre uniforme, luva, aula avulsa ou qualquer cobrança fora da mensalidade."
+            action={<Button variant="primary" icon="mdi:plus" onClick={abrirModalNova}>Nova cobrança</Button>}
+          />
+        ) : (
+          <EmptyState
+            variant="no-matches"
+            title="Nenhuma venda com esses filtros"
+            description="Mude a busca ou os filtros para ver outras vendas."
+            action={<Button variant="outline" onClick={limparFiltros}>Limpar filtros</Button>}
+          />
+        )
       ) : isSmallScreen ? (
-        /* ===== MOBILE: CARDS ===== */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        /* ===== CELULAR: CARTÕES ===== */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {cobrancasPaginadas.map(cobranca => {
             const catInfo = getCategoriaInfo(cobranca.categoria)
             return (
-              <div
+              <Card
                 key={cobranca.id}
+                padding="tight"
                 onClick={() => abrirModalEditar(cobranca)}
-                style={{
-                  backgroundColor: 'white', borderRadius: '8px', padding: '16px',
-                  border: '1px solid #e5e7eb', boxShadow: 'none',
-                  borderLeft: `4px solid ${catInfo.cor}`,
-                  cursor: 'pointer'
+                role="button"
+                tabIndex={0}
+                aria-label={`Editar venda ${cobranca.descricao}`}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirModalEditar(cobranca) }
                 }}
+                style={{ cursor: 'pointer', borderLeft: `4px solid ${catInfo.cor}` }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '2px' }}>
                       {cobranca.descricao}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                       {catInfo.label}
                       {cobranca.devedores?.nome && ` · ${cobranca.devedores.nome}`}
                     </div>
                     {cobranca.observacoes && (
-                      <div style={{
-                        fontSize: '11px', color: '#aaa', marginTop: '3px', fontStyle: 'italic',
-                        maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }}>
+                      <div title={cobranca.observacoes} style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)', marginTop: '3px', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {cobranca.observacoes}
                       </div>
                     )}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a' }}>{formatarMoeda(cobranca.valor)}</div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatarMoeda(cobranca.valor)}</div>
                     <div style={{ marginTop: '4px' }}>{getStatusBadge(cobranca)}</div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: '8px' }}>
-                  <div style={{ fontSize: '12px', color: '#999' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                     Venc: {new Date(cobranca.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleMarcarPago(cobranca) }}
+                    <Button
+                      variant={cobranca.status === 'pago' ? 'outline' : 'gray'}
+                      size="sm"
+                      selected={cobranca.status === 'pago'}
+                      icon={cobranca.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'}
+                      iconOnly
+                      aria-label={cobranca.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
                       title={cobranca.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: cobranca.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
-                        color: cobranca.status === 'pago' ? '#4CAF50' : '#666',
-                        border: 'none', borderRadius: '4px', cursor: 'pointer',
-                        fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px'
-                      }}
-                    >
-                      <Icon icon={cobranca.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="16" height="16" />
-                    </button>
-                    <button
+                      onClick={(e) => { e.stopPropagation(); handleMarcarPago(cobranca) }}
+                    />
+                    <Button
+                      variant="danger-soft"
+                      size="sm"
+                      icon="mdi:delete-outline"
+                      iconOnly
+                      aria-label="Excluir venda"
+                      title="Excluir"
                       onClick={(e) => { e.stopPropagation(); setConfirmDelete({ show: true, cobranca }) }}
-                      style={{
-                        padding: '6px 10px', backgroundColor: '#ffebee',
-                        color: '#f44336', border: 'none', borderRadius: '4px',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center'
-                      }}
-                    >
-                      <Icon icon="mdi:delete-outline" width="16" height="16" />
-                    </button>
+                    />
                   </div>
                 </div>
-              </div>
+              </Card>
             )
           })}
         </div>
       ) : (
-        /* ===== DESKTOP: TABELA ===== */
-        <div style={{
-          backgroundColor: 'white', borderRadius: '8px',
-          border: '1px solid #e5e7eb', boxShadow: 'none', overflow: 'hidden'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #e5e7eb' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#666' }}>Descrição</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Aluno</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Categoria</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Valor</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Vencimento</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Status</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cobrancasPaginadas.map(cobranca => {
+        /* ===== COMPUTADOR: TABELA DO DS ===== */
+        <Table
+          data={cobrancasPaginadas}
+          rowKey="id"
+          onRowClick={(cobranca) => abrirModalEditar(cobranca)}
+          columns={[
+            {
+              key: 'descricao',
+              label: 'Descrição',
+              render: (cobranca) => (
+                <>
+                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{cobranca.descricao}</div>
+                  {cobranca.observacoes && (
+                    <div title={cobranca.observacoes} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '2px', fontStyle: 'italic', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cobranca.observacoes}
+                    </div>
+                  )}
+                </>
+              )
+            },
+            {
+              key: 'aluno',
+              label: 'Aluno',
+              align: 'center',
+              render: (cobranca) => cobranca.devedores?.nome || <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+            },
+            {
+              key: 'categoria',
+              label: 'Categoria',
+              align: 'center',
+              render: (cobranca) => {
                 const catInfo = getCategoriaInfo(cobranca.categoria)
                 return (
-                  <tr key={cobranca.id} style={{ borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s', cursor: 'pointer' }}
-                    onClick={() => abrirModalEditar(cobranca)}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                  >
-                    <td style={{ padding: '16px 20px', fontSize: '14px', color: '#1a1a1a', fontWeight: '500' }}>
-                      <div>{cobranca.descricao}</div>
-                      {cobranca.observacoes && (
-                        <div title={cobranca.observacoes} style={{
-                          fontSize: '12px', color: '#999', fontWeight: '400', marginTop: '2px', fontStyle: 'italic',
-                          maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                        }}>
-                          {cobranca.observacoes}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {cobranca.devedores?.nome || <span style={{ color: '#ccc' }}>-</span>}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '13px', textAlign: 'center' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        backgroundColor: catInfo.cor + '15', color: catInfo.cor,
-                        padding: '4px 10px', borderRadius: '14px', fontSize: '12px', fontWeight: '600'
-                      }}>
-                        <Icon icon={catInfo.icon} width="14" height="14" />
-                        {catInfo.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '14px', fontWeight: '600', color: '#1a1a1a', textAlign: 'center' }}>
-                      {formatarMoeda(cobranca.valor)}
-                    </td>
-                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                      {new Date(cobranca.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                    </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                      {getStatusBadge(cobranca)}
-                    </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleMarcarPago(cobranca) }}
-                          title={cobranca.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
-                          style={{
-                            padding: '6px 8px',
-                            backgroundColor: cobranca.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
-                            color: cobranca.status === 'pago' ? '#4CAF50' : '#666',
-                            border: 'none', borderRadius: '4px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', transition: 'all 0.2s'
-                          }}
-                        >
-                          <Icon icon={cobranca.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="18" height="18" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmDelete({ show: true, cobranca }) }}
-                          title="Excluir"
-                          style={{
-                            padding: '6px 8px', backgroundColor: '#ffebee', color: '#f44336',
-                            border: 'none', borderRadius: '4px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffcdd2'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
-                        >
-                          <Icon icon="mdi:delete-outline" width="18" height="18" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <Badge icon={catInfo.icon} customColor={catInfo.cor + '1A'} customTextColor={catInfo.cor}>
+                    {catInfo.label}
+                  </Badge>
                 )
-              })}
-            </tbody>
-          </table>
-        </div>
+              }
+            },
+            {
+              key: 'valor',
+              label: 'Valor',
+              align: 'center',
+              render: (cobranca) => <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatarMoeda(cobranca.valor)}</span>
+            },
+            {
+              key: 'vencimento',
+              label: 'Vencimento',
+              align: 'center',
+              render: (cobranca) => new Date(cobranca.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              align: 'center',
+              render: (cobranca) => getStatusBadge(cobranca)
+            },
+            {
+              key: 'acoes',
+              label: 'Ações',
+              align: 'center',
+              width: 110,
+              render: (cobranca) => (
+                <div data-no-row-click style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                  <Button
+                    variant={cobranca.status === 'pago' ? 'outline' : 'gray'}
+                    size="sm"
+                    selected={cobranca.status === 'pago'}
+                    icon={cobranca.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'}
+                    iconOnly
+                    aria-label={cobranca.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+                    title={cobranca.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+                    onClick={(e) => { e.stopPropagation(); handleMarcarPago(cobranca) }}
+                  />
+                  <Button
+                    variant="danger-soft"
+                    size="sm"
+                    icon="mdi:delete-outline"
+                    iconOnly
+                    aria-label="Excluir venda"
+                    title="Excluir"
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete({ show: true, cobranca }) }}
+                  />
+                </div>
+              )
+            }
+          ]}
+        />
       )}
 
       {/* ========== PAGINAÇÃO ========== */}
       {totalPaginas > 1 && (
-        <div style={{
+        <nav aria-label="Páginas" style={{
           display: 'flex', justifyContent: 'center', alignItems: 'center',
-          gap: '8px', marginTop: '20px', flexWrap: 'wrap'
+          gap: '4px', marginTop: '20px', flexWrap: 'wrap'
         }}>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            icon="mdi:chevron-left"
+            iconOnly
+            aria-label="Página anterior"
             onClick={() => setPaginaAtual(Math.max(1, paginaAtual - 1))}
             disabled={paginaAtual === 1}
-            style={{
-              padding: '8px 12px', backgroundColor: 'white', color: paginaAtual === 1 ? '#ccc' : '#333',
-              border: '1px solid #ddd', borderRadius: '6px', cursor: paginaAtual === 1 ? 'default' : 'pointer', fontSize: '13px'
-            }}
-          >
-            <Icon icon="mdi:chevron-left" width="18" height="18" />
-          </button>
-
+          />
           {Array.from({ length: totalPaginas }, (_, i) => i + 1)
             .filter(p => p === 1 || p === totalPaginas || Math.abs(p - paginaAtual) <= 2)
             .map((pagina, index, arr) => (
-              <span key={pagina}>
+              <span key={pagina} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 {index > 0 && pagina - arr[index - 1] > 1 && (
-                  <span style={{ color: '#999', padding: '0 4px' }}>...</span>
+                  <span aria-hidden="true" style={{ color: 'var(--color-text-muted)', padding: '0 4px' }}>…</span>
                 )}
-                <button
+                <Button
+                  variant={paginaAtual === pagina ? 'secondary' : 'outline'}
+                  size="sm"
+                  aria-label={`Página ${pagina}`}
+                  aria-current={paginaAtual === pagina ? 'page' : undefined}
                   onClick={() => setPaginaAtual(pagina)}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: paginaAtual === pagina ? '#344848' : 'white',
-                    color: paginaAtual === pagina ? 'white' : '#333',
-                    border: paginaAtual === pagina ? 'none' : '1px solid #ddd',
-                    borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', minWidth: '36px'
-                  }}
+                  style={{ minWidth: '40px' }}
                 >
                   {pagina}
-                </button>
+                </Button>
               </span>
             ))
           }
-
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            icon="mdi:chevron-right"
+            iconOnly
+            aria-label="Próxima página"
             onClick={() => setPaginaAtual(Math.min(totalPaginas, paginaAtual + 1))}
             disabled={paginaAtual === totalPaginas}
-            style={{
-              padding: '8px 12px', backgroundColor: 'white', color: paginaAtual === totalPaginas ? '#ccc' : '#333',
-              border: '1px solid #ddd', borderRadius: '6px', cursor: paginaAtual === totalPaginas ? 'default' : 'pointer', fontSize: '13px'
-            }}
-          >
-            <Icon icon="mdi:chevron-right" width="18" height="18" />
-          </button>
-        </div>
+          />
+        </nav>
       )}
 
       {/* ========== MODAL CRIAR/EDITAR ========== */}
-      {mostrarModal && (
-        <div
-          onClick={fecharModal}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white', borderRadius: '12px',
-              padding: isSmallScreen ? '20px' : '28px',
-              maxWidth: '520px', width: '90%', maxHeight: '90vh', overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>
-                {editando ? 'Editar Cobrança' : 'Nova Cobrança Avulsa'}
-              </h3>
-              <Button variant="ghost" icon="mdi:close" iconOnly aria-label="Fechar" onClick={fecharModal} />
-            </div>
+      <Modal
+        isOpen={mostrarModal}
+        onClose={fecharModal}
+        title={editando ? 'Editar cobrança' : 'Nova cobrança avulsa'}
+        size="md"
+        closeOnEsc={!mostrarModalCategoria}
+        closeOnBackdrop={!mostrarModalCategoria}
+      >
+        <Modal.Body>
 
             {/* Descrição */}
             <div style={{ marginBottom: '14px' }}>
@@ -1010,7 +955,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             </div>
 
             {/* Valor + Categoria lado a lado */}
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '14px' }}>
               <div style={{ flex: 1 }}>
                 <Input
                   label="Valor"
@@ -1019,6 +964,7 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
                   step="0.01"
                   min="0"
                   prefix="R$"
+                  inputMode="decimal"
                   value={formValor}
                   onChange={(e) => setFormValor(e.target.value)}
                   placeholder="0,00"
@@ -1092,58 +1038,32 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
             )}
 
             {/* Observações */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Observações</label>
-              <textarea
-                value={formObservacoes}
-                onChange={(e) => setFormObservacoes(e.target.value)}
-                placeholder="Anotações opcionais..."
-                rows={3}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
-              />
-            </div>
-
-            {/* Botões */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <Button variant="outline" onClick={fecharModal} style={{ minWidth: '100px' }}>
-                Cancelar
-              </Button>
-              <Button variant="primary" loading={salvando} onClick={handleSalvar} style={{ minWidth: '100px' }}>
-                {editando ? 'Salvar' : 'Criar'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            <Textarea
+              label="Observações"
+              value={formObservacoes}
+              onChange={(e) => setFormObservacoes(e.target.value)}
+              placeholder="Anotações opcionais..."
+              rows={3}
+            />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={fecharModal}>Cancelar</Button>
+          <Button variant="primary" loading={salvando} onClick={handleSalvar}>
+            {editando ? 'Salvar' : 'Criar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* ========== MODAL NOVA CATEGORIA ========== */}
-      {mostrarModalCategoria && (
-        <div
-          onClick={() => setMostrarModalCategoria(false)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10001,
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white', borderRadius: '12px', padding: '24px',
-              maxWidth: '380px', width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-            }}
-          >
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>
-              Nova Categoria
-            </h3>
+      <Modal
+        isOpen={mostrarModalCategoria}
+        onClose={() => setMostrarModalCategoria(false)}
+        title="Nova categoria"
+        size="sm"
+      >
+        <Modal.Body>
 
-            <div style={{ marginBottom: '14px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <Input
                 label="Nome"
                 value={novaCategoriaLabel}
@@ -1152,31 +1072,35 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
               />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Cor</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div>
+              <span className="ds-input-label" id="nova-cat-venda-cor" style={{ display: 'block', marginBottom: '8px' }}>Cor</span>
+              <div role="radiogroup" aria-labelledby="nova-cat-venda-cor" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {CORES_CUSTOM.map(cor => (
-                  <div
+                  <button
                     key={cor}
+                    type="button"
+                    role="radio"
+                    aria-checked={novaCategoriaCor === cor}
+                    aria-label={`Cor ${cor}`}
                     onClick={() => setNovaCategoriaCor(cor)}
                     style={{
-                      width: '32px', height: '32px', borderRadius: '50%',
+                      width: '36px', height: '36px', borderRadius: '50%', padding: 0,
                       backgroundColor: cor, cursor: 'pointer',
-                      border: novaCategoriaCor === cor ? '3px solid #333' : '3px solid transparent',
-                      transition: 'all 0.2s'
+                      border: novaCategoriaCor === cor ? '3px solid var(--neutral-800)' : '3px solid transparent',
+                      boxShadow: novaCategoriaCor === cor ? '0 0 0 2px var(--color-bg-surface) inset' : 'none',
+                      transition: 'border-color var(--duration-150) var(--ease-out)'
                     }}
                   />
                 ))}
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <Button variant="outline" onClick={() => setMostrarModalCategoria(false)} style={{ minWidth: '100px' }}>
+        </Modal.Body>
+        <Modal.Footer>
+              <Button variant="outline" onClick={() => setMostrarModalCategoria(false)}>
                 Cancelar
               </Button>
               <Button
                 variant="primary"
-                style={{ minWidth: '100px' }}
                 onClick={() => {
                   const nome = novaCategoriaLabel.trim()
                   if (!nome) { showToast('Informe o nome da categoria', 'warning'); return }
@@ -1196,10 +1120,8 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
               >
                 Criar
               </Button>
-            </div>
-          </div>
-        </div>
-      )}
+        </Modal.Footer>
+      </Modal>
 
       {/* ========== MODAIS DE CONFIRMAÇÃO ========== */}
       <ConfirmModal
@@ -1224,18 +1146,6 @@ export default function CobrancasAvulsas({ embedded = false, buttonsPortal = nul
         type="warning"
       />
 
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-          }
-        `}
-      </style>
     </>
   )
 

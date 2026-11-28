@@ -27,6 +27,12 @@ import Dropdown from './design-system/components/Dropdown'
 import Table from './design-system/components/Table'
 import Card from './design-system/components/Card'
 import Checkbox from './design-system/components/Checkbox'
+import Tabs from './design-system/components/Tabs'
+import StatCard from './design-system/components/StatCard'
+import Badge from './design-system/components/Badge'
+import EmptyState from './design-system/components/EmptyState'
+import Modal from './design-system/components/Modal'
+import Input from './design-system/components/Input'
 import DateField from './components/DateField'
 import buscarTodas from './utils/buscarTodas'
 
@@ -1434,7 +1440,7 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     }
 
     if (!asaasConfigurado) {
-      showToast('Configure sua API Key do Asaas em Configurações > Integrações.', 'error')
+      showToast('Configure sua API Key do Asaas em Configurações › Recebimentos.', 'error')
       return
     }
 
@@ -1614,25 +1620,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
   const getStatusBadge = (status) => {
     const configs = {
-      pago: { bg: '#4CAF50', text: 'Pago' },
-      aberto: { bg: '#2196F3', text: 'Em aberto' },
-      atrasado: { bg: '#f44336', text: 'Em atraso' }
+      pago: { variant: 'success', text: 'Pago' },
+      aberto: { variant: 'info', text: 'Em aberto' },
+      atrasado: { variant: 'danger', text: 'Em atraso' }
     }
-
     const config = configs[status] || configs.aberto
-
-    return (
-      <span style={{
-        backgroundColor: config.bg,
-        color: 'white',
-        padding: '3px 10px',
-        borderRadius: '12px',
-        fontSize: '11px',
-        fontWeight: 'bold'
-      }}>
-        {config.text}
-      </span>
-    )
+    return <Badge variant={config.variant} solid>{config.text}</Badge>
   }
 
   const limparFiltros = () => {
@@ -1642,7 +1635,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     setFiltroDataInicio('')
     setFiltroDataFim('')
     setFiltroNome('')
-    setMostrarFiltros(false)
   }
 
   const toggleFiltroStatus = (status) => {
@@ -1652,6 +1644,35 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       setFiltroStatus([...filtroStatus, status])
     }
   }
+
+  // Filtros em rascunho: o que a pessoa muda na janela de Filtros só vale ao
+  // tocar em "Ver resultados". Fechar no X, no Esc ou tocando fora descarta.
+  const FILTRO_VAZIO = { filtroStatus: [], filtroVencimento: null, filtroTipoData: 'vencimento', filtroDataInicio: '', filtroDataFim: '' }
+  const [rascunho, setRascunho] = useState(FILTRO_VAZIO)
+  const abrirFiltros = () => {
+    setRascunho({ filtroStatus, filtroVencimento, filtroTipoData, filtroDataInicio, filtroDataFim })
+    setMostrarFiltros(true)
+  }
+  const mudarRascunho = (campo, valor) => setRascunho(r => ({ ...r, [campo]: valor }))
+  // Limpar zera o que está aplicado e já fecha a janela (pedido do dono).
+  const limparRascunho = () => {
+    setRascunho(FILTRO_VAZIO)
+    setFiltroStatus(FILTRO_VAZIO.filtroStatus)
+    setFiltroVencimento(FILTRO_VAZIO.filtroVencimento)
+    setFiltroTipoData(FILTRO_VAZIO.filtroTipoData)
+    setFiltroDataInicio(FILTRO_VAZIO.filtroDataInicio)
+    setFiltroDataFim(FILTRO_VAZIO.filtroDataFim)
+    setMostrarFiltros(false)
+  }
+  const verResultadosFiltro = () => {
+    setFiltroStatus(rascunho.filtroStatus)
+    setFiltroVencimento(rascunho.filtroVencimento)
+    setFiltroTipoData(rascunho.filtroTipoData)
+    setFiltroDataInicio(rascunho.filtroDataInicio)
+    setFiltroDataFim(rascunho.filtroDataFim)
+    setMostrarFiltros(false)
+  }
+  const rascunhoTemFiltro = rascunho.filtroStatus.length > 0 || rascunho.filtroVencimento !== null || rascunho.filtroDataInicio !== '' || rascunho.filtroDataFim !== '' || rascunho.filtroTipoData !== 'vencimento'
 
   const temFiltrosAtivos = filtroStatus.length > 0 || filtroVencimento !== null || filtroDataInicio !== '' || filtroDataFim !== '' || filtroNome.trim() !== ''
 
@@ -1668,18 +1689,6 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
     alterarStatusPagamento(mensalidadeDetalhes, mensalidadeDetalhes.status !== 'pago')
   }
 
-  // Fechar popover ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (mostrarFiltros && !event.target.closest('.popover-filtros') && !event.target.closest('.btn-filtrar')
-          && !event.target.closest('.ds-select-dropdown')) {
-        setMostrarFiltros(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [mostrarFiltros])
 
   if (loading) {
     return (
@@ -1725,45 +1734,16 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: isSmallScreen ? '16px' : '25px', marginBottom: isSmallScreen ? '16px' : '25px' }}>
         {/* Linha: abas + ações de Vendas/Despesas */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        {/* Tabs segmented control */}
-        <div style={{
-          display: 'inline-flex',
-          gap: '4px',
-          backgroundColor: '#f3f4f6',
-          borderRadius: '10px',
-          padding: '4px'
-        }}>
-          {[
-            { id: 'mensalidades', label: 'Mensalidades', icon: 'fluent:receipt-20-regular' },
-            { id: 'avulsas', label: 'Vendas', icon: 'mdi:cart-outline' },
-            { id: 'despesas', label: 'Despesas', icon: 'mdi:wallet-outline' }
-          ].map(aba => (
-            <button
-              key={aba.id}
-              onClick={() => setAbaAtiva(aba.id)}
-              style={{
-                padding: isSmallScreen ? '8px 16px' : '8px 20px',
-                backgroundColor: abaAtiva === aba.id ? 'white' : 'transparent',
-                color: abaAtiva === aba.id ? '#1a1a1a' : '#555',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: isSmallScreen ? '13px' : '14px',
-                fontWeight: abaAtiva === aba.id ? '600' : '400',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s',
-                boxShadow: abaAtiva === aba.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                opacity: abaAtiva === aba.id ? 1 : 0.75
-              }}
-            >
-              <Icon icon={aba.icon} width={isSmallScreen ? 16 : 18} />
-              {aba.label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          variant="segmented"
+          value={abaAtiva}
+          onChange={setAbaAtiva}
+          items={[
+            { value: 'mensalidades', label: 'Mensalidades', icon: isMobile ? undefined : 'fluent:receipt-20-regular' },
+            { value: 'avulsas', label: 'Vendas', icon: isMobile ? undefined : 'mdi:cart-outline' },
+            { value: 'despesas', label: 'Despesas', icon: isMobile ? undefined : 'mdi:wallet-outline' }
+          ]}
+        />
         {/* Portal target para botões de Vendas/Despesas */}
         <div ref={(el) => { buttonsPortalRef.current = el; if (el && !portalReady) setPortalReady(true) }} style={{ display: 'contents' }} />
         </div>
@@ -1781,28 +1761,30 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
 
             <Button
               variant="outline"
-              icon="ph:export-light"
-              iconOnly
-              aria-label="Exportar"
+              icon={isSmallScreen ? undefined : 'ph:export-light'}
+                    aria-label="Exportar"
               title="Exportar"
               onClick={() => exportarMensalidades(mensalidadesFiltradas)}
-              style={{ flex: isSmallScreen ? 1 : 'none', width: isSmallScreen ? 'auto' : '40px', minWidth: '40px', height: '36px', minHeight: '36px', padding: 0, boxSizing: 'border-box' }}
-            />
+              style={{ flex: isSmallScreen ? 1 : 'none' }}
+            >
+              Exportar
+            </Button>
 
             <Button
               className="btn-filtrar"
               variant={temFiltrosAtivos ? 'secondary' : 'outline'}
-              icon="mdi:filter-outline"
-              onClick={() => setMostrarFiltros(!mostrarFiltros)}
-              style={{ flex: isSmallScreen ? 1 : 'none', height: '36px', minHeight: '36px', boxSizing: 'border-box' }}
+              icon={isSmallScreen ? undefined : 'mdi:filter-outline'}
+              onClick={abrirFiltros}
+              aria-expanded={mostrarFiltros}
+              style={{ flex: isSmallScreen ? 1 : 'none' }}
             >
-              {!isSmallScreen && 'Filtrar'}
+              Filtrar
               {temFiltrosAtivos && (
                 <span style={{
                   position: 'absolute',
                   top: '-6px',
                   right: '-6px',
-                  backgroundColor: '#f44336',
+                  backgroundColor: 'var(--danger-700)',
                   color: 'white',
                   borderRadius: '50%',
                   width: '20px',
@@ -1819,62 +1801,16 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               )}
             </Button>
 
-            {/* Popover de filtros */}
-            {mostrarFiltros && (
-              <div
-                className="popover-filtros"
-                style={{
-                  position: isSmallScreen ? 'fixed' : 'absolute',
-                  top: isSmallScreen ? 0 : '50px',
-                  right: isSmallScreen ? 0 : '0',
-                  left: isSmallScreen ? 0 : 'auto',
-                  bottom: isSmallScreen ? 0 : 'auto',
-                  width: isSmallScreen ? '100%' : '340px',
-                  height: isSmallScreen ? '100vh' : 'auto',
-                  backgroundColor: 'white',
-                  borderRadius: isSmallScreen ? 0 : '8px',
-                  boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-                  border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
-                  zIndex: 1001,
-                  overflow: isSmallScreen ? 'auto' : 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-              >
-                {/* Header do popover (mobile/tablet) */}
-                {isSmallScreen && (
-                  <div style={{
-                    padding: '16px 20px',
-                    borderBottom: '1px solid #e5e7eb',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    backgroundColor: 'white',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1
-                  }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>
-                      Filtros
-                    </h3>
-                    <button
-                      onClick={() => setMostrarFiltros(false)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Conteúdo do popover */}
-                <div style={{ padding: '20px', flex: 1 }}>
+            {/* Filtros — Modal do DS (folha que sobe no celular, janela no computador).
+                Os filtros já valem enquanto a pessoa mexe; o botão só fecha. */}
+            <Modal
+              isOpen={mostrarFiltros}
+              onClose={() => setMostrarFiltros(false)}
+              title="Filtros"
+              size="sm"
+            >
+              <Modal.Body>
+                <div>
                   {/* Seção Status */}
                   <div style={{ marginBottom: '20px' }}>
                     <label className="ds-input-label" style={{ display: 'block', marginBottom: '12px' }}>
@@ -1884,12 +1820,12 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       {['pago', 'aberto', 'atrasado'].map(status => (
                         <Checkbox
                           key={status}
-                          checked={filtroStatus.includes(status)}
+                          checked={rascunho.filtroStatus.includes(status)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setFiltroStatus([...filtroStatus, status])
+                              mudarRascunho('filtroStatus', [...rascunho.filtroStatus, status])
                             } else {
-                              setFiltroStatus(filtroStatus.filter(s => s !== status))
+                              mudarRascunho('filtroStatus', rascunho.filtroStatus.filter(s => s !== status))
                             }
                           }}
                           label={status === 'pago' ? 'Pago' : status === 'aberto' ? 'Em aberto' : 'Em atraso'}
@@ -1904,8 +1840,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       label="Vencimento"
                       portal
                       placeholder="Todos"
-                      value={filtroVencimento || ''}
-                      onChange={(v) => setFiltroVencimento(v || null)}
+                      value={rascunho.filtroVencimento || ''}
+                      onChange={(v) => mudarRascunho('filtroVencimento', v || null)}
                       options={[
                         { value: '', label: 'Todos' },
                         { value: 'hoje', label: 'Hoje' },
@@ -1923,8 +1859,8 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                     <div style={{ marginBottom: '10px' }}>
                       <Select
                         portal
-                        value={filtroTipoData}
-                        onChange={(v) => setFiltroTipoData(v || 'vencimento')}
+                        value={rascunho.filtroTipoData}
+                        onChange={(v) => mudarRascunho('filtroTipoData', v || 'vencimento')}
                         options={[
                           { value: 'vencimento', label: 'Por data de vencimento' },
                           { value: 'pagamento', label: 'Por data de pagamento' },
@@ -1932,42 +1868,25 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                       />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <DateField value={filtroDataInicio} onChange={setFiltroDataInicio} />
+                      <DateField value={rascunho.filtroDataInicio} onChange={(v) => mudarRascunho('filtroDataInicio', v)} />
                       <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', fontWeight: '500' }}>
                         até
                       </div>
-                      <DateField value={filtroDataFim} onChange={setFiltroDataFim} />
+                      <DateField value={rascunho.filtroDataFim} onChange={(v) => mudarRascunho('filtroDataFim', v)} />
                     </div>
                   </div>
                 </div>
 
-                {/* Rodapé com botões */}
-                <div style={{
-                  borderTop: '1px solid #e0e0e0',
-                  padding: '12px 20px',
-                  backgroundColor: '#f9f9f9',
-                  display: 'flex',
-                  gap: '10px',
-                  ...(isSmallScreen ? { position: 'sticky', bottom: 0, paddingBottom: '20px' } : {})
-                }}>
-                  <Button
-                    variant="outline"
-                    disabled={!temFiltrosAtivos}
-                    onClick={limparFiltros}
-                    style={{ flex: 1 }}
-                  >
-                    Limpar
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setMostrarFiltros(false)}
-                    style={{ flex: 2 }}
-                  >
-                    Aplicar Filtros
-                  </Button>
-                </div>
-              </div>
-            )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="outline" disabled={!rascunhoTemFiltro && !(filtroStatus.length > 0 || filtroVencimento !== null || filtroDataInicio !== '' || filtroDataFim !== '')} onClick={limparRascunho} style={{ flex: 1 }}>
+                  Limpar
+                </Button>
+                <Button variant="primary" onClick={verResultadosFiltro} style={{ flex: 2 }}>
+                  Ver resultados
+                </Button>
+              </Modal.Footer>
+      </Modal>
             </div>
           </div>
         )}
@@ -1992,204 +1911,64 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isSmallScreen ? '12px' : '16px'
+          gridTemplateColumns: isSmallScreen ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+          gap: isSmallScreen ? '10px' : '16px'
         }}>
-            {/* Card 1: Em Atraso */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #f44336',
-              backgroundColor: '#fff5f5',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Em Atraso</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Icon icon="solar:danger-triangle-linear" width="18" height="18" style={{ color: '#f44336' }} />
-                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                      R$ {totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                    {quantidadeEmAtraso} mensalidade{quantidadeEmAtraso !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {percentualAtrasado}%
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('atrasado')}
-                style={{
-                  background: 'none',
-                  color: '#f44336',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  fontWeight: '600',
-                  textAlign: 'left'
-                }}
-              >
-                Ver detalhes →
-              </button>
-            </div>
-
-            {/* Card 2: Próximos Vencimentos */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #ff9800',
-              backgroundColor: '#fff8f0',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Próximos Vencimentos</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    <Icon icon="tabler:clock" width="18" height="18" style={{ color: '#ff9800' }} />
-                    <span style={{ fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-                      {vencemHoje} vencem hoje
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '0' }}>
-                    {vencemProximos7} nos próximos 7 dias
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#ff9800',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '600'
-                }}>
-                  R$ {totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-
-            {/* Card 3: Recebido */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #4CAF50',
-              backgroundColor: '#f1f8f4',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Recebido</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Icon icon="fluent-emoji-high-contrast:money-bag" width="18" height="18" style={{ color: '#4CAF50' }} />
-                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                      R$ {totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                    {quantidadeRecebido} mensalidade{quantidadeRecebido !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {percentualRecebido}%
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('pago')}
-                style={{
-                  background: 'none',
-                  color: '#4CAF50',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  fontWeight: '600',
-                  textAlign: 'left'
-                }}
-              >
-                Ver detalhes →
-              </button>
-            </div>
-
-            {/* Card 4: Em Aberto */}
-            <div style={{
-              flex: 1,
-              padding: '14px 18px',
-              borderLeft: '3px solid #2196F3',
-              backgroundColor: '#f0f7ff',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Em Aberto</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Icon icon="solar:wallet-money-linear" width="18" height="18" style={{ color: '#2196F3' }} />
-                    <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                      R$ {totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                    {quantidadeEmAberto} mensalidade{quantidadeEmAberto !== 1 ? 's' : ''} a vencer
-                  </p>
-                </div>
-                <span style={{
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {percentualAberto}%
-                </span>
-              </div>
-              <button
-                onClick={() => toggleFiltroStatus('aberto')}
-                style={{
-                  background: 'none',
-                  color: '#2196F3',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  fontWeight: '600',
-                  textAlign: 'left'
-                }}
-              >
-                Ver detalhes →
-              </button>
-            </div>
+            {/* Cartões de resumo — StatCard do DS. Os clicáveis ligam/desligam
+                o filtro de status da lista (antes era o link "Ver detalhes"). */}
+            <StatCard
+              label="Em atraso"
+              icon="solar:danger-triangle-linear"
+              accent="danger"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={`R$ ${totalEmAtraso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              hint={isMobile
+                ? `${quantidadeEmAtraso} mensalidade${quantidadeEmAtraso !== 1 ? 's' : ''}`
+                : `${quantidadeEmAtraso} mensalidade${quantidadeEmAtraso !== 1 ? 's' : ''} · ${percentualAtrasado}% do total`}
+              onClick={() => toggleFiltroStatus('atrasado')}
+              aria-pressed={filtroStatus.includes('atrasado')}
+              title="Filtrar a lista pelas mensalidades em atraso"
+            />
+            <StatCard
+              label={isMobile ? 'Vencem hoje' : 'Próximos vencimentos'}
+              icon="tabler:clock"
+              accent="warning"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={isMobile ? String(vencemHoje) : `${vencemHoje} ${vencemHoje === 1 ? 'vence' : 'vencem'} hoje`}
+              hint={isMobile
+                ? `${vencemProximos7} em 7 dias`
+                : `${vencemProximos7} nos próximos 7 dias · R$ ${totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            />
+            <StatCard
+              label="Recebido"
+              icon="fluent-emoji-high-contrast:money-bag"
+              accent="success"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={`R$ ${totalRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              hint={isMobile
+                ? `${quantidadeRecebido} mensalidade${quantidadeRecebido !== 1 ? 's' : ''}`
+                : `${quantidadeRecebido} mensalidade${quantidadeRecebido !== 1 ? 's' : ''} · ${percentualRecebido}% do total`}
+              onClick={() => toggleFiltroStatus('pago')}
+              aria-pressed={filtroStatus.includes('pago')}
+              title="Filtrar a lista pelas mensalidades pagas"
+            />
+            <StatCard
+              label="Em aberto"
+              icon="solar:wallet-money-linear"
+              accent="info"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={`R$ ${totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              hint={isMobile
+                ? `${quantidadeEmAberto} mensalidade${quantidadeEmAberto !== 1 ? 's' : ''}`
+                : `${quantidadeEmAberto} mensalidade${quantidadeEmAberto !== 1 ? 's' : ''} a vencer · ${percentualAberto}% do total`}
+              onClick={() => toggleFiltroStatus('aberto')}
+              aria-pressed={filtroStatus.includes('aberto')}
+              title="Filtrar a lista pelas mensalidades em aberto"
+            />
           </div>
         </div>
 
@@ -2197,15 +1976,21 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
           e dos cards (mobile), então o wrapper não desenha nada por cima */}
       <div style={{ marginBottom: '40px' }}>
         {mensalidadesFiltradas.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-            <Icon icon="mdi:receipt-text-outline" width="64" height="64" style={{ color: '#ccc', marginBottom: '16px' }} />
-            <p style={{ color: '#999', fontSize: '16px', margin: '0' }}>
-              Nenhuma mensalidade encontrada
-            </p>
-            <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0 0 0' }}>
-              Clique em "Adicionar" para criar mensalidades
-            </p>
-          </div>
+          temFiltrosAtivos ? (
+            <EmptyState
+              variant="no-matches"
+              title="Nenhuma mensalidade com esses filtros"
+              description="Mude a busca ou os filtros para ver outras mensalidades."
+              action={<Button variant="outline" onClick={limparFiltros}>Limpar filtros</Button>}
+            />
+          ) : (
+            <EmptyState
+              variant="first-use"
+              icon="mdi:receipt-text-outline"
+              title="Nenhuma mensalidade ainda"
+              description="As mensalidades aparecem aqui quando você cadastra alunos com plano."
+            />
+          )
         ) : isSmallScreen ? (
           /* Cards para Mobile/Tablet */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -2217,6 +2002,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   mensalidade.statusCalculado === 'pago' ? 'success' : 'info'
                 }
                 onClick={() => abrirDetalhesMensalidade(mensalidade)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Ver mensalidade de ${mensalidade.devedor?.nome || 'aluno'}`}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDetalhesMensalidade(mensalidade) }
+                }}
                 style={{ cursor: 'pointer' }}
               >
                 {/* Header do card */}
@@ -2356,26 +2148,19 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
             marginBottom: '24px',
             flexWrap: 'wrap'
           }}>
-            <button
-              onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
-              disabled={paginaAtual === 1}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #e0e0e0',
-                borderRadius: '6px',
-                backgroundColor: paginaAtual === 1 ? '#f5f5f5' : 'white',
-                cursor: paginaAtual === 1 ? 'not-allowed' : 'pointer',
-                color: paginaAtual === 1 ? '#999' : '#344848',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <Icon icon="mdi:chevron-left" width="20" height="20" />
-              {!isMobile && 'Anterior'}
-            </button>
+            <nav aria-label="Páginas" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="mdi:chevron-left"
+                iconOnly={isMobile}
+                aria-label="Página anterior"
+                onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+                disabled={paginaAtual === 1}
+              >
+                {!isMobile && 'Anterior'}
+              </Button>
 
-            <div style={{ display: 'flex', gap: '4px' }}>
               {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
                 let pagina
                 if (totalPaginas <= 5) {
@@ -2387,52 +2172,37 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 } else {
                   pagina = paginaAtual - 2 + i
                 }
+                const atual = paginaAtual === pagina
                 return (
-                  <button
+                  <Button
                     key={pagina}
+                    variant={atual ? 'secondary' : 'outline'}
+                    size="sm"
+                    aria-label={`Página ${pagina}`}
+                    aria-current={atual ? 'page' : undefined}
                     onClick={() => setPaginaAtual(pagina)}
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      border: paginaAtual === pagina ? 'none' : '1px solid #e0e0e0',
-                      borderRadius: '6px',
-                      backgroundColor: paginaAtual === pagina ? '#344848' : 'white',
-                      color: paginaAtual === pagina ? 'white' : '#344848',
-                      cursor: 'pointer',
-                      fontWeight: paginaAtual === pagina ? '600' : '400',
-                      fontSize: '14px'
-                    }}
+                    style={{ minWidth: '40px' }}
                   >
                     {pagina}
-                  </button>
+                  </Button>
                 )
               })}
-            </div>
 
-            <button
-              onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
-              disabled={paginaAtual === totalPaginas}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #e0e0e0',
-                borderRadius: '6px',
-                backgroundColor: paginaAtual === totalPaginas ? '#f5f5f5' : 'white',
-                cursor: paginaAtual === totalPaginas ? 'not-allowed' : 'pointer',
-                color: paginaAtual === totalPaginas ? '#999' : '#344848',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              {!isMobile && 'Próxima'}
-              <Icon icon="mdi:chevron-right" width="20" height="20" />
-            </button>
+              <Button
+                variant="outline"
+                size="sm"
+                iconRight={isMobile ? undefined : 'mdi:chevron-right'}
+                icon={isMobile ? 'mdi:chevron-right' : undefined}
+                iconOnly={isMobile}
+                aria-label="Próxima página"
+                onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaAtual === totalPaginas}
+              >
+                {!isMobile && 'Próxima'}
+              </Button>
+            </nav>
 
-            <span style={{
-              marginLeft: '16px',
-              fontSize: '14px',
-              color: '#666'
-            }}>
+            <span className="ds-text-body-sm" style={{ color: 'var(--color-text-muted)' }}>
               {mensalidadesFiltradas.length} mensalidade{mensalidadesFiltradas.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -2441,60 +2211,15 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
       </>)}
 
       {/* Modal de Confirmação de Pagamento */}
-      {/* Modal de Detalhes da Mensalidade */}
-      {mostrarModalDetalhes && mensalidadeDetalhes && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: isSmallScreen ? 'stretch' : 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: isSmallScreen ? 0 : '12px',
-            width: isSmallScreen ? '100%' : '90%',
-            maxWidth: isSmallScreen ? '100%' : '450px',
-            height: isSmallScreen ? '100%' : 'auto',
-            maxHeight: isSmallScreen ? '100%' : 'calc(100vh - 40px)',
-            boxShadow: isSmallScreen ? 'none' : '0 4px 20px rgba(0, 0, 0, 0.15)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
-                Detalhes da Mensalidade
-              </h3>
-              <button
-                onClick={() => setMostrarModalDetalhes(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: '24px', flex: 1, overflow: 'auto' }}>
+      {/* Modal de Detalhes da Mensalidade — Modal do DS */}
+      <Modal
+        isOpen={!!(mostrarModalDetalhes && mensalidadeDetalhes)}
+        onClose={() => setMostrarModalDetalhes(false)}
+        title="Detalhes da mensalidade"
+        size="sm"
+      >
+        {mensalidadeDetalhes && (<>
+            <Modal.Body>
               {/* Card de resumo da mensalidade */}
               <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
                 {/* Hero: nome do aluno (título) + status à direita */}
@@ -2558,19 +2283,13 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                   )}
                 </div>
               </div>
-            </div>
+            </Modal.Body>
 
-            {/* Footer */}
-            <div style={{
-              padding: '20px 24px',
-              borderTop: '1px solid #e8e8e8',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
+            <Modal.Footer>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
               {/* Ações secundárias (não pago): Link e Boleto — outline neutro */}
               {mensalidadeDetalhes.status !== 'pago' && (
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <Button
                     variant="outline"
                     icon="mdi:link-variant"
@@ -2662,72 +2381,30 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 Fechar
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+            </Modal.Footer>
+        </>)}
+      </Modal>
 
-      {mostrarModalConfirmacao && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: isSmallScreen ? 'white' : 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: isSmallScreen ? 'stretch' : 'center',
-          justifyContent: 'center',
-          zIndex: 1002
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: isSmallScreen ? 0 : '8px',
-            width: isSmallScreen ? '100%' : '90%',
-            maxWidth: isSmallScreen ? '100%' : '450px',
-            height: isSmallScreen ? '100%' : 'auto',
-            boxShadow: isSmallScreen ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
-                {novoStatusPagamento ? 'Confirmar Pagamento' : 'Desfazer Pagamento'}
-              </h3>
-              <button
-                onClick={() => {
-                  setMostrarModalConfirmacao(false)
-                  setMensalidadeParaAtualizar(null)
-                  setFormaPagamento('')
-                  setBaixaMulta('0.00')
-                  setBaixaJuros('0.00')
-                  setBaixaDesconto('')
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: '20px', flex: 1 }}>
-              <p style={{ fontSize: '14px', color: '#666', margin: '0 0 16px 0', lineHeight: '1.5' }}>
+      {/* Modal de confirmação de pagamento (baixa manual) — Modal do DS.
+          A lógica é a mesma de antes; só a moldura e os campos mudaram. */}
+      <Modal
+        isOpen={mostrarModalConfirmacao}
+        onClose={() => {
+          setMostrarModalConfirmacao(false)
+          setMensalidadeParaAtualizar(null)
+          setFormaPagamento('')
+          setBaixaMulta('0.00')
+          setBaixaJuros('0.00')
+          setBaixaDesconto('')
+        }}
+        title={novoStatusPagamento ? 'Confirmar pagamento' : 'Desfazer pagamento'}
+        size="sm"
+      >
+        <Modal.Body>
+              <p className="ds-text-body" style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px 0' }}>
                 {novoStatusPagamento ? (
                   <>
-                    Confirmar pagamento de <strong style={{ color: '#344848' }}>
+                    Confirmar pagamento de <strong style={{ color: 'var(--color-text-primary)' }}>
                       R$ {mensalidadeParaAtualizar ? parseFloat(mensalidadeParaAtualizar.valor).toFixed(2) : '0.00'}
                     </strong>?
                   </>
@@ -2774,155 +2451,84 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
                 const descontoInformado = Math.max(0, parseFloat(baixaDesconto) || 0)
                 const excedeu = descontoInformado > bruto + 0.005
                 const total = Math.round((bruto - Math.min(descontoInformado, bruto)) * 100) / 100
-                const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', boxSizing: 'border-box', color: '#344848' }
                 return (
-                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border-subtle)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {atrasado && (
-                      <>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-                          Multa e juros por atraso
-                        </label>
-                        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Multa (R$)</span>
-                            <input
-                              type="number" min="0" step="0.01"
-                              value={baixaMulta}
-                              onChange={(e) => setBaixaMulta(e.target.value)}
-                              style={inputStyle}
-                            />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: 4 }}>Juros (R$)</span>
-                            <input
-                              type="number" min="0" step="0.01"
-                              value={baixaJuros}
-                              onChange={(e) => setBaixaJuros(e.target.value)}
-                              style={inputStyle}
-                            />
-                          </div>
-                        </div>
-                      </>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                        <Input
+                          label="Multa"
+                          prefix="R$"
+                          type="number" min="0" step="0.01" inputMode="decimal"
+                          value={baixaMulta}
+                          onChange={(e) => setBaixaMulta(e.target.value)}
+                        />
+                        <Input
+                          label="Juros"
+                          prefix="R$"
+                          type="number" min="0" step="0.01" inputMode="decimal"
+                          value={baixaJuros}
+                          onChange={(e) => setBaixaJuros(e.target.value)}
+                        />
+                      </div>
                     )}
 
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#344848', fontWeight: '500' }}>
-                      Desconto (opcional)
-                    </label>
-                    <input
-                      type="number" min="0" step="0.01"
+                    <Input
+                      label="Desconto (opcional)"
+                      prefix="R$"
+                      type="number" min="0" step="0.01" inputMode="decimal"
                       value={baixaDesconto}
                       placeholder="0,00"
                       onChange={(e) => setBaixaDesconto(e.target.value)}
-                      style={{ ...inputStyle, borderColor: excedeu ? '#dc2626' : '#ddd' }}
+                      error={excedeu ? `Máximo R$ ${bruto.toFixed(2)} — o desconto não pode passar do valor da parcela` : undefined}
+                      helper="Abatido do valor recebido. Não altera a mensalidade dos próximos meses."
                     />
-                    <span style={{ fontSize: '12px', color: excedeu ? '#dc2626' : '#666', display: 'block', marginTop: 4 }}>
-                      {excedeu
-                        ? `Máximo R$ ${bruto.toFixed(2)} — o desconto não pode passar do valor da parcela`
-                        : 'Abatido do valor recebido. Não altera a mensalidade dos próximos meses.'}
-                    </span>
 
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', color: '#344848' }}>
-                      <span style={{ color: '#666' }}>Total a receber</span>
-                      <strong style={{ fontSize: '16px' }}>R$ {total.toFixed(2)}</strong>
+                    <div style={{ paddingTop: 12, borderTop: '1px solid var(--color-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="ds-text-body" style={{ color: 'var(--color-text-secondary)' }}>Total a receber</span>
+                      <strong style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-primary)' }}>R$ {total.toFixed(2)}</strong>
                     </div>
                   </div>
                 )
               })()}
-            </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={() => {
+          setMostrarModalConfirmacao(false)
+          setMensalidadeParaAtualizar(null)
+          setFormaPagamento('')
+          setBaixaMulta('0.00')
+          setBaixaJuros('0.00')
+          setBaixaDesconto('')
+        }}>Cancelar</Button>
+          <Button variant={novoStatusPagamento ? 'primary' : 'danger'} onClick={confirmarAlteracaoStatus}>
+            {novoStatusPagamento ? 'Confirmar' : 'Desfazer'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-            {/* Footer */}
+      {/* Modal de Sucesso de Pagamento com Opção de Recibo — Modal do DS */}
+      <Modal
+        isOpen={!!(mostrarModalRecibo && mensalidadePaga)}
+        onClose={() => {
+          setMostrarModalRecibo(false)
+          setMensalidadePaga(null)
+        }}
+        title="Pagamento confirmado"
+        size="sm"
+      >
+        {mensalidadePaga && (
+        <Modal.Body>
+          <div style={{ textAlign: 'center' }}>
             <div style={{
-              padding: '16px 20px',
-              borderTop: '1px solid #e8e8e8',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '10px'
-            }}>
-              <button
-                onClick={() => {
-                  setMostrarModalConfirmacao(false)
-                  setMensalidadeParaAtualizar(null)
-                  setFormaPagamento('')
-                  setBaixaMulta('0.00')
-                  setBaixaJuros('0.00')
-                  setBaixaDesconto('')
-                }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'white',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarAlteracaoStatus}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: novoStatusPagamento ? '#4CAF50' : '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                {novoStatusPagamento ? 'Confirmar' : 'Desfazer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Sucesso de Pagamento com Opção de Recibo */}
-      {mostrarModalRecibo && mensalidadePaga && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            width: '100%',
-            maxWidth: '400px',
-            textAlign: 'center'
-          }}>
-            {/* Ícone de sucesso */}
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              backgroundColor: '#e8f5e9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              width: '64px', height: '64px', borderRadius: '50%',
+              backgroundColor: 'var(--success-50)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px'
             }}>
-              <Icon icon="mdi:check-circle" width="40" height="40" style={{ color: '#4CAF50' }} />
+              <Icon icon="mdi:check-circle" width="40" height="40" style={{ color: 'var(--color-brand-fill)' }} />
             </div>
 
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600', color: '#344848' }}>
-              Pagamento Confirmado!
-            </h3>
-
-            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#666' }}>
+            <p className="ds-text-body" style={{ margin: '0 0 8px 0', color: 'var(--color-text-primary)' }}>
               {mensalidadePaga.devedor?.nome || mensalidadePaga.devedores?.nome || 'Aluno'} -{' '}
               <strong>
                 R$ {parseFloat((mensalidadePaga.valor_pago != null ? mensalidadePaga.valor_pago : mensalidadePaga.valor) || 0).toLocaleString('pt-BR', {
@@ -2932,636 +2538,259 @@ export default function Financeiro({ onAbrirPerfil, onSair }) {
               </strong>
             </p>
 
-            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#888' }}>
+            <p className="ds-text-body-sm" style={{ margin: '0 0 20px 0', color: 'var(--color-text-muted)' }}>
               Deseja gerar o recibo de pagamento?
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                onClick={() => handleGerarRecibo('baixar')}
-                style={{
-                  width: '100%',
-                  padding: '10px 20px',
-                  backgroundColor: '#344848',
-                  color: 'white',
-                  border: '1px solid #344848',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                <Icon icon="mdi:download" width="18" />
-                Baixar Recibo
-              </button>
-
-              <button
-                onClick={handleEnviarReciboWhatsApp}
-                disabled={enviandoReciboWhatsApp}
-                style={{
-                  width: '100%',
-                  padding: '10px 20px',
-                  backgroundColor: 'white',
-                  color: '#344848',
-                  border: '1px solid #344848',
-                  borderRadius: '6px',
-                  cursor: enviandoReciboWhatsApp ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: enviandoReciboWhatsApp ? 0.6 : 1
-                }}
-              >
-                <Icon icon={enviandoReciboWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'} width="18" style={enviandoReciboWhatsApp ? { animation: 'spin 1s linear infinite' } : {}} />
-                {enviandoReciboWhatsApp ? 'Enviando...' : 'Enviar WhatsApp'}
-              </button>
+              <Button variant="secondary" icon="mdi:download" fullWidth onClick={() => handleGerarRecibo('baixar')}>
+                Baixar recibo
+              </Button>
+              <Button variant="whatsapp" icon="mdi:whatsapp" fullWidth loading={enviandoReciboWhatsApp} onClick={handleEnviarReciboWhatsApp}>
+                Enviar pelo WhatsApp
+              </Button>
+              <Button variant="ghost" fullWidth onClick={() => {
+          setMostrarModalRecibo(false)
+          setMensalidadePaga(null)
+        }}>
+                Fechar
+              </Button>
             </div>
+          </div>
+        </Modal.Body>
+        )}
+      </Modal>
 
-            <button
-              onClick={() => {
-                setMostrarModalRecibo(false)
-                setMensalidadePaga(null)
-              }}
-              style={{
-                marginTop: '16px',
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                color: '#666',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '13px'
-              }}
+      {/* Modal de Link de Pagamento PIX — Modal do DS */}
+      <Modal
+        isOpen={!!(mostrarModalLinkPagamento && linkPagamentoData)}
+        onClose={() => {
+          setMostrarModalLinkPagamento(false)
+          setLinkPagamentoData(null)
+          setPixCopied(false)
+        }}
+        title="Pix da mensalidade"
+        size="sm"
+      >
+        {linkPagamentoData && (<>
+        <Modal.Body>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+              <span className="ds-text-body" style={{ color: 'var(--color-text-muted)' }}>Aluno</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textAlign: 'right' }}>{linkPagamentoData.cliente}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="ds-text-body" style={{ color: 'var(--color-text-muted)' }}>Valor</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-brand-fill)', fontSize: 'var(--text-xl)' }}>
+                R$ {parseFloat(linkPagamentoData.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="ds-text-body" style={{ color: 'var(--color-text-muted)' }}>Vencimento</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                {new Date(linkPagamentoData.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            <p className="ds-text-body-sm" style={{ margin: '0 0 12px', color: 'var(--color-text-secondary)' }}>QR Code PIX</p>
+            <div style={{
+              display: 'inline-block', padding: '16px', backgroundColor: 'var(--color-bg-surface)',
+              borderRadius: 'var(--radius-xl)', border: '2px solid var(--color-border-subtle)'
+            }}>
+              <QRCodeSVG value={linkPagamentoData.pixCode} size={180} level="M" includeMargin={false} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <Button
+              variant={pixCopied ? 'outline' : 'secondary'}
+              selected={pixCopied}
+              icon={pixCopied ? 'mdi:check' : 'mdi:content-copy'}
+              fullWidth
+              size="lg"
+              onClick={copiarPix}
             >
-              Fechar
-            </button>
+              {pixCopied ? 'PIX copiado!' : 'Copiar código PIX'}
+            </Button>
+            <Button variant="whatsapp" icon="mdi:whatsapp" fullWidth size="lg" loading={enviandoLinkWhatsApp} onClick={enviarLinkWhatsApp}>
+              Enviar pelo WhatsApp
+            </Button>
           </div>
-        </div>
-      )}
 
-      {/* Modal de Link de Pagamento PIX */}
-      {mostrarModalLinkPagamento && linkPagamentoData && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1003,
-          padding: '20px'
-        }}>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
+          <p className="ds-text-caption" style={{ margin: '16px 0 0', textAlign: 'center', color: 'var(--warning-700)' }}>
+            <Icon icon="mdi:clock-outline" width="14" style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+            Link válido por 24 horas
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={() => {
+          setMostrarModalLinkPagamento(false)
+          setLinkPagamentoData(null)
+          setPixCopied(false)
+        }}>Fechar</Button>
+        </Modal.Footer>
+        </>)}
+      </Modal>
+
+      {/* Modal de Boleto Asaas — Modal do DS */}
+      <Modal
+        isOpen={!!(mostrarModalBoleto && boletoData)}
+        onClose={() => {
+          setMostrarModalBoleto(false)
+          setBoletoData(null)
+          setLinhaDigitavelCopied(false)
+          setPixBoletoCopied(false)
+        }}
+        title="Boleto gerado"
+        subtitle={boletoData?.cliente}
+        size="md"
+      >
+        {boletoData && (<>
+        <Modal.Body>
           <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '420px',
-            maxHeight: '90vh',
-            overflow: 'auto'
+            display: 'flex', justifyContent: 'space-between', gap: '12px',
+            marginBottom: '20px', padding: '16px',
+            backgroundColor: 'var(--neutral-50)', borderRadius: 'var(--radius-xl)'
           }}>
-            {/* Header */}
-            <div style={{
-              backgroundColor: '#344848',
-              borderRadius: '16px 16px 0 0',
-              padding: '20px',
-              textAlign: 'center',
-              color: 'white'
-            }}>
-              <Icon icon="mdi:qrcode" width="36" height="36" />
-              <h2 style={{ margin: '8px 0 0', fontSize: '18px', fontWeight: '600' }}>
-                Pix da mensalidade
-              </h2>
-            </div>
-
-            {/* Detalhes */}
-            <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#888', fontSize: '14px' }}>Aluno</span>
-                <span style={{ fontWeight: '500', color: '#333' }}>{linkPagamentoData.cliente}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#888', fontSize: '14px' }}>Valor</span>
-                <span style={{ fontWeight: '600', color: '#4CAF50', fontSize: '18px' }}>
-                  R$ {parseFloat(linkPagamentoData.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888', fontSize: '14px' }}>Vencimento</span>
-                <span style={{ fontWeight: '500', color: '#333' }}>
-                  {new Date(linkPagamentoData.vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                </span>
-              </div>
-            </div>
-
-            {/* QR Code */}
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-              <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#666' }}>
-                QR Code PIX
+            <div>
+              <p className="ds-text-caption" style={{ color: 'var(--color-text-muted)', margin: '0 0 4px 0' }}>Valor</p>
+              <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
+                R$ {parseFloat(boletoData.valor).toFixed(2)}
               </p>
-              <div style={{
-                display: 'inline-block',
-                padding: '16px',
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                border: '2px solid #eee'
-              }}>
-                <QRCodeSVG
-                  value={linkPagamentoData.pixCode}
-                  size={180}
-                  level="M"
-                  includeMargin={false}
-                />
-              </div>
             </div>
-
-            {/* Ações */}
-            <div style={{ padding: '0 20px 20px' }}>
-              {/* Copiar PIX */}
-              <button
-                onClick={copiarPix}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: pixCopied ? '#4CAF50' : '#344848',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '10px'
-                }}
-              >
-                <Icon icon={pixCopied ? 'mdi:check' : 'mdi:content-copy'} width="20" />
-                {pixCopied ? 'PIX Copiado!' : 'Copiar Código PIX'}
-              </button>
-
-              {/* Enviar via WhatsApp */}
-              <button
-                onClick={enviarLinkWhatsApp}
-                disabled={enviandoLinkWhatsApp}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: enviandoLinkWhatsApp ? '#1a9b4a' : '#25D366',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: enviandoLinkWhatsApp ? 'wait' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: enviandoLinkWhatsApp ? 0.8 : 1
-                }}
-              >
-                <Icon icon={enviandoLinkWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'} width="20" style={enviandoLinkWhatsApp ? { animation: 'spin 1s linear infinite' } : {}} />
-                {enviandoLinkWhatsApp ? 'Enviando...' : 'Enviar via WhatsApp'}
-              </button>
-            </div>
-
-            {/* Fechar */}
-            <div style={{ padding: '0 20px 20px', textAlign: 'center' }}>
-              <button
-                onClick={() => {
-                  setMostrarModalLinkPagamento(false)
-                  setLinkPagamentoData(null)
-                  setPixCopied(false)
-                }}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: 'transparent',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Fechar
-              </button>
-            </div>
-
-            {/* Aviso */}
-            <div style={{
-              padding: '12px 20px',
-              backgroundColor: '#fff8e1',
-              borderRadius: '0 0 16px 16px',
-              textAlign: 'center'
-            }}>
-              <p style={{ margin: 0, fontSize: '12px', color: '#f57c00' }}>
-                <Icon icon="mdi:clock-outline" width="14" style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                Link válido por 24 horas
+            <div style={{ textAlign: 'right' }}>
+              <p className="ds-text-caption" style={{ color: 'var(--color-text-muted)', margin: '0 0 4px 0' }}>Vencimento</p>
+              <p style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+                {new Date(boletoData.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
               </p>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Modal de Boleto Asaas */}
-      {mostrarModalBoleto && boletoData && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1003,
-          padding: '20px'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '500px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#fff3e0',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Icon icon="mdi:barcode" width="24" height="24" style={{ color: '#FF9800' }} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
-                    Boleto Gerado
-                  </h3>
-                  <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
-                    {boletoData.cliente}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setMostrarModalBoleto(false)
-                  setBoletoData(null)
-                  setLinhaDigitavelCopied(false)
-                  setPixBoletoCopied(false)
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                <Icon icon="mdi:close" width="24" height="24" style={{ color: '#666' }} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: '20px' }}>
-              {/* Valor e Vencimento */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '20px',
-                padding: '16px',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '12px'
+          {boletoData.linha_digitavel && (
+            <div style={{ marginBottom: '16px' }}>
+              <p className="ds-input-label" style={{ margin: '0 0 8px 0' }}>
+                <Icon icon="mdi:barcode" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                Linha digitável
+              </p>
+              <div className="ds-text-mono" style={{
+                padding: '12px', backgroundColor: 'var(--neutral-100)', borderRadius: 'var(--radius-lg)',
+                wordBreak: 'break-all', color: 'var(--color-text-primary)'
               }}>
-                <div>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '0 0 4px 0' }}>Valor</p>
-                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#344848', margin: 0 }}>
-                    R$ {parseFloat(boletoData.valor).toFixed(2)}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '12px', color: '#888', margin: '0 0 4px 0' }}>Vencimento</p>
-                  <p style={{ fontSize: '16px', fontWeight: '600', color: '#344848', margin: 0 }}>
-                    {new Date(boletoData.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
+                {boletoData.linha_digitavel}
               </div>
+              <Button
+                variant={linhaDigitavelCopied ? 'outline' : 'secondary'}
+                selected={linhaDigitavelCopied}
+                icon={linhaDigitavelCopied ? 'mdi:check' : 'mdi:content-copy'}
+                fullWidth
+                onClick={copiarLinhaDigitavel}
+                style={{ marginTop: '8px' }}
+              >
+                {linhaDigitavelCopied ? 'Copiado!' : 'Copiar linha digitável'}
+              </Button>
+            </div>
+          )}
 
-              {/* Linha Digitável */}
-              {boletoData.linha_digitavel && (
-                <div style={{ marginBottom: '16px' }}>
-                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#344848', margin: '0 0 8px 0' }}>
-                    <Icon icon="mdi:barcode" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-                    Linha Digitável
-                  </p>
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '8px',
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    wordBreak: 'break-all',
-                    color: '#333'
-                  }}>
-                    {boletoData.linha_digitavel}
-                  </div>
-                  <button
-                    onClick={copiarLinhaDigitavel}
-                    style={{
-                      width: '100%',
-                      marginTop: '8px',
-                      padding: '12px',
-                      backgroundColor: linhaDigitavelCopied ? '#4CAF50' : '#FF9800',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <Icon icon={linhaDigitavelCopied ? 'mdi:check' : 'mdi:content-copy'} width="18" />
-                    {linhaDigitavelCopied ? 'Copiado!' : 'Copiar Linha Digitável'}
-                  </button>
+          {boletoData.pix_copia_cola && (
+            <div style={{ marginBottom: '16px' }}>
+              <p className="ds-input-label" style={{ margin: '0 0 8px 0' }}>
+                <Icon icon="mdi:qrcode" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                Pague via PIX
+              </p>
+              {boletoData.pix_qrcode_base64 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                  <img
+                    src={`data:image/png;base64,${boletoData.pix_qrcode_base64}`}
+                    alt="QR Code PIX"
+                    style={{ width: '180px', height: '180px' }}
+                  />
                 </div>
               )}
-
-              {/* PIX (BolePix) */}
-              {boletoData.pix_copia_cola && (
-                <div style={{ marginBottom: '16px' }}>
-                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#344848', margin: '0 0 8px 0' }}>
-                    <Icon icon="mdi:qrcode" width="16" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-                    Pague via PIX
-                  </p>
-
-                  {/* QR Code */}
-                  {boletoData.pix_qrcode_base64 && (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      marginBottom: '12px'
-                    }}>
-                      <img
-                        src={`data:image/png;base64,${boletoData.pix_qrcode_base64}`}
-                        alt="QR Code PIX"
-                        style={{ width: '180px', height: '180px' }}
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    onClick={copiarPixBoleto}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: pixBoletoCopied ? '#4CAF50' : '#00C853',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <Icon icon={pixBoletoCopied ? 'mdi:check' : 'mdi:content-copy'} width="18" />
-                    {pixBoletoCopied ? 'Copiado!' : 'Copiar Código PIX'}
-                  </button>
-                </div>
-              )}
-
-              {/* Link do Boleto PDF */}
-              {(boletoData.boleto_url || boletoData.invoice_url) && (
-                <div style={{ marginBottom: '16px' }}>
-                  <a
-                    href={boletoData.boleto_url || boletoData.invoice_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '12px',
-                      backgroundColor: '#f5f5f5',
-                      color: '#344848',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    <Icon icon="mdi:file-pdf-box" width="20" />
-                    Visualizar/Baixar Boleto PDF
-                  </a>
-                </div>
-              )}
-
-              {/* Botão Enviar WhatsApp */}
-              <button
-                onClick={enviarBoletoWhatsApp}
-                disabled={enviandoBoletoWhatsApp}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  backgroundColor: enviandoBoletoWhatsApp ? '#1a9b4a' : '#25d366',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: enviandoBoletoWhatsApp ? 'wait' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: enviandoBoletoWhatsApp ? 0.8 : 1
-                }}
+              <Button
+                variant={pixBoletoCopied ? 'outline' : 'secondary'}
+                selected={pixBoletoCopied}
+                icon={pixBoletoCopied ? 'mdi:check' : 'mdi:content-copy'}
+                fullWidth
+                onClick={copiarPixBoleto}
               >
-                <Icon
-                  icon={enviandoBoletoWhatsApp ? 'mdi:loading' : 'mdi:whatsapp'}
-                  width="20"
-                  style={enviandoBoletoWhatsApp ? { animation: 'spin 1s linear infinite' } : {}}
-                />
-                {enviandoBoletoWhatsApp ? 'Enviando...' : 'Enviar via WhatsApp'}
-              </button>
+                {pixBoletoCopied ? 'Copiado!' : 'Copiar código PIX'}
+              </Button>
             </div>
+          )}
 
-            {/* Footer */}
-            <div style={{
-              padding: '16px 20px',
-              borderTop: '1px solid #e8e8e8',
-              display: 'flex',
-              justifyContent: 'center'
-            }}>
-              <button
-                onClick={() => {
-                  setMostrarModalBoleto(false)
-                  setBoletoData(null)
-                  setLinhaDigitavelCopied(false)
-                  setPixBoletoCopied(false)
-                }}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: 'transparent',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          {(boletoData.boleto_url || boletoData.invoice_url) && (
+            <Button
+              as="a"
+              variant="outline"
+              icon="mdi:file-pdf-box"
+              fullWidth
+              href={boletoData.boleto_url || boletoData.invoice_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginBottom: '16px' }}
+            >
+              Ver / baixar boleto em PDF
+            </Button>
+          )}
 
-      {/* Modal para solicitar CPF */}
-      {mostrarModalCpf && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1004,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '24px',
-            maxWidth: '400px',
-            width: '90%',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: '#fff3e0',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:card-account-details" width="24" height="24" style={{ color: '#FF9800' }} />
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#344848', margin: 0 }}>
-                CPF necessário
-              </h3>
-            </div>
-            <p style={{ color: '#666', marginBottom: '16px', fontSize: '14px', lineHeight: '1.5' }}>
-              O Asaas exige o CPF do aluno para emitir boletos.
-              Informe o CPF de <strong style={{ color: '#344848' }}>{mensalidadeParaBoleto?.devedor?.nome}</strong>:
-            </p>
-            <input
-              type="text"
-              value={cpfInput}
-              onChange={(e) => setCpfInput(formatarCpf(e.target.value))}
-              placeholder="000.000.000-00"
-              maxLength="14"
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                background: '#f8f9fa',
-                color: '#344848',
-                fontSize: '16px',
-                marginBottom: '20px',
-                boxSizing: 'border-box',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#FF9800'}
-              onBlur={(e) => e.target.style.borderColor = '#ddd'}
-            />
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setMostrarModalCpf(false)
-                  setCpfInput('')
-                  setMensalidadeParaBoleto(null)
-                }}
-                style={{
-                  padding: '12px 20px',
-                  borderRadius: '8px',
-                  background: 'transparent',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSalvarCpfEGerarBoleto}
-                disabled={salvandoCpf || cpfInput.replace(/\D/g, '').length < 11}
-                style={{
-                  padding: '12px 20px',
-                  borderRadius: '8px',
-                  background: '#FF9800',
-                  color: 'white',
-                  border: 'none',
-                  cursor: (salvandoCpf || cpfInput.replace(/\D/g, '').length < 11) ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  opacity: (salvandoCpf || cpfInput.replace(/\D/g, '').length < 11) ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                {salvandoCpf && <Icon icon="mdi:loading" width="18" style={{ animation: 'spin 1s linear infinite' }} />}
-                {salvandoCpf ? 'Salvando...' : 'Salvar e Gerar Boleto'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <Button variant="whatsapp" icon="mdi:whatsapp" fullWidth size="lg" loading={enviandoBoletoWhatsApp} onClick={enviarBoletoWhatsApp}>
+            Enviar pelo WhatsApp
+          </Button>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={() => {
+          setMostrarModalBoleto(false)
+          setBoletoData(null)
+          setLinhaDigitavelCopied(false)
+          setPixBoletoCopied(false)
+        }}>Fechar</Button>
+        </Modal.Footer>
+        </>)}
+      </Modal>
+
+      {/* Modal para solicitar CPF — Modal do DS */}
+      <Modal
+        isOpen={mostrarModalCpf}
+        onClose={() => {
+          setMostrarModalCpf(false)
+          setCpfInput('')
+          setMensalidadeParaBoleto(null)
+        }}
+        title="CPF necessário"
+        size="sm"
+      >
+        <Modal.Body>
+          <p className="ds-text-body" style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px 0' }}>
+            O Asaas exige o CPF do aluno para emitir boletos.
+            Informe o CPF de <strong style={{ color: 'var(--color-text-primary)' }}>{mensalidadeParaBoleto?.devedor?.nome}</strong>:
+          </p>
+          <Input
+            label="CPF"
+            value={cpfInput}
+            onChange={(e) => setCpfInput(formatarCpf(e.target.value))}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+            maxLength={14}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={() => {
+          setMostrarModalCpf(false)
+          setCpfInput('')
+          setMensalidadeParaBoleto(null)
+        }}>Cancelar</Button>
+          <Button
+            variant="primary"
+            loading={salvandoCpf}
+            disabled={cpfInput.replace(/\D/g, '').length < 11}
+            onClick={handleSalvarCpfEGerarBoleto}
+          >
+            Salvar e gerar boleto
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Modal Excluir Mensalidade */}
       {(() => {
