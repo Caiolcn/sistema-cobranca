@@ -133,7 +133,7 @@ export default function Dropdown({
             top: posicao?.top ?? 0,
             left: posicao?.left ?? 0,
             right: 'auto',
-            zIndex: 1000,
+            zIndex: 'var(--z-popover)',
             // sem medida ainda: renderiza invisível pra não piscar no canto
             visibility: posicao ? 'visible' : 'hidden'
           }}

@@ -13,7 +13,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: var(--space-6) var(--space-4);
-  z-index: 1000;
+  z-index: var(--z-modal);
   overflow-y: auto;
   animation: ds-fade-in var(--duration-200) var(--ease-out);
 }
@@ -236,6 +236,15 @@ body.ds-modal-open {
     height: 100dvh;
     max-height: 100dvh;
     border-radius: 0;
+  }
+
+  /* Tela cheia de verdade no celular: ocupa 100% da altura (acompanhando a
+     barra do navegador) e desce o conteúdo abaixo do entalhe do iPhone. */
+  .ds-modal--fullscreen {
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding-top: var(--safe-top);
   }
 
   .ds-modal__header,

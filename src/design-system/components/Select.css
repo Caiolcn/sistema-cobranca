@@ -137,7 +137,24 @@
   text-overflow: ellipsis;
 }
 
+/* Valor escolhido: ícone e texto centralizados na mesma linha (antes o
+   ícone ficava na linha de base e subia em relação ao texto) */
 .ds-select-value-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  line-height: 1.3;
+}
+.ds-select-value-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+.ds-select-value-icon svg { display: block; }
+.ds-select-value-label {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -220,7 +237,7 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
@@ -391,3 +408,24 @@
     min-height: 44px;
   }
 }
+
+/* Título de grupo dentro da lista (opções com `group`) */
+.ds-select-group-label {
+  list-style: none;
+  padding: var(--space-2-5) var(--space-3) var(--space-1);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: default;
+  user-select: none;
+}
+.ds-select-group-label:not(:first-child) {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* showAll — lista inteira, sem rolagem interna */
+.ds-select-dropdown--full { max-height: none; }
+.ds-select-dropdown--full .ds-select-list { max-height: none; overflow: visible; }

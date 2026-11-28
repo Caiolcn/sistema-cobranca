@@ -1,0 +1,117 @@
+/* ============================================================
+   Toast — DS Mensalli
+   Aviso curto que some sozinho. Fica sempre por cima de tudo
+   (--z-toast). No celular desce abaixo da barra de cima e
+   respeita o entalhe (safe-area).
+   ============================================================ */
+
+.ds-toast-region {
+  position: fixed;
+  top: var(--space-5);
+  right: var(--space-5);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  width: 400px;
+  max-width: calc(100vw - 2 * var(--space-5));
+  pointer-events: none;   /* a região não bloqueia clique; só os avisos */
+}
+
+@media (max-width: 640px) {
+  .ds-toast-region {
+    top: calc(var(--app-topbar-h) + var(--safe-top) + var(--space-2));
+    left: calc(var(--space-3) + var(--safe-left));
+    right: calc(var(--space-3) + var(--safe-right));
+    width: auto;
+    max-width: none;
+  }
+}
+
+.ds-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3-5) var(--space-4);
+  padding-right: var(--space-2);
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--ds-toast-color);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-sans);
+  animation: ds-toast-in var(--duration-300) var(--ease-out);
+}
+
+.ds-toast--saindo {
+  animation: ds-toast-out var(--duration-300) var(--ease-in) forwards;
+}
+
+.ds-toast--success { --ds-toast-color: var(--color-brand-fill); --ds-toast-bg: var(--success-50); }
+.ds-toast--error   { --ds-toast-color: var(--danger-700);       --ds-toast-bg: var(--danger-50); }
+.ds-toast--warning { --ds-toast-color: var(--warning-700);      --ds-toast-bg: var(--warning-50); }
+.ds-toast--info    { --ds-toast-color: var(--info-700);         --ds-toast-bg: var(--info-50); }
+
+.ds-toast__icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: var(--ds-toast-bg);
+  color: var(--ds-toast-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-toast__message {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ds-toast__close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--duration-150) var(--ease-out);
+}
+.ds-toast__close:hover { background-color: var(--neutral-100); }
+.ds-toast__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+@media (max-width: 640px) {
+  .ds-toast__close { width: var(--touch-min); height: var(--touch-min); }
+}
+
+@keyframes ds-toast-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes ds-toast-out {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  @keyframes ds-toast-in {
+    from { transform: translateY(-16px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-toast, .ds-toast--saindo { animation-duration: 0.01ms; }
+}

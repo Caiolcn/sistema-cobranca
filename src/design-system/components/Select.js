@@ -19,6 +19,8 @@ import './Select.css'
 
    Props (dados):
      options       — Array<{ value: string, label: string, icon?: string|ReactNode, disabled?: boolean }>
+                     group?: string — opções seguidas com o mesmo group ganham um
+                     título de seção na lista (ex.: abas de Configurações)
      value         — string (single) ou string[] (multiple)
      onChange(val) — recebe value novo (string ou string[])
      placeholder   — texto quando vazio
@@ -84,9 +86,15 @@ export default function Select({
   // (útil dentro de modais com overflow:auto).
   portal = false,
 
+  // Quando true, a lista abre inteira, sem rolagem interna (listas curtas,
+  // como o menu de seções de Configurações).
+  showAll = false,
+
   id: idProp,
   className = '',
   style,
+  // Nome para leitor de tela quando não há `label` visível (ex.: menu de abas)
+  'aria-label': ariaLabel,
 }) {
   const autoId = useId()
   const id = idProp || `ds-select-${autoId}`
@@ -293,6 +301,7 @@ export default function Select({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-label={ariaLabel ? `${ariaLabel}: ${selectedOption?.label || placeholder}` : undefined}
         aria-describedby={messageId}
       >
         {icon && (
@@ -327,11 +336,11 @@ export default function Select({
             selectedOption ? (
               <span className="ds-select-value-text">
                 {selectedOption.icon && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 6 }}>
+                  <span className="ds-select-value-icon" aria-hidden="true">
                     {renderIcon(selectedOption.icon, iconSize)}
                   </span>
                 )}
-                {selectedOption.label}
+                <span className="ds-select-value-label">{selectedOption.label}</span>
               </span>
             ) : (
               <span className="ds-select-placeholder">{placeholder}</span>
@@ -358,10 +367,10 @@ export default function Select({
 
       {isOpen && (() => {
         const dropdown = (
-        <div ref={dropdownRef} className="ds-select-dropdown" role="presentation"
+        <div ref={dropdownRef} className={`ds-select-dropdown${showAll ? ' ds-select-dropdown--full' : ''}`} role="presentation"
           style={portal ? {
             position: 'fixed', top: portalPos.top, left: portalPos.left,
-            width: portalPos.width, zIndex: 10100
+            width: portalPos.width, zIndex: 'var(--z-popover)'
           } : undefined}>
           {searchable && (
             <div className="ds-select-search">
@@ -399,9 +408,13 @@ export default function Select({
                   opt.disabled && 'ds-select-option--disabled',
                 ].filter(Boolean).join(' ')
 
+                const novoGrupo = opt.group && opt.group !== filteredOptions[idx - 1]?.group
                 return (
+                  <React.Fragment key={opt.value}>
+                  {novoGrupo && (
+                    <li className="ds-select-group-label" role="presentation">{opt.group}</li>
+                  )}
                   <li
-                    key={opt.value}
                     className={classes}
                     role="option"
                     aria-selected={isSelected}
@@ -420,6 +433,7 @@ export default function Select({
                       </span>
                     )}
                   </li>
+                  </React.Fragment>
                 )
               })}
             </ul>

@@ -1,0 +1,79 @@
+/* ============================================================
+   Alert — DS Mensalli
+   ============================================================ */
+
+.ds-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ds-alert-borda);
+  border-radius: var(--radius-lg);
+  background-color: var(--ds-alert-fundo);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+.ds-alert--info    { --ds-alert-fundo: var(--info-50);    --ds-alert-borda: var(--info-100);    --ds-alert-cor: var(--info-700); }
+.ds-alert--success { --ds-alert-fundo: var(--success-50); --ds-alert-borda: var(--mensalli-green-100); --ds-alert-cor: var(--color-brand-fill); }
+.ds-alert--warning { --ds-alert-fundo: var(--warning-50); --ds-alert-borda: var(--warning-100); --ds-alert-cor: var(--warning-700); }
+.ds-alert--danger  { --ds-alert-fundo: var(--danger-50);  --ds-alert-borda: var(--danger-100);  --ds-alert-cor: var(--danger-700); }
+.ds-alert--neutral { --ds-alert-fundo: var(--neutral-50); --ds-alert-borda: var(--color-border-subtle); --ds-alert-cor: var(--color-text-secondary); }
+
+.ds-alert__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--ds-alert-cor);
+}
+
+.ds-alert__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-alert__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+  color: var(--ds-alert-cor);
+}
+
+.ds-alert__text {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.ds-alert__title + .ds-alert__text { margin-top: 2px; }
+
+.ds-alert__action {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ds-alert__close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ds-alert__close:hover { background-color: rgba(15, 23, 42, 0.06); }
+.ds-alert__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* No celular a ação desce para baixo do texto, com a largura toda */
+@media (max-width: 640px) {
+  .ds-alert { flex-wrap: wrap; }
+  .ds-alert__action {
+    flex-basis: 100%;
+    padding-left: calc(20px + var(--space-3));
+  }
+  .ds-alert__action .ds-btn { width: 100%; }
+}

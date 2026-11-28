@@ -54,7 +54,7 @@
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
-  background-color: var(--mensalli-green-500);
+  background-color: var(--color-brand-fill);
   transform: scale(0);
   transition: transform var(--duration-150) var(--ease-out);
 }
@@ -69,7 +69,7 @@
 }
 
 .ds-radio__input:checked + .ds-radio__control {
-  border-color: var(--mensalli-green-500);
+  border-color: var(--color-brand-fill);
 }
 
 .ds-radio__input:checked + .ds-radio__control::after {
@@ -163,4 +163,18 @@
 
 .ds-radio-group__message--error {
   color: var(--danger-700);
+}
+
+/* ============================================================
+   CELULAR — área de toque de 44px sem mudar o desenho
+   (mesma técnica do Checkbox).
+   ============================================================ */
+@media (max-width: 640px) {
+  .ds-radio { min-height: var(--touch-min); align-items: center; }
+  .ds-radio__control { margin-top: 0; }
+  .ds-radio__control::before {
+    content: '';
+    position: absolute;
+    inset: -13px;
+  }
 }

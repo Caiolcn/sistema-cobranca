@@ -1,0 +1,143 @@
+/* ============================================================
+   BottomNav — DS Mensalli
+   Menu fixo embaixo, só no celular. Camada --z-nav: qualquer
+   modal (--z-modal) ou folha (--z-sheet) passa por cima dele.
+   ============================================================ */
+
+.ds-bottomnav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: stretch;
+  height: calc(var(--app-bottomnav-h) + var(--safe-bottom));
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  background-color: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border-subtle);
+  box-shadow: 0 -1px 3px rgba(15, 23, 42, 0.04);
+  font-family: var(--font-sans);
+  transition: transform var(--duration-200) var(--ease-out);
+}
+
+.ds-bottomnav--escondido {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+@media (min-width: 641px) {
+  .ds-bottomnav { display: none; }
+}
+
+.ds-bottomnav__item {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--touch-min);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-1-5) var(--space-1) var(--space-1);
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--duration-150) var(--ease-out);
+}
+
+/* App.css pinta todo <button> no hover; aqui o menu mantém o fundo */
+.ds-bottomnav__item:hover,
+.ds-bottomnav__item:active {
+  background: transparent;
+}
+
+.ds-bottomnav__item--active {
+  color: var(--color-brand-fill);
+}
+
+.ds-bottomnav__item:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+  border-radius: var(--radius-lg);
+}
+
+.ds-bottomnav__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-150) var(--ease-out);
+}
+
+.ds-bottomnav__item--active .ds-bottomnav__icon {
+  background-color: var(--mensalli-green-50);
+}
+
+.ds-bottomnav__label {
+  max-width: 100%;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-bottomnav__item--active .ds-bottomnav__label {
+  font-weight: var(--weight-bold);
+}
+
+.ds-bottomnav__dot {
+  position: absolute;
+  top: 1px;
+  right: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  background-color: var(--danger-500);
+  box-shadow: 0 0 0 2px var(--color-bg-surface);
+}
+
+.ds-bottomnav__count {
+  position: absolute;
+  top: -2px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--danger-700);
+  color: var(--neutral-0);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-bg-surface);
+}
+
+/* Altura da tela que funciona no navegador do celular E no app instalado.
+   No celular, 100vh é a altura da tela como se a barra do navegador
+   estivesse escondida, então o fim da página fica atrás dela; 100dvh
+   acompanha a barra aparecendo e sumindo. O 100vh fica de reserva para navegador antigo. */
+.ds-viewport-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Espaço reservado embaixo do conteúdo para o menu não cobrir o fim da página */
+@media (max-width: 640px) {
+  .ds-has-bottomnav {
+    padding-bottom: calc(var(--app-bottomnav-h) + var(--safe-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-bottomnav { transition: none; }
+}

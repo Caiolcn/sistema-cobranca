@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { BREAKPOINTS } from '../design-system/breakpoints'
 
 /**
  * Hook otimizado para detectar tamanho da janela
@@ -47,9 +48,9 @@ export default function useWindowSize() {
   // Mobile: até 640px (cobre maioria dos smartphones)
   // Tablet: 641px - 1024px (tablets e notebooks pequenos)
   // Desktop: acima de 1024px
-  const isMobile = windowSize.width <= 640
-  const isTablet = windowSize.width > 640 && windowSize.width <= 1024
-  const isLaptop = windowSize.width > 1024 && windowSize.width <= 1280
+  const isMobile = windowSize.width <= BREAKPOINTS.mobile
+  const isTablet = windowSize.width > BREAKPOINTS.mobile && windowSize.width <= BREAKPOINTS.tablet
+  const isLaptop = windowSize.width > BREAKPOINTS.tablet && windowSize.width <= 1280
   const isDesktop = windowSize.width > 1280
 
   // Helper para telas pequenas (mobile + tablet pequeno)

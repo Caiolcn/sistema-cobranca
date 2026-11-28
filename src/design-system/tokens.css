@@ -75,10 +75,15 @@
   --danger-50:   #FFEBEE;
   --danger-500:  #F44336;
   --danger-700:  #C62828;
+  --danger-800:  #B71C1C;
 
   --info-50:     #E3F2FD;
   --info-500:    #2196F3;
   --info-700:    #1565C0;
+
+  /* Painel interno (admin Mensalli) — roxo para separar de tela de cliente */
+  --admin-50:  #F5F3FF;
+  --admin-600: #7C3AED;
 
   /* WhatsApp — CTA específico, fora da paleta */
   --whatsapp-500: #25D366;
@@ -104,6 +109,91 @@
   --color-text-secondary:  var(--neutral-600);
   --color-text-muted:      var(--neutral-500);
   --color-text-on-brand:   var(--neutral-0);
+
+  /* Fundo verde CHEIO com texto branco (botão primário, selo sólido,
+     controle marcado). O #4CAF50 com texto branco dá 2,8:1 de contraste,
+     abaixo do mínimo de 4,5:1; o green-800 dá 5,1:1. O #4CAF50 continua a
+     cor de marca em ícone, borda, destaque, gráfico e logo.
+     Decidido pelo dono em 27/11/2026. */
+  --color-brand-fill:        var(--mensalli-green-800);
+  --color-brand-fill-hover:  var(--mensalli-green-900);
+  --color-brand-fill-active: var(--mensalli-green-950);
+
+  /* Tons claros que faltavam (fundo de alerta, hover de botão suave) */
+  --danger-100:  #FFCDD2;
+  --danger-300:  #FCA5A5;
+  --warning-100: #FFE0B2;
+  --info-100:    #BBDEFB;
+
+  /* ----------------------------------------------------------
+     FOCO — anel único para todo controle focado por teclado
+     ---------------------------------------------------------- */
+  --focus-ring:        0 0 0 3px var(--mensalli-green-200);
+  --focus-ring-danger: 0 0 0 3px rgba(244, 67, 54, 0.25);
+
+  /* ----------------------------------------------------------
+     CAMADAS (z-index) — use sempre o token, nunca número solto.
+     A ordem resolve: popover aberto dentro de modal, toast por
+     cima de tudo, menu do app por baixo de qualquer modal.
+       raised    1      — sobreposição local (ícone dentro de input)
+       dropdown  100    — popover em fluxo, sem portal
+       sticky    200    — cabeçalho de tabela grudado
+       nav       900    — menu lateral, barra de cima e menu de baixo do app
+       overlay   950    — fundo escuro da gaveta/menu "Mais"
+       sheet     960    — folha do menu "Mais"
+       modal     1000   — Modal do DS
+       modal-top 10000  — modais antigos e ConfirmModal (legado)
+       popover   10100  — Select/Dropdown/TimeInput em portal (acima de qualquer modal)
+       toast     10200  — aviso; sempre visível
+     ---------------------------------------------------------- */
+  --z-raised:    1;
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-nav:       900;
+  --z-overlay:   950;
+  --z-sheet:     960;
+  --z-modal:     1000;
+  --z-modal-top: 10000;
+  --z-popover:   10100;
+  --z-toast:     10200;
+
+  /* ----------------------------------------------------------
+     CELULAR — área de toque e bordas seguras.
+     Breakpoints NÃO podem ser variável CSS dentro de @media; os
+     valores oficiais ficam aqui documentados e em
+     src/design-system/breakpoints.js (use no JS):
+       mobile  ≤ 640px   — celular (menu de baixo, modal vira folha)
+       tablet  641–1024px
+       desktop > 1024px
+     O index.css antigo usa 768px; não copie esse valor.
+     ---------------------------------------------------------- */
+  --touch-min: 44px;
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --app-topbar-h:    56px;
+  --app-bottomnav-h: 60px;
+  --app-sidebar-w:   70px;
+
+  /* ----------------------------------------------------------
+     ESCALA DE FONTE E PESO — para componentes (as classes
+     .ds-text-* abaixo continuam sendo o caminho nas telas).
+     ---------------------------------------------------------- */
+  --text-2xs: 11px;
+  --text-xs:  12px;
+  --text-sm:  13px;
+  --text-md:  14px;
+  --text-lg:  16px;   /* mínimo em campo de digitação no celular (iOS não dá zoom) */
+  --text-xl:  18px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+  --text-4xl: 32px;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
 
   /* ----------------------------------------------------------
      TIPOGRAFIA — Inter como fonte oficial. Já carregada no
