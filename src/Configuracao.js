@@ -10,6 +10,7 @@ import {
   executarAutomacoes
 } from './services/automacaoService'
 import { asaasService } from './services/asaasService'
+import { sincronizarMetodoPagamento } from './services/metodoPagamento'
 import { validarCPFouCNPJ, validarTelefone } from './utils/validators'
 import useWindowSize from './hooks/useWindowSize'
 import { useUser } from './contexts/UserContext'
@@ -18,6 +19,15 @@ import { SITE_TEMPLATES } from './data/siteTemplates'
 import { SITE_FONTS } from './data/siteFonts'
 import { slugEhReservado } from './utils/slugs'
 import { CONFIG_TABS, groupedConfigTabs, configTabIds, resolverAba } from './configTabs'
+import Select from './design-system/components/Select'
+import Input from './design-system/components/Input'
+import Button from './design-system/components/Button'
+import Card from './design-system/components/Card'
+import Alert from './design-system/components/Alert'
+import ChoiceCard from './design-system/components/ChoiceCard'
+import Checkbox from './design-system/components/Checkbox'
+import Switch from './design-system/components/Switch'
+import Badge from './design-system/components/Badge'
 
 // Preview da landing page publica (renderiza o componente real em modo preview)
 const LandingAcademia = lazy(() => import('./pages/LandingAcademia'))
@@ -232,6 +242,8 @@ function Configuracao({ secao = 'config' }) {
   // Integrações
   const [modoIntegracao, setModoIntegracao] = useState('manual') // 'asaas' ou 'manual'
   const [salvandoModo, setSalvandoModo] = useState(false)
+  // Troca de modo em Recebimentos pede confirmação: ela muda a cobrança de todos os alunos
+  const [modoParaConfirmar, setModoParaConfirmar] = useState(null)
 
   // Asaas (Boletos)
   const [asaasConfig, setAsaasConfig] = useState({
@@ -977,304 +989,164 @@ function Configuracao({ secao = 'config' }) {
   // RENDER FUNCTIONS
   // ==========================================
 
-  const renderDadosEmpresa = () => (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
-      {/* Header com logo */}
+  const renderDadosEmpresa = () => {
+    const mudar = (campo, valor) => setDadosEmpresa({ ...dadosEmpresa, [campo]: valor })
+    const largo = { gridColumn: '1 / -1' }
+    return (
+    <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+      {/* Cabeçalho com a logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-        <label style={{
-          width: 56, height: 56, borderRadius: '12px',
-          border: dadosEmpresa.logoUrl ? '2px solid #e5e7eb' : '2px dashed #ccc',
-          overflow: 'hidden', cursor: uploadingLogo ? 'wait' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#f9fafb', flexShrink: 0, position: 'relative',
-          opacity: uploadingLogo ? 0.6 : 1, transition: 'opacity 0.2s'
-        }}>
+        <label
+          title={dadosEmpresa.logoUrl ? 'Trocar logo' : 'Adicionar logo'}
+          style={{
+            width: 64, height: 64, borderRadius: 'var(--radius-xl)',
+            border: dadosEmpresa.logoUrl ? '1px solid var(--color-border-default)' : '2px dashed var(--neutral-300)',
+            overflow: 'hidden', cursor: uploadingLogo ? 'wait' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--neutral-50)', flexShrink: 0, position: 'relative',
+            opacity: uploadingLogo ? 0.6 : 1, transition: 'opacity var(--duration-200) var(--ease-out)'
+          }}
+        >
           {dadosEmpresa.logoUrl ? (
-            <img src={dadosEmpresa.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src={dadosEmpresa.logoUrl} alt="Logo da empresa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
-            <Icon icon="mdi:camera-plus-outline" width="22" style={{ color: '#aaa' }} />
+            <Icon icon="mdi:camera-plus-outline" width="24" style={{ color: 'var(--color-text-muted)' }} />
           )}
-          <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+          <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} aria-label="Enviar logo da empresa" />
         </label>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#333' }}>
-            Dados da Empresa
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="ds-text-h4" style={{ margin: 0, color: 'var(--color-text-primary)' }}>
+            Dados da empresa
           </h3>
-          <div style={{ fontSize: '12px', color: '#999', marginTop: '2px' }}>
-            {dadosEmpresa.logoUrl ? 'Clique na logo para trocar' : 'Clique para adicionar logo'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
+            <span className="ds-text-caption" style={{ color: 'var(--color-text-muted)' }}>
+              {uploadingLogo ? 'Enviando logo…' : dadosEmpresa.logoUrl ? 'Toque na logo para trocar' : 'Toque no quadrado para adicionar a logo'}
+            </span>
             {dadosEmpresa.logoUrl && (
-              <button onClick={removerLogo} style={{
-                background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer',
-                fontSize: '12px', marginLeft: '8px', padding: 0, textDecoration: 'underline'
-              }}>remover</button>
+              <Button variant="danger-soft" size="xs" icon="mdi:trash-can-outline" onClick={removerLogo}>
+                Remover
+              </Button>
             )}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Nome da Empresa *
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.nomeEmpresa}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, nomeEmpresa: e.target.value })}
-            placeholder="Nome da empresa"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '16px' }}>
+        <Input
+          label="Nome da empresa"
+          required
+          value={dadosEmpresa.nomeEmpresa}
+          onChange={(e) => mudar('nomeEmpresa', e.target.value)}
+          placeholder="Nome da empresa"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            CPF/CNPJ
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.cnpj}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, cnpj: formatarCPFouCNPJ(e.target.value) })}
-            placeholder="000.000.000-00 ou 00.000.000/0000-00"
-            maxLength="18"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="CPF ou CNPJ"
+          value={dadosEmpresa.cnpj}
+          onChange={(e) => mudar('cnpj', formatarCPFouCNPJ(e.target.value))}
+          placeholder="Só números"
+          helper="Aparece no recibo e no contrato"
+          inputMode="numeric"
+          maxLength={18}
+        />
 
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Endereço
-          </label>
-          <input
-            type="text"
+        <div style={largo}>
+          <Input
+            label="Endereço"
             value={dadosEmpresa.endereco}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, endereco: e.target.value })}
-            placeholder="Rua, Avenida..."
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '14px'
-            }}
+            onChange={(e) => mudar('endereco', e.target.value)}
+            placeholder="Rua, avenida…"
+            autoComplete="address-line1"
           />
         </div>
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Número
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.numero}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, numero: e.target.value })}
-            placeholder="123"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '14px'
-            }}
-          />
-        </div>
+        <Input
+          label="Número"
+          value={dadosEmpresa.numero}
+          onChange={(e) => mudar('numero', e.target.value)}
+          placeholder="123"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Complemento
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.complemento}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, complemento: e.target.value })}
-            placeholder="Sala 101, Bloco A..."
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '14px'
-            }}
-          />
-        </div>
+        <Input
+          label="Complemento"
+          value={dadosEmpresa.complemento}
+          onChange={(e) => mudar('complemento', e.target.value)}
+          placeholder="Sala 101, bloco A…"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Bairro
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.bairro}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, bairro: e.target.value })}
-            placeholder="Centro"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="Bairro"
+          value={dadosEmpresa.bairro}
+          onChange={(e) => mudar('bairro', e.target.value)}
+          placeholder="Centro"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Cidade
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.cidade}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, cidade: e.target.value })}
-            placeholder="Cidade"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="Cidade"
+          value={dadosEmpresa.cidade}
+          onChange={(e) => mudar('cidade', e.target.value)}
+          placeholder="Cidade"
+          autoComplete="address-level2"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Estado
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.estado}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, estado: e.target.value.toUpperCase() })}
-            placeholder="SP"
-            maxLength="2"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              textTransform: 'uppercase',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="Estado"
+          value={dadosEmpresa.estado}
+          onChange={(e) => mudar('estado', e.target.value.toUpperCase())}
+          placeholder="SP"
+          maxLength={2}
+          autoComplete="address-level1"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            CEP
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.cep}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, cep: e.target.value })}
-            placeholder="00000-000"
-            maxLength="9"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="CEP"
+          value={dadosEmpresa.cep}
+          onChange={(e) => mudar('cep', e.target.value)}
+          placeholder="00000-000"
+          inputMode="numeric"
+          maxLength={9}
+          autoComplete="postal-code"
+        />
 
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Telefone
-          </label>
-          <input
-            type="text"
-            value={dadosEmpresa.telefone}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, telefone: formatarTelefone(e.target.value) })}
-            placeholder="(00) 00000-0000"
-            maxLength="15"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="Telefone"
+          type="tel"
+          value={dadosEmpresa.telefone}
+          onChange={(e) => mudar('telefone', formatarTelefone(e.target.value))}
+          placeholder="(00) 00000-0000"
+          inputMode="tel"
+          maxLength={15}
+        />
 
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            E-mail
-          </label>
-          <input
-            type="email"
-            value={dadosEmpresa.email}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, email: e.target.value })}
-            placeholder="contato@empresa.com"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
+        <Input
+          label="E-mail"
+          type="email"
+          value={dadosEmpresa.email}
+          onChange={(e) => mudar('email', e.target.value)}
+          placeholder="contato@empresa.com"
+          inputMode="email"
+        />
 
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#555' }}>
-            Site
-          </label>
-          <input
+        <div style={largo}>
+          <Input
+            label="Site"
             type="url"
             value={dadosEmpresa.site}
-            onChange={(e) => setDadosEmpresa({ ...dadosEmpresa, site: e.target.value })}
+            onChange={(e) => mudar('site', e.target.value)}
             placeholder="https://www.empresa.com"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px',
-              boxSizing: 'border-box'
-            }}
+            inputMode="url"
           />
         </div>
       </div>
 
       <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={salvarDadosEmpresa}
-          style={{
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            padding: '10px 24px',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer'
-          }}
-        >
-          Salvar Configurações
-        </button>
+        <Button variant="primary" onClick={salvarDadosEmpresa} fullWidth={isSmallScreen}>
+          Salvar alterações
+        </Button>
       </div>
-    </div>
-  )
+    </Card>
+    )
+  }
 
   const renderConfigCobranca = () => (
     <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: isSmallScreen ? '16px' : '24px', border: '1px solid #e5e7eb', boxShadow: 'none' }}>
@@ -2155,7 +2027,17 @@ function Configuracao({ secao = 'config' }) {
     try {
       // Sempre salvar como 'production' - ambiente de produção
       await asaasService.salvarConfig(asaasConfig.apiKey, 'production')
-      showToast('Configuração do Asaas salva com sucesso!', 'success')
+      // Só passa as mensagens para o link do Asaas se a chave funciona de verdade.
+      // Chave errada salva + mensagens com link = aluno recebendo link quebrado.
+      const teste = await asaasService.testarConexao()
+      if (teste.success) {
+        setAsaasConectado(true)
+        await sincronizarMetodoPagamento(contextUserId)
+        showToast('Asaas conectado e salvo!', 'success')
+      } else {
+        setAsaasConectado(false)
+        showToast('Chave salva, mas a conexão com o Asaas falhou. As mensagens continuam com Pix até a conexão funcionar.', 'warning')
+      }
     } catch (error) {
       showToast('Erro ao salvar: ' + error.message, 'error')
     } finally {
@@ -2175,7 +2057,14 @@ function Configuracao({ secao = 'config' }) {
       if (error) throw error
 
       setModoIntegracao(novoModo)
-      showToast(`Modo alterado para ${novoModo === 'asaas' ? 'Asaas' : 'PIX Manual'}`, 'success')
+      // Recebimentos é a fonte única: as mensagens e o portal acompanham a escolha
+      const metodo = await sincronizarMetodoPagamento(contextUserId)
+      showToast(
+        novoModo === 'asaas' && metodo !== 'asaas_link'
+          ? 'Asaas escolhido. Falta conectar a chave para as mensagens mandarem o link.'
+          : `Agora seus alunos pagam ${novoModo === 'asaas' ? 'pelo Asaas' : 'por Pix manual'}`,
+        'success'
+      )
     } catch (error) {
       console.error('Erro ao salvar modo:', error)
       showToast('Erro ao salvar configuração', 'error')
@@ -2208,812 +2097,294 @@ function Configuracao({ secao = 'config' }) {
     }
   }
 
-  const renderIntegracoes = () => (
-    <div style={{ padding: isSmallScreen ? '16px' : '24px' }}>
-      {/* Header Section */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: isSmallScreen ? '20px' : '28px',
-        marginBottom: '24px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Icon icon="mdi:link-variant" width="24" style={{ color: 'white' }} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a2e', margin: 0 }}>
-              Integrações de Pagamento
-            </h2>
-            <p style={{ fontSize: '14px', color: '#666', margin: '4px 0 0 0' }}>
-              Escolha como deseja receber pagamentos dos seus alunos
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Seletor de Modo */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: isSmallScreen ? '20px' : '28px',
-        marginBottom: '24px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none'
-      }}>
-        <h3 style={{
-          fontSize: '16px',
-          fontWeight: '600',
-          color: '#344848',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <Icon icon="mdi:swap-horizontal" width="20" style={{ color: '#667eea' }} />
-          Selecione o modo de integração
-        </h3>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isSmallScreen ? '1fr' : '1fr 1fr',
-          gap: '20px'
-        }}>
-          {/* Opção Asaas */}
-          <div
-            onClick={() => !salvandoModo && salvarModoIntegracao('asaas')}
-            style={{
-              padding: '24px',
-              backgroundColor: modoIntegracao === 'asaas' ? '#f0f7ff' : '#fafafa',
-              border: modoIntegracao === 'asaas' ? '2px solid #2196F3' : '2px solid #e5e7eb',
-              borderRadius: '16px',
-              cursor: salvandoModo ? 'wait' : 'pointer',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              overflow: 'hidden',
-              boxShadow: modoIntegracao === 'asaas' ? '0 4px 15px rgba(33, 150, 243, 0.2)' : 'none'
-            }}
-          >
-            {/* Badge Recomendado */}
-            <div style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <Icon icon="mdi:star" width="12" />
-              Recomendado
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-              <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '14px',
-                backgroundColor: modoIntegracao === 'asaas' ? '#2196F3' : '#e0e0e0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.3s ease'
-              }}>
-                <Icon icon="mdi:bank" width="26" style={{ color: 'white' }} />
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: modoIntegracao === 'asaas' ? '#1565c0' : '#333' }}>
-                  Asaas
-                </h3>
-                <span style={{ fontSize: '13px', color: '#666' }}>Gateway completo</span>
-              </div>
-              {modoIntegracao === 'asaas' && (
-                <Icon icon="mdi:check-circle" width="28" style={{ marginLeft: 'auto', color: '#2196F3' }} />
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { text: 'Link de pagamento Asaas', subtitle: 'Múltiplas formas de pagamento' },
-                { text: 'Confirmação automática', subtitle: null },
-                { text: 'Geração de Boletos', subtitle: null }
-              ].map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Icon
-                    icon="mdi:check-circle"
-                    width="18"
-                    style={{ color: '#4CAF50' }}
-                  />
-                  <div>
-                    <span style={{ fontSize: '14px', color: '#444' }}>{item.text}</span>
-                    {item.subtitle && (
-                      <span style={{ fontSize: '12px', color: '#888', display: 'block' }}>{item.subtitle}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Opção PIX Manual */}
-          <div
-            onClick={() => !salvandoModo && salvarModoIntegracao('manual')}
-            style={{
-              padding: '24px',
-              backgroundColor: modoIntegracao === 'manual' ? '#fff8f0' : '#fafafa',
-              border: modoIntegracao === 'manual' ? '2px solid #FF9800' : '2px solid #e5e7eb',
-              borderRadius: '16px',
-              cursor: salvandoModo ? 'wait' : 'pointer',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              boxShadow: modoIntegracao === 'manual' ? '0 4px 15px rgba(255, 152, 0, 0.2)' : 'none'
-            }}
-          >
-            {/* Badge Simples */}
-            <div style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              backgroundColor: '#9e9e9e',
-              color: 'white',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '600'
-            }}>
-              Simples
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-              <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '14px',
-                backgroundColor: modoIntegracao === 'manual' ? '#FF9800' : '#e0e0e0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.3s ease'
-              }}>
-                <Icon icon="mdi:qrcode" width="26" style={{ color: 'white' }} />
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: modoIntegracao === 'manual' ? '#e65100' : '#333' }}>
-                  PIX Manual
-                </h3>
-                <span style={{ fontSize: '13px', color: '#666' }}>Sem gateway externo</span>
-              </div>
-              {modoIntegracao === 'manual' && (
-                <Icon icon="mdi:check-circle" width="28" style={{ marginLeft: 'auto', color: '#FF9800' }} />
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { text: 'Link de pagamento interno', active: true },
-                { text: 'Confirmação manual', active: false },
-                { text: 'Sem boletos', active: false }
-              ].map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Icon
-                    icon={item.active ? "mdi:check-circle" : "mdi:close-circle"}
-                    width="18"
-                    style={{ color: item.active ? '#4CAF50' : '#bdbdbd' }}
-                  />
-                  <span style={{ fontSize: '14px', color: item.active ? '#444' : '#999' }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Configuração baseada no modo selecionado */}
-      {modoIntegracao === 'asaas' ? (
-        // Configuração Asaas
-        <>
-          {/* Status da conexão */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: isSmallScreen ? '20px' : '28px',
-            marginBottom: '24px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none'
-          }}>
-            <div style={{
-              padding: '20px',
-              backgroundColor: asaasConectado ? '#e8f5e9' : '#fff3e0',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px'
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: asaasConectado ? '#4CAF50' : '#FF9800',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Icon
-                  icon={asaasConectado ? 'mdi:check-circle' : 'mdi:alert-circle'}
-                  width="24"
-                  style={{ color: 'white' }}
-                />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontWeight: '700', fontSize: '16px', color: asaasConectado ? '#2e7d32' : '#e65100' }}>
-                  {asaasConectado ? '✓ Asaas Conectado' : 'Asaas Não Configurado'}
-                </p>
-                {asaasConectado && asaasContaInfo && (
-                  <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: '#666' }}>
-                    <strong>{asaasContaInfo.nome}</strong> • {asaasContaInfo.email}
-                  </p>
-                )}
-                {!asaasConectado && (
-                  <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: '#666' }}>
-                    Configure sua API Key abaixo para começar a emitir boletos
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Formulário Asaas */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: isSmallScreen ? '20px' : '28px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none'
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '700',
-              color: '#344848',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                backgroundColor: '#e3f2fd',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:key-variant" width="18" style={{ color: '#2196F3' }} />
-              </div>
-              Configurar API Key
-            </h3>
-
-            {/* API Key */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: '600', color: '#344848' }}>
-                API Key do Asaas <span style={{ color: '#f44336' }}>*</span>
-              </label>
-              <input
-                type="password"
-                value={asaasConfig.apiKey}
-                onChange={(e) => setAsaasConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                placeholder="$aact_..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '14px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <p style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
-                Encontre sua API Key em: Asaas {'>'} Minha Conta {'>'} Integrações {'>'} Gerar nova chave de API
-              </p>
-            </div>
-
-            {/* Botões */}
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={testarConexaoAsaas}
-                disabled={testandoAsaas || !asaasConfig.apiKey}
-                style={{
-                  flex: 1,
-                  minWidth: '150px',
-                  padding: '12px 20px',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: testandoAsaas || !asaasConfig.apiKey ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: testandoAsaas || !asaasConfig.apiKey ? 0.6 : 1
-                }}
-              >
-                <Icon icon={testandoAsaas ? 'mdi:loading' : 'mdi:connection'} width="18" style={testandoAsaas ? { animation: 'spin 1s linear infinite' } : {}} />
-                {testandoAsaas ? 'Testando...' : 'Testar Conexão'}
-              </button>
-
-              <button
-                onClick={salvarConfigAsaas}
-                disabled={salvandoAsaas || !asaasConfig.apiKey}
-                style={{
-                  flex: 1,
-                  minWidth: '150px',
-                  padding: '12px 20px',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: salvandoAsaas || !asaasConfig.apiKey ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: salvandoAsaas || !asaasConfig.apiKey ? 0.6 : 1
-                }}
-              >
-                <Icon icon={salvandoAsaas ? 'mdi:loading' : 'mdi:content-save'} width="18" style={salvandoAsaas ? { animation: 'spin 1s linear infinite' } : {}} />
-                {salvandoAsaas ? 'Salvando...' : 'Salvar Configuração'}
-              </button>
-            </div>
-          </div>
-
-          {/* Formas de pagamento aceitas no portal do aluno */}
-          {asaasConectado && (
-            <div style={{
-              marginTop: '24px',
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              padding: isSmallScreen ? '20px' : '28px',
-              border: '1px solid #e5e7eb',
-              boxShadow: 'none'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '700',
-                color: '#344848',
-                marginBottom: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  backgroundColor: '#e3f2fd',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Icon icon="mdi:credit-card-multiple" width="18" style={{ color: '#2196F3' }} />
-                </div>
-                Formas de pagamento no portal
-              </h3>
-              <p style={{ fontSize: '13px', color: '#888', margin: '0 0 20px 42px' }}>
-                Escolha o que o aluno pode usar pra pagar no portal. Só aparece pra ele o que estiver ativo aqui.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* PIX — sempre ativo */}
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
-                  cursor: 'not-allowed', backgroundColor: '#f0fdf4'
-                }}>
-                  <input type="checkbox" checked disabled />
-                  <Icon icon="mdi:qrcode" width="22" style={{ color: '#00b386' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>PIX</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>Sempre disponível — recebimento imediato, menor taxa</div>
-                  </div>
-                </label>
-
-                {/* Cartão de crédito */}
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
-                  cursor: salvandoFormas ? 'wait' : 'pointer',
-                  backgroundColor: formasPagamento.cartao ? '#f0fdf4' : '#fff',
-                  opacity: salvandoFormas ? 0.7 : 1
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={formasPagamento.cartao}
-                    disabled={salvandoFormas}
-                    onChange={e => toggleFormaPagamento('cartao', e.target.checked)}
-                  />
-                  <Icon icon="mdi:credit-card-outline" width="22" style={{ color: '#5b6cff' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Cartão de crédito</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>Permite parcelamento — taxa do Asaas é maior que a do PIX</div>
-                  </div>
-                </label>
-
-                {/* Boleto */}
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
-                  cursor: salvandoFormas ? 'wait' : 'pointer',
-                  backgroundColor: formasPagamento.boleto ? '#f0fdf4' : '#fff',
-                  opacity: salvandoFormas ? 0.7 : 1
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={formasPagamento.boleto}
-                    disabled={salvandoFormas}
-                    onChange={e => toggleFormaPagamento('boleto', e.target.checked)}
-                  />
-                  <Icon icon="mdi:barcode" width="22" style={{ color: '#e65100' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Boleto bancário</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>Compensação em 1–3 dias úteis</div>
-                  </div>
-                </label>
-              </div>
-
-            </div>
-          )}
-
-          {/* Instruções Asaas */}
-          <div style={{
-            marginTop: '24px',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: isSmallScreen ? '20px' : '28px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none'
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '700',
-              color: '#344848',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                backgroundColor: '#e3f2fd',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:help-circle" width="18" style={{ color: '#2196F3' }} />
-              </div>
-              Como configurar o Asaas
-            </h3>
-
-            <div style={{
-              display: 'grid',
-              gap: '12px'
-            }}>
-              {[
-                { step: 1, text: <>Acesse <a href="https://www.asaas.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2196F3', fontWeight: '600' }}>asaas.com</a> e crie sua conta gratuita</> },
-                { step: 2, text: <>Vá em <strong>Minha Conta</strong> → <strong>Integrações</strong></> },
-                { step: 3, text: <>Clique em <strong>Gerar nova chave de API</strong></> },
-                { step: 4, text: <>Copie a chave gerada e cole no campo acima</> }
-              ].map((item, idx) => (
-                <div key={idx} style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '14px',
-                  padding: '12px 16px',
-                  backgroundColor: '#fafafa',
-                  borderRadius: '10px'
-                }}>
-                  <div style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    flexShrink: 0
-                  }}>
-                    {item.step}
-                  </div>
-                  <span style={{ fontSize: '14px', color: '#444', lineHeight: '28px' }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{
-              marginTop: '20px',
-              padding: '16px 20px',
-              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <Icon icon="mdi:gift" width="24" style={{ color: '#1565c0' }} />
-              <div>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#1565c0' }}>
-                  Taxa do Asaas: R$ 0,00 por boleto emitido
-                </p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#1976d2' }}>
-                  Emita quantos boletos quiser sem custo!
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        // Configuração PIX Manual
-        <>
-          {/* Formulário PIX */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: isSmallScreen ? '20px' : '28px',
-            marginBottom: '24px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none'
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '700',
-              color: '#344848',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                backgroundColor: '#fff3e0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:key" width="18" style={{ color: '#FF9800' }} />
-              </div>
-              Configurar Chave PIX
-            </h3>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: '600', color: '#344848' }}>
-                Sua Chave PIX <span style={{ color: '#f44336' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={dadosEmpresa.chavePix}
-                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, chavePix: e.target.value }))}
-                placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  fontSize: '15px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '10px',
-                  boxSizing: 'border-box',
-                  transition: 'border-color 0.2s',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#FF9800'}
-                onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-              />
-              <p style={{ fontSize: '13px', color: '#888', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Icon icon="mdi:information-outline" width="16" style={{ color: '#999' }} />
-                Esta chave será usada para gerar o QR Code PIX nos links de pagamento.
-              </p>
-            </div>
-
-            <button
-              onClick={salvarChavePix}
-              disabled={loading || !dadosEmpresa.chavePix}
-              style={{
-                padding: '14px 28px',
-                backgroundColor: loading || !dadosEmpresa.chavePix ? '#ccc' : '#FF9800',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: loading || !dadosEmpresa.chavePix ? 'not-allowed' : 'pointer',
-                fontSize: '15px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                transition: 'all 0.2s',
-                boxShadow: loading || !dadosEmpresa.chavePix ? 'none' : '0 4px 12px rgba(255, 152, 0, 0.3)'
-              }}
-            >
-              <Icon icon={loading ? 'mdi:loading' : 'mdi:content-save'} width="20" style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
-              {loading ? 'Salvando...' : 'Salvar Chave PIX'}
-            </button>
-          </div>
-
-          {/* Informações PIX Manual */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: isSmallScreen ? '20px' : '28px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none'
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '700',
-              color: '#344848',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                backgroundColor: '#fff3e0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Icon icon="mdi:information" width="18" style={{ color: '#FF9800' }} />
-              </div>
-              Como funciona o PIX Manual
-            </h3>
-
-            <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
-              {[
-                { icon: 'mdi:send', text: 'Você envia um link de pagamento para o aluno via WhatsApp' },
-                { icon: 'mdi:qrcode-scan', text: 'O aluno acessa o link e vê o QR Code PIX + código copia e cola' },
-                { icon: 'mdi:check-decagram', text: 'Após o pagamento, você confirma manualmente no sistema' },
-                { icon: 'mdi:alert-circle', text: 'Não é possível gerar boletos neste modo', warning: true }
-              ].map((item, idx) => (
-                <div key={idx} style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '14px',
-                  padding: '14px 16px',
-                  backgroundColor: item.warning ? '#fff3e0' : '#fafafa',
-                  borderRadius: '10px',
-                  border: item.warning ? '1px solid #ffcc80' : '1px solid transparent'
-                }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    backgroundColor: item.warning ? '#FF9800' : '#e8e8e8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <Icon icon={item.icon} width="18" style={{ color: item.warning ? 'white' : '#666' }} />
-                  </div>
-                  <span style={{ fontSize: '14px', color: item.warning ? '#e65100' : '#444', lineHeight: '32px', fontWeight: item.warning ? '600' : '400' }}>
-                    {item.text}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{
-              padding: '16px 20px',
-              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <Icon icon="mdi:lightbulb" width="24" style={{ color: '#1565c0' }} />
-              <p style={{ margin: 0, fontSize: '14px', color: '#1565c0' }}>
-                Para emitir <strong>boletos</strong> e ter <strong>confirmação automática</strong>, use a integração <strong>Asaas</strong>.
-              </p>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Multa e juros por atraso — política de cobrança, vale para qualquer modo de integração */}
-      <div style={{
-        marginTop: '24px',
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: isSmallScreen ? '20px' : '28px',
-        border: '1px solid #e5e7eb',
-        boxShadow: 'none'
-      }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#344848', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon icon="mdi:alarm-light-outline" width="18" style={{ color: '#e65100' }} />
-          </div>
-          Multa e juros por atraso
-        </h3>
-        <p style={{ fontSize: '13px', color: '#888', margin: '0 0 20px 42px' }}>
-          Aplicado em mensalidade vencida: no pagamento pelo portal, na baixa manual e na mensagem de cobrança vencida.
-        </p>
-
-        <label style={{
-          display: 'flex', alignItems: 'center', gap: '12px',
-          padding: '12px 14px', border: '1px solid #eee', borderRadius: '10px',
-          cursor: salvandoMultaJuros ? 'wait' : 'pointer',
-          backgroundColor: multaJuros.ativo ? '#f0fdf4' : '#fff',
-          opacity: salvandoMultaJuros ? 0.7 : 1
-        }}>
-          <input
-            type="checkbox"
-            checked={multaJuros.ativo}
-            disabled={salvandoMultaJuros}
-            onChange={e => salvarMultaJuros({ ...multaJuros, ativo: e.target.checked })}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '14px', color: '#333', fontWeight: '600' }}>Cobrar multa e juros</div>
-            <div style={{ fontSize: '12px', color: '#999' }}>Aplicado só em mensalidade vencida</div>
-          </div>
-        </label>
-
-        {multaJuros.ativo && (
-          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Multa (%)</label>
-              <input
-                type="number" min="0" max="100" step="0.1"
-                value={multaJuros.multa_percent}
-                disabled={salvandoMultaJuros}
-                onChange={e => setMultaJuros({ ...multaJuros, multa_percent: e.target.value })}
-                onBlur={() => salvarMultaJuros(multaJuros)}
-                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
-              />
-              <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Cobrada uma vez sobre o valor</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: '#666', fontWeight: 600, display: 'block', marginBottom: 4 }}>Juros ao mês (%)</label>
-              <input
-                type="number" min="0" max="100" step="0.1"
-                value={multaJuros.juros_mes_percent}
-                disabled={salvandoMultaJuros}
-                onChange={e => setMultaJuros({ ...multaJuros, juros_mes_percent: e.target.value })}
-                onBlur={() => salvarMultaJuros(multaJuros)}
-                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
-              />
-              <div style={{ fontSize: '11px', color: '#999', marginTop: 4 }}>Proporcional aos dias de atraso</div>
-            </div>
-          </div>
+  // ==========================================
+  // ABA RECEBIMENTOS (id interno 'integracoes')
+  // Três blocos: como o aluno paga · o que precisa pra funcionar · regras de atraso.
+  // Só aparência e organização: grava exatamente os mesmos dados de antes.
+  // Proposta em docs/repaginada-dez-2026/recebimentos.md
+  // ==========================================
+  const cabecalhoSecao = (icone, titulo, descricao) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+      <span style={{
+        width: 36, height: 36, borderRadius: 'var(--radius-lg)', flexShrink: 0,
+        backgroundColor: 'var(--mensalli-green-50)', color: 'var(--color-brand-fill)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+      }} aria-hidden="true">
+        <Icon icon={icone} width="20" height="20" />
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <h3 className="ds-text-h4" style={{ margin: 0, color: 'var(--color-text-primary)' }}>{titulo}</h3>
+        {descricao && (
+          <p className="ds-text-body-sm" style={{ margin: '2px 0 0', color: 'var(--color-text-muted)' }}>{descricao}</p>
         )}
       </div>
     </div>
   )
+
+  const renderIntegracoes = () => {
+    const ehAsaas = modoIntegracao === 'asaas'
+    const temChavePix = !!(dadosEmpresa.chavePix || '').trim()
+    const textoMulta = multaJuros.ativo
+      ? `Multa ${multaJuros.multa_percent || 0}% e juros ${multaJuros.juros_mes_percent || 0}% ao mês`
+      : 'Sem multa e juros'
+    const situacao = ehAsaas
+      ? (asaasConectado
+          ? { variant: 'success', texto: 'Asaas conectado' }
+          : { variant: 'warning', texto: 'Falta conectar o Asaas' })
+      : (temChavePix
+          ? { variant: 'success', texto: 'Chave Pix cadastrada' }
+          : { variant: 'danger', texto: 'Falta cadastrar a chave Pix' })
+
+    return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isSmallScreen ? '16px' : '20px' }}>
+
+      {/* ===== Resumo ===== */}
+      <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+        {/* O nome da aba já aparece no menu de seções; aqui vai só o resumo */}
+        <p className="ds-text-body" style={{ margin: '0 0 12px', color: 'var(--color-text-secondary)' }}>
+          Como seus alunos pagam e o que acontece quando atrasam.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+          <Badge variant="primary" solid icon={ehAsaas ? 'mdi:bank-outline' : 'mdi:qrcode'} size="md">
+            {ehAsaas ? 'Recebendo pelo Asaas' : 'Recebendo por Pix manual'}
+          </Badge>
+          <Badge variant={situacao.variant} dot size="md">{situacao.texto}</Badge>
+          <Badge variant="default" icon="mdi:alarm-light-outline" size="md">{textoMulta}</Badge>
+        </div>
+      </Card>
+
+      {/* ===== 1. Como seu aluno paga ===== */}
+      <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+        {cabecalhoSecao('mdi:cash-check', 'Como seu aluno paga', 'Vale para o portal do aluno, os links e as mensagens de cobrança.')}
+        <div
+          role="radiogroup"
+          aria-label="Como seu aluno paga"
+          style={{ display: 'grid', gridTemplateColumns: isSmallScreen ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '12px' }}
+        >
+          <ChoiceCard
+            selected={ehAsaas}
+            loading={salvandoModo}
+            onSelect={() => setModoParaConfirmar('asaas')}
+            icon="mdi:bank-outline"
+            title="Asaas"
+            badge={<Badge variant="success" size="xs">Recomendado</Badge>}
+            description="Pix, cartão e boleto. A baixa acontece sozinha quando o aluno paga."
+          />
+          <ChoiceCard
+            selected={!ehAsaas}
+            loading={salvandoModo}
+            onSelect={() => setModoParaConfirmar('manual')}
+            icon="mdi:qrcode"
+            title="Pix manual"
+            description="O aluno paga na sua chave Pix e você confere e dá baixa."
+          />
+        </div>
+      </Card>
+
+      {/* ===== 2. O que precisa para funcionar ===== */}
+      {ehAsaas ? (
+        <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+          {cabecalhoSecao('mdi:key-variant', 'Conexão com o Asaas', 'Cole a chave de API da sua conta Asaas.')}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {asaasConectado ? (
+              <Alert variant="success" title="Asaas conectado">
+                {asaasContaInfo ? <><strong>{asaasContaInfo.nome}</strong> · {asaasContaInfo.email}</> : 'Pronto para gerar cobranças.'}
+              </Alert>
+            ) : (
+              <Alert variant="warning" title="Falta conectar o Asaas">
+                Enquanto não conectar, não dá para gerar link de pagamento nem boleto.
+              </Alert>
+            )}
+
+            <Input
+              label="Chave de API do Asaas"
+              required
+              type="password"
+              autoComplete="off"
+              value={asaasConfig.apiKey}
+              onChange={(e) => setAsaasConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+              placeholder="$aact_..."
+              helper="No Asaas: Minha conta › Integrações › Gerar nova chave de API"
+            />
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <Button
+                variant="outline"
+                icon="mdi:connection"
+                loading={testandoAsaas}
+                disabled={!asaasConfig.apiKey}
+                onClick={testarConexaoAsaas}
+                style={{ flex: 1, minWidth: '150px' }}
+              >
+                Testar conexão
+              </Button>
+              <Button
+                variant="primary"
+                loading={salvandoAsaas}
+                disabled={!asaasConfig.apiKey}
+                onClick={salvarConfigAsaas}
+                style={{ flex: 1, minWidth: '150px' }}
+              >
+                Salvar
+              </Button>
+            </div>
+
+            {!asaasConectado && (
+              <details className="rcb-ajuda">
+                <summary>Como criar minha conta no Asaas</summary>
+                <ol>
+                  <li>Acesse <a href="https://www.asaas.com" target="_blank" rel="noopener noreferrer">asaas.com</a> e crie sua conta gratuita.</li>
+                  <li>Vá em <strong>Minha conta</strong> › <strong>Integrações</strong>.</li>
+                  <li>Clique em <strong>Gerar nova chave de API</strong>.</li>
+                  <li>Copie a chave e cole no campo acima.</li>
+                </ol>
+                <p>Taxa do Asaas: R$ 0,00 por boleto emitido.</p>
+              </details>
+            )}
+          </div>
+
+          {asaasConectado && (
+            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--color-border-subtle)' }}>
+              {cabecalhoSecao('mdi:credit-card-multiple-outline', 'Formas de pagamento no portal', 'Só aparece para o aluno o que estiver marcado.')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* Pix não pode ser desligado: fica marcado e travado, mas sem ficar apagado */}
+                <div className="rcb-sempre">
+                  <Checkbox checked disabled label="Pix" description="Sempre disponível: cai na hora e tem a menor taxa" />
+                </div>
+                <Checkbox
+                  checked={formasPagamento.cartao}
+                  disabled={salvandoFormas}
+                  onChange={e => toggleFormaPagamento('cartao', e.target.checked)}
+                  label="Cartão de crédito"
+                  description="Permite parcelar; a taxa do Asaas é maior que a do Pix"
+                />
+                <Checkbox
+                  checked={formasPagamento.boleto}
+                  disabled={salvandoFormas}
+                  onChange={e => toggleFormaPagamento('boleto', e.target.checked)}
+                  label="Boleto bancário"
+                  description="Compensa em 1 a 3 dias úteis"
+                />
+              </div>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+          {cabecalhoSecao('mdi:key', 'Sua chave Pix', 'É ela que aparece no QR Code e no copia e cola que o aluno recebe.')}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {!temChavePix && (
+              <Alert variant="danger" title="Falta cadastrar a chave Pix">
+                Sem a chave, a cobrança chega ao aluno sem forma de pagar.
+              </Alert>
+            )}
+
+            <Input
+              label="Chave Pix"
+              required
+              value={dadosEmpresa.chavePix}
+              onChange={(e) => setDadosEmpresa(prev => ({ ...prev, chavePix: e.target.value }))}
+              placeholder="CPF, CNPJ, e-mail, telefone ou aleatória"
+              autoComplete="off"
+            />
+
+            <div>
+              <Button
+                variant="primary"
+                loading={loading}
+                disabled={!temChavePix}
+                onClick={salvarChavePix}
+                fullWidth={isSmallScreen}
+              >
+                Salvar chave Pix
+              </Button>
+            </div>
+
+            <ul className="rcb-passos">
+              <li><Icon icon="mdi:send-outline" width="18" aria-hidden="true" /> A cobrança vai pelo WhatsApp com a sua chave Pix.</li>
+              <li><Icon icon="mdi:qrcode-scan" width="18" aria-hidden="true" /> O aluno abre o link e paga pelo QR Code ou copia e cola.</li>
+              <li><Icon icon="mdi:check-decagram-outline" width="18" aria-hidden="true" /> Você confere no banco e dá baixa no Financeiro.</li>
+            </ul>
+
+            <Alert variant="info" icon="mdi:lightbulb-on-outline" title="Quer parar de dar baixa na mão?">
+              Com o Asaas o aluno paga por Pix, cartão ou boleto e a baixa acontece sozinha. É só escolher Asaas acima.
+            </Alert>
+          </div>
+        </Card>
+      )}
+
+      {/* ===== 3. Regras de atraso ===== */}
+      <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+        {cabecalhoSecao('mdi:alarm-light-outline', 'Regras de atraso', 'Valem no pagamento pelo portal, na baixa manual e na mensagem de cobrança vencida.')}
+
+        <Switch
+          checked={multaJuros.ativo}
+          disabled={salvandoMultaJuros}
+          onChange={e => salvarMultaJuros({ ...multaJuros, ativo: e.target.checked })}
+          label="Cobrar multa e juros"
+          description="Só em mensalidade vencida"
+        />
+
+        {multaJuros.ativo && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginTop: '16px' }}>
+            <Input
+              label="Multa"
+              suffix="%"
+              type="number" min="0" max="100" step="0.1" inputMode="decimal"
+              value={multaJuros.multa_percent}
+              disabled={salvandoMultaJuros}
+              onChange={e => setMultaJuros({ ...multaJuros, multa_percent: e.target.value })}
+              onBlur={() => salvarMultaJuros(multaJuros)}
+              helper="Cobrada uma vez"
+            />
+            <Input
+              label="Juros ao mês"
+              suffix="%"
+              type="number" min="0" max="100" step="0.1" inputMode="decimal"
+              value={multaJuros.juros_mes_percent}
+              disabled={salvandoMultaJuros}
+              onChange={e => setMultaJuros({ ...multaJuros, juros_mes_percent: e.target.value })}
+              onBlur={() => salvarMultaJuros(multaJuros)}
+              helper="Proporcional aos dias"
+            />
+          </div>
+        )}
+      </Card>
+
+      <ConfirmModal
+        isOpen={!!modoParaConfirmar}
+        onClose={() => setModoParaConfirmar(null)}
+        onConfirm={() => { const m = modoParaConfirmar; setModoParaConfirmar(null); salvarModoIntegracao(m) }}
+        title={modoParaConfirmar === 'asaas' ? 'Passar a receber pelo Asaas?' : 'Passar a receber por Pix manual?'}
+        message={modoParaConfirmar === 'asaas'
+          ? ((asaasConfig.apiKey || '').trim()
+              ? 'A partir do próximo envio, as mensagens de cobrança de TODOS os seus alunos vão mandar o link de pagamento do Asaas no lugar da chave Pix.'
+              : 'O Asaas ainda não está conectado. As mensagens continuam mandando a sua chave Pix até você colar e salvar a chave do Asaas.')
+          : 'A partir do próximo envio, as mensagens de cobrança de TODOS os seus alunos vão mandar a sua chave Pix no lugar do link do Asaas. A baixa volta a ser manual.'}
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+        type="warning"
+      />
+
+      <style>{`
+        .rcb-ajuda { border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); padding: 0 14px; background: var(--neutral-50); }
+        .rcb-ajuda > summary { cursor: pointer; min-height: var(--touch-min); display: flex; align-items: center; font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--color-text-primary); list-style: none; }
+        .rcb-ajuda > summary::-webkit-details-marker { display: none; }
+        .rcb-ajuda > summary::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--color-text-muted); transition: transform var(--duration-150) var(--ease-out); }
+        .rcb-ajuda[open] > summary::after { transform: rotate(90deg); }
+        .rcb-ajuda ol { margin: 0 0 8px; padding-left: 20px; font-size: var(--text-md); color: var(--color-text-secondary); line-height: 1.7; }
+        .rcb-ajuda a { color: var(--info-700); font-weight: var(--weight-semibold); }
+        .rcb-ajuda p { margin: 0 0 12px; font-size: var(--text-sm); color: var(--color-text-muted); }
+        .rcb-sempre .ds-checkbox--disabled { opacity: 1; cursor: default; }
+        .rcb-passos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .rcb-passos li { display: flex; align-items: flex-start; gap: 10px; font-size: var(--text-md); color: var(--color-text-secondary); line-height: 1.45; }
+        .rcb-passos li svg { flex-shrink: 0; margin-top: 1px; color: var(--color-text-muted); }
+      `}</style>
+    </div>
+    )
+  }
 
   // Aba de Automação WhatsApp foi movida para /whatsapp
   // A configuração de automações agora está integrada na página de templates
@@ -5390,36 +4761,17 @@ function Configuracao({ secao = 'config' }) {
           position: 'relative',
           marginBottom: '16px'
         }}>
-          <select
+          {/* Menu das abas — Select do DS, com o título de cada grupo */}
+          <Select
+            aria-label="Seção de configurações"
+            size="lg"
+            showAll
             value={abaAtiva}
-            onChange={(e) => setAbaAtiva(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 40px 12px 14px',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #e5e7eb',
-              borderRadius: '10px',
-              fontSize: '15px',
-              fontWeight: '600',
-              color: '#1a1a1a',
-              cursor: 'pointer',
-              appearance: 'none',
-              WebkitAppearance: 'none',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 12px center',
-              backgroundSize: '20px',
-              boxSizing: 'border-box'
-            }}
-          >
-            {groupedConfigTabs(secao).map((group) => (
-              <optgroup key={group.id} label={group.label}>
-                {group.items.map((tab) => (
-                  <option key={tab.id} value={tab.id}>{tab.label}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            onChange={(v) => v && setAbaAtiva(v)}
+            options={groupedConfigTabs(secao).flatMap(group =>
+              group.items.map(tab => ({ value: tab.id, label: tab.label, icon: tab.icon, group: group.label }))
+            )}
+          />
         </div>
       ) : (
         <div style={{

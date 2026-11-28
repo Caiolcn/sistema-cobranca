@@ -15,6 +15,18 @@ import { resolverDestinatario } from './utils/destinatario'
 // Textos vivem em src/data pra o wizard de onboarding poder semear os mesmos
 // templates ao conectar, sem importar este componente inteiro
 import { TEMPLATES_PADRAO, TEMPLATES_SEED, TITULOS_PADRAO } from './data/templatesPadrao'
+import Alert from './design-system/components/Alert'
+import Badge from './design-system/components/Badge'
+import Card from './design-system/components/Card'
+import Input from './design-system/components/Input'
+import Textarea from './design-system/components/Textarea'
+import Checkbox from './design-system/components/Checkbox'
+import EmptyState from './design-system/components/EmptyState'
+import Switch from './design-system/components/Switch'
+import Button from './design-system/components/Button'
+import Modal from './design-system/components/Modal'
+import Select from './design-system/components/Select'
+import Tabs from './design-system/components/Tabs'
 
 console.log('>>> WhatsAppConexao.js CARREGADO <<<')
 
@@ -38,7 +50,7 @@ const TIPOS_AULA_COM_DATA = ['class_reminder_24h', 'booking_confirmed']
 // ==========================================
 // COMPONENTE: CAMPANHAS
 // ==========================================
-function CampanhasContent({ contextUserId, isSmallScreen }) {
+function CampanhasContent({ contextUserId, isSmallScreen, whatsappStatus, irParaConexao }) {
   const [campanhas, setCampanhas] = useState([])
   const [loading, setLoading] = useState(true)
   const [criando, setCriando] = useState(false)
@@ -278,363 +290,382 @@ function CampanhasContent({ contextUserId, isSmallScreen }) {
     setTitulo(''); setMensagem(''); setImagemUrl(''); carregarCampanhas(); setTab('historico')
   }
 
+  const podeEnviar = !!(titulo.trim() && mensagem.trim() && destinatariosSelecionados.length > 0)
+  const whatsCaiu = whatsappStatus === 'disconnected' || whatsappStatus === 'zombie'
+  const variaveis = ['{{nomeAluno}}', '{{nomeAlunoReal}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}', ...(linkLoja ? ['{{linkLoja}}'] : [])]
+
   return (
-    <div style={{ padding: isSmallScreen ? '16px' : '24px' }}>
-      {/* Sub-tabs */}
-      <div style={{ display: 'flex', gap: 4, backgroundColor: '#f3f4f6', borderRadius: 10, padding: 3, marginBottom: 20 }}>
-        {[{ id: 'nova', label: 'Nova Campanha', icon: 'mdi:bullhorn' }, { id: 'historico', label: `Histórico (${campanhas.length})`, icon: 'mdi:history' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            backgroundColor: tab === t.id ? '#fff' : 'transparent',
-            color: tab === t.id ? '#1a1a1a' : '#888', fontWeight: tab === t.id ? 600 : 400, fontSize: 13,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-            boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
-          }}>
-            <Icon icon={t.icon} width={15} /> {t.label}
-          </button>
-        ))}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <Tabs
+        variant="segmented"
+        fullWidth
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: 'nova', label: 'Nova campanha', icon: 'mdi:bullhorn-outline' },
+          { value: 'historico', label: `Histórico (${campanhas.length})`, icon: 'mdi:history' }
+        ]}
+      />
 
       {/* Nova Campanha */}
       {tab === 'nova' && !enviando && (
-        <div style={{ backgroundColor: '#fff', borderRadius: 12, padding: isSmallScreen ? 16 : 24, border: '1px solid #e5e7eb' }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600, color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon icon="mdi:bullhorn" width={20} style={{ color: '#344848' }} /> Nova Campanha
-          </h3>
-
-          {/* Título */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Título da campanha</label>
-            <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Aviso de feriado, Promoção do mês..."
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
-          </div>
-
-          {/* Segmento */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Enviar para</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[
-                { id: 'todos', label: 'Todos ativos' },
-                { id: 'plano', label: 'Por plano' },
-                { id: 'inadimplentes', label: 'Inadimplentes' }
-              ].map(s => (
-                <button key={s.id} onClick={() => setSegmento(s.id)} style={{
-                  padding: '6px 14px', fontSize: 13, fontWeight: segmento === s.id ? 600 : 400,
-                  backgroundColor: segmento === s.id ? '#344848' : '#f3f4f6',
-                  color: segmento === s.id ? 'white' : '#555',
-                  border: 'none', borderRadius: 6, cursor: 'pointer'
-                }}>{s.label}</button>
-              ))}
-            </div>
-            {segmento === 'plano' && (
-              <select value={filtroPlanoId} onChange={e => setFiltroPlanoId(e.target.value)}
-                style={{ marginTop: 8, padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, width: '100%', boxSizing: 'border-box' }}>
-                <option value="">Selecionar plano...</option>
-                {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
+        <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {whatsCaiu && (
+              <Alert
+                variant="warning"
+                title="Seu WhatsApp está desconectado"
+                action={<Button variant="outline" size="sm" onClick={irParaConexao}>Conectar</Button>}
+              >
+                Conecte antes de enviar, senão as mensagens da campanha não saem.
+              </Alert>
             )}
-          </div>
 
-          {/* Preview destinatários — colapsável com checkboxes */}
-          <div style={{ marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-            <div onClick={() => !carregandoDest && setDestExpandido(!destExpandido)} style={{
-              padding: '10px 14px', backgroundColor: '#f8f9fa', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#555' }}>
-                <Icon icon="mdi:account-group" width={18} style={{ color: '#344848' }} />
-                {carregandoDest ? 'Carregando...' : (
-                  <span><strong>{destinatarios.length - destDesmarcados.size}</strong> de {destinatarios.length} aluno{destinatarios.length !== 1 ? 's' : ''} selecionado{destinatarios.length - destDesmarcados.size !== 1 ? 's' : ''}</span>
-                )}
-              </div>
-              <Icon icon={destExpandido ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={18} style={{ color: '#888' }} />
-            </div>
-            {destExpandido && destinatarios.length > 0 && (
-              <div style={{ maxHeight: 250, overflowY: 'auto', borderTop: '1px solid #e5e7eb' }}>
-                {/* Marcar/desmarcar todos */}
-                <div style={{ padding: '8px 14px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#fafafa' }}>
-                  <input type="checkbox" checked={destDesmarcados.size === 0} onChange={() => {
-                    if (destDesmarcados.size === 0) setDestDesmarcados(new Set(destinatarios.map(d => d.id)))
-                    else setDestDesmarcados(new Set())
-                  }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>
-                    {destDesmarcados.size === 0 ? 'Desmarcar todos' : 'Marcar todos'}
-                  </span>
-                </div>
-                {destinatarios.map(d => {
-                  const marcado = !destDesmarcados.has(d.id)
-                  return (
-                    <div key={d.id} onClick={() => {
-                      setDestDesmarcados(prev => {
-                        const novo = new Set(prev)
-                        if (novo.has(d.id)) novo.delete(d.id); else novo.add(d.id)
-                        return novo
-                      })
-                    }} style={{
-                      padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8,
-                      cursor: 'pointer', borderBottom: '1px solid #f8f8f8',
-                      opacity: marcado ? 1 : 0.5, backgroundColor: marcado ? '#fff' : '#fafafa'
-                    }}>
-                      <input type="checkbox" checked={marcado} readOnly style={{ width: 15, height: 15, cursor: 'pointer' }} />
-                      <span style={{ fontSize: 13, color: '#333', flex: 1 }}>{d.nome}</span>
-                      <span style={{ fontSize: 11, color: '#999' }}>{d.responsavel_telefone || d.telefone}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+            <Input
+              label="Título da campanha"
+              value={titulo}
+              onChange={e => setTitulo(e.target.value)}
+              placeholder="Ex.: Aviso de feriado"
+              helper="Só você vê; serve para achar a campanha no histórico."
+            />
 
-          {/* Mensagem */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Mensagem</label>
-            <textarea value={mensagem} onChange={e => setMensagem(e.target.value)} rows={5}
-              placeholder="Escreva sua mensagem aqui..."
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
-            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-              {['{{nomeAluno}}', '{{nomeAlunoReal}}', '{{nomeResponsavel}}', '{{nomeEmpresa}}', ...(linkLoja ? ['{{linkLoja}}'] : [])].map(v => (
-                <button key={v} onClick={() => setMensagem(prev => prev + v)} style={{
-                  padding: '3px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#eef2ff',
-                  color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: 4, cursor: 'pointer'
-                }}>{v}</button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-              A mensagem vai pro WhatsApp do responsável (quando cadastrado). Pra falar com o responsável citando o aluno, use <strong>{`{{nomeResponsavel}}`}</strong> + <strong>{`{{nomeAlunoReal}}`}</strong> {`(este sempre traz o nome do aluno, ex.: "Oi {{nomeResponsavel}}, sobre a mensalidade do {{nomeAlunoReal}}")`}.
-            </div>
-          </div>
-
-          {/* Imagem (opcional) */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Imagem <span style={{ fontWeight: 400, color: '#999' }}>(opcional)</span></label>
-            <input ref={imagemInputRef} type="file" accept="image/*" onChange={handleUploadImagem} style={{ display: 'none' }} />
-            {imagemUrl ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fafafa' }}>
-                <img src={imagemUrl} alt="Imagem da campanha" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} />
-                <span style={{ flex: 1, fontSize: 12, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Icon icon="mdi:check-circle" width={16} /> Imagem anexada
-                </span>
-                <button onClick={removerImagem} style={{
-                  padding: '6px 12px', fontSize: 12, fontWeight: 600, backgroundColor: '#fef2f2', color: '#ef4444',
-                  border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                }}><Icon icon="mdi:trash-can-outline" width={14} /> Remover</button>
-              </div>
-            ) : (
-              <button onClick={() => imagemInputRef.current?.click()} disabled={uploadingImagem} style={{
-                width: '100%', padding: '10px 12px', borderRadius: 8,
-                border: imagemErro ? '1px dashed #fca5a5' : '1px dashed #cbd5e1',
-                backgroundColor: imagemErro ? '#fef2f2' : '#f8fafc',
-                color: imagemErro ? '#ef4444' : '#555', fontSize: 13, fontWeight: 600, cursor: uploadingImagem ? 'wait' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-              }}>
-                <Icon icon={uploadingImagem ? 'mdi:loading' : 'mdi:image-plus'} width={18} style={uploadingImagem ? { animation: 'ds-spin 1s linear infinite' } : undefined} />
-                {uploadingImagem ? 'Enviando...' : 'Anexar imagem'}
-              </button>
-            )}
-            {imagemErro ? (
-              <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Icon icon="mdi:alert-circle" width={14} /> {imagemErro}
-              </div>
-            ) : (
-              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-                A imagem é enviada com a mensagem como legenda. Formatos: JPG, PNG. Máx. 5 MB.
-              </div>
-            )}
-          </div>
-
-          {/* Preview mensagem */}
-          {mensagem && (
-            <div style={{ padding: '12px 14px', backgroundColor: '#f0fdf4', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', marginBottom: 6 }}>Preview:</div>
-              {imagemUrl && (
-                <img src={imagemUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 6, marginBottom: 8, display: 'block' }} />
+            <div>
+              {/* No celular as três opções não cabem numa linha: vira um seletor */}
+              {isSmallScreen ? (
+                <Select
+                  label="Enviar para"
+                  showAll
+                  value={segmento}
+                  onChange={v => v && setSegmento(v)}
+                  options={[
+                    { value: 'todos', label: 'Todos os alunos ativos' },
+                    { value: 'plano', label: 'Alunos de um plano' },
+                    { value: 'inadimplentes', label: 'Inadimplentes' }
+                  ]}
+                />
+              ) : (
+                <>
+                  <span className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>Enviar para</span>
+                  <Tabs
+                    variant="segmented"
+                    fullWidth
+                    value={segmento}
+                    onChange={setSegmento}
+                    items={[
+                      { value: 'todos', label: 'Todos ativos' },
+                      { value: 'plano', label: 'Por plano' },
+                      { value: 'inadimplentes', label: 'Inadimplentes' }
+                    ]}
+                  />
+                </>
               )}
-              {mensagem
-                .replace(/\{\{nomeCliente\}\}/g, 'João')
-                .replace(/\{\{nomeAlunoReal\}\}/g, 'João')
-                .replace(/\{\{nomeAluno\}\}/g, 'João')
-                .replace(/\{\{nomeResponsavel\}\}/g, 'Maria')
-                .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa || 'Sua Empresa')}
+              {segmento === 'plano' && (
+                <div style={{ marginTop: '8px' }}>
+                  <Select
+                    aria-label="Plano"
+                    value={filtroPlanoId}
+                    onChange={v => setFiltroPlanoId(v || '')}
+                    placeholder="Selecionar plano..."
+                    options={planos.map(p => ({ value: p.id, label: p.nome }))}
+                  />
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Regras e avisos — colapsável */}
-          <div style={{ marginBottom: 20, border: '1px solid #fde68a', borderRadius: 10, overflow: 'hidden', backgroundColor: '#fffbeb' }}>
-            <div onClick={() => setRegrasExpandidas && setRegrasExpandidas(!regrasExpandidas)}
-              style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon icon="mdi:alert-outline" width={16} style={{ color: '#d97706' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Regras de envio</span>
-              </div>
-              <Icon icon={regrasExpandidas ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={18} style={{ color: '#92400e' }} />
+            {/* Destinatários — recolhível, com marcar/desmarcar */}
+            <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+              <button
+                type="button"
+                className="cmp-dest-topo"
+                onClick={() => !carregandoDest && setDestExpandido(!destExpandido)}
+                aria-expanded={destExpandido}
+              >
+                <Icon icon="mdi:account-group-outline" width={18} aria-hidden="true" />
+                <span style={{ flex: 1, textAlign: 'left' }}>
+                  {carregandoDest ? 'Carregando…' : (
+                    <><strong>{destinatarios.length - destDesmarcados.size}</strong> de {destinatarios.length} aluno{destinatarios.length !== 1 ? 's' : ''} selecionado{destinatarios.length - destDesmarcados.size !== 1 ? 's' : ''}</>
+                  )}
+                </span>
+                <Icon icon={destExpandido ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={20} aria-hidden="true" />
+              </button>
+              {destExpandido && destinatarios.length > 0 && (
+                <div style={{ maxHeight: 280, overflowY: 'auto', borderTop: '1px solid var(--color-border-subtle)', padding: '4px 12px' }}>
+                  <div style={{ padding: '4px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
+                    <Checkbox
+                      checked={destDesmarcados.size === 0}
+                      indeterminate={destDesmarcados.size > 0 && destDesmarcados.size < destinatarios.length}
+                      onChange={() => {
+                        if (destDesmarcados.size === 0) setDestDesmarcados(new Set(destinatarios.map(d => d.id)))
+                        else setDestDesmarcados(new Set())
+                      }}
+                      label={destDesmarcados.size === 0 ? 'Desmarcar todos' : 'Marcar todos'}
+                    />
+                  </div>
+                  {destinatarios.map(d => (
+                    <div key={d.id} style={{ padding: '2px 0' }}>
+                      <Checkbox
+                        checked={!destDesmarcados.has(d.id)}
+                        onChange={() => {
+                          setDestDesmarcados(prev => {
+                            const novo = new Set(prev)
+                            if (novo.has(d.id)) novo.delete(d.id); else novo.add(d.id)
+                            return novo
+                          })
+                        }}
+                        label={d.nome}
+                        description={d.responsavel_telefone || d.telefone}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            {regrasExpandidas && (
-              <div style={{ padding: '0 14px 14px' }}>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#92400e', lineHeight: 1.8 }}>
-                  <li>Evite enviar mais de <strong>20 mensagens por hora</strong> — risco de bloqueio</li>
-                  <li>Envie apenas para alunos que <strong>já têm seu número salvo</strong> — reduz risco de denúncia</li>
-                  <li>Não envie conteúdo promocional em excesso — pode ser marcado como spam</li>
-                  <li>O WhatsApp pode <strong>bloquear temporariamente</strong> números que enviam muitas mensagens em pouco tempo</li>
-                  <li>O <strong>Mensalli não se responsabiliza</strong> por bloqueios decorrentes do uso de campanhas</li>
-                </ul>
+
+            <div>
+              <Textarea
+                label="Mensagem"
+                value={mensagem}
+                onChange={e => setMensagem(e.target.value)}
+                rows={5}
+                placeholder="Escreva sua mensagem aqui..."
+              />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                {variaveis.map(v => (
+                  <button key={v} type="button" className="cmp-var" onClick={() => setMensagem(prev => prev + v)}>{v}</button>
+                ))}
+              </div>
+              <p className="ds-text-caption" style={{ margin: '8px 0 0', color: 'var(--color-text-muted)', fontWeight: 400 }}>
+                A mensagem vai para o WhatsApp do responsável (quando cadastrado). Para falar com o responsável citando o aluno, use <strong>{`{{nomeResponsavel}}`}</strong> + <strong>{`{{nomeAlunoReal}}`}</strong>. Ex.: "Oi {`{{nomeResponsavel}}`}, sobre a mensalidade do {`{{nomeAlunoReal}}`}".
+              </p>
+            </div>
+
+            {/* Imagem (opcional) */}
+            <div>
+              <span className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>
+                Imagem <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(opcional)</span>
+              </span>
+              <input ref={imagemInputRef} type="file" accept="image/*" onChange={handleUploadImagem} style={{ display: 'none' }} />
+              {imagemUrl ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--neutral-50)' }}>
+                  <img src={imagemUrl} alt="Imagem da campanha" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }} />
+                  <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-brand-fill)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Icon icon="mdi:check-circle" width={16} /> Imagem anexada
+                  </span>
+                  <Button variant="danger-soft" size="sm" icon="mdi:trash-can-outline" onClick={removerImagem}>Remover</Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  icon="mdi:image-plus"
+                  fullWidth
+                  loading={uploadingImagem}
+                  onClick={() => imagemInputRef.current?.click()}
+                  style={{ borderStyle: 'dashed' }}
+                >
+                  Anexar imagem
+                </Button>
+              )}
+              {imagemErro ? (
+                <p className="ds-text-caption" style={{ margin: '6px 0 0', color: 'var(--danger-700)' }}>{imagemErro}</p>
+              ) : (
+                <p className="ds-text-caption" style={{ margin: '6px 0 0', color: 'var(--color-text-muted)', fontWeight: 400 }}>
+                  A imagem vai junto com a mensagem, como legenda. JPG ou PNG, até 5 MB.
+                </p>
+              )}
+            </div>
+
+            {/* Prévia */}
+            {mensagem && (
+              <div style={{ padding: '12px 14px', backgroundColor: 'var(--success-50)', borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', border: '1px solid var(--mensalli-green-100)' }}>
+                <div className="ds-text-eyebrow" style={{ color: 'var(--color-brand-fill)', marginBottom: 6 }}>Prévia</div>
+                {imagemUrl && (
+                  <img src={imagemUrl} alt="Prévia" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 6, marginBottom: 8, display: 'block' }} />
+                )}
+                {mensagem
+                  .replace(/\{\{nomeCliente\}\}/g, 'João')
+                  .replace(/\{\{nomeAlunoReal\}\}/g, 'João')
+                  .replace(/\{\{nomeAluno\}\}/g, 'João')
+                  .replace(/\{\{nomeResponsavel\}\}/g, 'Maria')
+                  .replace(/\{\{nomeEmpresa\}\}/g, nomeEmpresa || 'Sua Empresa')}
               </div>
             )}
-            {destinatariosSelecionados.length > 0 && (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid #fde68a', fontSize: 12, fontWeight: 600, color: '#92400e' }}>
-                Tempo estimado: ~{Math.ceil(destinatariosSelecionados.length * 30 / 60)} minutos para {destinatariosSelecionados.length} destinatário{destinatariosSelecionados.length !== 1 ? 's' : ''}
-              </div>
+
+            {/* Regras de envio — recolhível */}
+            <details className="cmp-regras">
+              <summary>
+                <Icon icon="mdi:alert-outline" width={18} aria-hidden="true" />
+                <span style={{ flex: 1 }}>Regras de envio</span>
+                {destinatariosSelecionados.length > 0 && (
+                  <span className="cmp-regras-tempo">~{Math.ceil(destinatariosSelecionados.length * 30 / 60)} min</span>
+                )}
+              </summary>
+              <ul>
+                <li>Evite mais de <strong>20 mensagens por hora</strong>: risco de bloqueio.</li>
+                <li>Envie só para alunos que <strong>já têm seu número salvo</strong>: reduz o risco de denúncia.</li>
+                <li>Não exagere no conteúdo promocional: pode ser marcado como spam.</li>
+                <li>O WhatsApp pode <strong>bloquear temporariamente</strong> números que mandam muitas mensagens em pouco tempo.</li>
+                <li>O <strong>Mensalli não se responsabiliza</strong> por bloqueios decorrentes do uso de campanhas.</li>
+              </ul>
+              {destinatariosSelecionados.length > 0 && (
+                <p>Tempo estimado: ~{Math.ceil(destinatariosSelecionados.length * 30 / 60)} minutos para {destinatariosSelecionados.length} destinatário{destinatariosSelecionados.length !== 1 ? 's' : ''}.</p>
+              )}
+            </details>
+
+            <Button variant="primary" size="lg" icon="mdi:send" fullWidth disabled={!podeEnviar} onClick={enviarCampanha}>
+              Enviar campanha ({destinatariosSelecionados.length})
+            </Button>
+            {!podeEnviar && (
+              <p className="ds-text-caption" style={{ margin: '-8px 0 0', color: 'var(--color-text-muted)', textAlign: 'center', fontWeight: 400 }}>
+                {!titulo.trim() ? 'Preencha o título para enviar.' : !mensagem.trim() ? 'Escreva a mensagem para enviar.' : 'Selecione pelo menos um aluno.'}
+              </p>
             )}
           </div>
-
-          {/* Botão enviar */}
-          <button onClick={enviarCampanha} disabled={!titulo.trim() || !mensagem.trim() || destinatariosSelecionados.length === 0}
-            style={{
-              width: '100%', padding: '12px', backgroundColor: titulo.trim() && mensagem.trim() && destinatariosSelecionados.length > 0 ? '#344848' : '#ccc',
-              color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600,
-              cursor: titulo.trim() && mensagem.trim() && destinatariosSelecionados.length > 0 ? 'pointer' : 'not-allowed',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-            }}>
-            <Icon icon="mdi:send" width={18} /> Enviar Campanha ({destinatariosSelecionados.length})
-          </button>
-        </div>
+        </Card>
       )}
 
       {/* Progresso de envio */}
       {enviando && (
-        <div style={{ backgroundColor: '#fff', borderRadius: 12, padding: isSmallScreen ? 16 : 24, border: '1px solid #e5e7eb', textAlign: 'center' }}>
-          <Icon icon="mdi:send-clock" width={48} style={{ color: '#344848', marginBottom: 12 }} />
-          <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>Enviando campanha...</h3>
-          <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666' }}>"{campanhaAtiva?.titulo}"</p>
-
-          {/* Barra de progresso */}
-          <div style={{ height: 8, borderRadius: 4, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 12 }}>
+        <Card padding={isSmallScreen ? 'default' : 'spacious'} style={{ textAlign: 'center' }}>
+          <Icon icon="mdi:send-clock" width={48} style={{ color: 'var(--color-brand-fill)', marginBottom: 12 }} />
+          <h3 className="ds-text-h4" style={{ margin: '0 0 4px', color: 'var(--color-text-primary)' }}>Enviando campanha…</h3>
+          <p className="ds-text-body" style={{ margin: '0 0 16px', color: 'var(--color-text-secondary)' }}>"{campanhaAtiva?.titulo}"</p>
+          <div style={{ height: 8, borderRadius: 4, backgroundColor: 'var(--neutral-200)', overflow: 'hidden', marginBottom: 12 }}>
             <div style={{
-              height: '100%', borderRadius: 4, transition: 'width 0.3s',
-              width: `${progresso.total > 0 ? ((progresso.enviados + progresso.falhas) / progresso.total * 100) : 0}%`,
-              background: 'linear-gradient(90deg, #22c55e, #16a34a)'
+              height: '100%', borderRadius: 4, transition: 'width 0.3s', backgroundColor: 'var(--color-brand-fill)',
+              width: `${progresso.total > 0 ? ((progresso.enviados + progresso.falhas) / progresso.total * 100) : 0}%`
             }} />
           </div>
-
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 4 }}>
+          <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
             {progresso.enviados + progresso.falhas} / {progresso.total}
           </div>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>
-            <span style={{ color: '#16a34a' }}>✓ {progresso.enviados} enviados</span>
-            {progresso.falhas > 0 && <span style={{ color: '#ef4444', marginLeft: 12 }}>✗ {progresso.falhas} falhas</span>}
+          <div style={{ fontSize: 'var(--text-xs)', marginBottom: 16 }}>
+            <span style={{ color: 'var(--color-brand-fill)' }}>✓ {progresso.enviados} enviados</span>
+            {progresso.falhas > 0 && <span style={{ color: 'var(--danger-700)', marginLeft: 12 }}>✗ {progresso.falhas} falhas</span>}
           </div>
-
-          <button onClick={() => { cancelarRef.current = true }} style={{
-            padding: '8px 24px', backgroundColor: '#fef2f2', color: '#ef4444',
-            border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer'
-          }}>
-            <Icon icon="mdi:stop" width={16} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Cancelar envio
-          </button>
-        </div>
+          <Button variant="danger-soft" icon="mdi:stop" onClick={() => { cancelarRef.current = true }}>
+            Cancelar envio
+          </Button>
+        </Card>
       )}
 
       {/* Histórico */}
       {tab === 'historico' && !enviando && (
-        <div>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Carregando...</div>
-          ) : campanhas.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-              <Icon icon="mdi:bullhorn-outline" width={48} style={{ color: '#ddd', marginBottom: 12 }} />
-              <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>Nenhuma campanha enviada</p>
-            </div>
-          ) : (
-            campanhas.map(c => {
+        loading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Carregando…</div>
+        ) : campanhas.length === 0 ? (
+          <EmptyState
+            variant="first-use"
+            icon="mdi:bullhorn-outline"
+            title="Nenhuma campanha enviada"
+            description="Quando você enviar uma campanha, ela aparece aqui com quem recebeu e quem não recebeu."
+            action={<Button variant="primary" icon="mdi:plus" onClick={() => setTab('nova')}>Nova campanha</Button>}
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {campanhas.map(c => {
               const isExpandida = campanhaExpandida === c.id
+              const st = c.status === 'concluida' ? { v: 'success', t: 'Concluída' }
+                : c.status === 'enviando' ? { v: 'warning', t: 'Enviando' }
+                : c.status === 'cancelada' ? { v: 'danger', t: 'Cancelada' }
+                : { v: 'default', t: 'Rascunho' }
               return (
-              <div key={c.id} style={{
-                backgroundColor: '#fff', borderRadius: 10, marginBottom: 8,
-                border: '1px solid #e5e7eb', overflow: 'hidden'
-              }}>
-                {/* Header clicável */}
-                <div onClick={async () => {
-                  if (isExpandida) { setCampanhaExpandida(null); return }
-                  setCampanhaExpandida(c.id)
-                  const { data } = await supabase.from('campanha_envios')
-                    .select('*, devedores(nome)').eq('campanha_id', c.id).order('enviado_em', { ascending: true })
-                  setEnviosDaCampanha(data || [])
-                }} style={{
-                  padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  cursor: 'pointer', userSelect: 'none'
-                }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a' }}>{c.titulo}</div>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                      {new Date(c.created_at).toLocaleDateString('pt-BR')} · {c.segmento === 'todos' ? 'Todos ativos' : c.segmento === 'plano' ? 'Por plano' : 'Inadimplentes'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: c.status === 'concluida' ? '#16a34a' : c.status === 'enviando' ? '#f59e0b' : c.status === 'cancelada' ? '#ef4444' : '#888' }}>
-                        {c.status === 'concluida' ? '✓ Concluída' : c.status === 'enviando' ? '⏳ Enviando' : c.status === 'cancelada' ? '✗ Cancelada' : 'Rascunho'}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                        {c.total_enviados}/{c.total_destinatarios} enviados
-                        {c.total_falhas > 0 && ` · ${c.total_falhas} falhas`}
-                      </div>
-                    </div>
-                    <Icon icon={isExpandida ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={18} style={{ color: '#888' }} />
-                  </div>
-                </div>
+                <Card key={c.id} padding="none">
+                  <button
+                    type="button"
+                    className="cmp-hist-topo"
+                    aria-expanded={isExpandida}
+                    onClick={async () => {
+                      if (isExpandida) { setCampanhaExpandida(null); return }
+                      setCampanhaExpandida(c.id)
+                      const { data } = await supabase.from('campanha_envios')
+                        .select('*, devedores(nome)').eq('campanha_id', c.id).order('enviado_em', { ascending: true })
+                      setEnviosDaCampanha(data || [])
+                    }}
+                  >
+                    <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <span style={{ display: 'block', fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.titulo}</span>
+                      <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                        {new Date(c.created_at).toLocaleDateString('pt-BR')} · {c.segmento === 'todos' ? 'Todos ativos' : c.segmento === 'plano' ? 'Por plano' : 'Inadimplentes'}
+                      </span>
+                    </span>
+                    <span style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <Badge variant={st.v}>{st.t}</Badge>
+                      <span style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                        {c.total_enviados}/{c.total_destinatarios} enviados{c.total_falhas > 0 && ` · ${c.total_falhas} falhas`}
+                      </span>
+                    </span>
+                    <Icon icon={isExpandida ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={20} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} aria-hidden="true" />
+                  </button>
 
-                {/* Detalhes expandidos */}
-                {isExpandida && (
-                  <div style={{ borderTop: '1px solid #f0f0f0', padding: '12px 16px', maxHeight: 300, overflowY: 'auto' }}>
-                    {/* Mensagem */}
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mensagem enviada</div>
-                      <div style={{ padding: '10px 12px', backgroundColor: '#f8f9fa', borderRadius: 8, fontSize: 12, color: '#555', whiteSpace: 'pre-wrap', borderLeft: '3px solid #d1d5db' }}>
+                  {isExpandida && (
+                    <div style={{ borderTop: '1px solid var(--color-border-subtle)', padding: '12px 16px', maxHeight: 320, overflowY: 'auto' }}>
+                      <div className="ds-text-eyebrow" style={{ color: 'var(--color-text-muted)', marginBottom: 4 }}>Mensagem enviada</div>
+                      <div style={{ padding: '10px 12px', backgroundColor: 'var(--neutral-50)', borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap', marginBottom: 12 }}>
                         {c.mensagem}
                       </div>
-                    </div>
-
-                    {/* Lista de envios */}
-                    {enviosDaCampanha.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: 16, color: '#999', fontSize: 12 }}>Carregando...</div>
-                    ) : (
-                      enviosDaCampanha.map((e, idx) => (
-                        <div key={e.id} style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '6px 0', borderTop: idx > 0 ? '1px solid #f8f8f8' : 'none'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Icon icon={e.status === 'enviado' ? 'mdi:check-circle' : e.status === 'falha' ? 'mdi:alert-circle' : 'mdi:clock-outline'}
-                              width={16} style={{ color: e.status === 'enviado' ? '#16a34a' : e.status === 'falha' ? '#ef4444' : '#999', flexShrink: 0 }} />
-                            <div>
-                              <div style={{ fontSize: 13, fontWeight: 500, color: '#333' }}>{e.devedores?.nome || 'Aluno'}</div>
-                              {e.erro && <div style={{ fontSize: 11, color: '#ef4444' }}>{e.erro}</div>}
+                      {enviosDaCampanha.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>Carregando…</div>
+                      ) : (
+                        enviosDaCampanha.map((e, idx) => (
+                          <div key={e.id} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                            padding: '8px 0', borderTop: idx > 0 ? '1px solid var(--color-border-subtle)' : 'none'
+                          }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>{e.devedores?.nome || 'Aluno'}</div>
+                              {e.erro && <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger-700)' }}>{e.erro}</div>}
                             </div>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <span style={{
-                              fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                              backgroundColor: e.status === 'enviado' ? '#f0fdf4' : e.status === 'falha' ? '#fef2f2' : '#f8f8f8',
-                              color: e.status === 'enviado' ? '#16a34a' : e.status === 'falha' ? '#ef4444' : '#999'
-                            }}>
+                            <Badge variant={e.status === 'enviado' ? 'success' : e.status === 'falha' ? 'danger' : 'default'} size="xs">
                               {e.status === 'enviado' ? 'Enviado' : e.status === 'falha' ? 'Falha' : 'Pendente'}
-                            </span>
+                            </Badge>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </Card>
               )
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )
       )}
+
+      <style>{`
+        .cmp-dest-topo, .cmp-hist-topo {
+          display: flex; align-items: center; gap: 10px; width: 100%;
+          min-height: var(--touch-min); padding: 10px 14px; border: none;
+          background: var(--neutral-50); color: var(--color-text-secondary);
+          font-family: inherit; font-size: var(--text-sm); cursor: pointer;
+        }
+        .cmp-hist-topo { background: transparent; padding: 14px 16px; }
+        .cmp-dest-topo:hover, .cmp-hist-topo:hover { background: var(--neutral-100); }
+        .cmp-dest-topo:focus-visible, .cmp-hist-topo:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+        .cmp-var {
+          padding: 4px 8px; font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600;
+          background: var(--info-50); color: var(--info-700); border: 1px solid var(--info-100);
+          border-radius: var(--radius-sm); cursor: pointer; min-height: 32px;
+        }
+        .cmp-var:hover { background: var(--info-100); }
+        .cmp-regras { border: 1px solid var(--warning-100); border-radius: var(--radius-lg); background: var(--warning-50); padding: 0 14px; }
+        .cmp-regras > summary {
+          display: flex; align-items: center; gap: 8px; min-height: var(--touch-min);
+          font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--warning-700);
+          cursor: pointer; list-style: none;
+        }
+        .cmp-regras > summary::-webkit-details-marker { display: none; }
+        .cmp-regras-tempo { font-weight: 500; font-size: var(--text-xs); }
+        .cmp-regras ul { margin: 0 0 10px; padding-left: 18px; font-size: var(--text-xs); color: var(--color-text-secondary); line-height: 1.7; }
+        .cmp-regras p { margin: 0 0 12px; font-size: var(--text-xs); font-weight: 600; color: var(--warning-700); }
+      `}</style>
     </div>
   )
 }
 
-// Estado global do status de conexão do WhatsApp
-let globalStatus = 'disconnected'
+// Estado global do status de conexão do WhatsApp (bolinha do menu).
+// Começa 'unknown' (sem bolinha) em vez de 'disconnected': antes o menu
+// mostrava vermelho em toda abertura do app até alguém abrir esta tela.
+// O Dashboard preenche lendo `mensallizap.conectado` (fonte de verdade).
+let globalStatus = 'unknown'
 const statusListeners = []
 
 export const subscribeToWhatsAppStatus = (callback) => {
@@ -651,6 +682,9 @@ const updateGlobalStatus = (newStatus) => {
 }
 
 export const getWhatsAppStatus = () => globalStatus
+
+/** Atualiza a bolinha do menu com um estado já conhecido (ex.: lido do banco). */
+export const definirStatusWhatsApp = (novoStatus) => updateGlobalStatus(novoStatus)
 
 // Mensagem padrão do template (fallback para compatibilidade)
 const MENSAGEM_PADRAO = TEMPLATES_PADRAO.overdue
@@ -775,14 +809,19 @@ export default function WhatsAppConexao() {
   const [botLeadSaudacao, setBotLeadSaudacao] = useState('Olá {{nomeAluno}}! 👋 Bem-vindo(a) à {{nomeEmpresa}}!')
   const [botTextoConhecer, setBotTextoConhecer] = useState('')
   const [salvandoBot, setSalvandoBot] = useState(false)
+  // Último valor salvo dos três textos do bot: o botão "Salvar textos" só
+  // aparece quando algum deles foi mudado.
+  const [textosBotSalvos, setTextosBotSalvos] = useState(null)
 
   // Estado para Chave PIX
   const [chavePix, setChavePix] = useState('')
-  const [salvandoPix, setSalvandoPix] = useState(false)
 
   // Estado para modal de feedback
   const [feedbackModal, setFeedbackModal] = useState({ isOpen: false, type: 'success', title: '', message: '' })
   const [previewModalAberto, setPreviewModalAberto] = useState(false)
+  // Celular/tablet: o editor do modelo abre em tela cheia ao tocar no cartão
+  const [editorAberto, setEditorAberto] = useState(false)
+  const [confirmDescartar, setConfirmDescartar] = useState(false)
 
   // Estado para modal de upgrade (recurso bloqueado)
   const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' })
@@ -790,12 +829,26 @@ export default function WhatsAppConexao() {
   // Estado para modal de confirmação de desconexão
   const [confirmDesconexaoModal, setConfirmDesconexaoModal] = useState(false)
 
+  // Número pareado (mensallizap.whatsapp_numero), mostrado no cartão de conectado
+  const [numeroConectado, setNumeroConectado] = useState(null)
+  useEffect(() => {
+    if (status !== 'connected' || !contextUserId) return
+    let cancelado = false
+    supabase.from('mensallizap').select('whatsapp_numero').eq('user_id', contextUserId).maybeSingle()
+      .then(({ data }) => { if (!cancelado) setNumeroConectado(data?.whatsapp_numero || null) })
+    return () => { cancelado = true }
+  }, [status, contextUserId])
+
   // Estado para método de pagamento (PIX Manual ou Link Asaas)
   const [metodoPagamento, setMetodoPagamento] = useState('pix_manual')
-  const [asaasConfigurado, setAsaasConfigurado] = useState(false)
 
-  // Atualizar status global quando mudar
+  // Atualizar status global quando mudar. A primeira execução é o valor
+  // inicial do useState ('disconnected'), ainda sem checagem nenhuma — se fosse
+  // espalhado, a bolinha do menu piscava vermelha toda vez que a tela abria,
+  // e o cliente achava que o WhatsApp tinha caído e voltado.
+  const statusInicialRef = useRef(true)
   useEffect(() => {
+    if (statusInicialRef.current) { statusInicialRef.current = false; return }
     updateGlobalStatus(status)
   }, [status])
 
@@ -818,7 +871,7 @@ export default function WhatsAppConexao() {
         const instanceName = await resolverInstanceName(effectiveUserId)
 
         // 2. Fazer TODAS as queries em paralelo
-        const [templatesResult, automacoesResult, usuarioResult, metodoPagResult, asaasResult] = await Promise.all([
+        const [templatesResult, automacoesResult, usuarioResult, metodoPagResult] = await Promise.all([
           // Templates do usuário
           supabase
             .from('templates')
@@ -846,14 +899,7 @@ export default function WhatsAppConexao() {
             .from('config')
             .select('chave, valor')
             .eq('chave', `${effectiveUserId}_metodo_pagamento_whatsapp`)
-            .maybeSingle(),
-
-          // Verificar se Asaas está configurado
-          supabase
-            .from('usuarios')
-            .select('asaas_api_key, modo_integracao')
-            .eq('id', effectiveUserId)
-            .single()
+            .maybeSingle()
         ])
 
         // A chave da Evolution nao e mais lida aqui: as chamadas passam pela
@@ -973,15 +1019,15 @@ export default function WhatsAppConexao() {
         }
         if (configCobranca?.bot_lead_saudacao) setBotLeadSaudacao(paraExibir(configCobranca.bot_lead_saudacao))
         if (configCobranca?.bot_texto_conhecer != null) setBotTextoConhecer(configCobranca.bot_texto_conhecer || '')
+        setTextosBotSalvos({
+          saudacao: configCobranca?.bot_saudacao ? paraExibir(configCobranca.bot_saudacao) : 'Olá {{nomeAluno}}! 👋 Sou o assistente virtual da {{nomeEmpresa}}.',
+          lead: configCobranca?.bot_lead_saudacao ? paraExibir(configCobranca.bot_lead_saudacao) : 'Olá {{nomeAluno}}! 👋 Bem-vindo(a) à {{nomeEmpresa}}!',
+          conhecer: configCobranca?.bot_texto_conhecer != null ? (configCobranca.bot_texto_conhecer || '') : ''
+        })
 
         // 5.1 Processar método de pagamento
         if (metodoPagResult.data?.valor) {
           setMetodoPagamento(metodoPagResult.data.valor)
-        }
-
-        // 5.2 Verificar se Asaas está configurado
-        if (asaasResult.data) {
-          setAsaasConfigurado(!!(asaasResult.data.asaas_api_key && asaasResult.data.modo_integracao === 'asaas'))
         }
 
         // 6. Verificar status WhatsApp (pode ser em paralelo com os outros)
@@ -1344,151 +1390,8 @@ export default function WhatsAppConexao() {
     }
   }
 
-  // Atualizar variável de pagamento nos templates (troca {{chavePix}} <-> {{linkPagamento}})
-  // Também troca os labels associados para manter consistência
-  const atualizarVariavelTemplates = async (de, para) => {
-    try {
-      if (!contextUserId) return
-
-      // Buscar templates que contenham a variável antiga OU os labels antigos
-      const { data: templatesParaAtualizar } = await supabase
-        .from('templates')
-        .select('id, mensagem')
-        .eq('user_id', contextUserId)
-
-      const temAlteracao = templatesParaAtualizar?.filter(t =>
-        t.mensagem.includes(de) ||
-        (de === '{{chavePix}}' && (t.mensagem.includes('Chave Pix:') || t.mensagem.includes('Pix para pagamento:'))) ||
-        (de === '{{linkPagamento}}' && t.mensagem.includes('Link de pagamento:'))
-      )
-
-      if (temAlteracao?.length) {
-        for (const t of temAlteracao) {
-          let novaMensagem = t.mensagem.replaceAll(de, para)
-
-          // Trocar também os labels
-          if (de === '{{chavePix}}') {
-            // PIX -> Link Asaas: trocar labels
-            novaMensagem = novaMensagem
-              .replace(/🔑 Chave Pix:/g, '🔗 Link de pagamento:')
-              .replace(/💳 Pix para pagamento:/g, '🔗 Link de pagamento:')
-          } else if (de === '{{linkPagamento}}') {
-            // Link Asaas -> PIX: trocar labels de volta
-            novaMensagem = novaMensagem
-              .replace(/🔗 Link de pagamento:/g, '🔑 Chave Pix:')
-          }
-
-          await supabase
-            .from('templates')
-            .update({ mensagem: novaMensagem })
-            .eq('id', t.id)
-        }
-
-        // Recarregar templates no estado
-        const { data: templatesAtualizados } = await supabase
-          .from('templates')
-          .select('*')
-          .eq('user_id', contextUserId)
-          .eq('ativo', true)
-          .order('created_at', { ascending: false })
-
-        if (templatesAtualizados) {
-          // Priorizar customizados sobre padrões (mesma lógica de carregarTemplates)
-          const findBest = (tipo) => {
-            const custom = templatesAtualizados.find(t => t.tipo === tipo && t.is_padrao !== true)
-            return custom || templatesAtualizados.find(t => t.tipo === tipo) || null
-          }
-          const agrupados = {
-            pre_due_3days: findBest('pre_due_3days'),
-            due_day: findBest('due_day'),
-            overdue: findBest('overdue'),
-            class_reminder: findBest('class_reminder'),
-            class_reminder_24h: findBest('class_reminder_24h'),
-            booking_confirmed: findBest('booking_confirmed'),
-            birthday: findBest('birthday'),
-            payment_confirmed: findBest('payment_confirmed'),
-            welcome: findBest('welcome')
-          }
-          setTemplatesAgrupados(agrupados)
-
-          // Atualizar template atualmente selecionado no editor
-          const templateSelecionado = agrupados[tipoTemplateSelecionado]
-          if (templateSelecionado) {
-            setMensagemTemplate(paraExibir(templateSelecionado.mensagem))
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar variável nos templates:', error)
-    }
-  }
-
-  // Salvar método de pagamento (PIX Manual ou Link Asaas)
-  const salvarMetodoPagamento = async (metodo) => {
-    try {
-      if (!contextUserId) return
-
-      setMetodoPagamento(metodo)
-
-      const chaveUnica = `${contextUserId}_metodo_pagamento_whatsapp`
-
-      // Verificar se já existe
-      const { data: existing } = await supabase
-        .from('config')
-        .select('id')
-        .eq('chave', chaveUnica)
-        .maybeSingle()
-
-      if (existing) {
-        await supabase
-          .from('config')
-          .update({ valor: metodo, updated_at: new Date().toISOString() })
-          .eq('chave', chaveUnica)
-      } else {
-        await supabase
-          .from('config')
-          .insert({
-            user_id: contextUserId,
-            chave: chaveUnica,
-            valor: metodo,
-            descricao: 'Método de pagamento nas mensagens WhatsApp',
-            updated_at: new Date().toISOString()
-          })
-      }
-
-      // Auto-atualizar templates: trocar variável de pagamento
-      if (metodo === 'asaas_link') {
-        await atualizarVariavelTemplates('{{chavePix}}', '{{linkPagamento}}')
-      } else {
-        await atualizarVariavelTemplates('{{linkPagamento}}', '{{chavePix}}')
-      }
-
-      // Atualizar template exibido no editor (caso seja default/não salvo)
-      const templateAtual = templatesAgrupados[tipoTemplateSelecionado]
-      if (!templateAtual) {
-        let msg = TEMPLATES_PADRAO[tipoTemplateSelecionado] || TEMPLATES_PADRAO.overdue
-        if (metodo === 'asaas_link') {
-          msg = msg
-            .replaceAll('{{chavePix}}', '{{linkPagamento}}')
-            .replace(/🔑 Chave Pix:/g, '🔗 Link de pagamento:')
-            .replace(/💳 Pix para pagamento:/g, '🔗 Link de pagamento:')
-        }
-        setMensagemTemplate(paraExibir(msg))
-      }
-
-      setFeedbackModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Salvo!',
-        message: metodo === 'asaas_link'
-          ? 'Link de pagamento Asaas ativado nas mensagens'
-          : 'PIX manual ativado nas mensagens'
-      })
-    } catch (error) {
-      console.error('Erro ao salvar método de pagamento:', error)
-      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar método de pagamento' })
-    }
-  }
+  // A troca de Pix/link nas mensagens e nos modelos agora acontece em
+  // Configurações › Recebimentos (services/metodoPagamento.js).
 
   // Função para criar ou atualizar template padrão automaticamente ao ativar toggle
   const criarTemplatePadraoSeNaoExiste = async (tipo) => {
@@ -1824,11 +1727,8 @@ export default function WhatsAppConexao() {
     }
   }
 
-  const salvarAlertaDespesasDias = async (dias) => {
-    const n = Math.max(1, Math.min(30, parseInt(dias, 10) || 3))
-    setAlertaDespesasDiasAntes(n)
-    await salvarConfiguracaoAutomacao('alerta_despesas_dias_antes', n)
-  }
+  // O ajuste de dias do Alerta de Despesa saiu da tela (confundia); vale o que
+  // já está gravado em configuracoes_cobranca.alerta_despesas_dias_antes.
 
   const toggleNps = async () => {
     const novoValor = !automacaoNpsAtiva
@@ -2013,84 +1913,36 @@ export default function WhatsAppConexao() {
     }
   }
 
-  const salvarSaudacaoLeadBot = async () => {
+  // Salva os três textos do bot de uma vez (antes eram três botões separados,
+  // e quem editava os três e salvava um perdia os outros sem aviso).
+  const salvarTextosBot = async () => {
     setSalvandoBot(true)
     try {
       const { error } = await supabase
         .from('configuracoes_cobranca')
-        .update({ bot_lead_saudacao: paraSalvar(botLeadSaudacao), updated_at: new Date().toISOString() })
+        .update({
+          bot_saudacao: paraSalvar(botSaudacao),
+          bot_lead_saudacao: paraSalvar(botLeadSaudacao),
+          bot_texto_conhecer: botTextoConhecer,
+          updated_at: new Date().toISOString()
+        })
         .eq('user_id', contextUserId)
       if (error) throw error
-      setFeedbackModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Saudação salva',
-        message: 'A nova mensagem de boas-vindas para novos alunos foi salva.'
-      })
+      setTextosBotSalvos({ saudacao: botSaudacao, lead: botLeadSaudacao, conhecer: botTextoConhecer })
+      showToast('Textos do bot salvos', 'success')
     } catch (err) {
-      setFeedbackModal({
-        isOpen: true,
-        type: 'danger',
-        title: 'Erro',
-        message: 'Não foi possível salvar: ' + err.message
-      })
+      console.error('Erro ao salvar textos do bot:', err)
+      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Não foi possível salvar os textos do bot. Tente de novo.' })
     } finally {
       setSalvandoBot(false)
     }
   }
 
-  const salvarTextoConhecer = async () => {
-    setSalvandoBot(true)
-    try {
-      const { error } = await supabase
-        .from('configuracoes_cobranca')
-        .update({ bot_texto_conhecer: botTextoConhecer, updated_at: new Date().toISOString() })
-        .eq('user_id', contextUserId)
-      if (error) throw error
-      setFeedbackModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Apresentação salva',
-        message: 'A apresentação da opção "Conhecer as aulas" foi salva.'
-      })
-    } catch (err) {
-      setFeedbackModal({
-        isOpen: true,
-        type: 'danger',
-        title: 'Erro',
-        message: 'Não foi possível salvar: ' + err.message
-      })
-    } finally {
-      setSalvandoBot(false)
-    }
-  }
-
-  const salvarSaudacaoBot = async () => {
-    setSalvandoBot(true)
-    try {
-      const { error } = await supabase
-        .from('configuracoes_cobranca')
-        .update({ bot_saudacao: paraSalvar(botSaudacao), updated_at: new Date().toISOString() })
-        .eq('user_id', contextUserId)
-
-      if (error) throw error
-
-      setFeedbackModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Saudação salva',
-        message: 'A nova mensagem de boas-vindas do bot foi salva.'
-      })
-    } catch (err) {
-      setFeedbackModal({
-        isOpen: true,
-        type: 'danger',
-        title: 'Erro',
-        message: 'Não foi possível salvar: ' + err.message
-      })
-    } finally {
-      setSalvandoBot(false)
-    }
+  const descartarTextosBot = () => {
+    if (!textosBotSalvos) return
+    setBotSaudacao(textosBotSalvos.saudacao)
+    setBotLeadSaudacao(textosBotSalvos.lead)
+    setBotTextoConhecer(textosBotSalvos.conhecer)
   }
 
   const toggleEnviarDomingo = async () => {
@@ -2398,29 +2250,6 @@ export default function WhatsAppConexao() {
     }
   }
 
-  const salvarChavePix = async () => {
-    try {
-      setSalvandoPix(true)
-      if (!contextUserId) return
-
-      const { error } = await supabase
-        .from('usuarios')
-        .update({ chave_pix: chavePix })
-        .eq('id', contextUserId)
-
-      if (error) throw error
-
-      setFeedbackModal({ isOpen: true, type: 'success', title: 'Salvo!', message: 'Chave PIX atualizada com sucesso' })
-      // Atualizar contexto global para refletir no onboarding checklist
-      if (refreshUserData) refreshUserData()
-    } catch (error) {
-      console.error('Erro ao salvar chave PIX:', error)
-      setFeedbackModal({ isOpen: true, type: 'danger', title: 'Erro', message: 'Erro ao salvar chave PIX' })
-    } finally {
-      setSalvandoPix(false)
-    }
-  }
-
   const salvarTemplate = async () => {
     if (!tituloTemplate.trim() || !mensagemTemplate.trim()) {
       setFeedbackModal({ isOpen: true, type: 'warning', title: 'Atenção', message: 'Preencha o título e a mensagem do template' })
@@ -2486,94 +2315,57 @@ export default function WhatsAppConexao() {
 
   // ========== RENDER ==========
 
+  // Selo do status da conexão: no computador fica ao lado das abas; no celular
+  // sobe para a linha do título, para o seletor de seção ter a largura toda.
+  const seloStatusWhats = (() => {
+    const selo = status === 'connected' ? { variant: 'success', texto: 'Conectado' }
+      : status === 'connecting' ? { variant: 'warning', texto: 'Conectando…' }
+      : status === 'zombie' ? { variant: 'danger', texto: 'Travado' }
+      : { variant: 'danger', texto: 'Desconectado' }
+    return <Badge variant={selo.variant} dot size="md">{selo.texto}</Badge>
+  })()
+
   return (
     <div style={{ flex: 1, padding: isSmallScreen ? '16px' : '25px 30px', backgroundColor: '#ffffff', minHeight: '100vh', paddingBottom: isSmallScreen ? '40px' : '60px', boxSizing: 'border-box', minWidth: 0, overflowX: 'hidden' }}>
       {/* Título */}
       <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
-        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
-          WhatsApp
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+            WhatsApp
+          </h2>
+          {isMobile && seloStatusWhats}
+        </div>
         <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
-          Gerencie sua conexao e templates de mensagens
+          Gerencie sua conexão e os templates de mensagens
         </p>
       </div>
 
       {/* Menu de Abas + Status */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: isSmallScreen ? '16px' : '24px', minWidth: 0, width: '100%' }}>
-        {/* Tabs - dropdown no mobile, segmented control no desktop */}
-        {isMobile ? (
-          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
-            <select
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 40px 12px 14px',
-                backgroundColor: '#f3f4f6',
-                border: '1px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: '15px',
-                fontWeight: '600',
-                color: '#1a1a1a',
-                cursor: 'pointer',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 12px center',
-                backgroundSize: '20px',
-                boxSizing: 'border-box'
-              }}
-            >
-              <option value="conexao">Conexão</option>
-              <option value="templates">Templates de Mensagens</option>
-              <option value="campanhas">Campanhas</option>
-              <option value="bot">Bot</option>
-              {isAdmin && <option value="mensagens">Central de Mensagens</option>}
-            </select>
-          </div>
-        ) : (
-          <div style={{
-            display: 'inline-flex',
-            gap: '4px',
-            backgroundColor: '#f3f4f6',
-            borderRadius: '10px',
-            padding: '4px'
-          }}>
-            {[
-              { id: 'conexao', label: 'Conexao', icon: 'mdi:connection' },
-              { id: 'templates', label: isSmallScreen ? 'Templates' : 'Templates de Mensagens', icon: 'mdi:message-text' },
-              { id: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn' },
-              { id: 'bot', label: 'Bot', icon: 'mdi:robot-happy' },
-              ...(isAdmin ? [{ id: 'mensagens', label: isSmallScreen ? 'Mensagens' : 'Central de Mensagens', icon: 'mdi:message-alert-outline' }] : [])
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  padding: isSmallScreen ? '8px 16px' : '8px 20px',
-                  backgroundColor: activeTab === tab.id ? 'white' : 'transparent',
-                  color: activeTab === tab.id ? '#1a1a1a' : '#555',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: isSmallScreen ? '13px' : '14px',
-                  fontWeight: activeTab === tab.id ? '600' : '400',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.2s',
-                  boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  opacity: activeTab === tab.id ? 1 : 0.75
-                }}
-              >
-                <Icon icon={tab.icon} width={isSmallScreen ? 16 : 18} />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Abas da tela — Select do DS no celular, Tabs segmentadas no computador */}
+        {(() => {
+          const abas = [
+            { value: 'conexao', label: 'Conexão', icon: 'mdi:connection' },
+            { value: 'templates', label: 'Templates de mensagens', icon: 'mdi:message-text-outline' },
+            { value: 'campanhas', label: 'Campanhas', icon: 'mdi:bullhorn-outline' },
+            { value: 'bot', label: 'Bot', icon: 'mdi:robot-happy-outline' },
+            ...(isAdmin ? [{ value: 'mensagens', label: 'Central de Mensagens', icon: 'mdi:message-alert-outline' }] : [])
+          ]
+          return isMobile ? (
+            <div style={{ flex: '1 1 0', minWidth: 0 }}>
+              <Select
+                aria-label="Seção do WhatsApp"
+                size="lg"
+                showAll
+                value={activeTab}
+                onChange={(v) => v && setActiveTab(v)}
+                options={abas}
+              />
+            </div>
+          ) : (
+            <Tabs variant="segmented" value={activeTab} onChange={setActiveTab} items={abas} />
+          )
+        })()}
 
         {/* Status badge + Desconectar */}
         {/* 'zombie' cai no visual vermelho junto com 'disconnected': o canal está
@@ -2601,128 +2393,84 @@ export default function WhatsAppConexao() {
               {!isMobile && 'Atualizar'}
             </button>
           )}
-          <div
-            title={status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : status === 'zombie' ? 'Conexão travada' : 'Desconectado'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: isMobile ? '8px' : '6px 12px',
-              borderRadius: '20px',
-              backgroundColor: status === 'connected' ? '#e8f5e9' : status === 'connecting' ? '#fff3e0' : '#fef2f2',
-              border: `1px solid ${status === 'connected' ? '#c8e6c9' : status === 'connecting' ? '#ffe0b2' : '#fecaca'}`
-            }}>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: status === 'connected' ? '#4CAF50' : status === 'connecting' ? '#ff9800' : '#f44336'
-            }} />
-            {!isMobile && (
-              <span style={{ fontSize: '13px', fontWeight: '600', color: status === 'connected' ? '#2e7d32' : status === 'connecting' ? '#e65100' : '#c62828' }}>
-                {status === 'connected' ? 'Conectado' : status === 'connecting' ? 'Conectando...' : status === 'zombie' ? 'Conexão travada' : 'Desconectado'}
-              </span>
-            )}
-          </div>
-          {status === 'connected' && (
-            <button
-              onClick={() => setConfirmDesconexaoModal(true)}
-              disabled={loading}
-              title="Desconectar"
-              style={{
-                padding: isMobile ? '8px' : '6px 14px',
-                backgroundColor: '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: isMobile ? '50%' : '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '13px',
-                fontWeight: '500',
-                opacity: loading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: isMobile ? '32px' : 'auto',
-                height: isMobile ? '32px' : 'auto',
-                flexShrink: 0
-              }}
-            >
-              {isMobile ? <Icon icon="mdi:logout-variant" width="16" /> : 'Desconectar'}
-            </button>
-          )}
+          {!isMobile && seloStatusWhats}
         </div>
       </div>
 
       {/* Conteúdo */}
       {activeTab === 'conexao' && (
-        <>
-
-          {/* Conteúdo Principal */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: isSmallScreen ? '20px' : '40px',
-            border: '1px solid #e5e7eb',
-            boxShadow: 'none'
-          }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Card padding={isSmallScreen ? 'default' : 'spacious'}>
             {status === 'connected' ? (
               // ESTADO 1: CONECTADO
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Icon icon="mdi:check-circle" width="80" height="80" style={{ color: '#4CAF50', marginBottom: '20px' }} />
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', fontWeight: '600', color: '#344848' }}>
-                  WhatsApp Conectado!
+              <div style={{ textAlign: 'center', padding: isSmallScreen ? '16px 0' : '24px 0' }}>
+                <Icon icon="mdi:check-circle" width="64" height="64" style={{ color: 'var(--color-brand-fill)', marginBottom: '12px' }} />
+                <h3 className="ds-text-h3" style={{ margin: '0 0 6px 0', color: 'var(--color-text-primary)' }}>
+                  WhatsApp conectado
                 </h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-                  Seu WhatsApp está conectado e pronto para enviar mensagens automáticas.
+                {numeroConectado && (
+                  <p className="ds-text-body" style={{ margin: '0 0 6px 0', color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                    {(() => {
+                      const d = String(numeroConectado).replace(/\D/g, '').replace(/^55/, '')
+                      if (d.length < 10) return numeroConectado
+                      // (62) 9••••-1234: mostra só o DDD, o primeiro dígito e o final
+                      return d.length === 11
+                        ? `(${d.slice(0, 2)}) ${d[2]}••••-${d.slice(-4)}`
+                        : `(${d.slice(0, 2)}) ••••-${d.slice(-4)}`
+                    })()}
+                  </p>
+                )}
+                <p className="ds-text-body" style={{ margin: '0 auto 20px', color: 'var(--color-text-secondary)', maxWidth: 420 }}>
+                  Pronto para enviar as cobranças e os lembretes automáticos.
                 </p>
+                <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: '10px', justifyContent: 'center' }}>
+                  <Button variant="primary" icon="mdi:message-text-outline" onClick={() => setActiveTab('templates')}>
+                    Ver mensagens automáticas
+                  </Button>
+                  <Button variant="danger-soft" icon="mdi:logout-variant" disabled={loading} onClick={() => setConfirmDesconexaoModal(true)}>
+                    Desconectar
+                  </Button>
+                </div>
               </div>
             ) : status === 'zombie' && !qrCode ? (
               // ESTADO 1B: ZUMBI — a Evolution diz "open", mas o canal está morto.
               // Sem este bloco o cliente via a tela verde de sucesso e não tinha
               // como descobrir que nada estava saindo.
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Icon icon="mdi:alert-circle" width="80" height="80" style={{ color: '#f44336', marginBottom: '20px' }} />
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', fontWeight: '600', color: '#344848' }}>
+              <div style={{ textAlign: 'center', padding: isSmallScreen ? '16px 0' : '24px 0' }}>
+                <Icon icon="mdi:alert-circle" width="64" height="64" style={{ color: 'var(--danger-700)', marginBottom: '12px' }} />
+                <h3 className="ds-text-h3" style={{ margin: '0 0 6px 0', color: 'var(--color-text-primary)' }}>
                   Conexão travada
                 </h3>
-                <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666', maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}>
-                  Seu WhatsApp aparece como conectado, mas o canal parou de responder —
+                <p className="ds-text-body" style={{ margin: '0 auto 20px', color: 'var(--color-text-secondary)', maxWidth: 420 }}>
+                  Seu WhatsApp aparece como conectado, mas o canal parou de responder:
                   suas cobranças e lembretes <strong>não estão sendo enviados</strong>.
                   Reconecte para voltar a enviar.
                 </p>
-                <button
-                  onClick={() => conectarWhatsApp({ forcar: true })}
-                  disabled={loading}
-                  style={{
-                    padding: '12px 28px', backgroundColor: '#344848', color: 'white', border: 'none',
-                    borderRadius: '8px', fontSize: '15px', fontWeight: 600,
-                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
-                  }}
-                >
-                  {loading ? 'Reconectando...' : 'Reconectar WhatsApp'}
-                </button>
+                <Button variant="primary" icon="mdi:refresh" loading={loading} onClick={() => conectarWhatsApp({ forcar: true })}>
+                  Reconectar WhatsApp
+                </Button>
               </div>
             ) : qrCode ? (
               // ESTADO 2: CONECTANDO (QR Code visível)
               <div style={{ textAlign: 'center' }}>
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+                <h3 className="ds-text-h4" style={{ margin: '0 0 6px 0', color: 'var(--color-text-primary)' }}>
                   Escaneie o QR Code
                 </h3>
-                <p style={{ margin: '0 0 30px 0', fontSize: '14px', color: '#666' }}>
-                  Aponte a câmera do seu WhatsApp para este código
+                <p className="ds-text-body" style={{ margin: '0 0 20px 0', color: 'var(--color-text-secondary)' }}>
+                  No WhatsApp do celular, toque em <strong>Conectar dispositivo</strong> e aponte a câmera para o código.
                 </p>
 
                 <div style={{
                   display: 'inline-block',
                   padding: isSmallScreen ? '12px' : '20px',
                   backgroundColor: 'white',
-                  borderRadius: '12px',
-                  border: '2px solid #e0e0e0',
-                  marginBottom: '30px'
+                  borderRadius: 'var(--radius-xl)',
+                  border: '1px solid var(--color-border-default)',
+                  marginBottom: '16px'
                 }}>
                   <img
                     src={qrCode}
-                    alt="QR Code WhatsApp"
+                    alt="QR Code para conectar o WhatsApp"
                     style={{
                       width: isSmallScreen ? '220px' : '300px',
                       height: isSmallScreen ? '220px' : '300px',
@@ -2732,196 +2480,86 @@ export default function WhatsAppConexao() {
                 </div>
 
                 {/* Contador de tempo */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    backgroundColor: tempoRestante <= 30 ? '#fff3cd' : '#f5f5f5',
-                    borderRadius: '20px',
-                    border: `1px solid ${tempoRestante <= 30 ? '#ffc107' : '#e0e0e0'}`
-                  }}>
-                    <Icon icon="mdi:clock-outline" width="18" height="18" style={{ color: tempoRestante <= 30 ? '#ff9800' : '#666' }} />
-                    <span style={{ fontSize: '14px', fontWeight: '500', color: tempoRestante <= 30 ? '#856404' : '#666' }}>
-                      {Math.floor(tempoRestante / 60)}:{(tempoRestante % 60).toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }}>
-                  <button
-                    onClick={() => {
-                      setQrCode(null)
-                      setStatus('disconnected')
-                      setTempoRestante(120)
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: 'white',
-                      color: '#666',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    Cancelar
-                  </button>
+                <div style={{ marginBottom: '16px' }}>
+                  <Badge variant={tempoRestante <= 30 ? 'warning' : 'default'} icon="mdi:clock-outline" size="md">
+                    {`Expira em ${Math.floor(tempoRestante / 60)}:${(tempoRestante % 60).toString().padStart(2, '0')}`}
+                  </Badge>
                 </div>
 
                 {status === 'connecting' && (
-                  <div style={{
-                    padding: '16px',
-                    backgroundColor: '#e3f2fd',
-                    border: '1px solid #2196F3',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px'
-                  }}>
-                    <Icon icon="eos-icons:loading" width="20" height="20" style={{ color: '#2196F3' }} />
-                    <span style={{ fontSize: '14px', color: '#2196F3', fontWeight: '500' }}>
-                      Aguardando leitura do QR Code...
-                    </span>
-                  </div>
+                  <Alert variant="info" icon="eos-icons:loading" style={{ marginBottom: '16px', textAlign: 'left' }}>
+                    Aguardando a leitura do QR Code…
+                  </Alert>
                 )}
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setQrCode(null)
+                    setStatus('disconnected')
+                    setTempoRestante(120)
+                  }}
+                >
+                  Cancelar
+                </Button>
               </div>
             ) : (
               // ESTADO 3: DESCONECTADO
               <div>
-                <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600', color: '#344848' }}>
+                <h3 className="ds-text-h4" style={{ margin: '0 0 12px 0', color: 'var(--color-text-primary)' }}>
                   Conectar WhatsApp
                 </h3>
 
-                <div style={{ marginBottom: '30px' }}>
-                  <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                    Para conectar seu WhatsApp:
-                  </p>
-                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
-                    <li>Abra o WhatsApp no seu celular</li>
-                    <li>Toque em Mais opções (⋮) ou Configurações (⚙)</li>
-                    <li>Toque em Dispositivos conectados</li>
-                    <li>Toque em Conectar dispositivo</li>
-                    <li>Clique no botão abaixo e escaneie o QR Code que aparecer</li>
-                  </ol>
-                </div>
+                <ol className="cnx-passos">
+                  <li>Abra o WhatsApp no celular que vai mandar as cobranças.</li>
+                  <li>
+                    Vá em <strong>Dispositivos conectados</strong>:
+                    <span className="cnx-sub">No Android: toque em ⋮ (canto de cima).</span>
+                    <span className="cnx-sub">No iPhone: toque em Configurações.</span>
+                  </li>
+                  <li>Toque em <strong>Conectar dispositivo</strong>.</li>
+                  <li>Toque no botão abaixo e escaneie o QR Code que aparecer.</li>
+                </ol>
 
-                <button
-                  onClick={() => conectarWhatsApp()}
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#25D366',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    opacity: loading ? 0.7 : 1,
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#20BA5A')}
-                  onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = '#25D366')}
-                >
-                  {loading ? (
-                    <>
-                      <Icon icon="eos-icons:loading" width="24" height="24" />
-                      Conectando...
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="mdi:qrcode" width="24" height="24" />
-                      Conectar WhatsApp
-                    </>
-                  )}
-                </button>
+                {isSmallScreen && (
+                  <Alert variant="neutral" icon="mdi:monitor-cellphone" style={{ marginBottom: '16px' }}>
+                    O QR Code precisa ser escaneado por outro aparelho. Se estiver no celular do WhatsApp, abra o Mensalli no computador para conectar.
+                  </Alert>
+                )}
 
-                {/* Saída para quando o botão verde não resolve.
-                    Um dono de academia não vai abrir o F12 — o que ele precisa
-                    é derrubar a sessão presa e pedir um QR novo, e isso é um
-                    clique. Fica fora do bloco de erro porque quem já tentou
-                    conectar duas vezes sem sucesso precisa achar isto sozinho. */}
-                <button
-                  onClick={() => conectarWhatsApp({ forcar: true })}
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    marginTop: '12px',
-                    padding: '12px',
-                    backgroundColor: 'white',
-                    color: '#344848',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    opacity: loading ? 0.7 : 1
-                  }}
-                  onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = '#f3f4f6')}
-                  onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = 'white')}
-                >
-                  <Icon icon="mdi:refresh" width="18" height="18" />
-                  {loading ? 'Reconectando...' : 'Não aparece o QR Code? Forçar nova conexão'}
-                </button>
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#888', textAlign: 'center' }}>
-                  Encerra a sessão antiga no servidor e gera um QR Code novo do zero.
+                <Button variant="primary" size="lg" icon="mdi:qrcode" fullWidth loading={loading} onClick={() => conectarWhatsApp()}>
+                  Conectar WhatsApp
+                </Button>
+
+                {/* Saída para quando o botão verde não resolve: derruba a sessão
+                    presa e pede um QR novo. Fica fora do bloco de erro porque quem
+                    já tentou conectar duas vezes sem sucesso precisa achar isto sozinho. */}
+                <Button variant="outline" icon="mdi:refresh" fullWidth disabled={loading} onClick={() => conectarWhatsApp({ forcar: true })} style={{ marginTop: '10px' }}>
+                  Gerar QR Code novo
+                </Button>
+                <p className="ds-text-caption" style={{ margin: '6px 0 0 0', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                  Use se o QR Code não aparecer: encerra a sessão antiga e gera um novo.
                 </p>
 
                 {erro && (
-                  <div style={{
-                    marginTop: '20px',
-                    padding: '12px 16px',
-                    backgroundColor: '#ffebee',
-                    border: '1px solid #f44336',
-                    borderRadius: '6px',
-                    color: '#f44336',
-                    fontSize: '14px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                      <Icon icon="mdi:alert-circle" width="20" height="20" style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ display: 'block', marginBottom: '8px' }}>{erro}</strong>
-                        <p style={{ margin: 0, fontSize: '13px' }}>
-                          Clique em <strong>“Forçar nova conexão”</strong> acima. Se ainda assim não
-                          aparecer o QR Code, chame o suporte — resolvemos direto no servidor.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <Alert variant="danger" title={erro} style={{ marginTop: '16px' }}>
+                    Toque em <strong>Gerar QR Code novo</strong>. Se ainda assim não aparecer o QR Code, chame o suporte: resolvemos direto no servidor.
+                  </Alert>
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
-          {/* Aviso */}
-          <div style={{
-            marginTop: '25px',
-            padding: '16px',
-            backgroundColor: '#fff3cd',
-            border: '1px solid #ffc107',
-            borderRadius: '8px',
-            display: 'flex',
-            gap: '12px'
-          }}>
-            <Icon icon="mdi:information" width="24" height="24" style={{ color: '#ff9800', flexShrink: 0 }} />
-            <div style={{ fontSize: '13px', color: '#856404', lineHeight: '1.6' }}>
-              <strong>Importante:</strong> Mantenha o WhatsApp conectado ao seu celular com internet para que as mensagens sejam enviadas automaticamente.
-            </div>
-          </div>
-        </>
+          <Alert variant="info" icon="mdi:information-outline">
+            Mantenha o celular do WhatsApp ligado e com internet para que as mensagens sejam enviadas automaticamente.
+          </Alert>
+
+          <style>{`
+            .cnx-passos { margin: 0 0 16px; padding-left: 20px; font-size: var(--text-md); color: var(--color-text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 6px; }
+            .cnx-passos strong { color: var(--color-text-primary); }
+            .cnx-sub { display: block; font-size: var(--text-sm); color: var(--color-text-muted); }
+          `}</style>
+        </div>
       )}
 
       {activeTab === 'templates' && (
@@ -2945,83 +2583,30 @@ export default function WhatsAppConexao() {
                 <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>Ative e selecione para editar</p>
               </div>
 
-              {/* Sub-tabs de categoria — dropdown no mobile, segmented control no desktop */}
-              {isMobile ? (
-                <div style={{ position: 'relative', marginBottom: '12px' }}>
-                  <select
-                    value={categoriaAutomacao}
-                    onChange={(e) => setCategoriaAutomacao(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 36px 10px 12px',
-                      backgroundColor: '#f3f4f6',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#1a1a1a',
-                      cursor: 'pointer',
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 10px center',
-                      backgroundSize: '18px',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="cobrancas">Cobranças</option>
-                    <option value="aulas">Aulas</option>
-                    <option value="relacionamento">Relacionamento</option>
-                    <option value="retencao">Retenção</option>
-                  </select>
-                </div>
-              ) : (
-                <div style={{
-                  display: 'flex',
-                  gap: '4px',
-                  backgroundColor: '#f3f4f6',
-                  borderRadius: '10px',
-                  padding: '4px',
-                  marginBottom: '12px'
-                }}>
-                  {[
-                    { id: 'cobrancas', label: 'Cobranças', icon: 'mdi:cash-multiple' },
-                    { id: 'aulas', label: 'Aulas', icon: 'mdi:calendar-clock' },
-                    { id: 'relacionamento', label: 'Relacionamento', icon: 'mdi:heart-outline' },
-                    { id: 'retencao', label: 'Retenção', icon: 'mdi:account-reactivate' }
-                  ].map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setCategoriaAutomacao(cat.id)}
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        padding: '8px 10px',
-                        backgroundColor: categoriaAutomacao === cat.id ? 'white' : 'transparent',
-                        color: categoriaAutomacao === cat.id ? '#1a1a1a' : '#555',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: categoriaAutomacao === cat.id ? '600' : '400',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        transition: 'all 0.2s',
-                        boxShadow: categoriaAutomacao === cat.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
-                      }}
-                    >
-                      <Icon icon={cat.icon} width={16} style={{ flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* Categoria das automações — Select do DS no celular, Tabs no computador */}
+              {(() => {
+                const categorias = [
+                  { value: 'cobrancas', label: 'Cobranças', icon: 'mdi:cash-multiple' },
+                  { value: 'aulas', label: 'Aulas', icon: 'mdi:calendar-clock' },
+                  { value: 'relacionamento', label: 'Relacionamento', icon: 'mdi:heart-outline' },
+                  { value: 'retencao', label: 'Retenção', icon: 'mdi:account-reactivate' }
+                ]
+                return (
+                  <div style={{ marginBottom: '16px' }}>
+                    {isMobile ? (
+                      <Select
+                        aria-label="Tipo de automação"
+                        showAll
+                        value={categoriaAutomacao}
+                        onChange={(v) => v && setCategoriaAutomacao(v)}
+                        options={categorias}
+                      />
+                    ) : (
+                      <Tabs variant="segmented" fullWidth value={categoriaAutomacao} onChange={setCategoriaAutomacao} items={categorias} />
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Aviso educativo quando categoria = retenção */}
               {categoriaAutomacao === 'retencao' && (
@@ -3030,7 +2615,7 @@ export default function WhatsAppConexao() {
                   border: '1px solid #fcd34d',
                   borderRadius: '8px',
                   padding: '10px 12px',
-                  marginBottom: '12px',
+                  marginBottom: '16px',
                   display: 'flex',
                   gap: '10px',
                   alignItems: 'flex-start'
@@ -3069,11 +2654,14 @@ export default function WhatsAppConexao() {
                       const template = templatesAgrupados[item.tipo]
                       if (template) { setTituloTemplate(template.titulo); setMensagemTemplate(paraExibir(template.mensagem)) }
                       else { setTituloTemplate(getTituloDefault(item.tipo)); setMensagemTemplate(paraExibir(getMensagemDefault(item.tipo))) }
+                      if ((isMobile || isTablet) && !item.semTemplate) setEditorAberto(true)
                     }}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '12px 14px', backgroundColor: tipoTemplateSelecionado === item.tipo ? `${item.cor}08` : 'white',
-                      borderRadius: '8px', border: tipoTemplateSelecionado === item.tipo ? `2px solid ${item.cor}` : '1px solid #e5e7eb',
+                      // No celular/tablet o cartão só fica marcado enquanto o editor está aberto;
+                      // no computador marca qual mensagem está no editor ao lado.
+                      padding: '12px 14px', backgroundColor: tipoTemplateSelecionado === item.tipo && (!(isMobile || isTablet) || editorAberto) ? `${item.cor}08` : 'white',
+                      borderRadius: '8px', border: tipoTemplateSelecionado === item.tipo && (!(isMobile || isTablet) || editorAberto) ? `2px solid ${item.cor}` : '1px solid #e5e7eb',
                       cursor: item.locked ? 'pointer' : (item.ativo ? 'pointer' : 'default'),
                       transition: 'all 0.2s', opacity: item.locked ? 0.7 : (!item.ativo ? 0.5 : 1),
                       minWidth: 0, boxSizing: 'border-box'
@@ -3093,6 +2681,9 @@ export default function WhatsAppConexao() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      {(isMobile || isTablet) && item.ativo && !item.locked && !item.semTemplate && (
+                        <Icon icon="mdi:chevron-right" width="20" aria-label="Editar mensagem" style={{ color: 'var(--color-text-muted)', order: 2 }} />
+                      )}
                       {item.semToggle ? null : item.locked ? (
                         <button onClick={(e) => { e.stopPropagation(); setUpgradeModal({ isOpen: true, featureName: item.nome, plano: item.plano || 'Pro' }) }}
                           style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', backgroundColor: '#fff3e0', border: '1px solid #ffcc80', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', fontWeight: '500', color: '#e65100' }}>
@@ -3106,28 +2697,54 @@ export default function WhatsAppConexao() {
                       )}
                     </div>
                   </div>
-                  {item.tipo === 'despesa_vencendo' && item.ativo && !item.locked && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', marginTop: '-4px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#7f1d1d' }}>
-                      <Icon icon="mdi:information-outline" width="16" style={{ color: '#dc2626', flexShrink: 0 }} />
-                      <span>Avisar com</span>
-                      <select
-                        value={alertaDespesasDiasAntes}
-                        onChange={(e) => salvarAlertaDespesasDias(e.target.value)}
-                        style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #fecaca', backgroundColor: 'white', fontSize: '12px', fontWeight: '600', color: '#7f1d1d', cursor: 'pointer' }}
-                      >
-                        <option value={1}>1 dia</option>
-                        <option value={2}>2 dias</option>
-                        <option value={3}>3 dias</option>
-                        <option value={5}>5 dias</option>
-                        <option value={7}>7 dias</option>
-                        <option value={15}>15 dias</option>
-                      </select>
-                      <span>de antecedência + no dia do vencimento.</span>
-                    </div>
-                  )}
                   </Fragment>
                 ))}
               </div>
+
+              {/* Como o aluno paga — só leitura. Quem decide é Configurações › Recebimentos
+                  (fonte única desde a repaginada de dez/2026; ver services/metodoPagamento.js). */}
+              {/* Só na categoria Cobranças: é a forma de pagamento que vai nas cobranças */}
+              {categoriaAutomacao === 'cobrancas' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                {metodoPagamento === 'asaas_link' ? (
+                  <Alert
+                    variant="success"
+                    icon="mdi:bank-outline"
+                    title="Suas mensagens mandam o link de pagamento do Asaas"
+                    action={<Button variant="outline" size="sm" onClick={() => navigate('/app/configuracao?aba=integracoes')}>Alterar</Button>}
+                  >
+                    O aluno escolhe Pix, cartão ou boleto, e a baixa acontece sozinha.
+                  </Alert>
+                ) : (chavePix || '').trim() ? (
+                  <>
+                    <Alert
+                      variant="neutral"
+                      icon="mdi:qrcode"
+                      title={`Suas mensagens mandam: Pix (chave ••••${chavePix.trim().slice(-4)})`}
+                      action={<Button variant="outline" size="sm" onClick={() => navigate('/app/configuracao?aba=integracoes')}>Alterar</Button>}
+                    >
+                      Para trocar a chave ou a forma de pagamento, vá em Configurações › Recebimentos.
+                    </Alert>
+                    <Alert
+                      variant="info"
+                      icon="mdi:lightbulb-on-outline"
+                      title="Quer parar de dar baixa na mão?"
+                      action={<Button variant="primary" size="sm" onClick={() => navigate('/app/configuracao?aba=integracoes')}>Conhecer o Asaas</Button>}
+                    >
+                      Com o Asaas o aluno paga por link (Pix, cartão ou boleto) e a baixa acontece sozinha.
+                    </Alert>
+                  </>
+                ) : (
+                  <Alert
+                    variant="danger"
+                    title="Suas cobranças estão saindo sem forma de pagamento"
+                    action={<Button variant="danger" size="sm" onClick={() => navigate('/app/configuracao?aba=integracoes')}>Cadastrar agora</Button>}
+                  >
+                    Cadastre sua chave Pix ou conecte o Asaas em Configurações › Recebimentos.
+                  </Alert>
+                )}
+              </div>
+              )}
 
               {/* Configurações */}
               <details open={searchParams.get('config') === 'abrir'} style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
@@ -3137,47 +2754,6 @@ export default function WhatsAppConexao() {
                   <Icon icon="mdi:chevron-down" width="16" style={{ color: '#888', marginLeft: 'auto' }} />
                 </summary>
                 <div style={{ padding: '0 14px 14px' }}>
-                  {/* Chave PIX */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Chave PIX</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input type="text" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" value={chavePix} onChange={(e) => setChavePix(e.target.value)}
-                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #e0e0e0', borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
-                      <button onClick={salvarChavePix} disabled={salvandoPix}
-                        style={{ padding: '8px 14px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: salvandoPix ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
-                        {salvandoPix ? '...' : 'Salvar'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Método de pagamento */}
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px' }}>Método nas mensagens</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => salvarMetodoPagamento('pix_manual')}
-                        style={{ flex: 1, padding: '8px', fontSize: '12px', fontWeight: '600', backgroundColor: metodoPagamento !== 'asaas_link' ? '#e8f5e9' : 'white', color: metodoPagamento !== 'asaas_link' ? '#2e7d32' : '#666', border: metodoPagamento !== 'asaas_link' ? '2px solid #4CAF50' : '1px solid #e0e0e0', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                        PIX Manual
-                      </button>
-                      <button onClick={() => asaasConfigurado ? salvarMetodoPagamento('asaas_link') : navigate('/app/configuracao?aba=integracoes')}
-                        style={{ flex: 1, padding: '8px', fontSize: '12px', fontWeight: '600', backgroundColor: metodoPagamento === 'asaas_link' ? '#e3f2fd' : 'white', color: metodoPagamento === 'asaas_link' ? '#1565c0' : (asaasConfigurado ? '#666' : '#bbb'), border: metodoPagamento === 'asaas_link' ? '2px solid #2196F3' : '1px solid #e0e0e0', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s', opacity: asaasConfigurado ? 1 : 0.6, position: 'relative' }}
-                        title={!asaasConfigurado ? 'Clique para configurar o Asaas em Integrações' : ''}>
-                        Link Asaas
-                      </button>
-                    </div>
-                    {!asaasConfigurado && (
-                      <button onClick={() => navigate('/app/configuracao?aba=integracoes')}
-                        style={{ marginTop: '6px', background: 'none', border: 'none', padding: 0, fontSize: '11px', color: '#2196F3', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}>
-                        <Icon icon="mdi:open-in-new" width="12" />
-                        Configurar Asaas em Integrações
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Divider */}
-                  <div style={{ borderTop: '1px solid #e5e7eb', marginBottom: '12px' }} />
-
                   {/* Enviar no domingo */}
                   <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center'
@@ -3200,8 +2776,19 @@ export default function WhatsAppConexao() {
               </details>
             </div>
 
-            {/* COLUNA DIREITA: Editor (sticky) */}
-            <div style={{ position: isMobile || isTablet ? 'static' : 'sticky', top: '20px', alignSelf: 'start' }}>
+            {/* COLUNA DIREITA: Editor. No computador fica ao lado da lista (sticky);
+                no celular/tablet o MESMO conteúdo abre em tela cheia ao tocar no cartão. */}
+            {(() => {
+              const editorEmJanela = isMobile || isTablet
+              const salvoAtual = tipoTemplateSelecionado
+                ? (templatesAgrupados[tipoTemplateSelecionado]
+                    ? paraExibir(templatesAgrupados[tipoTemplateSelecionado].mensagem)
+                    : paraExibir(getMensagemDefault(tipoTemplateSelecionado)))
+                : ''
+              const temAlteracao = (mensagemTemplate || '').trim() !== (salvoAtual || '').trim()
+              const fecharEditor = () => { if (temAlteracao && !templateEditLocked) setConfirmDescartar(true); else setEditorAberto(false) }
+              const conteudoEditor = (
+              <>
               {!tipoTemplateSelecionado ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px dashed #ddd' }}>
                   <Icon icon="mdi:cursor-default-click" width="48" style={{ color: '#ccc', marginBottom: '12px' }} />
@@ -3220,6 +2807,7 @@ export default function WhatsAppConexao() {
                     </div>
                   )}
 
+                  {!editorEmJanela && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div>
                       <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: '#344848' }}>
@@ -3307,6 +2895,7 @@ export default function WhatsAppConexao() {
                   </button>
                     </div>
                   </div>
+                  )}
 
                 <textarea
                   value={mensagemTemplate}
@@ -3609,7 +3198,68 @@ export default function WhatsAppConexao() {
 
                 </>
               )}
-            </div>
+              </>
+              )
+
+              if (!editorEmJanela) {
+                return (
+                  <div style={{ position: 'sticky', top: '20px', alignSelf: 'start' }}>
+                    {conteudoEditor}
+                  </div>
+                )
+              }
+
+              return (
+                <>
+                  <Modal
+                    isOpen={editorAberto && !!tipoTemplateSelecionado}
+                    onClose={fecharEditor}
+                    title={tituloTemplate || 'Mensagem'}
+                    subtitle="Edite o texto que o aluno recebe"
+                    size="lg"
+                  >
+                    <Modal.Body>{conteudoEditor}</Modal.Body>
+                    <Modal.Footer>
+                      <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                        <Button
+                          variant="outline"
+                          icon="material-symbols:refresh"
+                          title="Volta o texto para a mensagem padrão do Mensalli"
+                          disabled={templateEditLocked}
+                          onClick={restaurarMensagemPadrao}
+                          style={{ flex: 1 }}
+                        >
+                          Restaurar padrão
+                        </Button>
+                        <Button
+                          variant="primary"
+                          icon={templateEditLocked ? 'mdi:lock' : 'mdi:content-save-outline'}
+                          disabled={templateEditLocked}
+                          onClick={salvarTemplate}
+                          style={{ flex: 1 }}
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                    </Modal.Footer>
+                  </Modal>
+                  <ConfirmModal
+                    isOpen={confirmDescartar}
+                    onClose={() => setConfirmDescartar(false)}
+                    onConfirm={() => {
+                      setMensagemTemplate(salvoAtual)
+                      setConfirmDescartar(false)
+                      setEditorAberto(false)
+                    }}
+                    title="Descartar alterações?"
+                    message="Você mudou a mensagem e ainda não salvou. Se sair agora, a alteração se perde."
+                    confirmText="Descartar"
+                    cancelText="Continuar editando"
+                    type="warning"
+                  />
+                </>
+              )
+            })()}
           </div>
         </div>
       )}
@@ -3890,24 +3540,18 @@ export default function WhatsAppConexao() {
       {activeTab === 'campanhas' && (() => {
         if (isLocked('premium')) {
           return (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px', textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-                <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
-              </div>
-              <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>Campanhas de WhatsApp</h2>
-              <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
-                Envie mensagens em massa pra seus alunos — avisos, promoções, comunicados.
-                Disponível no plano <strong>Premium</strong>.
-              </p>
-              <button onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}
-                style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
-                Fazer Upgrade
-              </button>
-            </div>
+            <EmptyState
+              variant="forbidden"
+              icon="mdi:bullhorn-outline"
+              size="large"
+              title="Campanhas de WhatsApp"
+              description="Mande uma mensagem para vários alunos de uma vez: avisos, promoções e comunicados. Disponível no plano Premium."
+              action={<Button variant="primary" onClick={() => navigate('/app/configuracao?aba=assinatura')}>Ver planos</Button>}
+            />
           )
         }
 
-        return <CampanhasContent contextUserId={contextUserId} isSmallScreen={isSmallScreen} />
+        return <CampanhasContent contextUserId={contextUserId} isSmallScreen={isSmallScreen} whatsappStatus={status} irParaConexao={() => setActiveTab('conexao')} />
       })()}
 
       {/* ===== ABA CENTRAL DE MENSAGENS (admin-only nesta fase) ===== */}
@@ -3925,379 +3569,220 @@ export default function WhatsAppConexao() {
       {activeTab === 'bot' && (() => {
         if (isLocked('premium')) {
           return (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '60px 40px', textAlign: 'center', border: '1px solid #e5e7eb', maxWidth: '500px', margin: '40px auto' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-                <Icon icon="mdi:lock" width="32" style={{ color: '#ff9800' }} />
-              </div>
-              <h2 style={{ margin: '0 0 12px', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>Bot WhatsApp</h2>
-              <p style={{ margin: '0 0 24px', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
-                Atendimento automático com menu numérico — seus alunos consultam mensalidade, horários e agendam sozinhos.
-                Disponível no plano <strong>Premium</strong>.
-              </p>
-              <button onClick={() => window.location.href = '/app/configuracao?aba=assinatura'}
-                style={{ padding: '12px 32px', backgroundColor: '#ff9800', color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
-                Fazer Upgrade
-              </button>
-            </div>
+            <EmptyState
+              variant="forbidden"
+              icon="mdi:robot-happy-outline"
+              size="large"
+              title="Bot WhatsApp"
+              description="Atendimento automático com menu de opções: seus alunos consultam a mensalidade, os horários e agendam sozinhos. Disponível no plano Premium."
+              action={<Button variant="primary" onClick={() => navigate('/app/configuracao?aba=assinatura')}>Ver planos</Button>}
+            />
           )
         }
 
-        return (
-          <div>
-            {/* Cabeçalho + Toggle */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '28px', border: '1px solid #e5e7eb', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon icon="mdi:robot-happy" width="28" style={{ color: '#7c3aed' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>Bot de Atendimento</h2>
-                    <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
-                      Quando um aluno mandar mensagem, o bot responde automaticamente com um menu de opções.
-                    </p>
-                  </div>
-                </div>
+        const textosMudaram = !!textosBotSalvos && (
+          botSaudacao !== textosBotSalvos.saudacao ||
+          botLeadSaudacao !== textosBotSalvos.lead ||
+          botTextoConhecer !== textosBotSalvos.conhecer
+        )
 
-                {/* Toggle switch */}
-                <button
-                  onClick={toggleBot}
-                  disabled={salvandoBot}
-                  style={{
-                    position: 'relative',
-                    width: '52px',
-                    height: '30px',
-                    borderRadius: '15px',
-                    backgroundColor: botAtivo ? '#7c3aed' : '#d1d5db',
-                    border: 'none',
-                    cursor: salvandoBot ? 'not-allowed' : 'pointer',
-                    opacity: salvandoBot ? 0.6 : 1,
-                    transition: 'background-color 0.2s',
-                    flexShrink: 0
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute',
-                    top: '3px',
-                    left: botAtivo ? '25px' : '3px',
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    backgroundColor: 'white',
-                    transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
-                </button>
-              </div>
+        const catalogoAluno = [
+          { key: 'mensalidade', icon: 'mdi:cash', titulo: 'Minha mensalidade', desc: 'Mostra valor e vencimento da próxima mensalidade pendente' },
+          { key: 'horarios', icon: 'mdi:calendar-clock', titulo: 'Horários das aulas', desc: 'Lista todos os horários da grade fixa' },
+          { key: 'pix', icon: 'mdi:qrcode', titulo: '2ª via do Pix', desc: 'Manda o Pix copia e cola direto no WhatsApp' },
+          { key: 'agendar', icon: 'mdi:calendar-plus', titulo: 'Agendar aula', desc: 'Manda o link do agendamento online (se ativado)' },
+          { key: 'atendente', icon: 'mdi:account-tie', titulo: 'Falar com atendente', desc: 'Pausa o bot por 30 minutos para você atender', obrigatorio: true }
+        ]
+        const ativosAluno = catalogoAluno.filter(c => c.obrigatorio || botOpcoesAtivas[c.key] !== false)
 
-              {status !== 'connected' && (
-                <div style={{ marginTop: '16px', padding: '12px 14px', backgroundColor: '#fef3c7', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#92400e' }}>
-                  <Icon icon="mdi:alert" width="18" />
-                  Conecte o WhatsApp na aba "Conexão" antes de ativar o bot.
-                </div>
-              )}
-            </div>
+        const catalogoLead = [
+          { key: 'conhecer', icon: 'mdi:school-outline', titulo: 'Conhecer as aulas', desc: 'Manda a apresentação (abaixo) e o link da aula experimental' },
+          { key: 'valores', icon: 'mdi:tag-outline', titulo: 'Saber valores', desc: 'Lista os planos cadastrados com preços' },
+          { key: 'experimental', icon: 'mdi:gift-outline', titulo: 'Aula experimental', desc: 'Manda o link de agendamento direto' },
+          { key: 'outro', icon: 'mdi:dots-horizontal', titulo: 'Outro assunto', desc: 'Avisa você e pausa o bot', obrigatorio: true }
+        ]
+        const ativosLead = catalogoLead.filter(c => c.obrigatorio || botLeadOpcoesAtivas[c.key] !== false)
 
-            {/* Cards lado a lado: Alunos + Leads */}
-            {(() => {
-              const catalogoAluno = [
-                { key: 'mensalidade', icon: 'mdi:cash', cor: '#10b981', titulo: 'Minha mensalidade', desc: 'Mostra valor e vencimento da próxima mensalidade pendente' },
-                { key: 'horarios', icon: 'mdi:calendar-clock', cor: '#3b82f6', titulo: 'Horários das aulas', desc: 'Lista todos os horários da grade fixa' },
-                { key: 'pix', icon: 'mdi:qrcode', cor: '#8b5cf6', titulo: '2ª via do PIX', desc: 'Gera o PIX Copia e Cola direto no WhatsApp' },
-                { key: 'agendar', icon: 'mdi:calendar-plus', cor: '#f59e0b', titulo: 'Agendar aula', desc: 'Envia o link do agendamento online (se ativado)' },
-                { key: 'atendente', icon: 'mdi:account-tie', cor: '#ef4444', titulo: 'Falar com atendente', desc: 'Silencia o bot por 30 minutos pra você atender', obrigatorio: true }
-              ]
-              const ativosAluno = catalogoAluno.filter(c => c.obrigatorio || botOpcoesAtivas[c.key] !== false)
-
-              const catalogoLead = [
-                { key: 'conhecer', icon: 'mdi:school-outline', cor: '#3b82f6', titulo: 'Conhecer as aulas', desc: 'Envia apresentação + link de aula experimental (configurável abaixo)' },
-                { key: 'valores', icon: 'mdi:tag-outline', cor: '#10b981', titulo: 'Saber valores', desc: 'Lista todos os planos cadastrados com preços' },
-                { key: 'experimental', icon: 'mdi:gift-outline', cor: '#f59e0b', titulo: 'Aula experimental', desc: 'Envia o link de agendamento direto' },
-                { key: 'outro', icon: 'mdi:dots-horizontal', cor: '#6b7280', titulo: 'Outro assunto', desc: 'Avisa o admin e silencia o bot', obrigatorio: true }
-              ]
-              const ativosLead = catalogoLead.filter(c => c.obrigatorio || botLeadOpcoesAtivas[c.key] !== false)
-
-              const renderCard = (titulo, badge, badgeCor, badgeBg, descricao, catalogo, ativos, opcoesAtivasObj, toggleFn) => (
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', flex: '1 1 0', minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>{titulo}</h3>
-                    <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '10px', backgroundColor: badgeBg, color: badgeCor }}>
-                      {badge}
-                    </span>
-                  </div>
-                  <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                    {descricao}
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {catalogo.map(opt => {
-                      const ativo = opt.obrigatorio || opcoesAtivasObj[opt.key] !== false
-                      const numeroNoMenu = ativo ? (ativos.findIndex(a => a.key === opt.key) + 1) : null
-                      return (
-                        <div key={opt.key} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '10px',
-                          backgroundColor: ativo ? '#f9fafb' : '#fafafa',
-                          borderRadius: '8px',
-                          opacity: ativo ? 1 : 0.5,
-                          transition: 'opacity 0.2s'
-                        }}>
-                          <div style={{ width: '28px', height: '28px', borderRadius: '7px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: opt.cor, fontSize: '13px', flexShrink: 0 }}>
-                            {numeroNoMenu || '—'}
-                          </div>
-                          <Icon icon={opt.icon} width="18" style={{ color: opt.cor, flexShrink: 0 }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>{opt.titulo}</div>
-                            <div style={{ fontSize: '11px', color: '#666' }}>{opt.desc}</div>
-                          </div>
-                          {opt.obrigatorio ? (
-                            <div style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic', flexShrink: 0 }}>
-                              sempre
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => toggleFn(opt.key)}
-                              disabled={salvandoBot}
-                              style={{
-                                position: 'relative',
-                                width: '36px',
-                                height: '20px',
-                                borderRadius: '10px',
-                                backgroundColor: ativo ? '#7c3aed' : '#d1d5db',
-                                border: 'none',
-                                cursor: salvandoBot ? 'not-allowed' : 'pointer',
-                                flexShrink: 0,
-                                transition: 'background-color 0.2s'
-                              }}
-                            >
-                              <div style={{
-                                position: 'absolute',
-                                top: '2px',
-                                left: ativo ? '18px' : '2px',
-                                width: '16px',
-                                height: '16px',
-                                borderRadius: '50%',
-                                backgroundColor: 'white',
-                                transition: 'left 0.2s',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                              }} />
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-
+        const listaOpcoes = (catalogo, ativos, opcoesAtivasObj, toggleFn) => (
+          <div className="bot-opcoes">
+            {catalogo.map(opt => {
+              const ativo = opt.obrigatorio || opcoesAtivasObj[opt.key] !== false
+              const numero = ativo ? (ativos.findIndex(a => a.key === opt.key) + 1) : null
               return (
-                <>
-                  <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: '16px', marginBottom: '20px' }}>
-                    {renderCard(
-                      'Para alunos cadastrados',
-                      '👤 Alunos',
-                      '#0369a1',
-                      '#e0f2fe',
-                      'Quando um aluno manda mensagem, o bot envia este menu. Desative as opções que você não quer oferecer — a numeração é ajustada automaticamente.',
-                      catalogoAluno,
-                      ativosAluno,
-                      botOpcoesAtivas,
-                      toggleBotOpcao
-                    )}
-                    {renderCard(
-                      'Para novos alunos',
-                      '🔥 Leads',
-                      '#9a3412',
-                      '#fff7ed',
-                      'Quando alguém que ainda NÃO é aluno manda mensagem, o bot pergunta o interesse e cria um lead no CRM, te avisando aqui no WhatsApp.',
-                      catalogoLead,
-                      ativosLead,
-                      botLeadOpcoesAtivas,
-                      toggleBotLeadOpcao
-                    )}
-                  </div>
-
-                  {/* Mini-call to action: ver leads no CRM */}
-                  <div style={{
-                    backgroundColor: '#fff7ed',
-                    border: '1px solid #fed7aa',
-                    borderRadius: '10px',
-                    padding: '14px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '20px',
-                    flexWrap: 'wrap'
-                  }}>
-                    <Icon icon="mdi:fire" width="22" style={{ color: '#ea580c', flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#9a3412' }}>
-                        Os leads capturados aparecem no seu CRM
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#9a3412', opacity: 0.85 }}>
-                        Quando o bot capturar um visitante, ele cai automaticamente no kanban de leads.
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => navigate('/app/crm')}
-                      style={{
-                        padding: '8px 14px',
-                        backgroundColor: '#ea580c',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      Ver CRM →
-                    </button>
-                  </div>
-                </>
+                <div key={opt.key} className={`bot-opcao${ativo ? '' : ' bot-opcao--off'}`}>
+                  <span className="bot-opcao__num" aria-hidden="true">{numero || '—'}</span>
+                  <Icon icon={opt.icon} width="18" className="bot-opcao__icone" aria-hidden="true" />
+                  <span className="bot-opcao__texto">
+                    <span className="bot-opcao__titulo">{opt.titulo}</span>
+                    <span className="bot-opcao__desc">{opt.desc}</span>
+                  </span>
+                  {opt.obrigatorio ? (
+                    <span className="bot-opcao__sempre">sempre</span>
+                  ) : (
+                    <Switch
+                      size="sm"
+                      checked={ativo}
+                      disabled={salvandoBot}
+                      onChange={() => toggleFn(opt.key)}
+                      aria-label={`${ativo ? 'Desligar' : 'Ligar'} a opção ${opt.titulo}`}
+                    />
+                  )}
+                </div>
               )
-            })()}
+            })}
+          </div>
+        )
 
-            {/* Saudações editáveis: lado a lado */}
-            <div style={{ display: 'flex', flexDirection: isSmallScreen ? 'column' : 'row', gap: '16px' }}>
-              {/* Saudação Alunos */}
-              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', flex: '1 1 0', minWidth: 0 }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>Saudação para alunos</h3>
-                <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666' }}>
-                  Aparece antes do menu de alunos. Use <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeCliente}}'}</code> e <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeEmpresa}}'}</code>.
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Ligar o bot */}
+            <Card padding={isSmallScreen ? 'default' : 'spacious'}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{
+                  width: 44, height: 44, borderRadius: 'var(--radius-xl)', flexShrink: 0,
+                  backgroundColor: 'var(--mensalli-green-50)', color: 'var(--color-brand-fill)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                }} aria-hidden="true">
+                  <Icon icon="mdi:robot-happy-outline" width="26" />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 className="ds-text-h4" style={{ margin: 0, color: 'var(--color-text-primary)' }}>Bot de atendimento</h2>
+                  <p className="ds-text-body-sm" style={{ margin: '2px 0 0', color: 'var(--color-text-secondary)' }}>
+                    Quando alguém manda mensagem, o bot responde na hora com um menu de opções.
+                  </p>
+                </div>
+                <Switch
+                  size="lg"
+                  checked={botAtivo}
+                  disabled={salvandoBot}
+                  onChange={toggleBot}
+                  aria-label={botAtivo ? 'Desligar o bot' : 'Ligar o bot'}
+                />
+              </div>
+              {status !== 'connected' && (
+                <Alert
+                  variant="warning"
+                  style={{ marginTop: '16px' }}
+                  action={<Button variant="outline" size="sm" onClick={() => setActiveTab('conexao')}>Ir para Conexão</Button>}
+                >
+                  Conecte o WhatsApp antes de ligar o bot.
+                </Alert>
+              )}
+            </Card>
+
+            {/* Menu para alunos */}
+            <details className="bot-secao" open={!isSmallScreen}>
+              <summary>
+                <Icon icon="mdi:account-outline" width="20" aria-hidden="true" />
+                <span className="bot-secao__titulo">
+                  Menu para alunos
+                  <span className="bot-secao__sub">{ativosAluno.length} opções no menu</span>
+                </span>
+                <Icon icon="mdi:chevron-down" width="20" className="bot-secao__seta" aria-hidden="true" />
+              </summary>
+              <div className="bot-secao__corpo">
+                <p className="ds-text-body-sm" style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
+                  Quando um aluno cadastrado manda mensagem, o bot envia este menu. Desligue o que você não quer oferecer; a numeração se ajusta sozinha.
                 </p>
-                <textarea
+                {listaOpcoes(catalogoAluno, ativosAluno, botOpcoesAtivas, toggleBotOpcao)}
+                <Textarea
+                  label="Saudação para alunos"
+                  helper="Aparece antes do menu. Use {{nomeCliente}} e {{nomeEmpresa}}."
                   value={botSaudacao}
                   onChange={(e) => setBotSaudacao(e.target.value)}
                   rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                    boxSizing: 'border-box'
-                  }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                  <button
-                    onClick={salvarSaudacaoBot}
-                    disabled={salvandoBot}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#7c3aed',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: salvandoBot ? 'not-allowed' : 'pointer',
-                      opacity: salvandoBot ? 0.6 : 1
-                    }}
-                  >
-                    {salvandoBot ? 'Salvando...' : 'Salvar saudação'}
-                  </button>
-                </div>
               </div>
+            </details>
 
-              {/* Saudação Novos Alunos (Leads) */}
-              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', flex: '1 1 0', minWidth: 0 }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>Saudação para novos alunos</h3>
-                <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666' }}>
-                  Aparece antes do menu de leads. Use <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeCliente}}'}</code> e <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeEmpresa}}'}</code>.
+            {/* Menu para novos alunos (leads) */}
+            <details className="bot-secao" open={!isSmallScreen}>
+              <summary>
+                <Icon icon="mdi:account-plus-outline" width="20" aria-hidden="true" />
+                <span className="bot-secao__titulo">
+                  Menu para novos alunos
+                  <span className="bot-secao__sub">{ativosLead.length} opções · vira lead no CRM</span>
+                </span>
+                <Icon icon="mdi:chevron-down" width="20" className="bot-secao__seta" aria-hidden="true" />
+              </summary>
+              <div className="bot-secao__corpo">
+                <p className="ds-text-body-sm" style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
+                  Quando alguém que ainda não é aluno manda mensagem, o bot pergunta o interesse, cria um lead no CRM e te avisa aqui no WhatsApp.
                 </p>
-                <textarea
+                {listaOpcoes(catalogoLead, ativosLead, botLeadOpcoesAtivas, toggleBotLeadOpcao)}
+                <Textarea
+                  label="Saudação para novos alunos"
+                  helper="Aparece antes do menu. Use {{nomeCliente}} e {{nomeEmpresa}}."
                   value={botLeadSaudacao}
                   onChange={(e) => setBotLeadSaudacao(e.target.value)}
                   rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                    boxSizing: 'border-box'
-                  }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                  <button
-                    onClick={salvarSaudacaoLeadBot}
-                    disabled={salvandoBot}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#ea580c',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: salvandoBot ? 'not-allowed' : 'pointer',
-                      opacity: salvandoBot ? 0.6 : 1
-                    }}
-                  >
-                    {salvandoBot ? 'Salvando...' : 'Salvar saudação'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Apresentação para opção "Conhecer as aulas" */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isSmallScreen ? '20px' : '24px', border: '1px solid #e5e7eb', marginTop: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>Apresentação — "Conhecer as aulas"</h3>
-                <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#3b82f6' }}>
-                  Bot de leads
-                </span>
-              </div>
-              <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
-                Enviada quando o lead seleciona a opção <b>"Conhecer as aulas"</b>. Use para apresentar brevemente seu serviço.
-                Após essa mensagem, o bot envia automaticamente o link de agendamento da aula experimental.
-                <br />
-                <b>Deixe em branco</b> para usar o comportamento padrão (envia a grade de horários).
-                Variável disponível: <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{nomeEmpresa}}'}</code>
-              </p>
-              <textarea
-                value={botTextoConhecer}
-                onChange={(e) => setBotTextoConhecer(e.target.value)}
-                rows={6}
-                placeholder={'Ex: Olá! Somos a {{nomeEmpresa}} e trabalhamos com aulas de pilates há 10 anos. Nosso método é personalizado e focado em bem-estar e qualidade de vida. Temos profissionais qualificados e um ambiente acolhedor para você iniciar sua jornada.'}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #d1d5db',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                <button
-                  onClick={salvarTextoConhecer}
-                  disabled={salvandoBot}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: salvandoBot ? 'not-allowed' : 'pointer',
-                    opacity: salvandoBot ? 0.6 : 1
-                  }}
+                <Textarea
+                  label='Apresentação da opção "Conhecer as aulas"'
+                  helper="Depois dela o bot manda o link da aula experimental. Em branco, ele manda a grade de horários. Use {{nomeEmpresa}}."
+                  value={botTextoConhecer}
+                  onChange={(e) => setBotTextoConhecer(e.target.value)}
+                  rows={5}
+                  placeholder="Ex.: Somos a {{nomeEmpresa}} e trabalhamos com pilates há 10 anos, com aulas personalizadas e um ambiente acolhedor."
+                />
+                <Alert
+                  variant="info"
+                  icon="mdi:account-group-outline"
+                  title="Os leads aparecem no seu CRM"
+                  action={<Button variant="outline" size="sm" onClick={() => navigate('/app/crm')}>Ver CRM</Button>}
                 >
-                  {salvandoBot ? 'Salvando...' : 'Salvar apresentação'}
-                </button>
+                  Quem o bot captar cai sozinho no quadro de leads.
+                </Alert>
               </div>
-            </div>
+            </details>
+
+            {/* Um "Salvar" para os três textos, só quando algo mudou */}
+            {textosMudaram && (
+              <div className="bot-salvar">
+                <span className="ds-text-body-sm" style={{ flex: 1, color: 'var(--color-text-secondary)' }}>Você mudou textos do bot.</span>
+                <Button variant="ghost" size="sm" onClick={descartarTextosBot} disabled={salvandoBot}>Descartar</Button>
+                <Button variant="primary" size="sm" icon="mdi:content-save-outline" loading={salvandoBot} onClick={salvarTextosBot}>Salvar textos</Button>
+              </div>
+            )}
+
+            <style>{`
+              .bot-secao { background: var(--color-bg-surface); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-xl); }
+              .bot-secao > summary {
+                display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px 16px;
+                cursor: pointer; list-style: none; color: var(--color-text-primary);
+              }
+              .bot-secao > summary::-webkit-details-marker { display: none; }
+              .bot-secao > summary:focus-visible { outline: none; box-shadow: inset var(--focus-ring); border-radius: var(--radius-xl); }
+              .bot-secao__titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: var(--text-md); font-weight: var(--weight-semibold); }
+              .bot-secao__sub { font-size: var(--text-xs); font-weight: 400; color: var(--color-text-muted); }
+              .bot-secao__seta { color: var(--color-text-muted); transition: transform var(--duration-150) var(--ease-out); }
+              .bot-secao[open] .bot-secao__seta { transform: rotate(180deg); }
+              .bot-secao__corpo { display: flex; flex-direction: column; gap: 16px; padding: 0 16px 16px; }
+              .bot-opcoes { display: flex; flex-direction: column; gap: 8px; }
+              .bot-opcao {
+                display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+                background: var(--neutral-50); border-radius: var(--radius-lg);
+              }
+              .bot-opcao--off { opacity: 0.55; }
+              .bot-opcao__num {
+                width: 26px; height: 26px; flex-shrink: 0; border-radius: var(--radius-md);
+                background: var(--color-bg-surface); border: 1px solid var(--color-border-subtle);
+                display: inline-flex; align-items: center; justify-content: center;
+                font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--color-brand-fill);
+              }
+              .bot-opcao__icone { color: var(--color-text-secondary); flex-shrink: 0; }
+              .bot-opcao__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+              .bot-opcao__titulo { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--color-text-primary); }
+              .bot-opcao__desc { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.35; }
+              .bot-opcao__sempre { font-size: var(--text-2xs); color: var(--color-text-muted); font-style: italic; flex-shrink: 0; }
+              .bot-salvar {
+                position: sticky; bottom: 8px; z-index: var(--z-sticky);
+                display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                padding: 10px 12px; background: var(--color-bg-surface);
+                border: 1px solid var(--color-border-default); border-radius: var(--radius-xl);
+                box-shadow: var(--shadow-lg);
+              }
+            `}</style>
           </div>
         )
       })()}

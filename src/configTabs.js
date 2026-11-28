@@ -29,7 +29,7 @@ export const CONFIG_TABS = [
   { id: 'planos', label: 'Planos', icon: 'mdi:package-variant-closed', group: 'negocio' },
   { id: 'colaboradores', label: 'Colaboradores', icon: 'mdi:account-tie-outline', group: 'negocio' },
   // Pagamentos
-  { id: 'integracoes', label: 'Integrações', icon: 'mdi:connection', group: 'pagamentos' },
+  { id: 'integracoes', label: 'Recebimentos', icon: 'mdi:cash-multiple', group: 'pagamentos' },
   // Marketing
   // Aba "Artes" temporariamente escondida (feature em construção) — descomentar p/ reativar
   // { id: 'artes', label: 'Artes', icon: 'mdi:palette-outline', group: 'marketing' },
