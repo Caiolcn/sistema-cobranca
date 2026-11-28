@@ -22,7 +22,10 @@ import './BottomNav.css'
    com var(--app-bottomnav-h) + var(--safe-bottom)).
    ============================================================ */
 
-const CAMPOS_DE_TEXTO = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]), textarea, select, [contenteditable="true"]'
+// Só campos que abrem TECLADO. Lista nativa (select), data e hora abrem
+// um seletor do sistema e no iPhone continuam "focados" depois da escolha —
+// se entrassem aqui, o menu sumia e só voltava ao tocar fora (bug 28/11/2026).
+const CAMPOS_DE_TEXTO = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=range]):not([type=file]):not([type=color]):not([type=date]):not([type=time]):not([type=datetime-local]):not([type=month]):not([type=week]), textarea, [contenteditable="true"]'
 
 export default function BottomNav({ items = [], ariaLabel = 'Menu principal' }) {
   const [tecladoAberto, setTecladoAberto] = useState(false)
