@@ -103,3 +103,33 @@ credentials.json
 
 # Videos brutos dos depoimentos (so as versoes comprimidas em public/depoimentos vao pro repo)
 depoimentos-originais/
+
+# Rondas do vigia (telefone e mensagem de cliente real)
+/vigia/
+
+# SQL de correcao de cliente especifico e SQL de seguranca: rodam no SQL Editor e ficam so na pasta (repo publico)
+/sql-seguranca-s[0-9]*.sql
+/sql-ativar-loja-*.sql
+/sql-bem-estar-*.sql
+/sql-blp-*.sql
+/sql-espaco-nobre-*.sql
+/sql-gr-esperanca-*.sql
+/sql-liberar-*.sql
+/sql-limpar-contas-teste-*.sql
+/sql-minha-empresa-*.sql
+/sql-neuza-*.sql
+/sql-ponta-do-saber-*.sql
+/sql-renata-*.sql
+/sql-restaurar-mensalidades-*.sql
+/sql-team-juliana-*.sql
+/sql-wl-brothers-*.sql
+/sql-teste-*.sql
+/sql-recebimentos-alinhar-modo.sql
+/sql-conta-teste-*.sql
+
+# Analises, relatorios e material interno
+/analise-concorrente-*.html
+/relatorio-adocao-*.html
+/mensalli-LP.pdf
+/docs/reajuste-precos-*.md
+/docs/prompt-cartao-recorrente.md
