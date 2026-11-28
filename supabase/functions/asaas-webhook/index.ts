@@ -4,8 +4,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Pedidos da Loja (Mensalli Vendas): boletos.pedido_id presente -> ramo próprio
-import { processarPedidoLoja, estornarPedidoLoja } from '../_shared/loja-pedido.ts'
-import { calcularProximoVencimento } from '../_shared/loja.ts'
+import { processarPedidoLoja, estornarPedidoLoja, vinculosDoPedidoDoMesmoDono } from '../_shared/loja-pedido.ts'
+import { calcularProximoVencimento, ASAAS_URLS } from '../_shared/loja.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 
@@ -22,6 +22,84 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, asaas-access-token',
 }
 
+// ---------------------------------------------------------------------------
+// Do corpo do aviso só se usam `event` e `payment.id`. Status, valor, forma e
+// data vêm de GET /payments/{id}, feito com a chave do dono do boleto. A
+// mensalidade, o aluno e o pedido do boleto precisam ser do mesmo dono
+// (vinculosDoMesmoDono).
+// ---------------------------------------------------------------------------
+
+const EVENTOS_TRATADOS = new Set([
+  'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE',
+  'PAYMENT_DELETED', 'PAYMENT_REFUNDED', 'PAYMENT_UPDATED',
+])
+const EVENTOS_DE_PAGAMENTO = new Set(['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'])
+const STATUS_PAGOS = new Set(['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'])
+
+// "Este boleto foi o que pagou": status pago OU data de pagamento gravada na
+// baixa. Só o status não basta — um PAYMENT_UPDATED com REFUND_IN_PROGRESS ou
+// chargeback sobrescreve o status antes do REFUNDED chegar.
+// Boleto já REFUNDED: o estorno já foi aplicado uma vez. Repetir desfaria a
+// baixa manual que o gestor fez DEPOIS do estorno.
+function boletoFoiOPagamento(boleto: any): boolean {
+  const status = String(boleto?.status || '').toUpperCase()
+  if (status === 'REFUNDED') return false
+  return STATUS_PAGOS.has(status) || !!boleto?.data_pagamento
+}
+
+// Mensalidade, aluno e pedido ligados ao boleto têm de ser do dono do boleto
+// (e a mensalidade, do mesmo aluno). Mesma regra do trigger em boletos.
+async function vinculosDoMesmoDono(supabase: any, boleto: any): Promise<boolean> {
+  const dono = boleto.user_id
+  if (!dono) return false
+  if (boleto.mensalidade_id) {
+    const m = boleto.mensalidade
+    if (!m || m.user_id !== dono) return false
+    if (boleto.devedor_id && m.devedor_id !== boleto.devedor_id) return false
+  }
+  if (boleto.devedor_id) {
+    const { data: d } = await supabase.from('devedores').select('user_id').eq('id', boleto.devedor_id).maybeSingle()
+    if (!d || d.user_id !== dono) return false
+  }
+  if (boleto.pedido_id) {
+    // O pedido também guarda ids (aluno, mensalidade, turmas...) que o ramo da
+    // loja usa para escrever: todos têm de ser do mesmo dono.
+    const { data: p } = await supabase.from('loja_pedidos').select('*').eq('id', boleto.pedido_id).maybeSingle()
+    if (!p || p.user_id !== dono) return false
+    if (!(await vinculosDoPedidoDoMesmoDono(supabase, p))) return false
+  }
+  return true
+}
+
+type Consulta =
+  | { ok: true; payment: any }
+  | { ok: false; repetir: boolean; erro: string }
+
+// repetir = true só para Asaas fora do ar/lento (5xx, rede, tempo limite): a
+// resposta 500 faz o Asaas reenviar. Erro de chave ou 404 responde 200 — muita
+// falha seguida pausa a fila de webhooks da conta no Asaas.
+async function consultarPagamentoAsaas(apiKey: string, ambiente: string | null, paymentId: string): Promise<Consulta> {
+  const baseUrl = ASAAS_URLS[ambiente || 'sandbox'] || ASAAS_URLS.sandbox
+  try {
+    const r = await fetch(`${baseUrl}/payments/${encodeURIComponent(paymentId)}`, {
+      headers: { 'access_token': apiKey },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (r.ok) {
+      const p = await r.json()
+      if (!p || p.id !== paymentId) return { ok: false, repetir: false, erro: 'api_id_divergente' }
+      return { ok: true, payment: p }
+    }
+    await r.text().catch(() => '')
+    if (r.status >= 500) return { ok: false, repetir: true, erro: `asaas_http_${r.status}` }
+    if (r.status === 401 || r.status === 403) return { ok: false, repetir: false, erro: 'chave_asaas_recusada' }
+    if (r.status === 404) return { ok: false, repetir: false, erro: 'pagamento_nao_encontrado_no_asaas' }
+    return { ok: false, repetir: false, erro: `asaas_http_${r.status}` }
+  } catch (e) {
+    return { ok: false, repetir: true, erro: `asaas_indisponivel: ${(e as Error).name}` }
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -29,63 +107,118 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  const responder = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
 
   try {
     // Parse webhook payload
     const payload = await req.json()
+    const event = String(payload?.event || '')
+    const paymentId = String(payload?.payment?.id || payload?.id || '')
 
-    console.log('🔔 Webhook Asaas recebido:', payload.event)
-    console.log('📦 Payload:', JSON.stringify(payload, null, 2))
+    // Loga só o evento e o id (o corpo tem dado do aluno)
+    console.log('🔔 Webhook Asaas recebido:', event, paymentId)
 
     // Salvar log do webhook
     await supabase
       .from('asaas_webhook_logs')
       .insert({
-        event_type: payload.event,
-        asaas_id: payload.payment?.id || payload.id,
+        event_type: event,
+        asaas_id: paymentId || null,
         payload: payload,
         processado: false
       })
 
-    // Extrair dados do pagamento
-    const payment = payload.payment || payload
-    const event = payload.event
+    const marcarLog = async (sucesso: boolean, erro: string | null = null) => {
+      await supabase
+        .from('asaas_webhook_logs')
+        .update({ processado: true, sucesso, erro, processado_at: new Date().toISOString() })
+        .eq('asaas_id', paymentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    }
 
-    if (!payment?.id) {
-      console.log('⚠️ Webhook sem ID de pagamento, ignorando')
-      return new Response(JSON.stringify({ received: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    // Só ids no formato do Asaas seguem (e vão para a URL da consulta).
+    // O Asaas usa "_" dentro do id (pay_0_c61y6sl1d1waqj): sem o "_" aqui,
+    // todo pagamento novo era ignorado (Paineiras, 27–28/11/2026).
+    if (!/^pay_[A-Za-z0-9_]+$/.test(paymentId)) {
+      console.log('⚠️ Webhook sem ID de pagamento válido, ignorando')
+      return responder({ received: true })
+    }
+
+    if (!EVENTOS_TRATADOS.has(event)) {
+      console.log('ℹ️ Evento não processado:', event)
+      await marcarLog(true)
+      return responder({ received: true })
     }
 
     // Buscar boleto no banco de dados
     const { data: boleto, error: boletoError } = await supabase
       .from('boletos')
       .select('*, mensalidade:mensalidades(*)')
-      .eq('asaas_id', payment.id)
+      .eq('asaas_id', paymentId)
       .single()
 
     if (boletoError || !boleto) {
-      console.log('⚠️ Boleto não encontrado para asaas_id:', payment.id)
-      // Atualizar log como processado mas sem ação
-      await supabase
-        .from('asaas_webhook_logs')
-        .update({
-          processado: true,
-          sucesso: false,
-          erro: 'Boleto não encontrado',
-          processado_at: new Date().toISOString()
-        })
-        .eq('asaas_id', payment.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      return new Response(JSON.stringify({ received: true, message: 'Boleto não encontrado' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      console.log('⚠️ Boleto não encontrado para asaas_id:', paymentId)
+      await marcarLog(false, 'Boleto não encontrado')
+      return responder({ received: true, message: 'Boleto não encontrado' })
     }
 
     console.log('📄 Boleto encontrado:', boleto.id)
+
+    // Mensalidade, aluno e pedido do boleto têm de ser do mesmo dono do boleto.
+    if (!(await vinculosDoMesmoDono(supabase, boleto))) {
+      console.log('🚫 Boleto aponta para mensalidade/aluno/pedido de outra conta — nada alterado')
+      await marcarLog(false, 'dono_divergente')
+      return responder({ received: true, processed: false })
+    }
+
+    // ---------------------------------------------------------------
+    // Fonte da verdade: o Asaas, consultado com a chave do dono do boleto.
+    // ---------------------------------------------------------------
+    const { data: dono } = await supabase
+      .from('usuarios')
+      .select('asaas_api_key, asaas_ambiente')
+      .eq('id', boleto.user_id)
+      .maybeSingle()
+
+    if (!dono?.asaas_api_key) {
+      console.log('⚠️ Dono do boleto sem chave do Asaas — nada alterado')
+      await marcarLog(false, 'sem_chave_asaas')
+      return responder({ received: true, processed: false })
+    }
+
+    const consulta = await consultarPagamentoAsaas(dono.asaas_api_key, dono.asaas_ambiente, paymentId)
+    if (!consulta.ok) {
+      console.log('⚠️ Consulta ao Asaas falhou — nada alterado:', consulta.erro)
+      await marcarLog(false, consulta.erro)
+      return consulta.repetir
+        ? responder({ error: 'asaas indisponivel, tente de novo' }, 500)
+        : responder({ received: true, processed: false })
+    }
+
+    const payment = consulta.payment
+    const statusApi = String(payment.status || '').toUpperCase()
+
+    // A ação sai do que o Asaas diz, não do nome do evento. "Apagado" só com
+    // `deleted: true` vindo do Asaas — 404 já saiu acima sem mexer em nada.
+    let acao: 'pago' | 'estorno' | 'apagado' | 'vencido' | 'atualizar'
+    if (payment.deleted === true) acao = 'apagado'
+    else if (STATUS_PAGOS.has(statusApi)) acao = 'pago'
+    else if (statusApi === 'REFUNDED') acao = 'estorno'
+    else if (statusApi === 'OVERDUE') acao = 'vencido'
+    else acao = 'atualizar'
+
+    // Evento diz "pago" e o Asaas diz que não: não dá baixa nem mexe em nada.
+    if (EVENTOS_DE_PAGAMENTO.has(event) && acao !== 'pago') {
+      console.log(`⚠️ Divergência: evento ${event}, Asaas diz ${statusApi}${payment.deleted ? ' (apagado)' : ''}`)
+      await marcarLog(false, 'divergencia_evento_api')
+      return responder({ received: true, processed: false })
+    }
+
+    console.log(`🔎 Asaas: status ${statusApi}${payment.deleted ? ' (apagado)' : ''} -> ação ${acao}`)
 
     // ---------------------------------------------------------------
     // Ramo da LOJA: a cobrança veio de um pedido (loja-comprar/loja-pagar).
@@ -94,42 +227,49 @@ serve(async (req) => {
     // ---------------------------------------------------------------
     if (boleto.pedido_id) {
       const agoraIso = new Date().toISOString()
-      if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+      let recusaLoja: string | null = null
+      if (acao === 'pago') {
         await supabase.from('boletos').update({
-          status: payment.status || 'RECEIVED',
-          data_pagamento: payment.paymentDate || agoraIso,
-          valor_pago: payment.value || boleto.valor,
+          status: statusApi,
+          data_pagamento: payment.paymentDate || payment.confirmedDate || agoraIso,
+          valor_pago: payment.value ?? boleto.valor,
           forma_pagamento: payment.billingType || boleto.forma_pagamento,
           updated_at: agoraIso,
         }).eq('id', boleto.id)
         const r = await processarPedidoLoja(supabase, boleto.pedido_id, payment, 'webhook')
         console.log('🛒 Pedido da loja:', JSON.stringify(r))
-      } else if (event === 'PAYMENT_DELETED' || event === 'PAYMENT_REFUNDED') {
-        await supabase.from('boletos').update({ status: event === 'PAYMENT_REFUNDED' ? 'REFUNDED' : 'CANCELED', updated_at: agoraIso }).eq('id', boleto.id)
-        await estornarPedidoLoja(supabase, boleto.pedido_id, event === 'PAYMENT_REFUNDED' ? 'estornado' : 'cancelado')
-      } else if (event === 'PAYMENT_OVERDUE') {
+        if (r?.motivo === 'dono_divergente') recusaLoja = 'dono_divergente'
+      } else if (acao === 'apagado' || acao === 'estorno') {
+        await supabase.from('boletos').update({ status: acao === 'estorno' ? 'REFUNDED' : 'CANCELED', updated_at: agoraIso }).eq('id', boleto.id)
+        // loja-pagar cria uma cobrança por método: o Pix abandonado que o Asaas
+        // apaga de madrugada não pode cancelar o pedido pago no cartão. Apagado
+        // só cancela pedido ainda aguardando; estorno só se ESTE boleto pagou.
+        const { data: pedido } = await supabase.from('loja_pedidos').select('status').eq('id', boleto.pedido_id).maybeSingle()
+        const podeMexer = acao === 'apagado'
+          ? pedido?.status === 'aguardando_pagamento'
+          : boletoFoiOPagamento(boleto)
+        if (podeMexer) {
+          const r = await estornarPedidoLoja(supabase, boleto.pedido_id, acao === 'estorno' ? 'estornado' : 'cancelado')
+          if (r === 'dono_divergente') recusaLoja = 'dono_divergente'
+        } else {
+          console.log(`⏩ ${acao}: pedido mantido (status ${pedido?.status}; boleto não era o pagamento dele)`)
+        }
+      } else if (acao === 'vencido') {
         await supabase.from('boletos').update({ status: 'OVERDUE', updated_at: agoraIso }).eq('id', boleto.id)
         // Boleto venceu sem pagar: pedido expira (Pix já expira pelo cron em 24h)
         await supabase.from('loja_pedidos').update({ status: 'expirado' }).eq('id', boleto.pedido_id).eq('status', 'aguardando_pagamento')
-      } else if (event === 'PAYMENT_UPDATED') {
-        await supabase.from('boletos').update({ status: payment.status, valor: payment.value || boleto.valor, updated_at: agoraIso }).eq('id', boleto.id)
+      } else {
+        await supabase.from('boletos').update({ status: statusApi, valor: payment.value ?? boleto.valor, updated_at: agoraIso }).eq('id', boleto.id)
       }
 
-      await supabase.from('asaas_webhook_logs')
-        .update({ processado: true, sucesso: true, processado_at: agoraIso })
-        .eq('asaas_id', payment.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      return new Response(JSON.stringify({ received: true, processed: true, loja: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      // Recusa da loja vai como falha no log, para aparecer na conferência
+      await marcarLog(!recusaLoja, recusaLoja)
+      return responder({ received: true, processed: !recusaLoja, loja: true })
     }
 
-    // Processar baseado no evento
-    switch (event) {
-      case 'PAYMENT_RECEIVED':
-      case 'PAYMENT_CONFIRMED':
+    // Processar baseado no que o Asaas respondeu
+    switch (acao) {
+      case 'pago':
         console.log('✅ Pagamento confirmado!')
 
         // Cartão dispara RECEIVED e depois CONFIRMED: a mensalidade já paga não
@@ -143,7 +283,7 @@ serve(async (req) => {
         await supabase
           .from('boletos')
           .update({
-            status: payment.status || 'RECEIVED',
+            status: statusApi,
             data_pagamento: payment.paymentDate || new Date().toISOString(),
             valor_pago: payment.value || boleto.valor,
             forma_pagamento: payment.billingType || 'BOLETO',
@@ -230,7 +370,7 @@ serve(async (req) => {
         }
         break
 
-      case 'PAYMENT_OVERDUE':
+      case 'vencido':
         console.log('⚠️ Pagamento vencido')
 
         await supabase
@@ -242,27 +382,27 @@ serve(async (req) => {
           .eq('id', boleto.id)
         break
 
-      case 'PAYMENT_DELETED':
-      case 'PAYMENT_REFUNDED':
+      case 'apagado':
+      case 'estorno':
         console.log('🔄 Pagamento cancelado/estornado')
 
         await supabase
           .from('boletos')
           .update({
-            status: event === 'PAYMENT_REFUNDED' ? 'REFUNDED' : 'CANCELED',
+            status: acao === 'estorno' ? 'REFUNDED' : 'CANCELED',
             updated_at: new Date().toISOString()
           })
           .eq('id', boleto.id)
 
         // Só desfaz a baixa quando ESTE boleto foi o que pagou a mensalidade e o
-        // dinheiro voltou (estorno). PAYMENT_DELETED nunca desfaz: o Asaas apaga
+        // Asaas confirma o estorno (status REFUNDED na consulta). Apagado nunca desfaz: o Asaas apaga
         // de madrugada o Pix gerado no portal que venceu sem pagamento, e se o
         // aluno pagou por fora (baixa manual) a mensalidade continua paga.
         // Incidente 06/11/2026: 4 baixas manuais desfeitas assim (GR Esperança e
         // Paineiras) — ficavam "em atraso" com forma_pagamento preenchida.
         {
-          const boletoPagou = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(String(boleto.status || '').toUpperCase())
-          if (event === 'PAYMENT_REFUNDED' && boletoPagou && boleto.mensalidade_id) {
+          const boletoPagou = boletoFoiOPagamento(boleto)
+          if (acao === 'estorno' && boletoPagou && boleto.mensalidade_id) {
             // Zera o registro de dinheiro junto, igual ao "Desfazer" do Financeiro.
             await supabase
               .from('mensalidades')
@@ -273,47 +413,30 @@ serve(async (req) => {
               })
               .eq('id', boleto.mensalidade_id)
           } else if (boleto.mensalidade_id) {
-            console.log(`⏩ ${event}: mensalidade mantida (boleto não era o pagamento dela; status anterior ${boleto.status})`)
+            console.log(`⏩ ${acao}: mensalidade mantida (boleto não era o pagamento dela; status anterior ${boleto.status})`)
           }
         }
         break
 
-      case 'PAYMENT_UPDATED':
+      case 'atualizar':
         console.log('🔄 Pagamento atualizado')
 
+        // Status, valor e vencimento da consulta ao Asaas, nunca do corpo
         await supabase
           .from('boletos')
           .update({
-            status: payment.status,
+            status: statusApi,
             valor: payment.value || boleto.valor,
             data_vencimento: payment.dueDate || boleto.data_vencimento,
             updated_at: new Date().toISOString()
           })
           .eq('id', boleto.id)
         break
-
-      default:
-        console.log('ℹ️ Evento não processado:', event)
     }
 
     // Atualizar log como processado com sucesso
-    await supabase
-      .from('asaas_webhook_logs')
-      .update({
-        processado: true,
-        sucesso: true,
-        processado_at: new Date().toISOString()
-      })
-      .eq('asaas_id', payment.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    return new Response(
-      JSON.stringify({ received: true, processed: true }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+    await marcarLog(true)
+    return responder({ received: true, processed: true })
 
   } catch (error) {
     console.error('❌ Erro no webhook:', error)

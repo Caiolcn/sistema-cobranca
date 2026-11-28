@@ -381,8 +381,9 @@ serve(async (req) => {
 
     const payment = await paymentResponse.json()
 
-    // 8. Salvar boleto no banco
-    await supabase.from('boletos').insert({
+    // 8. Salvar boleto no banco. Sem o registro, o pagamento nunca dá baixa
+    // (o webhook procura o boleto por asaas_id): não devolve o link ao aluno.
+    const { error: erroBoleto } = await supabase.from('boletos').insert({
       user_id: devedor.user_id,
       mensalidade_id: mensalidade_id,
       devedor_id: devedor.id,
@@ -396,6 +397,13 @@ serve(async (req) => {
       invoice_url: payment.invoiceUrl,
       descricao: `Mensalidade - ${usuario.nome_empresa || 'MensalliZap'}`
     })
+    if (erroBoleto) {
+      console.error('❌ Cobrança criada no Asaas mas NÃO gravada em boletos:', payment.id, erroBoleto.message)
+      return new Response(
+        JSON.stringify({ error: 'Não foi possível registrar a cobrança. Tente de novo em instantes.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     console.log('✅ Cobrança criada via portal:', payment.id, metodoEscolhido)
 

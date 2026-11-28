@@ -25,6 +25,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { montarMensagem, normalizarTelefone, COLUNA_FLAG, type Alvo } from './render.ts'
+import { ehCron, adminLogado, CABECALHOS_CORS_CRON } from '../_shared/cron-auth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -32,7 +33,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': CABECALHOS_CORS_CRON,
 }
 
 // Orçamento por rodada. O runtime derruba a função por volta de 2 min; saímos
@@ -260,10 +261,22 @@ async function executar(opts: { dryRun: boolean; force: boolean }) {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  // Só o pg_cron (x-cron-secret) ou um admin logado chamam esta função.
+  // force e dryRun são só para admin: o segredo do cron roda a rodada normal.
+  const admin = await adminLogado(req)
+  const cron = !admin && ehCron(req)
+  if (!admin && !cron) {
+    return new Response(JSON.stringify({ error: 'nao autorizado' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   let body: { dryRun?: boolean; force?: boolean } = {}
   try { body = await req.json() } catch { /* cron chama sem body */ }
 
-  const opts = { dryRun: !!body.dryRun, force: !!body.force }
+  const opts = admin
+    ? { dryRun: !!body.dryRun, force: !!body.force }
+    : { dryRun: false, force: false }
 
   // dryRun responde na hora (é para conferência humana). O cron não espera.
   if (opts.dryRun) {

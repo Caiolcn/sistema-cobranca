@@ -88,15 +88,27 @@ serve(async (req) => {
       .eq('id', devedor_id)
       .single()
 
-    console.log('📦 Resultado busca devedor:', { devedor, devedorError })
 
     if (devedorError || !devedor) {
-      throw new Error(`Devedor não encontrado. ID: ${devedor_id}, Erro: ${devedorError?.message || 'N/A'}`)
+      throw new Error('Aluno não encontrado.')
     }
 
     // Verificar se o devedor pertence ao usuário
     if (devedor.user_id !== user.id) {
-      throw new Error(`Devedor não pertence ao usuário. Devedor user_id: ${devedor.user_id}, User ID: ${user.id}`)
+      // Resposta genérica: não informa a que conta o aluno pertence
+      throw new Error('Aluno não encontrado.')
+    }
+
+    // A mensalidade informada tem de ser deste usuário e deste aluno.
+    if (mensalidade_id) {
+      const { data: mens } = await supabaseAdmin
+        .from('mensalidades')
+        .select('user_id, devedor_id')
+        .eq('id', mensalidade_id)
+        .maybeSingle()
+      if (!mens || mens.user_id !== user.id || mens.devedor_id !== devedor_id) {
+        throw new Error('Mensalidade não pertence a este aluno.')
+      }
     }
 
     console.log('👤 Devedor:', devedor.nome)
@@ -269,8 +281,10 @@ serve(async (req) => {
       .single()
 
     if (boletoError) {
-      console.error('❌ Erro ao salvar boleto:', boletoError)
-      // Não falhar a operação, o boleto foi criado no Asaas
+      // Sem o registro em boletos o webhook não acha a cobrança e o pagamento
+      // nunca dá baixa: avisa o gestor em vez de entregar um link "mudo".
+      console.error('❌ Cobrança criada no Asaas mas NÃO gravada em boletos:', payment.id, boletoError.message)
+      throw new Error('A cobrança foi criada no Asaas, mas não foi registrada no Mensalli. Cancele-a no Asaas e tente de novo.')
     }
 
     console.log('💾 Boleto salvo no banco:', boleto?.id)
@@ -283,6 +297,7 @@ serve(async (req) => {
           forma_pagamento: billing_type === 'PIX' ? 'PIX' : 'Boleto'
         })
         .eq('id', mensalidade_id)
+        .eq('user_id', user.id)
     }
 
     // Retornar dados para o frontend

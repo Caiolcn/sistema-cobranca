@@ -256,12 +256,17 @@ serve(async (req) => {
     }
     const payment = cobranca.payment
 
-    await supabase.from('boletos').insert({
+    const { error: erroBoleto } = await supabase.from('boletos').insert({
       user_id: empresa.id, devedor_id: devedor.id, pedido_id: pedido.id,
       asaas_id: payment.id, asaas_customer_id: customer.id,
       valor, data_vencimento: hojeISO(), status: payment.status, forma_pagamento: metodo,
       boleto_url: payment.bankSlipUrl || null, invoice_url: payment.invoiceUrl || null, descricao,
     })
+    if (erroBoleto) {
+      // Sem o boleto o webhook não acha a cobrança e o pedido nunca seria liberado
+      console.error('❌ Cobrança criada no Asaas mas NÃO gravada em boletos:', payment.id, erroBoleto.message)
+      return erro('interno', 'Não foi possível registrar o pagamento. Tente de novo em instantes.', 500)
+    }
     await supabase.from('loja_pedidos').update({ asaas_payment_id: payment.id, invoice_url: payment.invoiceUrl || null }).eq('id', pedido.id)
 
     const pixQr = metodo === 'pix' ? await fetchPixQrCode(ctx, payment.id) : null

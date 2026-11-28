@@ -65,6 +65,16 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
   const valorPago = payment?.value != null ? Number(payment.value) : null
   const formaPagamento = FORMA_PAGAMENTO[payment?.billingType] || payment?.billingType || 'PIX'
 
+  // O pedido guarda ids (aluno, mensalidade, produto, turmas...) e tudo abaixo
+  // escreve neles com service_role: todos têm de ser do dono do pedido.
+  {
+    const { data: antes } = await supabase.from('loja_pedidos').select('*').eq('id', pedidoId).maybeSingle()
+    if (!antes || !(await vinculosDoPedidoDoMesmoDono(supabase, antes))) {
+      console.error('🚫 Pedido com vínculo de outra conta — não processado:', pedidoId)
+      return { processado: false, motivo: 'dono_divergente', status: antes?.status }
+    }
+  }
+
   // 1. Transição idempotente
   const { data: pedido } = await supabase
     .from('loja_pedidos')
@@ -89,14 +99,23 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
       valor_pago: valorPago ?? Number(pedido.valor),
       forma_pagamento: payment.billingType || undefined,
       updated_at: agora,
-    }).eq('asaas_id', payment.id)
+    }).eq('asaas_id', payment.id).eq('user_id', pedido.user_id)
   }
 
   const [{ data: produto }, { data: devedor }, { data: empresa }] = await Promise.all([
-    supabase.from('loja_produtos').select('*, planos(id, nome, valor, ciclo_cobranca, tipo, numero_aulas)').eq('id', pedido.produto_id).maybeSingle(),
-    supabase.from('devedores').select('*').eq('id', pedido.devedor_id).maybeSingle(),
+    supabase.from('loja_produtos').select('*, planos(id, user_id, nome, valor, ciclo_cobranca, tipo, numero_aulas)').eq('id', pedido.produto_id).eq('user_id', pedido.user_id).maybeSingle(),
+    supabase.from('devedores').select('*').eq('id', pedido.devedor_id).eq('user_id', pedido.user_id).maybeSingle(),
     supabase.from('usuarios').select('id, nome_empresa, telefone, email, email_empresa, cpf_cnpj, endereco, numero, bairro, cidade, estado').eq('id', pedido.user_id).maybeSingle(),
   ])
+
+  // Plano ligado ao produto tem de ser do dono do pedido; senão é ignorado.
+  if (produto && produto.planos && produto.planos.user_id !== pedido.user_id) {
+    console.error('🚫 Produto aponta para plano de outra conta — plano ignorado:', produto.id)
+    produto.planos = null
+    produto.plano_id = null
+  } else if (produto && !produto.planos && produto.plano_id) {
+    produto.plano_id = null // plano_id sem plano lido (apagado ou de outra conta)
+  }
 
   const valor = valorPago ?? Number(pedido.valor)
   let statusFinal = 'concluido'
@@ -117,13 +136,14 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
         plano_id: plano?.id || produto?.plano_id || devedor.plano_id,
         experimental: false,
         data_inicio_assinatura: devedor.data_inicio_assinatura || hoje,
-      }).eq('id', devedor.id)
+      }).eq('id', devedor.id).eq('user_id', pedido.user_id)
 
       // Última mensalidade do aluno para numerar a sequência
       const { data: ultima } = await supabase
         .from('mensalidades')
         .select('numero_mensalidade')
         .eq('devedor_id', devedor.id)
+        .eq('user_id', pedido.user_id)
         .or('lixo.is.null,lixo.eq.false')
         .order('numero_mensalidade', { ascending: false })
         .limit(1)
@@ -145,6 +165,7 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
         .from('mensalidades')
         .select('id')
         .eq('devedor_id', devedor.id)
+        .eq('user_id', pedido.user_id)
         .eq('data_vencimento', proximo)
         .or('lixo.is.null,lixo.eq.false')
         .limit(1)
@@ -170,7 +191,7 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
         experimental: false,
         aulas_restantes: aulas, aulas_total: aulas,
         data_inicio_assinatura: devedor.data_inicio_assinatura || hojeISO(),
-      }).eq('id', devedor.id)
+      }).eq('id', devedor.id).eq('user_id', pedido.user_id)
 
       const { data: cob } = await supabase.from('cobrancas_avulsas').insert({
         user_id: pedido.user_id, devedor_id: devedor.id,
@@ -207,7 +228,7 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
 
     // 3. Contrato pós-compra
     if (produto?.contrato_template_id && devedor) {
-      const { data: tpl } = await supabase.from('contratos_templates').select('id, titulo, conteudo').eq('id', produto.contrato_template_id).maybeSingle()
+      const { data: tpl } = await supabase.from('contratos_templates').select('id, titulo, conteudo').eq('id', produto.contrato_template_id).eq('user_id', pedido.user_id).maybeSingle()
       if (tpl) {
         const { data: tokenContrato } = await supabase.rpc('gerar_token_contrato')
         const conteudo = substituirVariaveisContrato(tpl.conteudo, devedor, empresa, produto?.planos)
@@ -228,7 +249,7 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
       contrato_enviado_id: contratoId, metodo: pedido.metodo, reservou_estoque: false,
     }).eq('id', pedido.id)
     if (mensalidadeId && payment?.id) {
-      await supabase.from('boletos').update({ mensalidade_id: mensalidadeId }).eq('asaas_id', payment.id)
+      await supabase.from('boletos').update({ mensalidade_id: mensalidadeId }).eq('asaas_id', payment.id).eq('user_id', pedido.user_id)
     }
   } catch (e) {
     console.error('❌ Erro ao materializar pedido (status fica "pago" para reprocessar):', e)
@@ -274,10 +295,17 @@ export async function processarPedidoLoja(supabase: any, pedidoId: string, payme
 }
 
 // Estorno/cancelamento depois de pago: desfaz os efeitos.
-export async function estornarPedidoLoja(supabase: any, pedidoId: string, novoStatus: 'estornado' | 'cancelado') {
+// Retorna 'dono_divergente' quando recusa por vínculo de outra conta (o webhook
+// grava isso como falha no log); nos demais casos, undefined.
+export async function estornarPedidoLoja(supabase: any, pedidoId: string, novoStatus: 'estornado' | 'cancelado'): Promise<'dono_divergente' | undefined> {
   const { data: pedido } = await supabase.from('loja_pedidos').select('*').eq('id', pedidoId).maybeSingle()
   if (!pedido) return
   if (['estornado', 'cancelado', 'expirado'].includes(pedido.status)) return
+  if (!(await vinculosDoPedidoDoMesmoDono(supabase, pedido))) {
+    console.error('🚫 Pedido com vínculo de outra conta — estorno não aplicado:', pedidoId)
+    return 'dono_divergente'
+  }
+  const dono = pedido.user_id
 
   const foiPago = !['aguardando_pagamento'].includes(pedido.status)
   await supabase.from('loja_pedidos').update({ status: novoStatus, cancelado_em: new Date().toISOString() }).eq('id', pedidoId)
@@ -288,21 +316,46 @@ export async function estornarPedidoLoja(supabase: any, pedidoId: string, novoSt
   if (!foiPago) return
 
   if (pedido.cobranca_avulsa_id) {
-    await supabase.from('cobrancas_avulsas').update({ status: 'cancelado' }).eq('id', pedido.cobranca_avulsa_id)
+    await supabase.from('cobrancas_avulsas').update({ status: 'cancelado' }).eq('id', pedido.cobranca_avulsa_id).eq('user_id', dono)
   }
   if (pedido.mensalidade_id) {
-    await supabase.from('mensalidades').update({ status: 'pendente', data_pagamento: null, valor_pago: null }).eq('id', pedido.mensalidade_id)
+    await supabase.from('mensalidades').update({ status: 'pendente', data_pagamento: null, valor_pago: null }).eq('id', pedido.mensalidade_id).eq('user_id', dono)
   }
   if (pedido.tipo === 'evento') {
-    await supabase.from('loja_inscricoes').update({ status: 'cancelada' }).eq('pedido_id', pedidoId)
+    await supabase.from('loja_inscricoes').update({ status: 'cancelada' }).eq('pedido_id', pedidoId).eq('user_id', dono)
   }
   if (pedido.tipo === 'produto' && pedido.produto_id && !pedido.reservou_estoque) {
     // estoque foi abatido na reserva; devolve ao estornar
     await supabase.rpc('loja_devolver_estoque', { p_produto_id: pedido.produto_id, p_variacao: pedido.variacao })
   }
   if (Array.isArray(pedido.aula_ids) && pedido.aula_ids.length && pedido.devedor_id) {
-    await supabase.from('aulas_fixos').update({ ativo: false }).eq('devedor_id', pedido.devedor_id).in('aula_id', pedido.aula_ids)
+    await supabase.from('aulas_fixos').update({ ativo: false }).eq('devedor_id', pedido.devedor_id).eq('user_id', dono).in('aula_id', pedido.aula_ids)
   }
+}
+
+// Aluno, mensalidade, cobrança avulsa, produto, contrato e turmas do pedido
+// têm de ser do dono do pedido (mesma regra do trigger trg_loja_pedidos_mesmo_dono).
+export async function vinculosDoPedidoDoMesmoDono(supabase: any, pedido: any): Promise<boolean> {
+  const dono = pedido?.user_id
+  if (!dono) return false
+  const confere = async (tabela: string, id: string | null) => {
+    if (!id) return true
+    const { data } = await supabase.from(tabela).select('user_id').eq('id', id).maybeSingle()
+    // Registro apagado não é violação (turma/contrato sem FK ficam pendurados);
+    // só recusa quando existe e é de outra conta. Mesma regra do trigger.
+    return !data || data.user_id === dono
+  }
+  if (!(await confere('loja_produtos', pedido.produto_id))) return false
+  if (!(await confere('devedores', pedido.devedor_id))) return false
+  if (!(await confere('mensalidades', pedido.mensalidade_id))) return false
+  if (!(await confere('cobrancas_avulsas', pedido.cobranca_avulsa_id))) return false
+  if (!(await confere('contratos_enviados', pedido.contrato_enviado_id))) return false
+  const aulaIds: string[] = Array.isArray(pedido.aula_ids) ? pedido.aula_ids : []
+  if (aulaIds.length) {
+    const { data } = await supabase.from('aulas').select('id, user_id').in('id', aulaIds)
+    if ((data || []).some((a: any) => a.user_id !== dono)) return false
+  }
+  return true
 }
 
 function appUrl() {

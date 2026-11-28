@@ -202,7 +202,7 @@ serve(async (req) => {
       const [{ data: aulas }, { data: nps }, { data: todasNotas }] = await Promise.all([
         supabase.from('aulas').select('dia_semana, horario, descricao, modalidades(nome)')
           .eq('user_id', empresa.id).eq('ativo', true).is('devedor_id', null)
-          .order('dia_semana', { ascending: true }).order('horario', { ascending: true }).limit(60),
+          .order('dia_semana', { ascending: true }).order('horario', { ascending: true }),
         supabase.from('nps_respostas').select('nota, comentario, devedor_id')
           .eq('user_id', empresa.id).gte('nota', 9).not('comentario', 'is', null)
           .order('respondido_em', { ascending: false }).limit(8),

@@ -6,6 +6,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+// assinaturas_mercadopago/pagamentos_mercadopago são gravadas só pelo servidor:
+// a gravação é feita aqui com service_role, depois de autenticar o usuário.
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const MP_ACCESS_TOKEN = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')!
 const WEBHOOK_URL = Deno.env.get('MERCADOPAGO_WEBHOOK_URL')!
 
@@ -143,8 +146,9 @@ serve(async (req) => {
     // Extrair dados do Pix
     const pixData = payment.point_of_interaction?.transaction_data
 
-    // Salvar pagamento no banco
-    await supabase
+    // Salvar pagamento no banco (service_role: valores calculados aqui)
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const { error: erroGravar } = await admin
       .from('pagamentos_mercadopago')
       .insert({
         user_id: user.id,
@@ -164,6 +168,7 @@ serve(async (req) => {
         }
       })
 
+    if (erroGravar) console.error('❌ Pix criado no MP mas NÃO gravado no banco:', payment.id, erroGravar.message)
     console.log('💾 Pagamento salvo no banco')
 
     // Retornar dados do Pix para o frontend
