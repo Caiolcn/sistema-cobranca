@@ -9,7 +9,7 @@ Documento vivo. **Leia antes de planejar qualquer semana de conteúdo.** Ele jun
 5. ideias prontas para adaptar;
 6. os relatórios completos de cada perfil analisado.
 
-**Quem alimenta:** o espiao-conteudo, toda vez que analisar um perfil novo ou atualizar um antigo. Ele acrescenta o relatório do perfil na seção 6, ajusta os padrões da seção 3 e registra a entrada no histórico (seção 7). O roteirista-reels **lê** antes de criar.
+**Quem alimenta:** o conteudo-instagram, toda vez que analisar um perfil novo ou atualizar um antigo. Ele acrescenta o relatório do perfil na seção 6, ajusta os padrões da seção 3 e registra a entrada no histórico (seção 7). O mesmo agente **lê** este documento antes de criar conteúdo.
 
 **Regra de evidência:** cada padrão diz quantos perfis o confirmam. Um perfil é pista, não lei. Quando o nosso número contradiz a referência, vale o nosso.
 
@@ -125,6 +125,23 @@ Formato: **padrão** · evidência · como usar no Mensalli.
 12. **Série recorrente de utilidade** ("artes de outubro para você postar"), todo mês, com datas comemorativas e isca no comentário. *Evidência: Next Fit (#5, #9).*
     - **No Mensalli:** série mensal "mensagens prontas do mês" (lembrete de férias, reajuste, volta às aulas, Black Friday do studio).
 
+### Anúncio em vídeo (UGC)
+13. **Gancho com a pilha de conversas de cobrança** que o próprio dono mandou ("conseguiu ver o Pix?", "sumiu o Pix?") nos primeiros 2 segundos, sem fala. Reconhecível sem som. *Evidência: anúncio da InfinitePay (biblioteca de anúncios, 11/2026).*
+    - **No Mensalli:** gancho padrão para anúncio. Roteiro em `docs/roteiro-anuncio-cobranca-sozinha.md`.
+14. **Criadora comum falando para a câmera**, em casa, com microfone de lapela e legenda embutida, intercalada com gravação de tela do produto funcionando: cadastro, confirmação e a mensagem do jeito que o cliente recebe. *Evidência: InfinitePay.*
+    - **No Mensalli:** professora real (cliente) no studio, com o dono fora da câmera. A tela mostra a mensagem chegando do número da própria professora, que é o nosso diferencial.
+15. **Sequência dor → rotina em cortes rápidos → frase de virada → "E se...?" → demo → objeção respondida → CTA grátis**, em cerca de 45 s. *Evidência: InfinitePay.*
+
+### Reel em motion (sem pessoa)
+16. **"Sua X está em quantos lugares?" + colagem da bagunça real**: peças tortas e sobrepostas (planilha "FINAL_v3", grupo de WhatsApp, extrato do Pix com "mãe de quem?", post-it "2 meses!!"). Depois vem a repetição "X na planilha / Y no WhatsApp / Z no banco", com a peça citada acendendo, e o corte para a tela única e limpa do produto, com etiquetas que respondem ao começo. *Evidência: anúncio da Tecnofit (11/2026).*
+    - **No Mensalli:** roteiro pronto em `docs/roteiro-reel-cobranca-em-quantos-lugares.md`. Não precisa gravar ninguém: é tipografia, prints e movimento.
+17. **Palavra-chave grifada como marca-texto** na frase do topo. É a única coisa que muda entre as frases, e dá para acompanhar sem som. *Evidência: Tecnofit.*
+
+18. **"Todo mês" mostrado com datas no chat**: a mesma mensagem de cobrança em "10 de julho", "10 de agosto" e "Hoje". Depois o dono **digita, apaga e reescreve** a cobrança, de "Favor pagar" para "Só lembrando…". Prova a repetição e a vergonha sem precisar de texto. *Evidência: Reel do Mensaliza (concorrente direto, 11/2026).*
+    - **No Mensalli:** roteiro em `docs/roteiro-reel-voce-ainda-manda-isso.md` (sem locução, só trilha e efeitos).
+19. **Objeção de confiança respondida com diagrama**: cliente → você (Pix direto), com a ferramenta ao lado e "só lembra". Desarma o medo de intermediário mexer no dinheiro. *Evidência: Mensaliza.*
+    - **No Mensalli:** "O Pix cai na sua chave. A gente só lembra." Vale para o Pix manual; com Asaas há taxa do Asaas, então não generalize "sem taxa".
+
 ### O que NÃO funcionou nas referências
 - **Depoimento longo de cliente em Reel, de marca grande**: Next Fit, 21 e 25 curtidas, os piores dos 50. Para nós o depoimento funcionou porque o cliente marcou e trouxe a audiência dele. O que muda é a distribuição: sem marcar nem colaborar, depoimento rende pouco.
 - **Carrossel de perguntas e respostas sobre o próprio evento**: 33 curtidas.
@@ -167,6 +184,9 @@ Marque com a data quando usar.
 | 4 | "Quem cobra no seu studio: você ou a recepção?": enquete na capa, com resposta no carrossel | Carrossel | Next Fit #4 (pergunta de profissão) | |
 | 5 | Post colaborativo com cliente: George, Carol ou Maguilla, publicado junto no perfil deles | Reel collab | Next Fit embaixadores + nosso melhor post (Portovilla) | |
 | 6 | Tendência + cobrança: "Padel e beach tennis lotaram. E a mensalidade de quem joga?" | Carrossel ou Reel | Next Fit #3 (padel) | |
+| 7 | Anúncio "A cobrança vai sozinha": professora real, pilha de "conseguiu ver o Pix?" e demo da mensagem saindo do WhatsApp dela. Roteiro pronto em `docs/roteiro-anuncio-cobranca-sozinha.md` | Reel / anúncio | Anúncio da InfinitePay | |
+| 8 | Reel motion "Sua cobrança está em quantos lugares?": colagem da bagunça (WhatsApp, planilha, extrato, post-it) e virada para o Mensalli. Roteiro em `docs/roteiro-reel-cobranca-em-quantos-lugares.md` | Reel motion | Anúncio da Tecnofit | |
+| 9 | Reel motion sem locução "Você ainda manda isso todo mês?": chat com a mesma mensagem mês a mês, o dono digita e apaga, e a virada para o lembrete saindo do WhatsApp dele com o Pix direto. Roteiro em `docs/roteiro-reel-voce-ainda-manda-isso.md` | Reel motion | Reel do Mensaliza | |
 
 ---
 
@@ -247,8 +267,37 @@ Marque com a data quando usar.
 
 ---
 
+### Anúncio da InfinitePay: "Gestão de Cobrança" (vídeo, 46 s)
+
+**Visto em 04/11/2026** (arquivo enviado pelo dono, da biblioteca de anúncios). É a funcionalidade central do Mensalli vendida para vendedores autônomos. Não há números de desempenho, mas o anúncio está rodando.
+
+- **Estrutura:**
+  1. Pilha de conversas de cobrança (sem fala).
+  2. Criadora: "ficar cobrando cliente no WhatsApp tá te custando mais do que você imagina".
+  3. Rotina em cortes: "abre, manda Pix, anota quem pagou, corre atrás".
+  4. Virada: "não é trabalho, é desperdício".
+  5. "E se o dinheiro caísse sozinho?"
+  6. Demo: cadastro, "cobrança enviada", a mensagem no WhatsApp do cliente e a página de pagamento.
+  7. "Configura uma vez, em menos de 2 minutos."
+  8. "Te poupa daquela situação chata."
+  9. "Baixa grátis."
+- **Por que funciona:** gancho que se entende sem som, cara de post orgânico (UGC), dor em ações concretas, produto aparecendo de verdade e objeção de esforço respondida.
+- **O que levar:** a estrutura inteira (padrões 13 a 15).
+- **O que NÃO copiar:**
+  - promessas que o Mensalli não cumpre do mesmo jeito: "dinheiro cai sozinho" (no Pix manual o dono dá baixa), cartão e Apple Pay, "2 minutos";
+  - valores em R$ na tela.
+- **Diferencial a explorar:**
+  - na InfinitePay, a mensagem sai do número da InfinitePay; no Mensalli, sai do WhatsApp do próprio dono;
+  - eles fazem cobrança por venda; o Mensalli faz mensalidade todo mês.
+
+---
+
 ## 7. Histórico de atualizações
 
 | Data | O que entrou | Quem |
 |---|---|---|
 | 02/11/2026 | Documento criado: seção 1 (marca, a partir do manual e das regras do produto), seção 2 (números do @mensalli), relatório do @nextfitsistema, padrões 1 a 12, checklist anti-IA e backlog inicial | Claude |
+| 09/11/2026 | Perfil do @mensalli analisado no Chrome (bio, 2 destaques, grade e link): plano completo em `docs/perfil-instagram-mensalli.md`, com bio nova, 6 destaques com capas em `Conteudo\Destaques\`, 3 fixados e arquivamento dos antigos com cara de banco de imagem | Claude |
+| 09/11/2026 | Reel do Mensaliza (concorrente direto) "Você ainda manda isso todo mês?": padrões 18 e 19, ideia 9 do backlog e roteiro em `docs/roteiro-reel-voce-ainda-manda-isso.md`. Ponto de atenção: o Mensaliza vende receber o comprovante pelo WhatsApp, que o Mensalli não tem | Claude |
+| 09/11/2026 | Anúncio em motion da Tecnofit ("Sua gestão está em quantos lugares?"): padrões 16 e 17, ideia 8 do backlog e roteiro em `docs/roteiro-reel-cobranca-em-quantos-lugares.md` | Claude |
+| 04/11/2026 | Anúncio da InfinitePay (Gestão de Cobrança) analisado: padrões 13 a 15, ideia 7 do backlog e roteiro do anúncio em `docs/roteiro-anuncio-cobranca-sozinha.md` | Claude |
