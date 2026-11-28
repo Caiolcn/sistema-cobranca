@@ -34,6 +34,15 @@ serve(async (req) => {
       resource: body.data?.id,
     })
 
+    // O id vai direto na URL da API do MP: só letras e números (ids do MP são
+    // numéricos ou hex). Evita "../" e afins montando outra rota.
+    if (body?.data?.id != null && !/^[A-Za-z0-9]{1,64}$/.test(String(body.data.id))) {
+      console.warn('⚠️ id com formato inválido — ignorado:', String(body.data.id).slice(0, 80))
+      return new Response(JSON.stringify({ success: true, message: 'id inválido — ignorado' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Log webhook no banco para auditoria
     const { data: logData } = await supabase
       .from('webhook_logs')
@@ -125,7 +134,8 @@ serve(async (req) => {
 async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
   try {
     const subscriptionId = webhookData.data?.id
-    const action = webhookData.action // authorized, paused, cancelled
+    // Só para log: o `action` do corpo não decide nada aqui.
+    const action = webhookData.action
 
     console.log(`🔔 Processando subscription: ${action} - ${subscriptionId}`)
 
@@ -160,11 +170,14 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
     // /admin/assinaturas — o webhook não pode desfazer isso.
     const { data: existingSubscription } = await supabase
       .from('assinaturas_mercadopago')
-      .select('id, user_id')
+      .select('id, user_id, status')
       .eq('subscription_id', subscriptionId)
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+
+    // Status ANTES deste aviso (a linha é sobrescrita logo abaixo)
+    const statusAnterior = existingSubscription?.status || null
 
     const userId = existingSubscription?.user_id || subscription.external_reference
 
@@ -214,15 +227,21 @@ async function handleSubscriptionWebhook(supabase: any, webhookData: any) {
         .insert(subscriptionData)
     }
 
-    // Atualizar status do usuário baseado na ação
-    if (action === 'authorized' || subscription.status === 'authorized') {
-      // Ativar assinatura
+    // O `action` não decide nada; vale o status que o MP devolve, e a
+    // ativação acontece UMA vez, na virada pendente → authorized (mesma regra do
+    // confirmar-assinatura-cartao). Renovação depois disso vem só de cobrança
+    // aprovada (subscription_authorized_payment, payment, conciliar-cartao-mp).
+    const primeiraAutorizacao = statusAnterior === null || statusAnterior === 'pending'
+    if (subscription.status === 'authorized' && primeiraAutorizacao) {
       await supabase.rpc('ativar_assinatura_usuario', {
         p_user_id: userId,
         p_plano: plano,
       })
-      console.log(`✅ Usuário ${userId} ativado com plano ${plano}`)
-    } else if (action === 'cancelled' || action === 'paused' || subscription.status === 'cancelled') {
+      console.log(`✅ Usuário ${userId} ativado com plano ${plano} (primeira autorização da preapproval)`)
+    } else if (subscription.status === 'authorized') {
+      console.log(`ℹ️ Preapproval ${subscriptionId} já estava ${statusAnterior} — não reativa; renovação só por cobrança aprovada`)
+    } else if (subscription.status === 'cancelled') {
+      // Status vindo do MP, não do corpo do aviso
       // Desativar assinatura
       await supabase.rpc('desativar_assinatura_usuario', {
         p_user_id: userId,
@@ -288,12 +307,15 @@ async function handleAuthorizedPaymentWebhook(supabase: any, webhookData: any) {
     }
 
     // Registra o pagamento (idempotente por payment_id quando houver)
+    // Só renova na PRIMEIRA vez que esse pagamento aparece aprovado.
+    let jaEstavaAprovado = false
     if (paymentId) {
       const { data: existing } = await supabase
         .from('pagamentos_mercadopago')
-        .select('id')
+        .select('id, status')
         .eq('payment_id', paymentId.toString())
         .single()
+      jaEstavaAprovado = existing?.status === 'approved'
 
       const paymentData = {
         user_id: assinatura.user_id,
@@ -315,7 +337,10 @@ async function handleAuthorizedPaymentWebhook(supabase: any, webhookData: any) {
       }
     }
 
-    if (paymentStatus === 'approved') {
+    if (paymentStatus === 'approved' && (!paymentId || jaEstavaAprovado)) {
+      // Sem payment_id não dá para garantir que é a primeira vez; repetido não renova.
+      console.log(`⏩ Recorrência ${paymentId || '(sem payment_id)'} já processada ou sem id — não renova de novo`)
+    } else if (paymentStatus === 'approved') {
       // Estende +30 dias (ativar_assinatura_usuario seta plano_vencimento = NOW()+30)
       await supabase.rpc('ativar_assinatura_usuario', {
         p_user_id: assinatura.user_id,
@@ -470,14 +495,19 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
     // Se pagamento aprovado
     if (payment.status === 'approved') {
       // Pagamento Pix aprovado - ativar usuário por 30 dias
-      if (isPix && planoFromRef) {
+      // Só na PRIMEIRA vez que este pagamento aparece aprovado.
+      if (isPix && planoFromRef && jaEstavaAprovado) {
+        console.log(`⏩ Pix ${paymentId} já estava aprovado — não renova de novo`)
+      } else if (isPix && planoFromRef) {
         // Determinar limite mensal baseado no plano
         let limiteMensal = 200 // starter
         if (planoFromRef === 'pro') limiteMensal = 600
         if (planoFromRef === 'premium') limiteMensal = 3000
 
-        // Calcular data de expiração (30 dias)
-        const dataExpiracao = new Date()
+        // Calcular data de expiração (30 dias a partir da APROVAÇÃO do pagamento,
+        // não de "agora": um aviso atrasado ou reenviado não empurra o vencimento)
+        const aprovadoEm = payment.date_approved ? new Date(payment.date_approved) : new Date()
+        const dataExpiracao = Number.isNaN(aprovadoEm.getTime()) ? new Date() : aprovadoEm
         dataExpiracao.setDate(dataExpiracao.getDate() + 30)
 
         // Ativar usuário com plano pago por 30 dias.
@@ -517,6 +547,12 @@ async function handlePaymentWebhook(supabase: any, webhookData: any) {
       // Cobrança de assinatura aprovada. Não exige assinatura.status ===
       // 'authorized' no nosso banco: o aviso de assinatura nunca chegou, então
       // todas estão 'pending' aqui — e cobrança aprovada já prova que está ativa.
+      // Mesma janela do conciliar-cartao-mp: pagamento aprovado há mais de
+      // 35 dias não renova.
+      else if (assinatura && !jaEstavaAprovado && payment.date_approved &&
+               Date.now() - new Date(payment.date_approved).getTime() > 35 * 24 * 60 * 60 * 1000) {
+        console.log(`⏩ Cobrança ${paymentId} aprovada há mais de 35 dias — não renova`)
+      }
       else if (assinatura && !jaEstavaAprovado) {
         await supabase.rpc('ativar_assinatura_usuario', {
           p_user_id: userId,

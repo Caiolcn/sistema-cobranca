@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mensalli — Veja como funciona em 1 minuto</title>
+<meta name="description" content="Cobrança automática de mensalidades pelo WhatsApp. Assista ao vídeo, veja os planos e teste grátis por 3 dias.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================
+   Mensalli — página VSL (antes do cadastro)
+   Configuração no topo do <script> lá embaixo:
+   - VSL_URL: link do vídeo (mp4). Vazio = modo demonstração.
+   - MODO: 'aberto' (tudo visível) ou 'delay' (página abre aos 80%).
+     Também dá pra testar pela URL: ?modo=delay ou #delay
+   ========================================================== */
+:root{
+  --ink:#0f1115; --body:#4b5563; --muted:#6b7280; --line:#e7ebe9;
+  --bg:#ffffff; --soft:#f5f8f6; --green:#16a34a; --green-dk:#15803d;
+  --green-br:#22c55e; --green-soft:#ecfdf3; --dark:#0b0f0c; --dark2:#121a15;
+  --wa:#25d366; --radius:18px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.5}
+img{max-width:100%;display:block}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.narrow{max-width:860px}
+h1,h2,h3{margin:0;letter-spacing:-.025em;line-height:1.12}
+h2{font-size:clamp(28px,4vw,40px);font-weight:800}
+p{margin:0}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green)}
+.sec{padding:84px 0}
+.sec-head{text-align:center;max-width:680px;margin:0 auto 44px}
+.sec-head p{margin-top:14px;color:var(--body);font-size:18px}
+.hl{color:var(--green)}
+
+/* Botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:0 28px;border-radius:14px;font-weight:800;font-size:17px;text-decoration:none;border:0;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, background .15s ease;font-family:inherit}
+.btn:active{transform:translateY(1px)}
+.btn-main{background:var(--green-br);color:#05230f;box-shadow:0 10px 30px rgba(34,197,94,.35)}
+.btn-main:hover{background:#2fd968;box-shadow:0 14px 36px rgba(34,197,94,.45)}
+.btn-ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.btn-ghost:hover{border-color:var(--ink)}
+.btn-wa{background:var(--wa);color:#04210f}
+.btn-wa:hover{background:#2ee176}
+.btn svg{flex:none}
+.btn-sub{display:block;margin-top:12px;font-size:14px;color:var(--muted);text-align:center}
+
+/* Topo */
+.top{position:absolute;inset:0 0 auto 0;z-index:5}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:72px}
+.top img{height:30px;width:auto}
+.top-tag{font-size:13px;font-weight:600;color:#cfe9d8;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 12px}
+
+/* HERO + VSL */
+.hero{position:relative;background:radial-gradient(1200px 520px at 50% -10%, #173b25 0%, var(--dark) 60%);color:#fff;padding:108px 0 64px;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto 0 0 0;height:1px;background:linear-gradient(90deg,transparent,rgba(34,197,94,.4),transparent)}
+.hero .wrap{position:relative;z-index:2;text-align:center}
+.pill{display:inline-flex;align-items:center;gap:8px;background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.3);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:600}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--green-br);box-shadow:0 0 0 4px rgba(34,197,94,.2)}
+.hero h1{font-size:clamp(32px,5.4vw,56px);font-weight:900;margin:22px auto 16px;max-width:900px}
+.hero h1 span{color:var(--green-br)}
+.hero .lead{font-size:clamp(17px,2vw,20px);color:#c3cec7;max-width:680px;margin:0 auto}
+
+.vsl{position:relative;max-width:900px;margin:36px auto 0;border-radius:22px;overflow:hidden;background:radial-gradient(520px 260px at 50% 45%,#1d4a2f,#08110c);box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08);aspect-ratio:16/9}
+.vsl video{width:100%;height:100%;display:block;object-fit:cover;background:#000}
+.vsl-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.35));cursor:pointer;border:0;color:#fff;font-family:inherit;width:100%}
+.vsl-play{width:92px;height:92px;border-radius:50%;background:var(--green-br);display:grid;place-items:center;box-shadow:0 0 0 12px rgba(34,197,94,.22);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 22px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.vsl-overlay strong{font-size:18px;font-weight:800}
+.vsl-overlay small{font-size:14px;color:#d6e2da}
+.vsl-bar{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(255,255,255,.15)}
+.vsl-bar span{display:block;height:100%;width:0;background:var(--green-br);transition:width .25s linear}
+.vsl-sound{position:absolute;top:14px;left:14px;display:none;align-items:center;gap:8px;background:rgba(0,0,0,.65);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 14px;font:600 14px Inter,sans-serif;cursor:pointer}
+
+/* Demonstração (sem vídeo ainda) */
+.demo{position:absolute;inset:0;display:none;background:radial-gradient(600px 300px at 50% 40%,#183c27,#07100b);color:#fff;align-items:center;justify-content:center;text-align:center;padding:24px}
+.demo.on{display:flex}
+.demo h3{font-size:clamp(22px,3.4vw,36px);font-weight:900;max-width:620px}
+.demo h3 span{color:var(--green-br)}
+.demo p{margin-top:10px;color:#a9bdb0;font-size:15px}
+.demo-tag{position:absolute;top:14px;right:14px;font-size:12px;font-weight:700;background:#fbbf24;color:#3b2a00;border-radius:999px;padding:5px 10px}
+
+.hero-cta{margin-top:30px}
+.hero-cta .btn-sub{color:#9fb3a7}
+.hero-skip{display:inline-block;margin-top:14px;font-size:14px;color:#9fb3a7;background:none;border:0;cursor:pointer;text-decoration:underline;font-family:inherit}
+.hero-skip:hover{color:#fff}
+.waiting{margin-top:24px;font-size:15px;color:#9fb3a7;display:none}
+.waiting b{color:#fff}
+
+.proof{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:900px;margin:44px auto 0}
+.proof div{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 12px}
+.proof strong{display:block;white-space:nowrap;font-size:clamp(24px,3.4vw,34px);font-weight:900;color:var(--green-br);letter-spacing:-.02em}
+.proof span{font-size:14px;color:#b8c6bd}
+
+/* Conteúdo revelável */
+body.locked .reveal{display:none}
+body.locked .waiting{display:block}
+body.locked .hero-cta{display:none}
+.reveal-anim{animation:rise .7s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+
+/* Dor x solução */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cmp{border-radius:var(--radius);padding:30px;border:1px solid var(--line)}
+.cmp h3{font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.cmp ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.cmp li{display:flex;gap:12px;font-size:16px;color:var(--body)}
+.cmp li svg{flex:none;margin-top:2px}
+.cmp.bad{background:#fff7f7;border-color:#f6dede}
+.cmp.good{background:var(--green-soft);border-color:#c9eed6}
+
+/* Nichos */
+.niches{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.niche{position:relative;border-radius:var(--radius);overflow:hidden;aspect-ratio:4/5;background:#ddd}
+.niche img{width:100%;height:100%;object-fit:cover}
+.niche::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.78))}
+.niche span{position:absolute;left:16px;right:16px;bottom:14px;z-index:2;color:#fff;font-weight:800;font-size:18px;line-height:1.2}
+.niche-more{text-align:center;margin-top:20px;color:var(--body);font-size:16px}
+
+/* Passos */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;counter-reset:s}
+.step{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+.step-n{width:44px;height:44px;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:900;font-size:18px;margin-bottom:18px}
+.step h3{font-size:20px;font-weight:800;margin-bottom:8px}
+.step p{color:var(--body)}
+.step em{display:inline-block;margin-top:14px;font-style:normal;font-size:13px;font-weight:700;color:var(--green-dk);background:var(--green-soft);border-radius:999px;padding:5px 10px}
+
+/* Funcionalidades (abas) */
+.feat{display:grid;grid-template-columns:290px 1fr;gap:28px;align-items:start}
+.tabs{display:grid;gap:8px}
+.tab{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:#fff;font:700 16px Inter,sans-serif;color:var(--ink);cursor:pointer;text-align:left;transition:all .15s}
+.tab:hover{border-color:#bfe5cc}
+.tab[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tab[aria-selected="true"] svg{color:var(--green-br)}
+.panel{background:var(--soft);border:1px solid var(--line);border-radius:22px;padding:30px;display:grid;grid-template-columns:1fr 1.2fr;gap:28px;align-items:center}
+.panel[hidden]{display:none}
+.panel h3{font-size:26px;font-weight:800;margin-bottom:12px}
+.panel p{color:var(--body);font-size:16px}
+.panel ul{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:10px}
+.panel li{display:flex;gap:10px;font-size:15px;font-weight:500}
+.panel li svg{flex:none;color:var(--green);margin-top:2px}
+.shot{border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 18px 50px rgba(16,24,40,.12);border:1px solid var(--line)}
+.shot.phone{max-width:260px;margin:0 auto;border-radius:28px;border:8px solid #111}
+
+/* Oferta "me manda a lista" */
+.offer{background:var(--dark);color:#fff;border-radius:28px;padding:48px;display:grid;grid-template-columns:1.3fr 1fr;gap:36px;align-items:center;position:relative;overflow:hidden}
+.offer::before{content:"";position:absolute;right:-120px;top:-120px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.3),transparent 70%)}
+.offer h2{font-size:clamp(26px,3.6vw,38px)}
+.offer h2 span{color:var(--green-br)}
+.offer p{color:#c3cec7;font-size:17px;margin-top:14px}
+.offer-box{position:relative;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:24px}
+.offer-box ol{margin:0 0 20px;padding:0;list-style:none;display:grid;gap:14px}
+.offer-box li{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:#dce6df}
+.offer-box li b{flex:none;width:28px;height:28px;border-radius:8px;background:rgba(34,197,94,.18);color:var(--green-br);display:grid;place-items:center;font-size:14px}
+.offer-box .btn{width:100%}
+
+/* Depoimentos */
+.testis{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:900px;margin:0 auto}
+.testi{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:9/16;background:#000;border:0;padding:0;cursor:pointer;font-family:inherit;color:#fff;text-align:left}
+.testi img{width:100%;height:100%;object-fit:cover;opacity:.9}
+.testi::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.8))}
+.testi .play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;z-index:2}
+.testi .who{position:absolute;left:16px;right:16px;bottom:16px;z-index:2}
+.testi .who strong{display:block;font-size:17px}
+.testi .who span{font-size:14px;color:#d1d5db}
+.testi video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:3;background:#000}
+
+/* Planos */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
+.plan{background:#fff;border:1px solid var(--line);border-radius:22px;padding:30px;display:flex;flex-direction:column;position:relative}
+.plan.star{border:2px solid var(--green);box-shadow:0 24px 60px rgba(22,163,74,.16)}
+.badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-size:13px;font-weight:800;border-radius:999px;padding:6px 14px;white-space:nowrap}
+.plan h3{font-size:22px;font-weight:800}
+.plan .sub{color:var(--muted);font-size:15px;margin-top:4px}
+.price{margin:20px 0 6px;display:flex;align-items:baseline;gap:4px}
+.price small{font-size:18px;font-weight:700;color:var(--body)}
+.price strong{font-size:46px;font-weight:900;letter-spacing:-.03em}
+.price em{font-style:normal;color:var(--muted);font-size:15px}
+.cap{font-size:15px;font-weight:700;color:var(--green-dk);background:var(--green-soft);border-radius:10px;padding:8px 12px;margin:8px 0 18px}
+.plan ul{list-style:none;padding:0;margin:0 0 24px;display:grid;gap:10px;flex:1;align-content:start}
+.plan li{display:flex;gap:10px;font-size:15px;color:var(--body)}
+.plan li svg{flex:none;color:var(--green);margin-top:3px}
+.plan .btn{width:100%}
+.plans-note{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 26px;margin-top:28px;color:var(--body);font-size:15px;font-weight:600}
+.plans-note span{display:flex;align-items:center;gap:8px}
+.plans-note svg{color:var(--green)}
+
+/* FAQ */
+.faq{display:grid;gap:12px}
+.faq details{background:#fff;border:1px solid var(--line);border-radius:16px;padding:0 22px}
+.faq summary{list-style:none;cursor:pointer;min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;font-weight:700;font-size:17px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary svg{flex:none;transition:transform .2s;color:var(--green)}
+.faq details[open] summary svg{transform:rotate(45deg)}
+.faq details p{padding:0 0 20px;color:var(--body);font-size:16px}
+
+/* CTA final */
+.final{background:radial-gradient(900px 400px at 50% 0%,#173b25,var(--dark) 70%);color:#fff;text-align:center;padding:88px 0}
+.final h2{max-width:720px;margin:0 auto}
+.final p{color:#c3cec7;font-size:18px;margin:16px auto 30px;max-width:560px}
+.final .row{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.final .btn-ghost{color:#fff;border-color:rgba(255,255,255,.25)}
+.final .btn-ghost:hover{border-color:#fff}
+footer{background:var(--dark);color:#8a9a90;font-size:14px;text-align:center;padding:26px 20px;border-top:1px solid rgba(255,255,255,.06)}
+
+/* Barra fixa no celular */
+.sticky{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,15,12,.96);backdrop-filter:blur(8px);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:10px;align-items:center;border-top:1px solid rgba(255,255,255,.08);transform:translateY(110%);transition:transform .3s ease}
+.sticky.show{transform:none}
+.sticky .btn{flex:1;min-height:50px;font-size:16px;padding:0 16px}
+.sticky .wa{flex:none;width:50px;min-height:50px;padding:0}
+
+/* Modo de visualização (só no preview) */
+.mode-switch{position:fixed;top:84px;right:14px;z-index:30;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.12);font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center}
+.mode-switch a{padding:6px 10px;border-radius:8px;text-decoration:none;color:var(--body)}
+.mode-switch a.on{background:var(--ink);color:#fff}
+
+@media (max-width:900px){
+  .feat{grid-template-columns:1fr}
+  .tabs{grid-template-columns:repeat(2,1fr)}
+  .panel{grid-template-columns:1fr;padding:22px}
+  .offer{grid-template-columns:1fr;padding:32px 24px}
+  .plans{grid-template-columns:1fr;max-width:460px;margin:0 auto}
+  .plan.star{order:-1}
+  .niches{grid-template-columns:repeat(2,1fr)}
+  .steps{grid-template-columns:1fr}
+  .compare{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .sec{padding:64px 0}
+  .hero{padding:92px 0 48px}
+  .top-tag{display:none}
+  .proof{grid-template-columns:1fr;gap:10px}
+  .proof div{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px}
+  .proof strong{font-size:24px}
+  .vsl{border-radius:16px;margin-top:28px}
+  .vsl-play{width:72px;height:72px}
+  .testis{grid-template-columns:repeat(3,72%);overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}
+  .testi{scroll-snap-align:center}
+  .sticky{display:flex}
+  .btn{width:100%}
+  .final .row .btn{width:100%}
+  .mode-switch{top:16px;right:12px;padding:5px;font-size:11px}
+  .mode-switch a{padding:5px 8px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- Ícones reutilizados -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.2 4.2L19 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M7 7l10 10M17 7L7 17"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm5.8 14.13c-.24.68-1.42 1.3-1.95 1.35-.5.05-1.13.07-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-3s.75-2.13 1.02-2.42c.27-.29.58-.36.78-.36h.56c.18 0 .42-.07.66.5.24.58.82 2.01.89 2.16.07.15.12.32.02.51-.1.19-.15.31-.29.48-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.29.76 1.25 1.63 2.03 1.12 1 2.06 1.31 2.35 1.45.29.15.46.12.63-.07.17-.19.73-.85.92-1.14.19-.29.39-.24.65-.15.27.1 1.69.8 1.98.94.29.15.48.22.56.34.07.12.07.7-.17 1.38z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M11 18h2"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+</svg>
+
+<!-- Só aparece no preview: troca entre os dois modos para você comparar -->
+<nav class="mode-switch" id="modeSwitch" aria-label="Modo de teste da página">
+  Modo:
+  <a href="#aberto" data-m="aberto">Aberto</a>
+  <a href="#delay" data-m="delay">Abre aos 80%</a>
+</nav>
+
+<header class="top">
+  <div class="wrap">
+    <img src="img/Logo-Full.png" alt="Mensalli" width="117" height="30">
+    <span class="top-tag">Cobrança automática pelo WhatsApp</span>
+  </div>
+</header>
+
+<!-- ===================== HERO + VSL ===================== -->
+<section class="hero" id="topo">
+  <div class="wrap">
+    <span class="pill"><i></i> Assista antes de criar sua conta · 1 minuto</span>
+    <h1>Nunca mais cobre aluno por aluno <span>no WhatsApp.</span></h1>
+    <p class="lead">Veja em 1 minuto como o Mensalli cobra seus alunos sozinho, do seu próprio número, antes, no dia e depois do vencimento.</p>
+
+    <div class="vsl" id="vsl">
+      <video id="vslVideo" playsinline preload="metadata" poster="img/vsl-poster.jpg"></video>
+
+      <div class="demo" id="vslDemo" aria-hidden="true">
+        <span class="demo-tag">Prévia · vídeo em produção</span>
+        <div>
+          <h3>Aqui entra o vídeo de <span>apresentação do Mensalli</span></h3>
+          <p id="demoTxt">Simulando a reprodução para você testar a página…</p>
+        </div>
+      </div>
+
+      <button class="vsl-overlay" id="vslStart" type="button" aria-label="Assistir ao vídeo com som">
+        <span class="vsl-play"><svg width="38" height="38" style="color:#05230f;margin-left:4px"><use href="#i-play"/></svg></span>
+        <strong>Clique para assistir com som</strong>
+        <small>Dura cerca de 1 minuto</small>
+      </button>
+      <button class="vsl-sound" id="vslSound" type="button"><svg width="18" height="18"><use href="#i-sound"/></svg> Ativar som</button>
+      <div class="vsl-bar" aria-hidden="true"><span id="vslBar"></span></div>
+    </div>
+
+    <p class="waiting" id="waiting">Assista ao vídeo: <b>os planos e o botão de cadastro aparecem logo abaixo</b> quando ele estiver terminando.<br>
+      <button class="hero-skip" id="skip" type="button">Já conheço o Mensalli, quero ver os planos</button>
+    </p>
+
+    <div class="hero-cta">
+      <a class="btn btn-main js-signup" href="https://www.mensalli.com.br/signup">Criar minha conta grátis <svg width="20" height="20"><use href="#i-arrow"/></svg></a>
+      <span class="btn-sub">3 dias grátis · sem cartão de crédito · cancele quando quiser</span>
+    </div>
+
+    <div class="proof">
+      <div><strong>+5.000</strong><span>alunos cobrados pelo Mensalli</span></div>
+      <div><strong>+8.500</strong><span>mensagens de cobrança enviadas</span></div>
+      <div><strong>R$ 490 mil</strong><span>em mensalidades administradas</span></div>
+    </div>
+  </div>
+</section>
+
+<main class="reveal" id="conteudo">
+
+<!-- ===================== ANTES x DEPOIS ===================== -->
+<section class="sec">
+  <div class="wrap narrow">
+    <div class="sec-head">
+      <span class="eyebrow">O que muda na sua rotina</span>
+      <h2>Cobrar não precisa ser a pior parte do seu mês.</h2>
+    </div>
+    <div class="compare">
+      <div class="cmp bad">
+        <h3><svg width="22" height="22" style="color:#dc2626"><use href="#i-x"/></svg> Cobrando na mão</h3>
+        <ul>
+          <li><svg width="18" height="18" style="color:#dc2626"><use href="#i-x"/></svg>Manda mensagem aluno por aluno, todo mês</li>
+          <li><svg width="18" height="18" style="color:#dc2626"><use href="#i-x"/></svg>Esquece quem já pagou e quem está devendo</li>
+          <li><svg width="18" height="18" style="color:#dc2626"><use href="#i-x"/></svg>Fica sem graça de cobrar quem atrasou</li>
+          <li><svg width="18" height="18" style="color:#dc2626"><use href="#i-x"/></svg>Controle espalhado em caderno e planilha</li>
+        </ul>
+      </div>
+      <div class="cmp good">
+        <h3><svg width="22" height="22" style="color:var(--green)"><use href="#i-check"/></svg> Com o Mensalli</h3>
+        <ul>
+          <li><svg width="18" height="18" style="color:var(--green)"><use href="#i-check"/></svg>A cobrança sai sozinha, do seu WhatsApp</li>
+          <li><svg width="18" height="18" style="color:var(--green)"><use href="#i-check"/></svg>Lembrete antes, no dia e depois do vencimento</li>
+          <li><svg width="18" height="18" style="color:var(--green)"><use href="#i-check"/></svg>Pagou, a régua para de mandar mensagem</li>
+          <li><svg width="18" height="18" style="color:var(--green)"><use href="#i-check"/></svg>Você vê num olhar quem pagou e quem deve</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PARA QUEM É ===================== -->
+<section class="sec" style="background:var(--soft);padding-top:72px">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Para quem é</span>
+      <h2>Feito para quem vive de mensalidade.</h2>
+    </div>
+    <div class="niches">
+      <div class="niche"><img src="img/escolinhas.jpg" alt="" loading="lazy"><span>Escolinhas de futebol</span></div>
+      <div class="niche"><img src="img/luta.jpg" alt="" loading="lazy"><span>CTs e academias de luta</span></div>
+      <div class="niche"><img src="img/pilates.jpg" alt="" loading="lazy"><span>Studios de pilates e dança</span></div>
+      <div class="niche"><img src="img/natacao.jpg" alt="" loading="lazy"><span>Escolas de natação</span></div>
+    </div>
+    <p class="niche-more">E também personal trainers, academias pequenas, escolas de música e reforço escolar.</p>
+  </div>
+</section>
+
+<!-- ===================== COMO FUNCIONA ===================== -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Como funciona</span>
+      <h2>Configure uma vez. <span class="hl">O Mensalli cobra todo mês.</span></h2>
+      <p>Uns 5 minutos de configuração e, daí pra frente, a cobrança roda sozinha.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">1</div>
+        <h3>Conecte seu WhatsApp</h3>
+        <p>Escaneie um QR Code, igual ao WhatsApp Web. As mensagens saem do seu número.</p>
+        <em>Leva menos de 1 minuto</em>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <h3>Cadastre seus alunos</h3>
+        <p>Nome, WhatsApp, valor e dia de vencimento. Veio de planilha? Dá pra importar.</p>
+        <em>Ou a gente cadastra pra você</em>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <h3>Pronto, ele cobra sozinho</h3>
+        <p>Os textos já vêm prontos, com nome, valor e chave Pix. Você ajusta do seu jeito.</p>
+        <em>Funciona 24h, todo mês</em>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FUNCIONALIDADES ===================== -->
+<section class="sec" style="background:var(--soft)">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Por dentro do sistema</span>
+      <h2>Tudo que você precisa para receber em dia.</h2>
+    </div>
+    <div class="feat">
+      <div class="tabs" role="tablist" aria-label="Funcionalidades">
+        <button class="tab" role="tab" id="t1" aria-controls="p1" aria-selected="true"><svg width="22" height="22"><use href="#i-bell"/></svg>Cobrança automática</button>
+        <button class="tab" role="tab" id="t2" aria-controls="p2" aria-selected="false" tabindex="-1"><svg width="22" height="22"><use href="#i-edit"/></svg>Mensagens do seu jeito</button>
+        <button class="tab" role="tab" id="t3" aria-controls="p3" aria-selected="false" tabindex="-1"><svg width="22" height="22"><use href="#i-chart"/></svg>Financeiro</button>
+        <button class="tab" role="tab" id="t4" aria-controls="p4" aria-selected="false" tabindex="-1"><svg width="22" height="22"><use href="#i-phone"/></svg>Portal do aluno</button>
+        <button class="tab" role="tab" id="t5" aria-controls="p5" aria-selected="false" tabindex="-1"><svg width="22" height="22"><use href="#i-list"/></svg>Fila de quem atrasou</button>
+      </div>
+
+      <div>
+        <div class="panel" role="tabpanel" id="p1" aria-labelledby="t1">
+          <div>
+            <h3>A régua de cobrança trabalha por você</h3>
+            <p>Ligue os envios que fazem sentido pro seu negócio e o Mensalli manda tudo sozinho pelo seu WhatsApp.</p>
+            <ul>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>3 dias antes do vencimento</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>No dia, com a chave Pix pra pagar na hora</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>3 dias depois, só se continuar em aberto</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Confirmação de pagamento automática</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/automacoes.png" alt="Tela de automações do Mensalli com os envios de cobrança ligados" loading="lazy"></div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="p2" aria-labelledby="t2" hidden>
+          <div>
+            <h3>Mensagens com a sua cara, que não parecem robô</h3>
+            <p>Os textos já vêm prontos. Edite o que quiser e veja na hora como chega no WhatsApp do aluno.</p>
+            <ul>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Nome, valor, vencimento e Pix preenchidos sozinhos</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Um texto para cada momento da cobrança</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Sai do seu número, com o seu tom</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/templates.png" alt="Editor de mensagens do Mensalli com prévia do WhatsApp" loading="lazy"></div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="p3" aria-labelledby="t3" hidden>
+          <div>
+            <h3>Saiba quem pagou e quanto tem a receber</h3>
+            <p>Em atraso, próximos vencimentos e recebido do mês logo no topo. Nenhuma mensalidade passa batido.</p>
+            <ul>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Total em atraso e mensalidades pendentes</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>O que vence hoje e nos próximos 7 dias</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Receita do mês e recorrente no painel</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/mensalidades.png" alt="Tela de mensalidades com valores em atraso, a vencer e recebidos" loading="lazy"></div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="p4" aria-labelledby="t4" hidden>
+          <div>
+            <h3>Seu aluno paga em poucos cliques</h3>
+            <p>A cobrança leva o link do portal. O aluno abre no celular, vê o que está em aberto e paga sem precisar te chamar.</p>
+            <ul>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Pix, cartão de crédito ou boleto, via Asaas</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Link enviado junto da cobrança</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Pagou, a régua para de enviar</li>
+            </ul>
+          </div>
+          <div class="shot phone"><img src="img/portal-aluno.png" alt="Portal do aluno no celular com mensalidade pendente e botão de pagar" loading="lazy"></div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="p5" aria-labelledby="t5" hidden>
+          <div>
+            <h3>Quem atrasou aparece numa fila</h3>
+            <p>Os alunos que precisam de atenção ficam separados, com o valor e há quantos dias estão em atraso. Um toque e você fala com ele no WhatsApp.</p>
+            <ul>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Há quanto tempo cada um está devendo</li>
+              <li><svg width="18" height="18"><use href="#i-check"/></svg>Acesso direto à conversa</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/fila-whatsapp.png" alt="Fila de WhatsApp com alunos em atraso" loading="lazy"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== OFERTA: A GENTE CADASTRA ===================== -->
+<section class="sec">
+  <div class="wrap">
+    <div class="offer">
+      <div>
+        <span class="eyebrow" style="color:#86efac">Sem tempo pra configurar?</span>
+        <h2 style="margin-top:12px">Me manda sua lista de alunos <span>que eu monto tudo pra você.</span></h2>
+        <p>Você não precisa cadastrar aluno por aluno. Cria sua conta, manda a lista do jeito que ela estiver e a gente deixa o sistema pronto pra cobrar.</p>
+      </div>
+      <div class="offer-box">
+        <ol>
+          <li><b>1</b>Crie sua conta grátis (leva 1 minuto)</li>
+          <li><b>2</b>Mande sua lista no WhatsApp: planilha, print ou até foto do caderno</li>
+          <li><b>3</b>A gente cadastra e você só conecta seu WhatsApp</li>
+        </ol>
+        <a class="btn btn-main js-signup" href="https://www.mensalli.com.br/signup">Criar conta e mandar minha lista</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DEPOIMENTOS ===================== -->
+<section class="sec" style="background:var(--soft)">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Quem já usa</span>
+      <h2>O que nossos clientes falam do Mensalli.</h2>
+    </div>
+    <div class="testis">
+      <button class="testi" type="button" data-video="depoimentos/carol-ribeiro.mp4" aria-label="Assistir depoimento de Carol Ribeiro, Studio de Pilates">
+        <img src="depoimentos/carol-ribeiro.jpg" alt="" loading="lazy">
+        <span class="play"><svg width="26" height="26" style="color:#111;margin-left:3px"><use href="#i-play"/></svg></span>
+        <span class="who"><strong>Carol Ribeiro</strong><span>Studio de Pilates</span></span>
+      </button>
+      <button class="testi" type="button" data-video="depoimentos/treinador-george.mp4" aria-label="Assistir depoimento do Treinador George, Escolinha Portovilla">
+        <img src="depoimentos/treinador-george.jpg" alt="" loading="lazy">
+        <span class="play"><svg width="26" height="26" style="color:#111;margin-left:3px"><use href="#i-play"/></svg></span>
+        <span class="who"><strong>Treinador George</strong><span>Escolinha Portovilla</span></span>
+      </button>
+      <button class="testi" type="button" data-video="depoimentos/treinador-maguilla.mp4" aria-label="Assistir depoimento do Treinador Maguilla, CT Personal Fight Trainer">
+        <img src="depoimentos/treinador-maguilla.jpg" alt="" loading="lazy">
+        <span class="play"><svg width="26" height="26" style="color:#111;margin-left:3px"><use href="#i-play"/></svg></span>
+        <span class="who"><strong>Treinador Maguilla</strong><span>CT Personal Fight Trainer</span></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PLANOS ===================== -->
+<section class="sec" id="planos">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Planos</span>
+      <h2>Escolha pelo número de alunos.</h2>
+      <p>Todos começam com 3 dias grátis. Sem fidelidade, cancele quando quiser.</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <h3>Starter</h3>
+        <p class="sub">Ideal para começar</p>
+        <div class="price"><small>R$</small><strong>49,90</strong><em>/mês</em></div>
+        <div class="cap">Até 50 alunos</div>
+        <ul>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>200 mensagens/mês</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Mensagem automática no vencimento</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>1 template personalizado</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Dashboard básico</li>
+        </ul>
+        <a class="btn btn-ghost js-signup" data-plano="starter" href="https://www.mensalli.com.br/signup">Testar grátis</a>
+      </div>
+
+      <div class="plan">
+        <h3>Pro</h3>
+        <p class="sub">Para negócios em crescimento</p>
+        <div class="price"><small>R$</small><strong>99,90</strong><em>/mês</em></div>
+        <div class="cap">Até 150 alunos</div>
+        <ul>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>600 mensagens/mês</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Régua de cobrança completa</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>3 templates personalizados</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Dashboard com gráficos</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Contratos com assinatura</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Link na bio e ficha do aluno</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Suporte via WhatsApp</li>
+        </ul>
+        <a class="btn btn-ghost js-signup" data-plano="pro" href="https://www.mensalli.com.br/signup">Testar grátis</a>
+      </div>
+
+      <div class="plan star">
+        <span class="badge">Melhor custo-benefício</span>
+        <h3>Premium</h3>
+        <p class="sub">Gestão profissional</p>
+        <div class="price"><small>R$</small><strong>149,90</strong><em>/mês</em></div>
+        <div class="cap">Até 500 alunos</div>
+        <ul>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>3.000 mensagens/mês</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Tudo do plano Pro</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>CRM completo e campanhas de WhatsApp</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Bot de WhatsApp</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Agendamento online</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Templates ilimitados</li>
+          <li><svg width="16" height="16"><use href="#i-check"/></svg>Consultoria inicial (1h) e suporte prioritário</li>
+        </ul>
+        <a class="btn btn-main js-signup" data-plano="premium" href="https://www.mensalli.com.br/signup">Testar grátis</a>
+      </div>
+    </div>
+    <div class="plans-note">
+      <span><svg width="18" height="18"><use href="#i-check"/></svg>3 dias grátis</span>
+      <span><svg width="18" height="18"><use href="#i-check"/></svg>Sem cartão de crédito</span>
+      <span><svg width="18" height="18"><use href="#i-check"/></svg>Sem fidelidade</span>
+      <span><svg width="18" height="18"><use href="#i-shield"/></svg>Mensagens só para alunos que você cadastrou</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="sec" style="background:var(--soft)">
+  <div class="wrap narrow">
+    <div class="sec-head">
+      <span class="eyebrow">Dúvidas</span>
+      <h2>Perguntas frequentes</h2>
+    </div>
+    <div class="faq">
+      <details><summary>Como funciona a conexão com o WhatsApp?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Você escaneia um QR Code que vincula seu número ao sistema, igual ao WhatsApp Web. As mensagens saem do seu número, mantendo o relacionamento direto com os alunos.</p></details>
+      <details><summary>O WhatsApp pode bloquear meu número?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Usando corretamente, não. O Mensalli envia apenas para alunos que você cadastrou, sem spam.</p></details>
+      <details><summary>Preciso instalar alguma coisa?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Não. É 100% online, funciona no navegador do computador e do celular.</p></details>
+      <details><summary>Vocês cadastram meus alunos pra mim?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Sim. Depois de criar sua conta, é só mandar sua lista no WhatsApp (planilha, print ou foto) que a gente cadastra.</p></details>
+      <details><summary>Quais formas de pagamento meus alunos podem usar?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Pix direto na sua chave, ou Pix, cartão de crédito e boleto via Asaas, pelo link de pagamento.</p></details>
+      <details><summary>Posso cancelar quando quiser?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Sim, sem multa e sem burocracia. Cancele direto no painel e o sistema para de cobrar no próximo ciclo.</p></details>
+      <details><summary>O que acontece depois dos 3 dias grátis?<svg width="22" height="22"><use href="#i-plus"/></svg></summary>
+        <p>Você escolhe o plano que cabe no seu número de alunos e continua usando. Se não quiser continuar, não paga nada.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CTA FINAL ===================== -->
+<section class="final">
+  <div class="wrap">
+    <h2>Pronto para parar de cobrar na mão?</h2>
+    <p>Crie sua conta, teste 3 dias grátis e deixe o Mensalli cobrar seus alunos no automático.</p>
+    <div class="row">
+      <a class="btn btn-main js-signup" href="https://www.mensalli.com.br/signup">Criar minha conta grátis <svg width="20" height="20"><use href="#i-arrow"/></svg></a>
+      <a class="btn btn-ghost js-wa" href="https://wa.me/5562981618862" target="_blank" rel="noopener"><svg width="20" height="20"><use href="#i-wa"/></svg> Tirar dúvida no WhatsApp</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>© 2026 Mensalli · Cobrança automática pelo WhatsApp para quem vive de mensalidade.</footer>
+
+<div class="sticky" id="sticky">
+  <a class="btn btn-main js-signup" href="https://www.mensalli.com.br/signup">Criar conta grátis</a>
+  <a class="btn btn-wa wa js-wa" href="https://wa.me/5562981618862" target="_blank" rel="noopener" aria-label="Falar no WhatsApp"><svg width="24" height="24"><use href="#i-wa"/></svg></a>
+</div>
+
+<script>
+/* ================= CONFIGURAÇÃO ================= */
+// Link do vídeo (mp4 hospedado no Bunny, Panda, Vimeo direto, ou /vsl.mp4 no próprio site).
+// Vazio = modo demonstração (simula um vídeo de 30s para testar a página).
+var VSL_URL = 'vsl.mp4';
+// 'aberto': a página toda fica visível desde o início.
+// 'delay' : só o vídeo aparece; o resto abre quando o vídeo chega em REVELAR_EM.
+var MODO = 'aberto';
+var REVELAR_EM = 0.8;
+var SIGNUP_URL = 'https://www.mensalli.com.br/signup';
+var WHATSAPP = '5562981618862';
+var WHATSAPP_TEXTO = 'Oi! Vi o vídeo do Mensalli e fiquei com uma dúvida.';
+/* ================================================ */
+
+(function(){
+  var qs = new URLSearchParams(location.search);
+  if (qs.get('modo') === 'delay' || qs.get('modo') === 'aberto') MODO = qs.get('modo');
+  if (location.hash === '#delay' || location.hash === '#aberto') MODO = location.hash.slice(1);
+  window.addEventListener('hashchange', function(){
+    try{ localStorage.removeItem('mensalli_vsl_revelado'); }catch(e){}
+    location.reload();
+  });
+
+  // Seletor de modo: só no preview. Em produção, apague o <nav id="modeSwitch">.
+  document.querySelectorAll('#modeSwitch a').forEach(function(a){
+    if (a.dataset.m === MODO) a.classList.add('on');
+  });
+
+  function store(k, v){ try{ if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } }
+
+  // Leva as UTMs e o fbclid da campanha para o cadastro.
+  var keep = new URLSearchParams();
+  ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid'].forEach(function(k){ if (qs.get(k)) keep.set(k, qs.get(k)); });
+  keep.set('origem', 'vsl');
+  document.querySelectorAll('.js-signup').forEach(function(a){
+    var p = new URLSearchParams(keep);
+    if (a.dataset.plano) p.set('plano', a.dataset.plano);
+    a.href = SIGNUP_URL + '?' + p.toString();
+    a.addEventListener('click', function(){ track('VSL_clique_cadastro', { plano: a.dataset.plano || '' }); });
+  });
+  document.querySelectorAll('.js-wa').forEach(function(a){
+    a.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(WHATSAPP_TEXTO);
+    a.addEventListener('click', function(){ track('VSL_clique_whatsapp'); });
+  });
+
+  // Eventos para o Pixel da Meta (se estiver instalado na página).
+  function track(name, data){
+    try{ if (window.fbq) window.fbq('trackCustom', name, data || {}); }catch(e){}
+    try{ if (window.gtag) window.gtag('event', name, data || {}); }catch(e){}
+  }
+
+  // ---------- Revelar a página ----------
+  var body = document.body, revealed = false;
+  function reveal(scroll){
+    if (revealed) return; revealed = true;
+    body.classList.remove('locked');
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('reveal-anim'); });
+    store('mensalli_vsl_revelado', '1');
+    track('VSL_pagina_aberta');
+    if (scroll) setTimeout(function(){ document.getElementById('conteudo').scrollIntoView({ behavior: 'smooth' }); }, 150);
+  }
+  if (MODO === 'delay' && store('mensalli_vsl_revelado') !== '1') body.classList.add('locked');
+  else revealed = true;
+  document.getElementById('skip').addEventListener('click', function(){ track('VSL_pulou'); reveal(true); });
+
+  // ---------- Player ----------
+  var video = document.getElementById('vslVideo');
+  var start = document.getElementById('vslStart');
+  var bar = document.getElementById('vslBar');
+  var sound = document.getElementById('vslSound');
+  var demo = document.getElementById('vslDemo');
+  var marks = {};
+  function progress(p){
+    // Barra "otimista": anda mais rápido no começo, sem dar pra pular.
+    var shown = p < 1 ? 1 - Math.pow(1 - p, 1.6) : 1;
+    bar.style.width = (shown * 100).toFixed(1) + '%';
+    [0.25, 0.5, 0.8, 1].forEach(function(m){
+      if (p >= m && !marks[m]){ marks[m] = 1; track('VSL_' + Math.round(m * 100)); }
+    });
+    if (p >= REVELAR_EM) reveal(false);
+  }
+
+  if (VSL_URL){
+    video.src = VSL_URL;
+    // Começa mudo em autoplay para prender o olho; o clique liga o som e volta pro início.
+    video.muted = true; video.autoplay = true; video.loop = false;
+    video.play().catch(function(){});
+    start.addEventListener('click', function(){
+      video.muted = false; video.currentTime = 0; video.play();
+      start.style.display = 'none'; sound.style.display = 'none';
+      track('VSL_play');
+    });
+    sound.addEventListener('click', function(){ video.muted = false; sound.style.display = 'none'; });
+    video.addEventListener('timeupdate', function(){
+      if (!video.muted && video.duration) progress(video.currentTime / video.duration);
+    });
+    video.addEventListener('click', function(){ if (start.style.display === 'none'){ video.paused ? video.play() : video.pause(); } });
+  } else {
+    // Modo demonstração: simula 30 segundos de vídeo.
+    var DUR = 30, t = 0, timer;
+    var txt = document.getElementById('demoTxt');
+    start.addEventListener('click', function(){
+      start.style.display = 'none'; demo.classList.add('on'); track('VSL_play');
+      timer = setInterval(function(){
+        t += 0.25; var p = Math.min(t / DUR, 1);
+        txt.textContent = p < REVELAR_EM
+          ? 'Simulando a reprodução… ' + Math.round(p * 100) + '%' + (MODO === 'delay' ? ' (a página abre aos ' + Math.round(REVELAR_EM * 100) + '%)' : '')
+          : 'Fim da simulação. Role a página para ver o resto.';
+        progress(p);
+        if (p >= 1) clearInterval(timer);
+      }, 250);
+    });
+  }
+
+  // ---------- Abas de funcionalidades ----------
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function select(tab){
+    tabs.forEach(function(t){
+      var on = t === tab;
+      t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ select(t); });
+    t.addEventListener('keydown', function(e){
+      var n = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (n){ e.preventDefault(); var nx = tabs[(i + n + tabs.length) % tabs.length]; select(nx); nx.focus(); }
+    });
+  });
+
+  // ---------- Depoimentos: o vídeo só carrega no clique ----------
+  document.querySelectorAll('.testi').forEach(function(b){
+    b.addEventListener('click', function(){
+      if (b.querySelector('video')) return;
+      document.querySelectorAll('.testi video').forEach(function(v){ v.pause(); });
+      var v = document.createElement('video');
+      v.src = b.dataset.video; v.controls = true; v.playsInline = true; v.autoplay = true;
+      b.appendChild(v); v.play().catch(function(){});
+      track('VSL_depoimento', { video: b.dataset.video });
+    });
+  });
+
+  // ---------- Barra fixa no celular depois que passa do vídeo ----------
+  var sticky = document.getElementById('sticky');
+  var vsl = document.getElementById('vsl');
+  window.addEventListener('scroll', function(){
+    var past = vsl.getBoundingClientRect().bottom < 0;
+    sticky.classList.toggle('show', past && revealed);
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

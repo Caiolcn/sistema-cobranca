@@ -89,7 +89,8 @@ serve(async (req) => {
     // external_reference é a rede de segurança: cobre quem fechou o navegador
     // na volta, quem voltou por outro aparelho e quem clicou duas vezes.
     const ids = new Set<string>()
-    if (typeof body?.preapproval_id === 'string' && body.preapproval_id.trim()) {
+    // Só letras e números: o id vai direto na URL da API do MP.
+    if (typeof body?.preapproval_id === 'string' && /^[A-Za-z0-9]{1,64}$/.test(body.preapproval_id.trim())) {
       ids.add(body.preapproval_id.trim())
     }
 
@@ -175,7 +176,11 @@ serve(async (req) => {
       // roda. Como a tela de retorno chama isto em loop, a ativação tem que
       // acontecer só na virada pending → authorized: se a linha já estava
       // authorized, o dia de vencimento fica onde está.
-      if (status === 'authorized' && existente?.status !== 'authorized') {
+      // Só na virada pendente → authorized (ou linha nova). paused → authorized
+      // não reativa; a retomada renova pela cobrança aprovada
+      // (webhook de pagamento / conciliar-cartao-mp).
+      const primeiraAutorizacao = !existente || existente.status === 'pending'
+      if (status === 'authorized' && primeiraAutorizacao) {
         const { error: rpcErro } = await admin.rpc('ativar_assinatura_usuario', {
           p_user_id: user.id,
           p_plano: plano,

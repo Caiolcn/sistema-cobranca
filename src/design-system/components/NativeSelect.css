@@ -1,0 +1,47 @@
+/* ============================================================
+   NativeSelect — DS Mensalli
+   Reaproveita .ds-input-row do Input.css (borda, foco, erro,
+   tamanhos e altura de 44px no celular).
+   ============================================================ */
+
+.ds-nselect-native {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 0 36px 0 var(--space-3);
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  border-radius: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.ds-input-row--sm .ds-nselect-native { font-size: var(--text-sm); padding-left: var(--space-2-5); }
+.ds-input-row--lg .ds-nselect-native { font-size: var(--text-lg); padding-left: var(--space-4); }
+
+.ds-nselect-native:disabled { cursor: not-allowed; }
+
+/* Opção vazia (placeholder) em cinza enquanto nada foi escolhido */
+.ds-nselect-native:has(option[value=""]:checked) { color: var(--color-text-muted); }
+
+.ds-nselect-chevron {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: var(--space-2-5);
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .ds-nselect-native,
+  .ds-input-row--sm .ds-nselect-native { font-size: var(--text-lg); }
+}

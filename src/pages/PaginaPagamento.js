@@ -19,27 +19,20 @@ export default function PaginaPagamento() {
 
   const carregarDados = async () => {
     try {
-      // Buscar link de pagamento pelo token (dados armazenados diretamente)
+      // A função do banco devolve só este link, confere a validade de 24h no
+      // servidor e registra a visualização.
       const { data: link, error: linkError } = await supabase
-        .from('links_pagamento')
-        .select('*')
-        .eq('token', token)
-        .single()
+        .rpc('link_pagamento_por_token', { p_token: token })
 
-      if (linkError || !link) {
-        console.error('Erro ao buscar link:', linkError)
-        setErro('Link de pagamento não encontrado ou expirado.')
+      if (link?.erro === 'expirado') {
+        setErro('Este link de pagamento expirou. Solicite um novo link.')
         setLoading(false)
         return
       }
 
-      // Verificar expiração (24 horas)
-      const criado = new Date(link.created_at)
-      const agora = new Date()
-      const horasDecorridas = (agora - criado) / (1000 * 60 * 60)
-
-      if (horasDecorridas > 24) {
-        setErro('Este link de pagamento expirou. Solicite um novo link.')
+      if (linkError || !link || link.erro) {
+        console.error('Erro ao buscar link:', linkError || link?.erro)
+        setErro('Link de pagamento não encontrado ou expirado.')
         setLoading(false)
         return
       }
@@ -63,12 +56,6 @@ export default function PaginaPagamento() {
       setPixCode(codigoPix)
       setDados(link)
       setLoading(false)
-
-      // Registrar visualização
-      await supabase
-        .from('links_pagamento')
-        .update({ visualizado_em: new Date().toISOString() })
-        .eq('id', link.id)
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error)

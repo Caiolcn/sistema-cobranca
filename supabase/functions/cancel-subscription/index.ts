@@ -6,6 +6,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+// assinaturas_mercadopago/pagamentos_mercadopago são gravadas só pelo servidor:
+// a gravação é feita aqui com service_role, depois de autenticar o usuário.
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const MP_ACCESS_TOKEN = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')!
 
 const corsHeaders = {
@@ -77,16 +80,22 @@ serve(async (req) => {
 
     console.log('✅ Assinatura cancelada no MP')
 
-    // Atualizar no banco (webhook também fará isso, mas garantimos aqui)
-    await supabase
+    // Atualizar no banco (webhook também fará isso, mas garantimos aqui).
+    // service_role: o gestor não grava mais nessa tabela, e a RPC abaixo não é
+    // executável por usuário logado.
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const { error: erroStatus } = await admin
       .from('assinaturas_mercadopago')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('subscription_id', assinatura.subscription_id)
+      .eq('user_id', user.id)
+    if (erroStatus) console.error('❌ Cancelada no MP mas status NÃO gravado:', assinatura.subscription_id, erroStatus.message)
 
     // Desativar usuário
-    await supabase.rpc('desativar_assinatura_usuario', {
+    const { error: erroDesativar } = await admin.rpc('desativar_assinatura_usuario', {
       p_user_id: user.id,
     })
+    if (erroDesativar) console.error('❌ Cancelada no MP mas conta NÃO desativada:', user.id, erroDesativar.message)
 
     console.log('🚫 Usuário desativado')
 

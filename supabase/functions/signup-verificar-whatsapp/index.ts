@@ -52,7 +52,9 @@ function ipDaRequisicao(req: Request): string {
 function variantes(telefone: string): string[] {
   let n = (telefone || '').replace(/\D/g, '')
   if (!n) return []
-  if (!n.startsWith('55')) n = '55' + n
+  // 10/11 dígitos = DDD + número sem DDI. Não dá pra decidir só por startsWith('55'):
+  // o DDD 55 (RS) também começa com 55 e o DDI nunca entrava.
+  if (n.length === 10 || n.length === 11 || !n.startsWith('55')) n = '55' + n
 
   const lista = [n]
   const ddd = n.substring(2, 4)

@@ -177,12 +177,12 @@ export default function TimeInput({
           ? {
               position: 'fixed', top: pos.top, left: pos.left, width: pos.width,
               transform: pos.acima ? 'translateY(-100%)' : 'none',
-              zIndex: 10100,
+              zIndex: 'var(--z-popover)',
               maxHeight: `${pos.maxHeight}px`
             }
           : {
               position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-              zIndex: 100,
+              zIndex: 'var(--z-dropdown)',
               maxHeight: '260px'
             }),
         backgroundColor: '#fff',

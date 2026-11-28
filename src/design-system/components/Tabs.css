@@ -221,3 +221,8 @@
   }
   .ds-tabs--segmented.ds-tabs--sm .ds-tabs__item { padding: 8px 10px; }
 }
+
+/* CELULAR — aba com 44px de altura para o dedo (todas as variantes) */
+@media (max-width: 640px) {
+  .ds-tabs__item { min-height: var(--touch-min); }
+}

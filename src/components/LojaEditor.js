@@ -322,7 +322,7 @@ export default function LojaEditor({ onIrParaAssinatura, onIrParaIntegracoes }) 
         </Chave>
         {!asaasOk && (
           <div style={{ fontSize: '12px', color: '#92400e', lineHeight: 1.5, marginBottom: '10px' }}>
-            Conecte o Asaas em Integrações para liberar este interruptor: é por ele que a loja recebe os pagamentos.
+            Conecte o Asaas em Configurações › Recebimentos para liberar este interruptor: é por ele que a loja recebe os pagamentos.
           </div>
         )}
         {noAr !== !!linha.loja_ativa && (

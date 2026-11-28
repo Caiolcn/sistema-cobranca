@@ -61,8 +61,8 @@
 
 /* Checked — quadrado preenchido verde + check branco */
 .ds-checkbox__input:checked + .ds-checkbox__control {
-  background-color: var(--mensalli-green-500);
-  border-color: var(--mensalli-green-500);
+  background-color: var(--color-brand-fill);
+  border-color: var(--color-brand-fill);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M5 12l4 4L19 7' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-position: center;
   background-repeat: no-repeat;
@@ -71,8 +71,8 @@
 
 /* Indeterminate — quadrado verde + traço branco */
 .ds-checkbox__input:indeterminate + .ds-checkbox__control {
-  background-color: var(--mensalli-green-500);
-  border-color: var(--mensalli-green-500);
+  background-color: var(--color-brand-fill);
+  border-color: var(--color-brand-fill);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6 12h12' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/></svg>");
   background-position: center;
   background-repeat: no-repeat;
@@ -113,4 +113,19 @@
 
 .ds-checkbox--error .ds-checkbox__label {
   color: var(--danger-700);
+}
+
+/* ============================================================
+   CELULAR — área de toque de 44px sem mudar o desenho.
+   O quadrado continua 18px; um ::before invisível em volta dele
+   aumenta a área que aceita o toque (o clique cai no <label>).
+   ============================================================ */
+@media (max-width: 640px) {
+  .ds-checkbox { min-height: var(--touch-min); align-items: center; }
+  .ds-checkbox__control { position: relative; margin-top: 0; }
+  .ds-checkbox__control::before {
+    content: '';
+    position: absolute;
+    inset: -13px;   /* 18 + 13 + 13 = 44 */
+  }
 }

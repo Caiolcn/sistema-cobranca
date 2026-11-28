@@ -1,0 +1,93 @@
+/* ============================================================
+   ChoiceCard — DS Mensalli
+   ============================================================ */
+
+.ds-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-150) var(--ease-out),
+              background-color var(--duration-150) var(--ease-out),
+              box-shadow var(--duration-150) var(--ease-out);
+}
+
+/* App.css pinta todo <button> no hover; o cartão mantém a própria cor */
+.ds-choice:hover:not(:disabled) {
+  background-color: var(--neutral-50);
+  border-color: var(--neutral-400);
+}
+.ds-choice:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.ds-choice--selected,
+.ds-choice--selected:hover:not(:disabled) {
+  border-color: var(--color-brand-fill);
+  background-color: var(--mensalli-green-50);
+  box-shadow: inset 0 0 0 1px var(--color-brand-fill);
+}
+
+.ds-choice--disabled { cursor: wait; opacity: 0.7; }
+.ds-choice:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.ds-choice__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background-color: var(--neutral-100);
+  color: var(--color-text-secondary);
+}
+.ds-choice--selected .ds-choice__icon {
+  background-color: var(--color-brand-fill);
+  color: var(--neutral-0);
+}
+
+.ds-choice__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ds-choice__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}
+
+.ds-choice__desc {
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* Bolinha de radio à direita */
+.ds-choice__radio {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--neutral-400);
+  background-color: var(--color-bg-surface);
+  transition: border-color var(--duration-150) var(--ease-out);
+}
+.ds-choice--selected .ds-choice__radio {
+  border: 6px solid var(--color-brand-fill);
+}

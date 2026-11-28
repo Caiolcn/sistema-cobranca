@@ -12,6 +12,17 @@ import { useUser } from './contexts/UserContext'
 import { exportarDespesas } from './utils/exportUtils'
 import { gerarRelatorioDespesasPDF } from './utils/pdfGenerator'
 import { hojeISO } from './utils/dataLocal'
+import Button from './design-system/components/Button'
+import Badge from './design-system/components/Badge'
+import StatCard from './design-system/components/StatCard'
+import EmptyState from './design-system/components/EmptyState'
+import Card from './design-system/components/Card'
+import Table from './design-system/components/Table'
+import Modal from './design-system/components/Modal'
+import Input from './design-system/components/Input'
+import NativeSelect from './design-system/components/NativeSelect'
+import Textarea from './design-system/components/Textarea'
+import Switch from './design-system/components/Switch'
 
 export default function Despesas({ embedded = false, buttonsPortal = null, onCountUpdate = null, autoAbrirNova = false, onAutoAbrirConsumido = null }) {
   const navigate = useNavigate()
@@ -288,6 +299,35 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
     setTotalProximosVencimentos(totalProx)
   }
 
+  // Filtros em rascunho: o que a pessoa muda na janela de Filtros só vale ao
+  // tocar em "Ver resultados". Fechar no X, no Esc ou tocando fora descarta.
+  const FILTRO_VAZIO = { busca: '', filtroCategoria: 'todos', filtroStatus: 'todos', filtroDataInicio: '', filtroDataFim: '' }
+  const [rascunho, setRascunho] = useState(FILTRO_VAZIO)
+  const abrirFiltros = () => {
+    setRascunho({ busca, filtroCategoria, filtroStatus, filtroDataInicio, filtroDataFim })
+    setMostrarFiltros(true)
+  }
+  const mudarRascunho = (campo, valor) => setRascunho(r => ({ ...r, [campo]: valor }))
+  // Limpar zera o que está aplicado e já fecha a janela (pedido do dono).
+  const limparRascunho = () => {
+    setRascunho(FILTRO_VAZIO)
+    setBusca(FILTRO_VAZIO.busca)
+    setFiltroCategoria(FILTRO_VAZIO.filtroCategoria)
+    setFiltroStatus(FILTRO_VAZIO.filtroStatus)
+    setFiltroDataInicio(FILTRO_VAZIO.filtroDataInicio)
+    setFiltroDataFim(FILTRO_VAZIO.filtroDataFim)
+    setMostrarFiltros(false)
+  }
+  const verResultadosFiltro = () => {
+    setBusca(rascunho.busca)
+    setFiltroCategoria(rascunho.filtroCategoria)
+    setFiltroStatus(rascunho.filtroStatus)
+    setFiltroDataInicio(rascunho.filtroDataInicio)
+    setFiltroDataFim(rascunho.filtroDataFim)
+    setMostrarFiltros(false)
+  }
+  const rascunhoTemFiltro = rascunho.busca.trim() !== '' || rascunho.filtroCategoria !== 'todos' || rascunho.filtroStatus !== 'todos' || rascunho.filtroDataInicio !== '' || rascunho.filtroDataFim !== ''
+
   const temFiltrosAtivos = filtroCategoria !== 'todos' || filtroStatus !== 'todos' || filtroDataInicio !== '' || filtroDataFim !== '' || busca.trim() !== ''
 
   const limparFiltros = () => {
@@ -296,19 +336,8 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
     setFiltroStatus('todos')
     setFiltroDataInicio('')
     setFiltroDataFim('')
-    setMostrarFiltros(false)
   }
 
-  // Fechar popover ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (mostrarFiltros && !event.target.closest('.popover-filtros-despesas') && !event.target.closest('.btn-filtrar-despesas')) {
-        setMostrarFiltros(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [mostrarFiltros])
 
   // ==================== PAGINAÇÃO ====================
 
@@ -578,24 +607,13 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
   const getStatusBadge = (despesa) => {
     const status = getStatusDespesa(despesa)
     const configs = {
-      pago: { bg: '#4CAF50', text: 'Pago' },
-      pendente: { bg: '#2196F3', text: 'Pendente' },
-      atrasado: { bg: '#f44336', text: 'Atrasado' },
-      cancelado: { bg: '#9e9e9e', text: 'Cancelado' }
+      pago: { variant: 'success', text: 'Pago' },
+      pendente: { variant: 'info', text: 'Pendente' },
+      atrasado: { variant: 'danger', text: 'Atrasado' },
+      cancelado: { variant: 'default', text: 'Cancelado' }
     }
     const config = configs[status] || configs.pendente
-    return (
-      <span style={{
-        backgroundColor: config.bg,
-        color: 'white',
-        padding: '3px 10px',
-        borderRadius: '12px',
-        fontSize: '11px',
-        fontWeight: 'bold'
-      }}>
-        {config.text}
-      </span>
-    )
+    return <Badge variant={config.variant} solid>{config.text}</Badge>
   }
 
   // ==================== EXPORTAR ====================
@@ -629,41 +647,14 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
 
   if (!loadingPlan && isLocked('pro')) {
     const lockContent = (
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '60px 40px',
-        textAlign: 'center',
-        border: '1px solid #e5e7eb', boxShadow: 'none',
-        maxWidth: '500px',
-        margin: '80px auto'
-      }}>
-        <div style={{
-          width: '64px', height: '64px', borderRadius: '50%',
-          backgroundColor: '#fff3e0', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 20px auto'
-        }}>
-          <Icon icon="mdi:lock" width="32" height="32" style={{ color: '#ff9800' }} />
-        </div>
-        <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
-          Controle de Despesas
-        </h2>
-        <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: '#666', lineHeight: '1.6' }}>
-          Gerencie suas despesas, categorize gastos e exporte relatórios.
-          Disponível no plano <strong>Pro</strong> ou superior.
-        </p>
-        <button
-          onClick={() => navigate('/app/configuracao?aba=assinatura')}
-          style={{
-            padding: '12px 32px', backgroundColor: '#ff9800', color: 'white',
-            border: 'none', borderRadius: '8px', fontSize: '15px',
-            fontWeight: '600', cursor: 'pointer'
-          }}
-        >
-          Fazer Upgrade
-        </button>
-      </div>
+      <EmptyState
+        variant="forbidden"
+        icon="mdi:lock"
+        size="large"
+        title="Controle de Despesas"
+        description="Gerencie suas despesas, categorize gastos e exporte relatórios. Disponível no plano Pro ou superior."
+        action={<Button variant="primary" onClick={() => navigate('/app/configuracao?aba=assinatura')}>Fazer upgrade</Button>}
+      />
     )
     if (embedded) return lockContent
     return (
@@ -706,194 +697,107 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
   // ==================== RENDER ====================
 
   const buttonsBlock = (
-    <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center', flexWrap: 'wrap' }}>
-      <button
-        onClick={handleExportarCSV}
+    <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center', flexWrap: 'wrap', width: isSmallScreen ? '100%' : 'auto' }}>
+      <Button
+        variant="outline"
+        icon={isSmallScreen ? undefined : 'ph:export-light'}
+        aria-label="Exportar CSV"
         title="Exportar CSV"
-        style={{
-          padding: isSmallScreen ? '10px 14px' : '10px 20px',
-          backgroundColor: 'white', color: '#333',
-          border: '1px solid #ddd', borderRadius: '6px',
-          cursor: 'pointer', fontSize: '14px', fontWeight: '500',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '8px', transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#344848'; e.currentTarget.style.color = '#344848' }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ddd'; e.currentTarget.style.color = '#333' }}
+        onClick={handleExportarCSV}
+        style={{ flex: isSmallScreen ? 1 : 'none' }}
       >
-        <Icon icon="ph:export-light" width="18" height="18" />
-      </button>
+        Exportar
+      </Button>
 
-      <button
+      <Button
         className="btn-filtrar-despesas"
-        onClick={() => setMostrarFiltros(!mostrarFiltros)}
-        style={{
-          padding: isSmallScreen ? '10px 14px' : '10px 20px',
-          backgroundColor: temFiltrosAtivos ? '#344848' : 'white',
-          color: temFiltrosAtivos ? 'white' : '#333',
-          border: temFiltrosAtivos ? 'none' : '1px solid #ddd',
-          borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-          fontWeight: '500', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: '8px', position: 'relative',
-          transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = '#f5f5f5' }}
-        onMouseLeave={(e) => { if (!temFiltrosAtivos) e.currentTarget.style.backgroundColor = temFiltrosAtivos ? '#344848' : 'white' }}
+        variant={temFiltrosAtivos ? 'secondary' : 'outline'}
+        icon={isSmallScreen ? undefined : 'mdi:filter-outline'}
+        aria-expanded={mostrarFiltros}
+        onClick={abrirFiltros}
+        style={{ flex: isSmallScreen ? 1 : 'none' }}
       >
-        <Icon icon="mdi:filter-outline" width="18" height="18" />
-        {!isSmallScreen && 'Filtrar'}
+        Filtrar
         {temFiltrosAtivos && (
-          <span style={{
+          <span aria-label="filtros ativos" style={{
             position: 'absolute', top: '-6px', right: '-6px',
-            backgroundColor: '#f44336', color: 'white', borderRadius: '50%',
+            backgroundColor: 'var(--danger-700)', color: 'white', borderRadius: '50%',
             width: '20px', height: '20px', fontSize: '11px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: '700', border: '2px solid white'
           }}>!</span>
         )}
-      </button>
+      </Button>
 
-      <button
+      <Button
+        variant="primary"
+        icon={isSmallScreen ? undefined : 'mdi:plus'}
         onClick={abrirModalNovaDespesa}
-        style={{
-          padding: isSmallScreen ? '10px 14px' : '10px 20px',
-          backgroundColor: '#344848', color: 'white',
-          border: 'none', borderRadius: '6px',
-          cursor: 'pointer', fontSize: '14px', fontWeight: '500',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '8px', transition: 'all 0.2s'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
+        style={{ flex: isSmallScreen ? 1 : 'none' }}
       >
-        <Icon icon="mdi:plus" width="18" height="18" />
-        {!isSmallScreen && 'Nova Despesa'}
-      </button>
+        {isSmallScreen ? 'Adicionar' : 'Nova despesa'}
+      </Button>
 
-      {mostrarFiltros && (
-        <div
-          className="popover-filtros-despesas"
-          style={{
-            position: isSmallScreen ? 'fixed' : 'absolute',
-            top: isSmallScreen ? 0 : '50px',
-            right: isSmallScreen ? 0 : '0',
-            left: isSmallScreen ? 0 : 'auto',
-            bottom: isSmallScreen ? 0 : 'auto',
-            width: isSmallScreen ? '100%' : '340px',
-            height: isSmallScreen ? '100vh' : 'auto',
-            backgroundColor: 'white',
-            borderRadius: isSmallScreen ? 0 : '8px',
-            boxShadow: isSmallScreen ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-            border: isSmallScreen ? 'none' : '1px solid #e0e0e0',
-            zIndex: 1001, overflow: isSmallScreen ? 'auto' : 'hidden',
-            display: 'flex', flexDirection: 'column'
-          }}
-        >
-          {isSmallScreen && (
-            <div style={{
-              padding: '16px 20px', borderBottom: '1px solid #e5e7eb',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1
-            }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#344848' }}>Filtros</h3>
-              <button onClick={() => setMostrarFiltros(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
-                <Icon icon="mdi:close" width="24" height="24" color="#666" />
-              </button>
-            </div>
-          )}
+      {/* Filtros — Modal do DS, igual ao de Nova despesa */}
+      <Modal
+        isOpen={mostrarFiltros}
+        onClose={() => setMostrarFiltros(false)}
+        title="Filtros"
+        size="sm"
+      >
+        <Modal.Body>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input
+              label="Buscar"
+              icon="mdi:magnify"
+              placeholder="Descrição ou categoria..."
+              value={rascunho.busca}
+              onChange={(e) => mudarRascunho('busca', e.target.value)}
+              clearable
+            />
 
-          <div style={{ padding: '16px 20px' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Buscar</label>
-              <input
-                type="text"
-                placeholder="Descrição ou categoria..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
+            <NativeSelect
+              label="Categoria"
+              value={rascunho.filtroCategoria}
+              onChange={(e) => mudarRascunho('filtroCategoria', e.target.value)}
+            >
+              <option value="todos">Todas</option>
+              {categorias.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nome}</option>
+              ))}
+            </NativeSelect>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Categoria</label>
-              <select
-                value={filtroCategoria}
-                onChange={(e) => setFiltroCategoria(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  boxSizing: 'border-box', backgroundColor: 'white'
-                }}
-              >
-                <option value="todos">Todas</option>
-                {categorias.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                ))}
-              </select>
-            </div>
+            <NativeSelect
+              label="Status"
+              value={rascunho.filtroStatus}
+              onChange={(e) => mudarRascunho('filtroStatus', e.target.value)}
+              options={[
+                { value: 'todos', label: 'Todos' },
+                { value: 'pendente', label: 'Pendente' },
+                { value: 'pago', label: 'Pago' },
+                { value: 'atrasado', label: 'Atrasado' },
+              ]}
+            />
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Status</label>
-              <select
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  boxSizing: 'border-box', backgroundColor: 'white'
-                }}
-              >
-                <option value="todos">Todos</option>
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-                <option value="atrasado">Atrasado</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Período</label>
+            <div>
+              <span className="ds-input-label" style={{ display: 'block', marginBottom: '6px' }}>Período</span>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="date"
-                  value={filtroDataInicio}
-                  onChange={(e) => setFiltroDataInicio(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none'
-                  }}
-                />
-                <input
-                  type="date"
-                  value={filtroDataFim}
-                  onChange={(e) => setFiltroDataFim(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 8px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none'
-                  }}
-                />
+                <Input type="date" aria-label="Data inicial" value={rascunho.filtroDataInicio} onChange={(e) => mudarRascunho('filtroDataInicio', e.target.value)} />
+                <Input type="date" aria-label="Data final" value={rascunho.filtroDataFim} onChange={(e) => mudarRascunho('filtroDataFim', e.target.value)} />
               </div>
             </div>
 
-            {temFiltrosAtivos && (
-              <button
-                onClick={limparFiltros}
-                style={{
-                  width: '100%', padding: '10px', backgroundColor: '#344848',
-                  color: 'white', border: 'none', borderRadius: '6px',
-                  fontSize: '14px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2a3a3a'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#344848'}
-              >
-                Limpar filtros
-              </button>
-            )}
           </div>
-        </div>
-      )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" disabled={!rascunhoTemFiltro && !temFiltrosAtivos} onClick={limparRascunho} style={{ flex: 1 }}>
+            Limpar
+          </Button>
+          <Button variant="primary" onClick={verResultadosFiltro} style={{ flex: 2 }}>
+            Ver resultados
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   )
 
@@ -902,7 +806,7 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
       {/* ========== TÍTULO (apenas quando não está embedded) ========== */}
       {!embedded && (
       <div style={{ marginBottom: isSmallScreen ? '16px' : '20px' }}>
-        <h2 style={{ margin: 0, fontSize: isSmallScreen ? '16px' : '18px', fontWeight: '600', color: '#344848' }}>
+        <h2 className="ds-text-h4" style={{ margin: 0, color: 'var(--color-brand-dark)' }}>
           Despesas
         </h2>
         <p style={{ margin: '5px 0 0 0', fontSize: isSmallScreen ? '13px' : '14px', color: '#666' }}>
@@ -919,756 +823,469 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
       )}
 
       {/* ========== CARDS DE INDICADORES ========== */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '0',
-        border: 'none', boxShadow: 'none',
-        padding: isSmallScreen ? '0 0 16px 0' : '0 0 20px 0',
-        marginBottom: 0
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : isSmallScreen ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isSmallScreen ? '12px' : '16px'
-        }}>
-          {/* Card 1: Pendente */}
+      {(() => {
+        const qtdNoMes = despesasFiltradas.filter(d => {
+          const v = new Date(d.data_vencimento + 'T00:00:00')
+          return v.getMonth() === new Date().getMonth() && v.getFullYear() === new Date().getFullYear()
+        }).length
+        return (
           <div style={{
-            flex: 1,
-            padding: '14px 18px',
-            borderLeft: '3px solid #f44336',
-            backgroundColor: '#fff5f5',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
+            display: 'grid',
+            gridTemplateColumns: isSmallScreen ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+            gap: isSmallScreen ? '10px' : '16px',
+            marginBottom: isSmallScreen ? '16px' : '20px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Pendente</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="solar:danger-triangle-linear" width="18" height="18" style={{ color: '#f44336' }} />
-                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                    R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                  {quantidadePendente} despesa{quantidadePendente !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <span style={{
-                backgroundColor: '#f44336',
-                color: 'white',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}>
-                {percentualPendente}%
-              </span>
-            </div>
-            <button
-              onClick={() => setFiltroStatus('pendente')}
-              style={{
-                background: 'none', color: '#f44336', border: 'none',
-                cursor: 'pointer', fontSize: '12px', textDecoration: 'underline',
-                padding: 0, fontWeight: '600', textAlign: 'left'
-              }}
-            >
-              Ver detalhes →
-            </button>
+            <StatCard
+              label="Pendente"
+              icon="solar:danger-triangle-linear"
+              accent="danger"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={`R$ ${totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              hint={isMobile
+                ? `${quantidadePendente} despesa${quantidadePendente !== 1 ? 's' : ''}`
+                : `${quantidadePendente} despesa${quantidadePendente !== 1 ? 's' : ''} · ${percentualPendente}% do total`}
+              onClick={() => setFiltroStatus(filtroStatus === 'pendente' ? 'todos' : 'pendente')}
+              aria-pressed={filtroStatus === 'pendente'}
+              title="Filtrar a lista pelas despesas pendentes"
+            />
+            <StatCard
+              label={isMobile ? 'Vencem hoje' : 'Próximos vencimentos'}
+              icon="tabler:clock"
+              accent="warning"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={isMobile ? String(vencemHoje) : `${vencemHoje} ${vencemHoje === 1 ? 'vence' : 'vencem'} hoje`}
+              hint={isMobile
+                ? `${vencemProximos7} em 7 dias`
+                : `${vencemProximos7} nos próximos 7 dias · R$ ${totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            />
+            <StatCard
+              label="Pago no mês"
+              icon="fluent-emoji-high-contrast:money-bag"
+              accent="success"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={`R$ ${totalPagoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              hint={isMobile
+                ? `${quantidadePagoMes} despesa${quantidadePagoMes !== 1 ? 's' : ''}`
+                : `${quantidadePagoMes} despesa${quantidadePagoMes !== 1 ? 's' : ''} · ${percentualPago}% do total`}
+              onClick={() => setFiltroStatus(filtroStatus === 'pago' ? 'todos' : 'pago')}
+              aria-pressed={filtroStatus === 'pago'}
+              title="Filtrar a lista pelas despesas pagas"
+            />
+            <StatCard
+              label="Total do mês"
+              icon="mdi:chart-line"
+              accent="info"
+              tinted
+              size={isMobile ? 'sm' : 'md'}
+              value={`R$ ${totalMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              hint={`${qtdNoMes} despesa${qtdNoMes !== 1 ? 's' : ''} no mês`}
+            />
           </div>
-
-          {/* Card 2: Próximos Vencimentos */}
-          <div style={{
-            flex: 1,
-            padding: '14px 18px',
-            borderLeft: '3px solid #ff9800',
-            backgroundColor: '#fff8f0',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Próximos Vencimentos</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                  <Icon icon="tabler:clock" width="18" height="18" style={{ color: '#ff9800' }} />
-                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#344848' }}>
-                    {vencemHoje} vencem hoje
-                  </span>
-                </div>
-                <p style={{ fontSize: '12px', color: '#888', margin: '0' }}>
-                  {vencemProximos7} nos próximos 7 dias
-                </p>
-              </div>
-              <span style={{
-                backgroundColor: '#ff9800',
-                color: 'white',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                fontSize: '11px',
-                fontWeight: '600'
-              }}>
-                R$ {totalProximosVencimentos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: Pago no Mês */}
-          <div style={{
-            flex: 1,
-            padding: '14px 18px',
-            borderLeft: '3px solid #4CAF50',
-            backgroundColor: '#f1f8f4',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Pago no Mês</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icon icon="fluent-emoji-high-contrast:money-bag" width="18" height="18" style={{ color: '#4CAF50' }} />
-                  <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                    R$ {totalPagoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <p style={{ fontSize: '12px', color: '#888', margin: '4px 0 0 0' }}>
-                  {quantidadePagoMes} despesa{quantidadePagoMes !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <span style={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}>
-                {percentualPago}%
-              </span>
-            </div>
-            <button
-              onClick={() => setFiltroStatus('pago')}
-              style={{
-                background: 'none', color: '#4CAF50', border: 'none',
-                cursor: 'pointer', fontSize: '12px', textDecoration: 'underline',
-                padding: 0, fontWeight: '600', textAlign: 'left'
-              }}
-            >
-              Ver detalhes →
-            </button>
-          </div>
-
-          {/* Card 4: Total do Mês */}
-          <div style={{
-            flex: 1,
-            padding: '14px 18px',
-            borderLeft: '3px solid #2196F3',
-            backgroundColor: '#f0f7ff',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
-            <div>
-              <p style={{ fontSize: '13px', color: '#666', margin: '0 0 6px 0' }}>Total do Mês</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Icon icon="mdi:chart-line" width="18" height="18" style={{ color: '#2196F3' }} />
-                <span style={{ fontSize: '20px', fontWeight: '700', color: '#344848' }}>
-                  R$ {totalMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <p style={{ fontSize: '11px', color: '#888', margin: '4px 0 0 0' }}>
-                Todas despesas do mês
-              </p>
-              <p style={{ fontSize: '12px', color: '#2196F3', margin: '8px 0 0 0', fontWeight: '600' }}>
-                {despesasFiltradas.filter(d => {
-                  const v = new Date(d.data_vencimento + 'T00:00:00')
-                  return v.getMonth() === new Date().getMonth() && v.getFullYear() === new Date().getFullYear()
-                }).length} despesa{despesasFiltradas.filter(d => {
-                  const v = new Date(d.data_vencimento + 'T00:00:00')
-                  return v.getMonth() === new Date().getMonth() && v.getFullYear() === new Date().getFullYear()
-                }).length !== 1 ? 's' : ''} no mês
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        )
+      })()}
 
       {/* ========== LISTA DE DESPESAS ========== */}
       {despesasFiltradas.length === 0 ? (
-        <div style={{
-          backgroundColor: 'white', borderRadius: '8px', padding: '60px 20px',
-          textAlign: 'center', border: '1px solid #e5e7eb', boxShadow: 'none'
-        }}>
-          <Icon icon="mdi:wallet-outline" width="48" height="48" style={{ color: '#ccc', marginBottom: '12px' }} />
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#666' }}>
-            {despesas.length === 0 ? 'Nenhuma despesa cadastrada' : 'Nenhuma despesa encontrada'}
-          </h3>
-          <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>
-            {despesas.length === 0
-              ? 'Clique em "Nova Despesa" para adicionar sua primeira despesa.'
-              : 'Tente ajustar os filtros de busca.'
-            }
-          </p>
-        </div>
+        despesas.length === 0 ? (
+          <EmptyState
+            variant="first-use"
+            icon="mdi:wallet-outline"
+            title="Nenhuma despesa cadastrada"
+            description="Registre aluguel, contas e outros gastos para ver o resultado real do mês."
+            action={<Button variant="primary" icon="mdi:plus" onClick={abrirModalNovaDespesa}>Nova despesa</Button>}
+          />
+        ) : (
+          <EmptyState
+            variant="no-matches"
+            title="Nenhuma despesa com esses filtros"
+            description="Mude a busca ou os filtros para ver outras despesas."
+            action={<Button variant="outline" onClick={limparFiltros}>Limpar filtros</Button>}
+          />
+        )
       ) : isSmallScreen ? (
-        /* ===== MOBILE: CARDS ===== */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        /* ===== CELULAR: CARTÕES ===== */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {despesasPaginadas.map(despesa => (
-            <div
+            <Card
               key={despesa.id}
+              padding="tight"
               onClick={() => abrirModalEditarDespesa(despesa)}
-              style={{
-                backgroundColor: 'white', borderRadius: '8px', padding: '14px',
-                border: '1px solid #e5e7eb', boxShadow: 'none',
-                borderLeft: `4px solid ${despesa.categorias_despesas?.cor || '#666'}`,
-                cursor: 'pointer'
+              role="button"
+              tabIndex={0}
+              aria-label={`Editar despesa ${despesa.descricao}`}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirModalEditarDespesa(despesa) }
               }}
+              style={{ cursor: 'pointer', borderLeft: `4px solid ${despesa.categorias_despesas?.cor || 'var(--neutral-400)'}` }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '2px' }}>
                     {despesa.descricao}
                     {despesa.is_recorrente && (
-                      <Icon icon="mdi:refresh" width="14" height="14" style={{ marginLeft: '6px', color: '#2196F3', verticalAlign: 'middle' }} />
+                      <Icon icon="mdi:refresh" width="14" height="14" aria-label="Recorrente" style={{ marginLeft: '6px', color: 'var(--info-700)', verticalAlign: 'middle' }} />
                     )}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                     {despesa.categorias_despesas?.nome || 'Sem categoria'}
                   </div>
                   {despesa.observacoes && (
-                    <div
-                      title={despesa.observacoes}
-                      style={{
-                        fontSize: '11px', color: '#aaa', marginTop: '3px', fontStyle: 'italic',
-                        maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }}
-                    >
+                    <div title={despesa.observacoes} style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)', marginTop: '3px', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {despesa.observacoes}
                     </div>
                   )}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a' }}>{formatarMoeda(despesa.valor)}</div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatarMoeda(despesa.valor)}</div>
                   <div style={{ marginTop: '4px' }}>{getStatusBadge(despesa)}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: '8px' }}>
-                <div style={{ fontSize: '12px', color: '#999' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '8px' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                   Venc: {new Date(despesa.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleMarcarPago(despesa) }}
+                  <Button
+                    variant={despesa.status === 'pago' ? 'outline' : 'gray'}
+                    size="sm"
+                    selected={despesa.status === 'pago'}
+                    icon={despesa.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'}
+                    iconOnly
+                    aria-label={despesa.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
                     title={despesa.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
-                    style={{
-                      padding: '6px 10px', backgroundColor: despesa.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
-                      color: despesa.status === 'pago' ? '#4CAF50' : '#666',
-                      border: 'none', borderRadius: '4px', cursor: 'pointer',
-                      fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px'
-                    }}
-                  >
-                    <Icon icon={despesa.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="16" height="16" />
-                  </button>
-                  <button
+                    onClick={(e) => { e.stopPropagation(); handleMarcarPago(despesa) }}
+                  />
+                  <Button
+                    variant="danger-soft"
+                    size="sm"
+                    icon="mdi:delete-outline"
+                    iconOnly
+                    aria-label="Excluir despesa"
+                    title="Excluir"
                     onClick={(e) => { e.stopPropagation(); setConfirmDelete({ show: true, despesa }) }}
-                    style={{
-                      padding: '6px 10px', backgroundColor: '#ffebee',
-                      color: '#f44336', border: 'none', borderRadius: '4px',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center'
-                    }}
-                  >
-                    <Icon icon="mdi:delete-outline" width="16" height="16" />
-                  </button>
+                  />
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       ) : (
-        /* ===== DESKTOP: TABELA ===== */
-        <div style={{
-          backgroundColor: 'white', borderRadius: '8px',
-          border: '1px solid #e5e7eb', boxShadow: 'none', overflow: 'hidden'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
-                <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#666', width: '15%' }}>Descrição</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Categoria</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Vencimento</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Valor</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Status</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#666' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {despesasPaginadas.map(despesa => (
-                <tr key={despesa.id} style={{ borderBottom: '1px solid #f5f5f5', transition: 'background-color 0.15s', cursor: 'pointer' }}
-                  onClick={() => abrirModalEditarDespesa(despesa)}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafafa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        /* ===== COMPUTADOR: TABELA DO DS ===== */
+        <Table
+          data={despesasPaginadas}
+          rowKey="id"
+          onRowClick={(despesa) => abrirModalEditarDespesa(despesa)}
+          columns={[
+            {
+              key: 'descricao',
+              label: 'Descrição',
+              render: (despesa) => (
+                <>
+                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {despesa.descricao}
+                    {despesa.is_recorrente && (
+                      <Icon icon="mdi:refresh" width="14" height="14" aria-label="Recorrente" style={{ marginLeft: '6px', color: 'var(--info-700)', verticalAlign: 'middle' }} />
+                    )}
+                  </div>
+                  {despesa.observacoes && (
+                    <div title={despesa.observacoes} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '2px', fontStyle: 'italic', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {despesa.observacoes}
+                    </div>
+                  )}
+                </>
+              )
+            },
+            {
+              key: 'categoria',
+              label: 'Categoria',
+              align: 'center',
+              render: (despesa) => despesa.categorias_despesas ? (
+                <Badge
+                  icon={despesa.categorias_despesas.icone || 'mdi:tag-outline'}
+                  customColor={despesa.categorias_despesas.cor + '1A'}
+                  customTextColor={despesa.categorias_despesas.cor}
                 >
-                  <td style={{ padding: '12px 16px', fontSize: '14px', color: '#1a1a1a', fontWeight: '500' }}>
-                    <div>
-                      {despesa.descricao}
-                      {despesa.is_recorrente && (
-                        <Icon icon="mdi:refresh" width="14" height="14" style={{ marginLeft: '6px', color: '#2196F3', verticalAlign: 'middle' }} title="Recorrente" />
-                      )}
-                    </div>
-                    {despesa.observacoes && (
-                      <div
-                        title={despesa.observacoes}
-                        style={{
-                          fontSize: '12px', color: '#999', fontWeight: '400', marginTop: '2px', fontStyle: 'italic',
-                          maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {despesa.observacoes}
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', textAlign: 'center' }}>
-                    {despesa.categorias_despesas ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        backgroundColor: despesa.categorias_despesas.cor + '15',
-                        color: despesa.categorias_despesas.cor,
-                        padding: '4px 10px', borderRadius: '14px', fontSize: '12px', fontWeight: '600'
-                      }}>
-                        <Icon icon={despesa.categorias_despesas.icone || 'mdi:tag-outline'} width="14" height="14" />
-                        {despesa.categorias_despesas.nome}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#999', fontSize: '12px' }}>Sem categoria</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', color: '#666', textAlign: 'center' }}>
-                    {new Date(despesa.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#1a1a1a', textAlign: 'center' }}>
-                    {formatarMoeda(despesa.valor)}
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                    {getStatusBadge(despesa)}
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleMarcarPago(despesa) }}
-                        title={despesa.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
-                        style={{
-                          padding: '6px 8px', backgroundColor: despesa.status === 'pago' ? '#e8f5e9' : '#f5f5f5',
-                          color: despesa.status === 'pago' ? '#4CAF50' : '#666',
-                          border: 'none', borderRadius: '4px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', transition: 'all 0.2s'
-                        }}
-                      >
-                        <Icon icon={despesa.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'} width="18" height="18" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setConfirmDelete({ show: true, despesa }) }}
-                        title="Excluir"
-                        style={{
-                          padding: '6px 8px', backgroundColor: '#ffebee', color: '#f44336',
-                          border: 'none', borderRadius: '4px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffcdd2'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffebee'}
-                      >
-                        <Icon icon="mdi:delete-outline" width="18" height="18" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  {despesa.categorias_despesas.nome}
+                </Badge>
+              ) : (
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>Sem categoria</span>
+              )
+            },
+            {
+              key: 'vencimento',
+              label: 'Vencimento',
+              align: 'center',
+              render: (despesa) => new Date(despesa.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+            },
+            {
+              key: 'valor',
+              label: 'Valor',
+              align: 'center',
+              render: (despesa) => <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatarMoeda(despesa.valor)}</span>
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              align: 'center',
+              render: (despesa) => getStatusBadge(despesa)
+            },
+            {
+              key: 'acoes',
+              label: 'Ações',
+              align: 'center',
+              width: 110,
+              render: (despesa) => (
+                <div data-no-row-click style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                  <Button
+                    variant={despesa.status === 'pago' ? 'outline' : 'gray'}
+                    size="sm"
+                    selected={despesa.status === 'pago'}
+                    icon={despesa.status === 'pago' ? 'mdi:check-circle' : 'mdi:check-circle-outline'}
+                    iconOnly
+                    aria-label={despesa.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+                    title={despesa.status === 'pago' ? 'Desfazer pagamento' : 'Marcar como pago'}
+                    onClick={(e) => { e.stopPropagation(); handleMarcarPago(despesa) }}
+                  />
+                  <Button
+                    variant="danger-soft"
+                    size="sm"
+                    icon="mdi:delete-outline"
+                    iconOnly
+                    aria-label="Excluir despesa"
+                    title="Excluir"
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete({ show: true, despesa }) }}
+                  />
+                </div>
+              )
+            }
+          ]}
+        />
       )}
 
       {/* ========== PAGINAÇÃO ========== */}
       {totalPaginas > 1 && (
-        <div style={{
+        <nav aria-label="Páginas" style={{
           display: 'flex', justifyContent: 'center', alignItems: 'center',
-          gap: '8px', marginTop: '20px', flexWrap: 'wrap'
+          gap: '4px', marginTop: '20px', flexWrap: 'wrap'
         }}>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            icon="mdi:chevron-left"
+            iconOnly
+            aria-label="Página anterior"
             onClick={() => setPaginaAtual(Math.max(1, paginaAtual - 1))}
             disabled={paginaAtual === 1}
-            style={{
-              padding: '8px 12px', backgroundColor: 'white', color: paginaAtual === 1 ? '#ccc' : '#333',
-              border: '1px solid #ddd', borderRadius: '6px', cursor: paginaAtual === 1 ? 'default' : 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            <Icon icon="mdi:chevron-left" width="18" height="18" />
-          </button>
+          />
 
           {Array.from({ length: totalPaginas }, (_, i) => i + 1)
             .filter(p => p === 1 || p === totalPaginas || Math.abs(p - paginaAtual) <= 2)
             .map((pagina, index, arr) => (
-              <span key={pagina}>
+              <span key={pagina} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 {index > 0 && pagina - arr[index - 1] > 1 && (
-                  <span style={{ color: '#999', padding: '0 4px' }}>...</span>
+                  <span aria-hidden="true" style={{ color: 'var(--color-text-muted)', padding: '0 4px' }}>…</span>
                 )}
-                <button
+                <Button
+                  variant={paginaAtual === pagina ? 'secondary' : 'outline'}
+                  size="sm"
+                  aria-label={`Página ${pagina}`}
+                  aria-current={paginaAtual === pagina ? 'page' : undefined}
                   onClick={() => setPaginaAtual(pagina)}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: paginaAtual === pagina ? '#344848' : 'white',
-                    color: paginaAtual === pagina ? 'white' : '#333',
-                    border: paginaAtual === pagina ? 'none' : '1px solid #ddd',
-                    borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500',
-                    minWidth: '36px'
-                  }}
+                  style={{ minWidth: '40px' }}
                 >
                   {pagina}
-                </button>
+                </Button>
               </span>
             ))
           }
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            icon="mdi:chevron-right"
+            iconOnly
+            aria-label="Próxima página"
             onClick={() => setPaginaAtual(Math.min(totalPaginas, paginaAtual + 1))}
             disabled={paginaAtual === totalPaginas}
-            style={{
-              padding: '8px 12px', backgroundColor: 'white', color: paginaAtual === totalPaginas ? '#ccc' : '#333',
-              border: '1px solid #ddd', borderRadius: '6px', cursor: paginaAtual === totalPaginas ? 'default' : 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            <Icon icon="mdi:chevron-right" width="18" height="18" />
-          </button>
-        </div>
+          />
+        </nav>
       )}
 
       {/* ========== MODAL CRIAR/EDITAR DESPESA ========== */}
-      {mostrarModalDespesa && (
-        <div
-          onClick={fecharModalDespesa}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white', borderRadius: '12px',
-              padding: isSmallScreen ? '20px' : '28px',
-              maxWidth: '520px', width: '90%', maxHeight: '90vh', overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s ease-out'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>
-                {despesaEditando ? 'Editar Despesa' : 'Nova Despesa'}
-              </h3>
-              <button onClick={fecharModalDespesa} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                <Icon icon="mdi:close" width="24" height="24" color="#666" />
-              </button>
-            </div>
+      <Modal
+        isOpen={mostrarModalDespesa}
+        onClose={fecharModalDespesa}
+        title={despesaEditando ? 'Editar despesa' : 'Nova despesa'}
+        size="md"
+        closeOnEsc={!mostrarModalCategoria}
+        closeOnBackdrop={!mostrarModalCategoria}
+      >
+        <Modal.Body>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <Input
+              label="Descrição"
+              required
+              value={formDescricao}
+              onChange={(e) => setFormDescricao(e.target.value)}
+              placeholder="Ex: Aluguel do escritório"
+            />
 
-            {/* Descrição */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Descrição *</label>
-              <input
-                type="text"
-                value={formDescricao}
-                onChange={(e) => setFormDescricao(e.target.value)}
-                placeholder="Ex: Aluguel do escritório"
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
-              />
-            </div>
+            <Input
+              label="Valor"
+              required
+              prefix="R$"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={formValor}
+              onChange={(e) => setFormValor(e.target.value)}
+              placeholder="0,00"
+            />
 
-            {/* Valor */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Valor (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formValor}
-                onChange={(e) => setFormValor(e.target.value)}
-                placeholder="0.00"
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
-              />
-            </div>
+            <NativeSelect
+              label="Categoria"
+              value={formCategoriaId}
+              onChange={(e) => {
+                if (e.target.value === '__nova__') {
+                  setMostrarModalCategoria(true)
+                } else {
+                  setFormCategoriaId(e.target.value)
+                }
+              }}
+            >
+              <option value="">Sem categoria</option>
+              {categorias.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nome}</option>
+              ))}
+              <option value="__nova__">+ Nova categoria</option>
+            </NativeSelect>
 
-            {/* Categoria */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Categoria</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  value={formCategoriaId}
-                  onChange={(e) => {
-                    if (e.target.value === '__nova__') {
-                      setMostrarModalCategoria(true)
-                    } else {
-                      setFormCategoriaId(e.target.value)
-                    }
-                  }}
-                  style={{
-                    flex: 1, padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white'
-                  }}
-                >
-                  <option value="">Sem categoria</option>
-                  {categorias.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                  ))}
-                  <option value="__nova__">+ Nova categoria</option>
-                </select>
-              </div>
-            </div>
+            <Input
+              label="Data de vencimento"
+              required
+              type="date"
+              value={formDataVencimento}
+              onChange={(e) => setFormDataVencimento(e.target.value)}
+            />
 
-            {/* Data de vencimento */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Data de vencimento *</label>
-              <input
-                type="date"
-                value={formDataVencimento}
-                onChange={(e) => setFormDataVencimento(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box',
-                  backgroundColor: 'white', WebkitAppearance: 'none', color: '#333'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
-              />
-            </div>
+            <NativeSelect
+              label="Status"
+              value={formStatus}
+              onChange={(e) => setFormStatus(e.target.value)}
+              options={[
+                { value: 'pendente', label: 'Pendente' },
+                { value: 'pago', label: 'Pago' },
+                { value: 'cancelado', label: 'Cancelado' },
+              ]}
+            />
 
-            {/* Status */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Status</label>
-              <select
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  boxSizing: 'border-box', backgroundColor: 'white'
-                }}
-              >
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-            </div>
-
-            {/* Forma de pagamento (só se pago) */}
             {formStatus === 'pago' && (
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Forma de pagamento</label>
-                <select
-                  value={formFormaPagamento}
-                  onChange={(e) => setFormFormaPagamento(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                    borderRadius: '6px', fontSize: '16px', outline: 'none',
-                    boxSizing: 'border-box', backgroundColor: 'white'
-                  }}
-                >
-                  <option value="">Não informado</option>
-                  <option value="PIX">PIX</option>
-                  <option value="Transferência">Transferência</option>
-                  <option value="Cartão de crédito">Cartão de crédito</option>
-                  <option value="Cartão de débito">Cartão de débito</option>
-                  <option value="Boleto">Boleto</option>
-                  <option value="Dinheiro">Dinheiro</option>
-                </select>
-              </div>
+              <NativeSelect
+                label="Forma de pagamento"
+                value={formFormaPagamento}
+                onChange={(e) => setFormFormaPagamento(e.target.value)}
+                options={[
+                  { value: '', label: 'Não informado' },
+                  { value: 'PIX', label: 'PIX' },
+                  { value: 'Transferência', label: 'Transferência' },
+                  { value: 'Cartão de crédito', label: 'Cartão de crédito' },
+                  { value: 'Cartão de débito', label: 'Cartão de débito' },
+                  { value: 'Boleto', label: 'Boleto' },
+                  { value: 'Dinheiro', label: 'Dinheiro' },
+                ]}
+              />
             )}
 
-            {/* Recorrente */}
-            <div style={{
-              marginBottom: '14px', padding: '14px', backgroundColor: '#f8f9fa',
-              borderRadius: '8px', border: '1px solid #e0e0e0'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-                onClick={() => setFormIsRecorrente(!formIsRecorrente)}
-              >
-                <div style={{
-                  width: '20px', height: '20px', borderRadius: '4px',
-                  border: formIsRecorrente ? 'none' : '2px solid #ccc',
-                  backgroundColor: formIsRecorrente ? '#2196F3' : 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s', flexShrink: 0
-                }}>
-                  {formIsRecorrente && <Icon icon="mdi:check" width="16" height="16" color="white" />}
-                </div>
-                <div>
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a1a' }}>Despesa recorrente</span>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#999' }}>
-                    Ao pagar, cria automaticamente a próxima
-                  </p>
-                </div>
-              </div>
-
+            <Card padding="tight" tinted accent={formIsRecorrente ? 'info' : undefined} style={{ backgroundColor: formIsRecorrente ? undefined : 'var(--neutral-50)' }}>
+              <Switch
+                checked={formIsRecorrente}
+                onChange={(e) => setFormIsRecorrente(e.target.checked)}
+                label="Despesa recorrente"
+                description="Ao pagar, cria automaticamente a próxima"
+              />
               {formIsRecorrente && (
                 <div style={{ marginTop: '12px' }}>
-                  <select
+                  <NativeSelect
+                    aria-label="Frequência da recorrência"
                     value={formRecorrenciaTipo}
                     onChange={(e) => setFormRecorrenciaTipo(e.target.value)}
-                    style={{
-                      width: '100%', padding: '8px 12px', border: '1px solid #ddd',
-                      borderRadius: '6px', fontSize: '16px', outline: 'none', backgroundColor: 'white'
-                    }}
-                  >
-                    <option value="mensal">Mensal</option>
-                    <option value="semanal">Semanal</option>
-                    <option value="anual">Anual</option>
-                  </select>
+                    options={[
+                      { value: 'mensal', label: 'Mensal' },
+                      { value: 'semanal', label: 'Semanal' },
+                      { value: 'anual', label: 'Anual' },
+                    ]}
+                  />
                 </div>
               )}
-            </div>
+            </Card>
 
-            {/* Observações */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Observações</label>
-              <textarea
-                value={formObservacoes}
-                onChange={(e) => setFormObservacoes(e.target.value)}
-                placeholder="Anotações opcionais..."
-                rows={3}
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none',
-                  resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#344848'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#ddd'}
-              />
-            </div>
-
-            {/* Botões */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={fecharModalDespesa}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: '1px solid #e0e0e0',
-                  backgroundColor: 'white', color: '#666', fontSize: '14px',
-                  fontWeight: '500', cursor: 'pointer', minWidth: '100px'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSalvarDespesa}
-                disabled={salvando}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: 'none',
-                  backgroundColor: '#344848', color: 'white', fontSize: '14px',
-                  fontWeight: '500', cursor: salvando ? 'default' : 'pointer',
-                  minWidth: '100px', opacity: salvando ? 0.7 : 1
-                }}
-              >
-                {salvando ? 'Salvando...' : (despesaEditando ? 'Salvar' : 'Criar')}
-              </button>
-            </div>
+            <Textarea
+              label="Observações"
+              value={formObservacoes}
+              onChange={(e) => setFormObservacoes(e.target.value)}
+              placeholder="Anotações opcionais..."
+              rows={3}
+            />
           </div>
-        </div>
-      )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={fecharModalDespesa}>Cancelar</Button>
+          <Button variant="primary" loading={salvando} onClick={handleSalvarDespesa}>
+            {despesaEditando ? 'Salvar' : 'Criar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* ========== MODAL NOVA CATEGORIA ========== */}
-      {mostrarModalCategoria && (
-        <div
-          onClick={() => setMostrarModalCategoria(false)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10001,
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white', borderRadius: '12px', padding: '24px',
-              maxWidth: '380px', width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-            }}
-          >
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>
-              Nova Categoria
-            </h3>
-
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Nome</label>
-              <input
-                type="text"
-                value={novaCategoriaLabel}
-                onChange={(e) => setNovaCategoriaLabel(e.target.value)}
-                placeholder="Ex: Manutenção"
-                style={{
-                  width: '100%', padding: '10px 12px', border: '1px solid #ddd',
-                  borderRadius: '6px', fontSize: '16px', outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#344848', display: 'block', marginBottom: '6px' }}>Cor</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      <Modal
+        isOpen={mostrarModalCategoria}
+        onClose={() => setMostrarModalCategoria(false)}
+        title="Nova categoria"
+        size="sm"
+      >
+        <Modal.Body>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input
+              label="Nome"
+              value={novaCategoriaLabel}
+              onChange={(e) => setNovaCategoriaLabel(e.target.value)}
+              placeholder="Ex: Manutenção"
+            />
+            <div>
+              <span className="ds-input-label" id="nova-cat-cor" style={{ display: 'block', marginBottom: '8px' }}>Cor</span>
+              <div role="radiogroup" aria-labelledby="nova-cat-cor" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {['#E91E63', '#9C27B0', '#2196F3', '#FF9800', '#4CAF50', '#f44336', '#FFC107', '#00BCD4', '#795548', '#607D8B'].map(cor => (
-                  <div
+                  <button
                     key={cor}
+                    type="button"
+                    role="radio"
+                    aria-checked={novaCategoriaCor === cor}
+                    aria-label={`Cor ${cor}`}
                     onClick={() => setNovaCategoriaCor(cor)}
                     style={{
-                      width: '32px', height: '32px', borderRadius: '50%',
+                      width: '36px', height: '36px', borderRadius: '50%', padding: 0,
                       backgroundColor: cor, cursor: 'pointer',
-                      border: novaCategoriaCor === cor ? '3px solid #333' : '3px solid transparent',
-                      transition: 'all 0.2s'
+                      border: novaCategoriaCor === cor ? '3px solid var(--neutral-800)' : '3px solid transparent',
+                      boxShadow: novaCategoriaCor === cor ? '0 0 0 2px var(--color-bg-surface) inset' : 'none',
+                      transition: 'border-color var(--duration-150) var(--ease-out)'
                     }}
                   />
                 ))}
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setMostrarModalCategoria(false)}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: '1px solid #e0e0e0',
-                  backgroundColor: 'white', color: '#666', fontSize: '14px', cursor: 'pointer'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleCriarCategoria}
-                disabled={salvandoCategoria}
-                style={{
-                  padding: '10px 20px', borderRadius: '6px', border: 'none',
-                  backgroundColor: '#344848', color: 'white', fontSize: '14px',
-                  fontWeight: '500', cursor: salvandoCategoria ? 'default' : 'pointer',
-                  opacity: salvandoCategoria ? 0.7 : 1
-                }}
-              >
-                {salvandoCategoria ? 'Criando...' : 'Criar'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline" onClick={() => setMostrarModalCategoria(false)}>Cancelar</Button>
+          <Button variant="primary" loading={salvandoCategoria} onClick={handleCriarCategoria}>Criar</Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* ========== MODAL CONFIRMAR EXCLUSÃO ========== */}
       <ConfirmModal
@@ -1693,18 +1310,6 @@ export default function Despesas({ embedded = false, buttonsPortal = null, onCou
         type="warning"
       />
 
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-          }
-        `}
-      </style>
     </>
   )
 

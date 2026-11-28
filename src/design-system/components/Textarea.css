@@ -1,0 +1,39 @@
+/* ============================================================
+   Textarea — DS Mensalli
+   Reaproveita .ds-input-field/.ds-input-row do Input.css; aqui só
+   o que muda para várias linhas.
+   ============================================================ */
+
+.ds-textarea-row {
+  min-height: 0;
+}
+
+.ds-textarea-native {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3);
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  border-radius: inherit;
+  resize: vertical;
+}
+
+.ds-textarea-native::placeholder {
+  color: var(--color-text-muted);
+}
+
+.ds-textarea-native:disabled {
+  cursor: not-allowed;
+  resize: none;
+}
+
+@media (max-width: 640px) {
+  /* 16px: o iPhone dá zoom ao focar campo com fonte menor e não desfaz */
+  .ds-textarea-native { font-size: var(--text-lg); }
+}

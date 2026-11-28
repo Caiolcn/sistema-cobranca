@@ -9,18 +9,25 @@ import { Icon } from '@iconify/react'
 // pagantes do Mensalli (D-3 / no dia / D+3). Dispara pela edge function
 // `cobranca-saas`, agendada no pg_cron às 9h BRT. Este painel liga/desliga,
 // edita as mensagens e permite simular ou rodar na hora.
+// Quem tem cartão recorrente ativo recebe os marcos cartao_* no lugar de
+// venc_d3/venc_hoje (ver sql-cobranca-saas-cartao-recorrente.sql).
 
 const BUCKETS = {
-  venc_d3:      { label: '3 dias antes', icon: 'mdi:calendar-clock', cor: '#f97316', bg: '#fff7ed' },
-  venc_hoje:    { label: 'Vence hoje',   icon: 'mdi:calendar-today', cor: '#f59e0b', bg: '#fffbeb' },
-  venc_vencido: { label: '3 dias depois', icon: 'mdi:calendar-alert', cor: '#ef4444', bg: '#fef2f2' }
+  venc_d3:       { label: '3 dias antes', icon: 'mdi:calendar-clock', cor: '#f97316', bg: '#fff7ed' },
+  venc_hoje:     { label: 'Vence hoje',   icon: 'mdi:calendar-today', cor: '#f59e0b', bg: '#fffbeb' },
+  venc_vencido:  { label: '3 dias depois', icon: 'mdi:calendar-alert', cor: '#ef4444', bg: '#fef2f2' },
+  cartao_d3:     { label: 'Cartão: débito em 3 dias', icon: 'mdi:credit-card-clock-outline', cor: '#0ea5e9', bg: '#f0f9ff' },
+  cartao_falhou: { label: 'Cartão: não aprovado', icon: 'mdi:credit-card-off-outline', cor: '#dc2626', bg: '#fef2f2' }
 }
 
 const TEMPLATE_ORDEM = [
-  { tipo: 'venc_d3',      label: '📅 3 dias antes do vencimento' },
-  { tipo: 'venc_hoje',    label: '⏰ No dia do vencimento' },
-  { tipo: 'venc_vencido', label: '⚠️ 3 dias após o vencimento' }
+  { tipo: 'venc_d3',       label: '📅 3 dias antes do vencimento' },
+  { tipo: 'venc_hoje',     label: '⏰ No dia do vencimento' },
+  { tipo: 'venc_vencido',  label: '⚠️ 3 dias após o vencimento' },
+  { tipo: 'cartao_d3',     label: '💳 Cartão — 3 dias antes do débito' },
+  { tipo: 'cartao_falhou', label: '🚫 Cartão — débito não aprovado (1 dia depois)' }
 ]
+const TIPOS = TEMPLATE_ORDEM.map(t => t.tipo)
 
 const formatarValor = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const formatarData = (iso) => {
@@ -61,7 +68,7 @@ export default function AdminCobrancaSaas() {
       const [cfgRes, alvosRes, tmplRes, logsRes] = await Promise.all([
         supabase.from('mensalli_cobranca_saas_config').select('*').eq('id', true).maybeSingle(),
         supabase.from('vw_mensalli_cobranca_saas').select('*').order('data_vencimento', { ascending: true }),
-        supabase.from('templates_admin').select('*').in('tipo', ['venc_d3', 'venc_hoje', 'venc_vencido']),
+        supabase.from('templates_admin').select('*').in('tipo', TIPOS),
         supabase.from('retencao_saas_envios').select('*').eq('canal', 'crm_auto').order('created_at', { ascending: false }).limit(50)
       ])
       setConfig(cfgRes.data || { ativa: false })
@@ -134,11 +141,7 @@ export default function AdminCobrancaSaas() {
   }
 
   const abrirTemplates = () => {
-    setTemplatesEditando({
-      venc_d3: templates.venc_d3?.mensagem || '',
-      venc_hoje: templates.venc_hoje?.mensagem || '',
-      venc_vencido: templates.venc_vencido?.mensagem || ''
-    })
+    setTemplatesEditando(Object.fromEntries(TIPOS.map(tipo => [tipo, templates[tipo]?.mensagem || ''])))
     setTemplatesModal(true)
   }
 
@@ -162,11 +165,7 @@ export default function AdminCobrancaSaas() {
   if (userLoading || !isAdmin) return null
 
   const ativa = !!config?.ativa
-  const contagem = {
-    venc_d3: alvos.filter(a => a.bucket === 'venc_d3').length,
-    venc_hoje: alvos.filter(a => a.bucket === 'venc_hoje').length,
-    venc_vencido: alvos.filter(a => a.bucket === 'venc_vencido').length
-  }
+  const contagem = Object.fromEntries(TIPOS.map(tipo => [tipo, alvos.filter(a => a.bucket === tipo).length]))
 
   return (
     <div style={{ padding: isMobile ? '16px' : '32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -219,7 +218,7 @@ export default function AdminCobrancaSaas() {
       </div>
 
       {/* Contadores dos marcos + ações */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '14px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
         {TEMPLATE_ORDEM.map(({ tipo }) => {
           const b = BUCKETS[tipo]
           return (
@@ -247,7 +246,7 @@ export default function AdminCobrancaSaas() {
         />
         <button onClick={enviarTeste} disabled={rodando}
           style={{ padding: '9px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#0ea5e9', color: 'white', fontSize: '13px', fontWeight: 600, cursor: rodando ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: rodando ? 0.6 : 1 }}>
-          <Icon icon="mdi:send" width="16" /> {rodando ? 'Enviando...' : 'Enviar os 3 modelos pra mim'}
+          <Icon icon="mdi:send" width="16" /> {rodando ? 'Enviando...' : `Enviar os ${TIPOS.length} modelos pra mim`}
         </button>
         <span style={{ fontSize: '12px', color: '#94a3b8' }}>Não toca em clientes nem grava histórico.</span>
       </div>
@@ -280,7 +279,7 @@ export default function AdminCobrancaSaas() {
           {resultado.erro ? (
             <span style={{ color: '#c62828' }}>Erro: {resultado.erro}</span>
           ) : resultado.teste ? (
-            <span><strong>Teste enviado</strong> para {resultado.para}: {resultado.enviados || 0} de 3 modelos entregues{resultado.falhas?.length ? ` · ${resultado.falhas.length} falha(s)` : ''}.</span>
+            <span><strong>Teste enviado</strong> para {resultado.para}: {resultado.enviados || 0} de {TIPOS.length} modelos entregues{resultado.falhas?.length ? ` · ${resultado.falhas.length} falha(s)` : ''}.</span>
           ) : resultado.dryRun ? (
             <div>
               <strong>Simulação:</strong> {resultado.total || 0} na fila · {(resultado.simulacao?.length ?? 0)} receberiam agora · {resultado.skipped || 0} já enviado(s) neste ciclo.
@@ -398,7 +397,8 @@ export default function AdminCobrancaSaas() {
                 <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{valor}}'}</code>{' '}
                 <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{vencimento}}'}</code>{' '}
                 <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{dias}}'}</code>{' '}
-                <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{dias_atraso}}'}</code>
+                <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{dias_atraso}}'}</code>{' '}
+                <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{'{{data_cobranca}}'}</code>
               </p>
               {TEMPLATE_ORDEM.map(({ tipo, label }) => (
                 <div key={tipo} style={{ marginBottom: '20px' }}>

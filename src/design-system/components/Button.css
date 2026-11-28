@@ -26,7 +26,7 @@
 }
 
 .ds-btn:focus-visible {
-  box-shadow: 0 0 0 3px var(--mensalli-green-200);
+  box-shadow: var(--focus-ring);
 }
 
 .ds-btn:disabled,
@@ -86,11 +86,11 @@
 
 /* primary — CTA principal */
 .ds-btn--primary {
-  background-color: var(--mensalli-green-500);
+  background-color: var(--color-brand-fill);
   color: var(--color-text-on-brand);
 }
-.ds-btn--primary:hover:not(:disabled) { background-color: var(--mensalli-green-600); }
-.ds-btn--primary:active:not(:disabled) { background-color: var(--mensalli-green-700); }
+.ds-btn--primary:hover:not(:disabled) { background-color: var(--color-brand-fill-hover); }
+.ds-btn--primary:active:not(:disabled) { background-color: var(--color-brand-fill-active); }
 
 /* secondary — CTA alternativa, brand-dark */
 .ds-btn--secondary {
@@ -133,18 +133,18 @@
 
 /* danger — destrutivo DEFINITIVO */
 .ds-btn--danger {
-  background-color: var(--danger-500);
+  background-color: var(--danger-700);   /* branco no danger-500 dá 3,7:1 */
   color: var(--color-text-on-brand);
 }
-.ds-btn--danger:hover:not(:disabled) { background-color: var(--danger-700); }
-.ds-btn--danger:focus-visible { box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.25); }
+.ds-btn--danger:hover:not(:disabled) { background-color: var(--danger-800); }
+.ds-btn--danger:focus-visible { box-shadow: var(--focus-ring-danger); }
 
 /* danger-outline — delete leve em listas (NOVO)
    fundo branco, border vermelho claro, texto vermelho */
 .ds-btn--danger-outline {
   background-color: var(--color-bg-surface);
   color: var(--danger-700);
-  border-color: #FCA5A5;
+  border-color: var(--danger-300);
 }
 .ds-btn--danger-outline:hover:not(:disabled) {
   background-color: var(--danger-50);
@@ -157,7 +157,7 @@
   background-color: var(--danger-50);
   color: var(--danger-700);
 }
-.ds-btn--danger-soft:hover:not(:disabled) { background-color: #FCD0CD; }
+.ds-btn--danger-soft:hover:not(:disabled) { background-color: var(--danger-100); }
 .ds-btn--danger-soft:focus-visible { box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15); }
 
 /* whatsapp — CTA específico */
@@ -193,7 +193,7 @@
   border-color: var(--danger-500);
 }
 .ds-btn--selected.ds-btn--tone-danger:hover:not(:disabled) {
-  background-color: #FEE2E2;
+  background-color: var(--danger-100);
 }
 
 .ds-btn--selected.ds-btn--tone-warning {
@@ -202,7 +202,7 @@
   border-color: var(--warning-500);
 }
 .ds-btn--selected.ds-btn--tone-warning:hover:not(:disabled) {
-  background-color: #FFE0B2;
+  background-color: var(--warning-100);
 }
 
 .ds-btn--selected.ds-btn--tone-info {
@@ -211,7 +211,7 @@
   border-color: var(--info-500);
 }
 .ds-btn--selected.ds-btn--tone-info:hover:not(:disabled) {
-  background-color: #BBDEFB;
+  background-color: var(--info-100);
 }
 
 /* ============================================================
@@ -237,5 +237,25 @@
    propósito: ele existe para ícone dentro de linha de tabela. */
 @media (max-width: 640px) {
   .ds-btn--sm { min-height: 40px; }
-  .ds-btn--md { min-height: 44px; }
+  .ds-btn--md { min-height: var(--touch-min); }
+
+  /* Botão só de ícone: quadrado de 44px no md; no sm/xs o desenho fica
+     menor (cabe em linha de tabela) e um ::after invisível completa a
+     área de toque até 44px. */
+  .ds-btn--icon-only.ds-btn--md { min-width: var(--touch-min); min-height: var(--touch-min); }
+  /* O sm cresce para 40px de altura no celular (regra acima); a largura
+     acompanha, senão o botão só de ícone vira um retângulo 32×40. */
+  .ds-btn--icon-only.ds-btn--sm { min-width: 40px; }
+  .ds-btn--icon-only.ds-btn--sm,
+  .ds-btn--icon-only.ds-btn--xs { overflow: visible; }
+  .ds-btn--icon-only.ds-btn--sm::after,
+  .ds-btn--icon-only.ds-btn--xs::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--touch-min);
+    height: var(--touch-min);
+    transform: translate(-50%, -50%);
+  }
 }

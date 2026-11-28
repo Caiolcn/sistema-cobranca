@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
-import { subscribeToWhatsAppStatus, getWhatsAppStatus } from './WhatsAppConexao'
+import { subscribeToWhatsAppStatus, getWhatsAppStatus, definirStatusWhatsApp } from './WhatsAppConexao'
 import PerfilUsuario from './PerfilUsuario'
 import TrialExpiredModal from './TrialExpiredModal'
 import PlanExpirationBanner from './PlanExpirationBanner'
@@ -17,6 +17,12 @@ import NotificacoesDropdown, { contarNaoLidas } from './components/NotificacoesD
 import { prefetchNovidades } from './services/novidadesService'
 import ConfigMenu from './components/ConfigMenu'
 import { groupedConfigTabs } from './configTabs'
+import BottomNav from './design-system/components/BottomNav'
+import NavSheet from './design-system/components/NavSheet'
+
+// Celular: as 4 telas fixas no menu de baixo (decidido pelo dono em 27/11/2026).
+// O resto fica no "Mais".
+const TELAS_FIXAS_CELULAR = ['home', 'clientes', 'financeiro', 'horarios']
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -26,6 +32,9 @@ export default function Dashboard() {
   const [mostrarModalTrial, setMostrarModalTrial] = useState(false)
   const [menuAberto, setMenuAberto] = useState(false)
   const [configSubmenuAberto, setConfigSubmenuAberto] = useState(false)
+  // Celular: folha "Mais" do menu de baixo ('raiz' ou 'config' = lista de abas de Configurações)
+  const [maisAberto, setMaisAberto] = useState(false)
+  const [maisNivel, setMaisNivel] = useState('raiz')
   const [configMenuAberto, setConfigMenuAberto] = useState(false)
   const [perfilMenuAberto, setPerfilMenuAberto] = useState(false)
   const [buscaAberta, setBuscaAberta] = useState(false)
@@ -93,6 +102,11 @@ export default function Dashboard() {
     setBuscaTexto('')
     setNotifAberta(false)
     setConfigMenuAberto(false)
+    setMaisAberto(false)
+    // Trocou de tela: começa do topo. O conteúdo rola dentro de .app-conteudo,
+    // que é o mesmo elemento em todas as telas, então ele guardava a rolagem
+    // da tela anterior (ex.: voltar ao WhatsApp e cair no meio da página).
+    document.querySelector('.app-conteudo')?.scrollTo({ top: 0, left: 0 })
   }, [location.pathname])
 
   // Aquece as novidades enquanto a Home ainda está no skeleton. O painel delas
@@ -175,6 +189,48 @@ export default function Dashboard() {
     return unsubscribe
   }, [])
 
+  // Bolinha do WhatsApp no menu: estado certo desde a abertura do app.
+  // Lê `mensallizap.conectado` (o webhook connection.update mantém esse campo)
+  // ao abrir, ao voltar para a aba e a cada 5 minutos. Guarda o último valor no
+  // aparelho para a bolinha já nascer certa no próximo acesso.
+  useEffect(() => {
+    const uid = adminViewingAs || userId
+    if (!uid) return
+    const chaveCache = `mz_whats_status_${uid}`
+    try {
+      const salvo = localStorage.getItem(chaveCache)
+      if (salvo && getWhatsAppStatus() === 'unknown') definirStatusWhatsApp(salvo)
+    } catch (_) {}
+
+    let cancelado = false
+    const INTERVALO_MS = 5 * 60 * 1000
+    const ler = async () => {
+      if (document.visibilityState === 'hidden') return
+      const { data, error } = await supabase
+        .from('mensallizap')
+        .select('conectado')
+        .eq('user_id', uid)
+        .maybeSingle()
+      if (cancelado || error) return
+      // Se a tela do WhatsApp acabou de checar "ao vivo" e achou travada ou
+      // conectando, ela sabe mais que o banco: não sobrescreve.
+      const atual = getWhatsAppStatus()
+      if (atual === 'zombie' || atual === 'connecting') return
+      const novo = data?.conectado ? 'connected' : 'disconnected'
+      definirStatusWhatsApp(novo)
+      try { localStorage.setItem(chaveCache, novo) } catch (_) {}
+    }
+    const aoVoltar = () => { if (document.visibilityState === 'visible') ler() }
+    ler()
+    const timer = setInterval(ler, INTERVALO_MS)
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => {
+      cancelado = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', aoVoltar)
+    }
+  }, [userId, adminViewingAs])
+
   // Admin: carregar lista de todos os clientes
   useEffect(() => {
     if (!isAdmin) return
@@ -238,7 +294,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ display: 'flex', backgroundColor: '#f5f7fa', height: '100vh', width: '100%', overflow: 'hidden' }}>
+    <div className="ds-viewport-height" style={{ display: 'flex', backgroundColor: '#f5f7fa', width: '100%', overflow: 'hidden' }}>
       {/* Modal de Trial (se estiver expirando mas ainda ativo) */}
       {mostrarModalTrial && !planoPago && diasRestantes > 0 && diasRestantes <= 2 && (
         <TrialExpiredModal
@@ -247,66 +303,32 @@ export default function Dashboard() {
           onUpgrade={() => navigate('/app/assinatura')}
         />
       )}
-      {/* Overlay para fechar menu em mobile */}
-      {isMobile && menuAberto && (
-        <div
-          onClick={() => setMenuAberto(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 998
-          }}
-        />
-      )}
-
-      {/* Topbar mobile */}
+      {/* Topbar mobile — a navegação fica no menu de baixo (BottomNav);
+          aqui só o logo e os atalhos. A altura soma a borda segura do topo
+          (entalhe do iPhone no app instalado). */}
       {isMobile && (
         <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
-          height: '56px',
+          height: 'calc(var(--app-topbar-h) + var(--safe-top))',
+          paddingTop: 'var(--safe-top)',
+          paddingLeft: 'calc(16px + var(--safe-left))',
+          paddingRight: 'calc(8px + var(--safe-right))',
           backgroundColor: 'white',
           borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 16px',
-          zIndex: 10000,
+          zIndex: 'var(--z-nav)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
         }}>
-          <button
-            onClick={() => setMenuAberto(!menuAberto)}
-            style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          >
-            {menuAberto ? (
-              <Icon icon="mdi:close" width="24" height="24" color="#333" />
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 6H21M3 12H21M3 18H21" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            )}
-          </button>
           <img
             src="/logo-f.png"
             alt="Mensalli"
-            style={{ height: '28px', objectFit: 'contain' }}
+            onClick={() => navigate('/app/home')}
+            style={{ height: '28px', objectFit: 'contain', cursor: 'pointer' }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             {/* Atalho pro /admin, só pra admin. Fica aqui na topbar e nao so no
@@ -318,8 +340,8 @@ export default function Dashboard() {
                 onClick={() => navigate('/admin')}
                 title="Admin Mensalli"
                 style={{
-                  width: '40px',
-                  height: '40px',
+                  width: '44px',
+                  height: '44px',
                   backgroundColor: 'transparent',
                   border: 'none',
                   borderRadius: '8px',
@@ -337,8 +359,8 @@ export default function Dashboard() {
               onClick={() => setBuscaAberta(true)}
               title="Buscar"
               style={{
-                width: '40px',
-                height: '40px',
+                width: '44px',
+                height: '44px',
                 backgroundColor: 'transparent',
                 border: 'none',
                 borderRadius: '8px',
@@ -355,8 +377,8 @@ export default function Dashboard() {
               onClick={() => navigate('/app/ajuda')}
               title="Ajuda"
               style={{
-                width: '40px',
-                height: '40px',
+                width: '44px',
+                height: '44px',
                 backgroundColor: 'transparent',
                 border: 'none',
                 borderRadius: '8px',
@@ -382,10 +404,10 @@ export default function Dashboard() {
           />
           <div style={{
             position: 'fixed',
-            top: '64px',
+            top: 'calc(64px + var(--safe-top))',
             left: '8px',
             right: '8px',
-            maxHeight: 'calc(100vh - 80px)',
+            maxHeight: 'calc(100dvh - 80px - var(--safe-top))',
             backgroundColor: 'white',
             borderRadius: '12px',
             border: '1px solid #e5e7eb',
@@ -533,7 +555,9 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Menu lateral */}
+      {/* Menu lateral — só no computador/tablet. No celular a navegação é o
+          BottomNav + folha "Mais" (no fim deste componente). */}
+      {!isMobile && (
       <div style={{
         width: isMobile ? '260px' : '70px',
         maxWidth: isMobile ? '85vw' : '70px',
@@ -750,6 +774,7 @@ export default function Dashboard() {
                 width: '10px',
                 height: '10px',
                 borderRadius: '50%',
+                display: whatsappStatus === 'unknown' ? 'none' : 'block',
                 backgroundColor: whatsappStatus === 'connected' ? '#4CAF50' :
                                whatsappStatus === 'connecting' ? '#ff9800' :
                                '#f44336',
@@ -1100,15 +1125,16 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      )}
 
-      {/* Conteúdo principal */}
-      <div style={{
+      {/* Conteúdo principal. No celular reserva o espaço da barra de cima
+          (com o entalhe) e do menu de baixo (ds-has-bottomnav). */}
+      <div className={`ds-viewport-height${isMobile ? ' ds-has-bottomnav' : ''}`} style={{
         marginLeft: isMobile ? 0 : '70px',
         width: isMobile ? '100%' : 'calc(100% - 70px)',
-        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        paddingTop: isMobile ? '64px' : '0'
+        paddingTop: isMobile ? 'calc(64px + var(--safe-top))' : '0'
       }}>
         {/* Topbar desktop (estilo Krooa) */}
         {!isMobile && (
@@ -1628,6 +1654,93 @@ export default function Dashboard() {
           <Outlet />
         </div>
       </div>
+
+      {/* Celular: menu fixo embaixo + folha "Mais" */}
+      {isMobile && (() => {
+        const irPara = (rota) => { setMaisAberto(false); navigate(rota) }
+        const whatsappCaiu = whatsappStatus === 'disconnected' || whatsappStatus === 'zombie'
+        const corStatusWhats = whatsappStatus === 'connected' ? 'var(--mensalli-green-500)'
+          : whatsappStatus === 'connecting' ? 'var(--warning-500)'
+          : whatsappStatus === 'unknown' ? 'transparent' : 'var(--danger-500)'
+        const textoStatusWhats = whatsappStatus === 'connected' ? 'Conectado'
+          : whatsappStatus === 'connecting' ? 'Conectando…'
+          : whatsappStatus === 'unknown' ? 'Verificando…' : 'Desconectado'
+        const fecharMais = () => { setMaisAberto(false); setMaisNivel('raiz') }
+
+        const secoesMais = maisNivel === 'config'
+          ? groupedConfigTabs('config').map(group => ({
+              key: group.id,
+              label: group.label,
+              items: group.items.map(item => ({
+                key: item.id,
+                label: item.label,
+                icon: item.icon,
+                active: abaConfigAtiva === item.id,
+                onClick: () => { fecharMais(); navigate(`/app/configuracao?aba=${item.id}`) },
+              })),
+            }))
+          : [
+              {
+                key: 'telas',
+                items: [
+                  {
+                    key: 'whatsapp',
+                    label: 'WhatsApp',
+                    description: textoStatusWhats,
+                    active: telaAtiva === 'whatsapp',
+                    icon: (
+                      <>
+                        <Icon icon="mdi:whatsapp" width="22" height="22" />
+                        <span style={{ position: 'absolute', top: '-2px', right: '-3px', width: '9px', height: '9px', borderRadius: '50%', backgroundColor: corStatusWhats, boxShadow: '0 0 0 2px var(--color-bg-surface)' }} />
+                      </>
+                    ),
+                    onClick: () => irPara('/app/whatsapp'),
+                  },
+                  { key: 'crm', label: 'CRM', icon: 'fluent:people-team-20-regular', active: telaAtiva === 'crm', onClick: () => irPara('/app/crm') },
+                  { key: 'relatorios', label: 'Relatórios', icon: 'fluent:chart-multiple-20-regular', active: telaAtiva === 'relatorios', onClick: () => irPara('/app/relatorios') },
+                  { key: 'marketing', label: 'Marketing', icon: 'fluent:megaphone-loud-20-regular', active: telaAtiva === 'marketing', onClick: () => irPara('/app/marketing') },
+                  { key: 'config', label: 'Configurações', icon: 'fluent:settings-20-regular', active: telaAtiva === 'configuracao', chevron: true, onClick: () => setMaisNivel('config') },
+                ],
+              },
+              {
+                key: 'conta',
+                items: [
+                  { key: 'ajuda', label: 'Ajuda', icon: 'fluent:question-circle-20-regular', active: telaAtiva === 'ajuda', onClick: () => irPara('/app/ajuda') },
+                  { key: 'perfil', label: 'Meu perfil', icon: 'fluent:person-20-regular', onClick: () => { fecharMais(); setMostrarPerfil(true) } },
+                  ...(isAdmin ? [{ key: 'admin', label: 'Admin Mensalli', icon: 'fluent:shield-keyhole-20-regular', tone: 'admin', onClick: () => irPara('/admin') }] : []),
+                  { key: 'sair', label: 'Sair', icon: 'iconoir:log-out', tone: 'danger', onClick: () => { fecharMais(); handleLogout() } },
+                ],
+              },
+            ]
+
+        return (
+          <>
+            <BottomNav
+              items={[
+                { key: 'home', label: 'Início', icon: 'fluent:home-20-regular', iconActive: 'fluent:home-20-filled', active: telaAtiva === 'home', onClick: () => irPara('/app/home') },
+                { key: 'clientes', label: 'Alunos', icon: 'fluent:people-20-regular', iconActive: 'fluent:people-20-filled', active: telaAtiva === 'clientes', onClick: () => irPara('/app/clientes') },
+                { key: 'financeiro', label: 'Financeiro', icon: 'fluent:money-20-regular', iconActive: 'fluent:money-20-filled', active: telaAtiva === 'financeiro', onClick: () => irPara('/app/financeiro') },
+                { key: 'horarios', label: 'Horários', icon: 'fluent:calendar-20-regular', iconActive: 'fluent:calendar-20-filled', active: telaAtiva === 'horarios', onClick: () => irPara('/app/horarios') },
+                {
+                  key: 'mais',
+                  label: 'Mais',
+                  icon: 'fluent:navigation-20-regular',
+                  active: maisAberto || !TELAS_FIXAS_CELULAR.includes(telaAtiva),
+                  badge: whatsappCaiu,
+                  onClick: () => { setMaisNivel('raiz'); setMaisAberto(true) },
+                },
+              ]}
+            />
+            <NavSheet
+              open={maisAberto}
+              onClose={fecharMais}
+              title={maisNivel === 'config' ? 'Configurações' : 'Mais'}
+              onBack={maisNivel === 'config' ? () => setMaisNivel('raiz') : undefined}
+              sections={secoesMais}
+            />
+          </>
+        )
+      })()}
 
       {/* Modal de Perfil */}
       {mostrarPerfil && (
